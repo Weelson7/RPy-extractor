@@ -777,15 +777,19 @@ function renderSortingAssetsList() {
     btn.appendChild(nameSpan);
     btn.appendChild(metaSpan);
     
-    btn.addEventListener("click", async () => {
-      await previewAsset(asset.path);
-      renderSortingAssetsList();
-    });
-    
+      // Double-click to edit name
+      nameSpan.addEventListener("dblclick", async (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        await startRenamingAsset(asset, btn, nameSpan);
+      });
     DOM.sortingAssetsList.appendChild(btn);
   }
+        // Don't navigate if we're editing
+        if (!btn.querySelector(".sorting-asset-rename-input")) {
 }
 
+        }
 async function startRenamingAsset(asset, nameSpan) {
   const currentName = asset.name;
   const input = document.createElement("input");
@@ -799,15 +803,22 @@ async function startRenamingAsset(asset, nameSpan) {
   input.focus();
   input.select();
   
+  let isProcessing = false;
+  
   async function submitRename() {
+    if (isProcessing) return;
+    isProcessing = true;
+    
     const newName = input.value.trim();
     if (!newName) {
       input.replaceWith(nameSpan);
+      isProcessing = false;
       return;
     }
     
     if (newName === currentName) {
       input.replaceWith(nameSpan);
+      isProcessing = false;
       return;
     }
     
@@ -825,16 +836,24 @@ async function startRenamingAsset(asset, nameSpan) {
         await navigateAsset(1);
       } else {
         setStepStatus(3, result.error || "Rename failed", "error");
-        input.replaceWith(nameSpan);
+        if (input.parentNode) {
+          input.parentNode.replaceChild(nameSpan, input);
+        }
+        isProcessing = false;
       }
     } catch (err) {
       setStepStatus(3, "Rename failed", "error");
-      input.replaceWith(nameSpan);
+      if (input.parentNode) {
+        input.parentNode.replaceChild(nameSpan, input);
+      }
+      isProcessing = false;
     }
   }
   
   function cancelRename() {
-    input.replaceWith(nameSpan);
+    if (input.parentNode) {
+      input.parentNode.replaceChild(nameSpan, input);
+    }
   }
   
   input.addEventListener("keydown", async (e) => {
