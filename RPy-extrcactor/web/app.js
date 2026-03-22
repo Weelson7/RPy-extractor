@@ -14,6 +14,7 @@ const appState = {
   sortingOffset: 0,
   sortingLimit: 100,
   sortingTruncated: false,
+  sortingSortBy: "nameAsc",
   selectedAssetPath: "",
   selectedAssetIndex: -1,
   currentPreviewType: "",
@@ -58,6 +59,7 @@ const DOM = {
   clearSortingTrashBtn: document.getElementById("clearSortingTrashBtn"),
   sortingPrevBtn: document.getElementById("sortingPrevBtn"),
   sortingNextBtn: document.getElementById("sortingNextBtn"),
+  sortingSortBy: document.getElementById("sortingSortBy"),
   sortingPageInfo: document.getElementById("sortingPageInfo"),
   sortingAssetsList: document.getElementById("sortingAssetsList"),
   sortingPreviewMeta: document.getElementById("sortingPreviewMeta"),
@@ -225,6 +227,32 @@ function getSelectedAssetIndex() {
 
 function syncSelectedAssetIndex() {
   appState.selectedAssetIndex = getSelectedAssetIndex();
+}
+
+function compareString(a, b) {
+  return String(a || "").localeCompare(String(b || ""), undefined, { sensitivity: "base" });
+}
+
+function applySortingToAssets() {
+  const mode = appState.sortingSortBy || "nameAsc";
+  appState.sortingAssets.sort((a, b) => {
+    if (mode === "nameDesc") {
+      return compareString(b.name, a.name) || compareString(a.path, b.path);
+    }
+    if (mode === "typeAsc") {
+      return compareString(a.type, b.type) || compareString(a.name, b.name) || compareString(a.path, b.path);
+    }
+    if (mode === "extAsc") {
+      return compareString(a.ext, b.ext) || compareString(a.name, b.name) || compareString(a.path, b.path);
+    }
+    if (mode === "sizeDesc") {
+      return (Number(b.size || 0) - Number(a.size || 0)) || compareString(a.name, b.name) || compareString(a.path, b.path);
+    }
+    if (mode === "sizeAsc") {
+      return (Number(a.size || 0) - Number(b.size || 0)) || compareString(a.name, b.name) || compareString(a.path, b.path);
+    }
+    return compareString(a.name, b.name) || compareString(a.path, b.path);
+  });
 }
 
 function updateSortingPaginationUi() {
@@ -687,6 +715,7 @@ async function loadSortingWindowAssets() {
     appState.sortingAssets = Array.isArray(result.assets) ? result.assets : [];
     appState.sortingOffset = Number(result.offset || appState.sortingOffset || 0);
     appState.sortingTruncated = Boolean(result.truncated);
+    applySortingToAssets();
     appState.previewCache.clear();
     syncSelectedAssetIndex();
     if (appState.selectedAssetIndex < 0 && appState.sortingAssets.length > 0) {
@@ -860,6 +889,19 @@ DOM.sortingPrevBtn?.addEventListener("click", async () => {
 
 DOM.sortingNextBtn?.addEventListener("click", async () => {
   await loadNextAssetsPage();
+});
+
+DOM.sortingSortBy?.addEventListener("change", async (event) => {
+  const target = event.target;
+  appState.sortingSortBy = String(target?.value || "nameAsc");
+  applySortingToAssets();
+  renderSortingAssetsList();
+  if (appState.selectedAssetPath) {
+    syncSelectedAssetIndex();
+  }
+  if (!appState.selectedAssetPath && appState.sortingAssets.length > 0) {
+    await selectAssetByIndex(0);
+  }
 });
 
 DOM.openSortingPanelBtn?.addEventListener("click", async () => {

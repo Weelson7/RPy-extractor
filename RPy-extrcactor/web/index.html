@@ -152,6 +152,17 @@
                 <span id="sortingPageInfo" class="sorting-page-info">0-0/0</span>
                 <button id="sortingNextBtn" class="btn btn--ghost" type="button">Next</button>
               </div>
+              <div class="sorting-sort-row">
+                <label for="sortingSortBy">Sort by</label>
+                <select id="sortingSortBy" class="sorting-sort-select">
+                  <option value="nameAsc" selected>Name (A-Z)</option>
+                  <option value="nameDesc">Name (Z-A)</option>
+                  <option value="typeAsc">Type (A-Z)</option>
+                  <option value="extAsc">Extension (A-Z)</option>
+                  <option value="sizeDesc">Size (largest first)</option>
+                  <option value="sizeAsc">Size (smallest first)</option>
+                </select>
+              </div>
               <div id="sortingAssetsList" class="sorting-assets-list" role="listbox" aria-label="Assets list"></div>
             </div>
             <div class="sorting-window__preview">
