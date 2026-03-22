@@ -253,14 +253,7 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/extract":
                 game_path = data.get("gamePath", "")
                 selected_exts = data.get("selectedExts", None)
-                extraction_type = data.get("extractionType", "auto")
-                result = extract_repo(
-                    game_path,
-                    self.app_config,
-                    selected_exts,
-                    extraction_type,
-                    self.progress_callback,
-                )
+                result = extract_repo(game_path, self.app_config, selected_exts, self.progress_callback)
                 self.send_json_response(result)
                 return
 

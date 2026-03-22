@@ -12,7 +12,6 @@ from urllib.parse import quote, unquote
 
 from models import AppConfig, SESSIONS
 from extraction import detect_extensions, detect_extensions_in_dir, extract_assets, walk_files, SKIP_DIRS, tlog, log_append
-from extraction_types import resolve_extraction_type, default_selected_exts_for_type
 from sorting import (
     list_kept_files, get_summary, list_all_extensions, list_trash,
     move_extension_to_trash, restore_extension_from_trash,
@@ -149,7 +148,6 @@ def extract_repo(
     game_path: str,
     app_config: AppConfig,
     selected_exts: list[str] | None,
-    extraction_type: str | None,
     progress_callback: Callable[[str], None] | None = None,
 ) -> dict:
     """Extract from game path."""
@@ -163,24 +161,7 @@ def extract_repo(
             }
 
         output_dir = assets_dir(app_config)
-        resolved = resolve_extraction_type(game_root, extraction_type)
         selected_exts_set = set(selected_exts) if selected_exts else None
-        default_filter_applied = False
-
-        if selected_exts_set is None:
-            default_exts = default_selected_exts_for_type(resolved["resolved"])
-            if default_exts is not None:
-                selected_exts_set = default_exts
-                default_filter_applied = True
-
-        if progress_callback:
-            progress_callback(
-                f"[TYPE] requested={resolved['requested']} resolved={resolved['resolved']}"
-            )
-            if default_filter_applied:
-                progress_callback(
-                    f"[TYPE] applied default media filter ({len(selected_exts_set)} extensions)"
-                )
 
         result = extract_assets(
             game_root=game_root,
@@ -197,8 +178,6 @@ def extract_repo(
             "success": True,
             "result": result,
             "assetPath": str(output_dir),
-            "extractionType": resolved,
-            "defaultFilterApplied": default_filter_applied,
         }
     except Exception as exc:
         return {

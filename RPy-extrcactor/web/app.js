@@ -519,7 +519,7 @@ DOM.extractBtn?.addEventListener("click", async () => {
     const result = await handleApiOperation(
       "extract",
       "/api/extract",
-      { method: "POST", body: { gamePath, selectedExts: null, extractionType: "unity" } },
+      { method: "POST", body: { gamePath, selectedExts: null } },
       (okResult) => {
         appState.extractionDone = true;
         const details = okResult.result;
