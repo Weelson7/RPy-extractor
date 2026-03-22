@@ -2,6 +2,7 @@
 from pathlib import Path
 from typing import Callable
 from collections import defaultdict
+from dataclasses import asdict
 
 from extraction import extract_assets, log_append
 
@@ -95,6 +96,11 @@ class UnityExtractor(Extractor):
             progress("[UNITY:SLICE5] Performing completeness verification")
         
         verifier = CompletenessVerifier(progress)
+        output_integrity: dict = {}
+        comparison_result: dict = {}
+        unresolved_classification: dict = {}
+        completeness_report: dict = {}
+        quality_gate: dict = {}
         
         try:
             # Compare discovery to extraction
@@ -103,9 +109,12 @@ class UnityExtractor(Extractor):
                 extracted_count,
             )
             
-            # Classify unresolved assets
+            # Classify unresolved assets (convert dataclass to dict for type compatibility)
+            discovered_assets_as_dicts = [
+                asdict(asset) for asset in (discovery_index.discovered_assets if discovery_index else [])
+            ]
             unresolved_classification = verifier.classify_unresolved_assets(
-                discovery_index.discovered_assets if discovery_index else [],
+                discovered_assets_as_dicts,
                 [],
             )
             
