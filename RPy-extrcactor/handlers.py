@@ -12,6 +12,7 @@ from urllib.parse import quote, unquote
 
 from models import AppConfig, SESSIONS
 from extraction import detect_extensions, detect_extensions_in_dir, extract_assets, walk_files, SKIP_DIRS, tlog, log_append
+from extraction_types import run_extraction
 from sorting import (
     list_kept_files, get_summary, list_all_extensions, list_trash,
     move_extension_to_trash, restore_extension_from_trash,
@@ -148,6 +149,7 @@ def extract_repo(
     game_path: str,
     app_config: AppConfig,
     selected_exts: list[str] | None,
+    extraction_type: str | None = None,
     progress_callback: Callable[[str], None] | None = None,
 ) -> dict:
     """Extract from game path."""
@@ -163,11 +165,12 @@ def extract_repo(
         output_dir = assets_dir(app_config)
         selected_exts_set = set(selected_exts) if selected_exts else None
 
-        result = extract_assets(
+        result = run_extraction(
             game_root=game_root,
             output_dir=output_dir,
             selected_exts=selected_exts_set,
             temp_root=app_config.temp_path,
+            requested_type=extraction_type,
             progress=progress_callback,
         )
 
@@ -178,6 +181,8 @@ def extract_repo(
             "success": True,
             "result": result,
             "assetPath": str(output_dir),
+            "extractorType": result.get("extractorType", "generic"),
+            "detection": result.get("detection", {}),
         }
     except Exception as exc:
         return {
