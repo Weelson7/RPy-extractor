@@ -233,6 +233,44 @@ function compareString(a, b) {
   return String(a || "").localeCompare(String(b || ""), undefined, { sensitivity: "base" });
 }
 
+function extensionFromEncodedPath(encodedPath) {
+  const decoded = decodeURIComponent(String(encodedPath || "").split("/").pop() || "");
+  const dotIndex = decoded.lastIndexOf(".");
+  if (dotIndex < 0) {
+    return ".noext";
+  }
+  return decoded.slice(dotIndex).toLowerCase() || ".noext";
+}
+
+function inferAssetTypeFromExt(ext) {
+  const normalized = String(ext || "").toLowerCase();
+  if ([".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".svg", ".ico"].includes(normalized)) {
+    return "image";
+  }
+  if ([".mp3", ".ogg", ".wav", ".m4a", ".aac", ".opus", ".flac"].includes(normalized)) {
+    return "audio";
+  }
+  if ([".mp4", ".webm", ".mov", ".m4v", ".mpeg", ".mpg", ".avi", ".mkv"].includes(normalized)) {
+    return "video";
+  }
+  if ([".txt", ".json", ".xml", ".csv", ".md", ".rpy", ".rpym", ".ini", ".log", ".py", ".js", ".css", ".html"].includes(normalized)) {
+    return "text";
+  }
+  return "binary";
+}
+
+function createAssetStubFromPath(encodedPath) {
+  const decodedName = decodeURIComponent(String(encodedPath || "").split("/").pop() || "asset");
+  const ext = extensionFromEncodedPath(encodedPath);
+  return {
+    name: decodedName,
+    path: String(encodedPath || ""),
+    ext,
+    size: 0,
+    type: inferAssetTypeFromExt(ext),
+  };
+}
+
 function applySortingToAssets() {
   const mode = appState.sortingSortBy || "nameAsc";
   appState.sortingAssets.sort((a, b) => {
@@ -400,9 +438,44 @@ async function undoSortingAction() {
 
   const undoneLabel = String(result.undone || "action");
   setStepStatus(3, `Undo successful (${undoneLabel})`, "ok");
-  await loadSortingWindowAssets();
-  if (result.path) {
-    await previewAsset(result.path);
+
+  const restoredPath = String(result.path || "");
+
+  if (undoneLabel === "trash" && restoredPath) {
+    const exists = appState.sortingAssets.some((asset) => asset.path === restoredPath);
+    if (!exists) {
+      appState.sortingAssets.push(createAssetStubFromPath(restoredPath));
+      applySortingToAssets();
+      updateSortingPaginationUi();
+    }
+  }
+
+  if (undoneLabel === "rename" && restoredPath) {
+    const previousPath = String(result.previousPath || "");
+    if (previousPath) {
+      const renamed = appState.sortingAssets.find((asset) => asset.path === previousPath);
+      if (renamed) {
+        const stub = createAssetStubFromPath(restoredPath);
+        renamed.path = stub.path;
+        renamed.name = stub.name;
+        renamed.ext = stub.ext;
+        renamed.type = stub.type;
+        appState.previewCache.delete(previousPath);
+      }
+    }
+
+    const restoredExists = appState.sortingAssets.some((asset) => asset.path === restoredPath);
+    if (!restoredExists) {
+      appState.sortingAssets.push(createAssetStubFromPath(restoredPath));
+    }
+    applySortingToAssets();
+    updateSortingPaginationUi();
+  }
+
+  renderSortingAssetsList();
+
+  if (restoredPath) {
+    await previewAsset(restoredPath);
     renderSortingAssetsList();
   }
 }

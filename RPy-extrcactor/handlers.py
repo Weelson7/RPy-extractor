@@ -815,10 +815,13 @@ def sort_undo_last_action(app_config: AppConfig) -> dict:
 
             rel = restore_target.relative_to(out_dir)
             encoded = "/".join(quote(part, safe="") for part in rel.parts)
+            prev_rel = new_path.relative_to(out_dir)
+            prev_encoded = "/".join(quote(part, safe="") for part in prev_rel.parts)
             return {
                 "success": True,
                 "undone": "rename",
                 "path": encoded,
+                "previousPath": prev_encoded,
             }
 
         # Unknown action type.
