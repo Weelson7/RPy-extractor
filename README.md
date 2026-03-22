@@ -1,218 +1,280 @@
 # RPy Extractor
 
-RPy Extractor is a local-first, desktop-friendly asset extraction and curation tool for Ren'Py game content. It runs a Python HTTP server and serves a web UI for extraction, extension filtering, sorting/preview, trash management, and export flows.
+RPy Extractor is a local-first desktop extractor and triage tool for game assets.
 
-This implementation is authored by Weelson and is part of the C.O.R.E. project.
+It provides a browser UI backed by a Python HTTP server and supports:
+
+- Extraction and archive unpacking.
+- Extension filtering.
+- Asset-by-asset sorting and preview.
+- Trash/undo/save workflows.
+- Multi-engine routing (RenPy, Unity, generic fallback).
+
+This implementation is authored by Weelson and is part of the C.O.R.E. initiative.
 
 ## Ownership
 
 - Author: Weelson
 - Initiative: C.O.R.E.
-- Repository root: this folder
-- App runtime root: RPy-extrcactor (note the current folder name spelling)
+- Runtime app root: RPy-extrcactor
 
-## What It Does
+## High-Level Architecture
 
-RPy Extractor provides a 3-step pipeline:
+Runtime layers:
 
-1. Extract game archives from a selected game folder.
-2. Scan and select extension groups to keep.
-3. Continue in a sorting window for per-file preview and keyboard-driven triage.
+1. Launcher layer
+- [Start.py](Start.py)
+- Starts the app process with logging and path setup.
 
-Core capabilities include:
+2. Server/API layer
+- [RPy-extrcactor/extract.py](RPy-extrcactor/extract.py)
+- Hosts static UI and HTTP JSON API routes.
+- Delegates business logic to handlers.
 
-- Archive extraction from nested containers.
-- Extension discovery and bulk curation.
-- Per-asset preview for image/audio/video/text-like files.
-- Keyboard-driven sort actions (keep/trash/undo).
-- Saving remaining assets to a chosen destination.
-- Activity log panel and file log folder integration.
+3. Application services
+- [RPy-extrcactor/handlers.py](RPy-extrcactor/handlers.py)
+- Request-level orchestration, path validation, and response shaping.
 
-## Current Runtime Model
+4. Extraction engine
+- [RPy-extrcactor/extraction.py](RPy-extrcactor/extraction.py)
+- Archive detection/unpack, file walk, extension grouping, and output moves.
+- Shared extraction primitives used by engine-specific strategies.
 
-- Launcher: Start.py (spawns the app server process).
-- Server: RPy-extrcactor/extract.py
-- Frontend: RPy-extrcactor/web/index.html + app.js + styles.css
-- Config file: RPy-extrcactor/config.json
+5. Strategy router
+- [RPy-extrcactor/extraction_types/orchestrator.py](RPy-extrcactor/extraction_types/orchestrator.py)
+- Detects engine and dispatches to the registered extractor.
 
-The server uses ThreadingHTTPServer and serves both static UI and JSON endpoints.
+6. Extractor strategies
+- [RPy-extrcactor/extraction_types/renpy_extractor.py](RPy-extrcactor/extraction_types/renpy_extractor.py)
+- [RPy-extrcactor/extraction_types/unity_extractor.py](RPy-extrcactor/extraction_types/unity_extractor.py)
+- [RPy-extrcactor/extraction_types/registry.py](RPy-extrcactor/extraction_types/registry.py)
 
-## Directory Structure
+7. Unity tooling module
+- [RPy-extrcactor/extraction_types/unity/discovery.py](RPy-extrcactor/extraction_types/unity/discovery.py)
+- [RPy-extrcactor/extraction_types/unity/exporters.py](RPy-extrcactor/extraction_types/unity/exporters.py)
+- [RPy-extrcactor/extraction_types/unity/manifest.py](RPy-extrcactor/extraction_types/unity/manifest.py)
+- [RPy-extrcactor/extraction_types/unity/verify.py](RPy-extrcactor/extraction_types/unity/verify.py)
 
-- Start.py: entrypoint script for launching the app server.
-- RPy-extrcactor/config.json: host/port/path configuration.
-- RPy-extrcactor/extract.py: HTTP routes and server lifecycle.
-- RPy-extrcactor/handlers.py: API handler implementations.
-- RPy-extrcactor/extraction.py: extraction and file movement pipeline.
-- RPy-extrcactor/sorting.py: extension-level trash/restore/delete operations.
-- RPy-extrcactor/startup.py: dependency preflight and installer checks.
-- RPy-extrcactor/models.py: app/session state models and constants.
-- RPy-extrcactor/logging_utils.py: shared console+file logging helper.
-- RPy-extrcactor/web/: frontend application.
-- RPy-extrcactor/logs/: runtime logs (generated).
-- RPy-extrcactor/tmp/: runtime temporary and assets output path (generated).
+8. Frontend
+- [RPy-extrcactor/web/index.html](RPy-extrcactor/web/index.html)
+- [RPy-extrcactor/web/app.js](RPy-extrcactor/web/app.js)
+- [RPy-extrcactor/web/styles.css](RPy-extrcactor/web/styles.css)
 
-## Configuration
+9. Core models/config/logging
+- [RPy-extrcactor/models.py](RPy-extrcactor/models.py)
+- [RPy-extrcactor/startup.py](RPy-extrcactor/startup.py)
+- [RPy-extrcactor/logging_utils.py](RPy-extrcactor/logging_utils.py)
 
-Default config in RPy-extrcactor/config.json:
+## Streamlined Module Responsibilities
 
-- host: 127.0.0.1
-- port: 8080
-- tempPath: ./tmp
-- outputDir: ./assets
-- webDir: web
-- logDir: ./logs
+This repo is now organized by responsibility boundaries:
 
-Path behavior:
+- [RPy-extrcactor/extract.py](RPy-extrcactor/extract.py)
+Purpose: protocol and route wiring only.
 
-- Relative paths are resolved from RPy-extrcactor/.
-- logDir is used for file-backed logs and explorer open actions.
+- [RPy-extrcactor/handlers.py](RPy-extrcactor/handlers.py)
+Purpose: endpoint business logic and request validation.
+
+- [RPy-extrcactor/extraction.py](RPy-extrcactor/extraction.py)
+Purpose: generic archive/file extraction utilities, independent of UI.
+
+- [RPy-extrcactor/extraction_types/unity_extractor.py](RPy-extrcactor/extraction_types/unity_extractor.py)
+Purpose: Unity flow orchestration only (discovery, exporter calls, manifests, verification).
+
+- [RPy-extrcactor/extraction_types/unity/exporters.py](RPy-extrcactor/extraction_types/unity/exporters.py)
+Purpose: Unity tooling integration and export backends:
+  - UnityPy export path.
+  - External tool adapters (AssetRipper/UABEA).
+
+- [RPy-extrcactor/startup.py](RPy-extrcactor/startup.py)
+Purpose: startup dependency preflight checks and best-effort installers.
 
 ## Dependency Preflight
 
-At startup, the app checks:
+Startup preflight is executed before server start in [RPy-extrcactor/extract.py](RPy-extrcactor/extract.py).
 
-- Required: unrpa module.
-- Optional: 7z/7za/7zr CLI.
-- Optional: unrar CLI.
+Required:
 
-Behavior notes:
+- `unrpa` Python module.
 
-- Missing unrpa blocks extraction requiring .rpa unpack.
-- Missing unrar is non-fatal; 7zip may still handle most .rar files.
+Optional (recommended):
 
-## Extraction and File Movement Semantics
+- `7z`/`7za`/`7zr`.
+- `unrar`.
+- `UnityPy` Python module (for native Unity object export).
+- `AssetRipper` CLI (fallback/expanded Unity extraction path).
+- `UABEA` CLI (fallback/advanced Unity handling path).
 
-Current behavior intentionally uses move semantics in extraction flow.
+Implementation:
 
-- Extracted/collected assets are moved into the output asset structure.
-- Duplicate collisions are resolved with suffixing.
-- Output is grouped by extension folder names.
+- [RPy-extrcactor/startup.py](RPy-extrcactor/startup.py)
 
-This is not a copy-then-delete approach; it is direct movement where applicable.
+## Archive Support
 
-## Sorting Window UX
+Archive suffixes and extraction support live in [RPy-extrcactor/models.py](RPy-extrcactor/models.py) and [RPy-extrcactor/extraction.py](RPy-extrcactor/extraction.py).
 
-Sorting and preview panel supports:
+Supported archive inputs include:
 
-- Asset list + renderer workflow.
-- Media preview controls:
-  - Fullscreen
-  - Speed selection
-  - Additional quick action button (...)
+- `.rpa`
+- `.zip`
+- `.tar`
+- `.tar.gz` / `.tgz`
+- `.tar.bz2` / `.tbz` / `.tbz2`
+- `.tar.xz` / `.txz`
+- `.7z`
+- `.rar`
+- `.unitypackage`
+
+Notes:
+
+- `.unitypackage` is handled as a gzipped tar archive.
+- `.7z` and `.rar` rely on external tools where needed.
+
+## Unity Extraction Pipeline
+
+Primary flow:
+
+1. Detect Unity project markers.
+2. Build discovery index of Unity containers.
+3. Export assets with UnityPy when available.
+4. Attempt fallback exports via AssetRipper/UABEA if available.
+5. Run core generic extraction flow for archive/file traversal.
+6. Emit manifests and completeness reports.
+
+Key files:
+
+- [RPy-extrcactor/extraction_types/unity_extractor.py](RPy-extrcactor/extraction_types/unity_extractor.py)
+- [RPy-extrcactor/extraction_types/unity/discovery.py](RPy-extrcactor/extraction_types/unity/discovery.py)
+- [RPy-extrcactor/extraction_types/unity/exporters.py](RPy-extrcactor/extraction_types/unity/exporters.py)
+- [RPy-extrcactor/extraction_types/unity/verify.py](RPy-extrcactor/extraction_types/unity/verify.py)
+
+Current UnityPy export targets:
+
+- Images (`Texture2D`, `Sprite`) to `.png`.
+- Audio (`AudioClip`) to sample-provided extension or fallback bytes.
+- Text (`TextAsset`) to `.txt`.
+- Mesh (`Mesh`) to `.obj` when supported by object exporter.
+
+## API Reference (Current)
+
+GET:
+
+- `/api/state`
+- `/api/status`
+- `/api/extensions`
+- `/api/detected-extensions`
+- `/api/logs`
+- `/api/open-log-dir`
+- `/api/logs/load`
+- `/api/open-folder?path=...`
+- `/api/assets-window?offset=...&limit=...`
+- `/api/assets-window-preview?path=...`
+- `/api/session`
+- `/api/browse-folder`
+- `/preview/...`
+
+POST:
+
+- `/api/extract`
+- `/api/scan`
+- `/api/keep-selected`
+- `/api/trash`
+- `/api/restore`
+- `/api/delete`
+- `/api/clear-trash`
+- `/api/resume`
+- `/api/assets-preview`
+- `/api/sort-keep`
+- `/api/sort-trash`
+- `/api/sort-undo`
+- `/api/sort-rename`
+- `/api/logs/clear`
+- `/api/save-remaining-assets`
+
+## Frontend UX Summary
+
+Three-step accordion flow:
+
+1. Extract game archives.
+2. Scan and select extensions.
+3. Continue in sorting window.
+
+Sorting window highlights:
+
+- Fast list navigation and media preview.
+- Keep/trash/undo operations.
+- In-place rename of selected file name with Enter-to-apply.
+- Local-state interaction optimizations to reduce latency after actions.
 
 Keyboard shortcuts:
 
-- Arrow Up: previous asset
-- Arrow Down: next asset
-- Arrow Right: keep current asset
-- Arrow Left: trash current asset
-- Ctrl+Z: undo most recent keep/trash action
-- S: save remaining assets to selected destination
+- Up/Down: navigate
+- Right: keep
+- Left: trash
+- Ctrl+Z: undo
+- S: save remaining
 - T: clear trash
+- Space: media play/pause
 
-## Activity Log Panel
+## Configuration
 
-- Toggleable with sorting panel in workspace accordion.
-- Pulls from session logs endpoint.
-- Includes controls:
-  - Clear Log: clears in-memory session logs.
-  - Load Log: opens configured logDir in system file explorer.
+Config file:
 
-## API Surface (Current)
+- [RPy-extrcactor/config.json](RPy-extrcactor/config.json)
 
-GET endpoints:
+Fields:
 
-- /api/state
-- /api/status
-- /api/extensions
-- /api/detected-extensions
-- /api/logs
-- /api/open-log-dir
-- /api/open-folder?path=...
-- /api/assets-window
-- /api/assets-window-preview?path=...
-- /api/session
-- /api/browse-folder
-- /preview/... (static media/content preview)
+- `host`
+- `port`
+- `tempPath`
+- `outputDir`
+- `webDir`
+- `logDir`
 
-POST endpoints:
+Rules:
 
-- /api/extract
-- /api/scan
-- /api/keep-selected
-- /api/trash
-- /api/restore
-- /api/delete
-- /api/clear-trash
-- /api/resume
-- /api/assets-preview
-- /api/sort-keep
-- /api/sort-trash
-- /api/sort-undo
-- /api/logs/clear
-- /api/save-remaining-assets
+- Relative paths are resolved from `RPy-extrcactor`.
+- Log directory is created automatically.
 
-## How to Run
+## Run Instructions
 
 From repository root:
 
-1. Ensure Python 3.10+ is available.
-2. Run:
+1. Ensure Python 3.10+ is installed.
+2. Start app:
 
-   python Start.py
+```bash
+python Start.py
+```
 
-3. Open browser at:
+3. Open configured URL (default `http://127.0.0.1:8080`).
 
-   http://127.0.0.1:8080
+## Development Guidelines
 
-If port/host is changed in config.json, use that value.
-
-## Typical Workflow
-
-1. Step 1 - Extract
-   - Choose game folder.
-   - Run extraction.
-2. Step 2 - Scan and Select
-   - Scan for extension types.
-   - Keep selected extension groups.
-3. Step 3 / Sorting Window
-   - Preview and triage assets with shortcuts.
-   - Save remaining assets when ready.
-
-## Logging Model
-
-Two log channels are used:
-
-- Runtime file logs in logDir (daily file naming).
-- Session/UI activity logs exposed via /api/logs.
-
-The UI log panel is intended for operational feedback; file logs are for persisted diagnostics.
-
-## Development Notes
-
-- The app folder name is currently RPy-extrcactor in source paths.
-- Backend and frontend are tightly coupled via explicit endpoints in extract.py and handlers.py.
-- Most user actions are performed through API endpoints and reflected in session log stream.
+- Keep protocol wiring in [RPy-extrcactor/extract.py](RPy-extrcactor/extract.py), not in strategy modules.
+- Keep Unity tool invocation details in [RPy-extrcactor/extraction_types/unity/exporters.py](RPy-extrcactor/extraction_types/unity/exporters.py).
+- Keep startup dependency behavior in [RPy-extrcactor/startup.py](RPy-extrcactor/startup.py).
+- Prefer additive extractor strategies over branching endpoint logic.
 
 ## Troubleshooting
 
-1. App exits immediately
-   - Check startup preflight messages in terminal.
-   - Ensure Python path is valid.
-2. Extraction issues
-   - Confirm unrpa installation was successful.
-   - Verify game path exists and is readable.
-3. Archive compatibility issues
-   - Install 7zip and optionally unrar for wider archive support.
-4. Logs not visible
-   - Use Activity Log panel for session logs.
-   - Use Load Log to open persisted log directory.
+1. Startup exits before server boot
+- Check terminal preflight output.
+- Validate Python executable and pip availability.
 
-## C.O.R.E. Context
+2. Unity extraction reports missing UnityPy
+- Install manually: `python -m pip install UnityPy`
+- Re-launch app to rerun preflight.
 
-RPy Extractor is maintained as part of C.O.R.E. and should be treated as a production-oriented utility module in that ecosystem. Any changes to endpoint contracts, keyboard interactions, or movement semantics should be documented and versioned carefully because the current UI flow depends on those contracts.
+3. AssetRipper/UABEA not detected
+- Ensure executables are in PATH.
+- Use exact CLI binary names or add a wrapper script in PATH.
+
+4. Archive extraction failures
+- Install/verify 7zip and unrar.
+- Confirm source files are not locked by another process.
 
 ## License
 
-No license file yet, default to "All rights reserved" for now. Contact Weelson for permissions or contributions.
+No repository license file is currently present.
+Default assumption remains all rights reserved unless stated otherwise by the author.

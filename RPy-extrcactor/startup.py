@@ -39,6 +39,31 @@ def import_available(module: str) -> bool:
     return code == 0
 
 
+def ensure_python_module(module: str, import_name: str | None = None, required: bool = False) -> bool:
+    """Ensure a Python package can be imported, with pip and pip --user fallback."""
+    import_target = import_name or module
+
+    if import_available(import_target):
+        tlog(f"[PREFLIGHT] ✓ {module} module is available")
+        return True
+
+    tlog(f"[PREFLIGHT] Installing {module} module...")
+    code, _, _ = run([sys.executable, "-m", "pip", "install", module])
+    if code == 0 and import_available(import_target):
+        tlog(f"[PREFLIGHT] ✓ {module} installed and available")
+        return True
+
+    tlog(f"[PREFLIGHT] Trying --user install for {module}...")
+    code, _, _ = run([sys.executable, "-m", "pip", "install", "--user", module])
+    result = code == 0 and import_available(import_target)
+    if result:
+        tlog(f"[PREFLIGHT] ✓ {module} installed (--user) and available")
+    else:
+        severity = "✗" if required else "⚠"
+        tlog(f"[PREFLIGHT] {severity} Failed to install {module}")
+    return result
+
+
 def command_exists(name: str) -> bool:
     """Check if command exists in PATH."""
     return shutil.which(name) is not None
@@ -51,45 +76,13 @@ def any_command_exists(names: tuple[str, ...]) -> bool:
 
 def ensure_unrpa() -> bool:
     """Ensure unrpa is installed with detailed logging."""
-    if module_available("unrpa"):
-        tlog("[PREFLIGHT] ✓ unrpa module is available")
-        return True
-
-    tlog("[PREFLIGHT] Installing unrpa module...")
-    code, out, err = run([sys.executable, "-m", "pip", "install", "unrpa"])
-    if code == 0 and module_available("unrpa"):
-        tlog("[PREFLIGHT] ✓ unrpa installed and available")
-        return True
-    
-    # Try --user install as fallback
-    tlog("[PREFLIGHT] Trying --user install for unrpa...")
-    code, out, err = run([sys.executable, "-m", "pip", "install", "--user", "unrpa"])
-    result = code == 0 and module_available("unrpa")
-    if result:
-        tlog("[PREFLIGHT] ✓ unrpa installed (--user) and available")
-    else:
-        tlog("[PREFLIGHT] ✗ Failed to install unrpa")
-    return result
+    return ensure_python_module("unrpa", import_name="unrpa", required=True)
 
 
 def ensure_unitypy() -> bool:
     """Ensure UnityPy is installed for Unity extraction."""
-    if import_available("UnityPy"):
-        tlog("[PREFLIGHT] ✓ UnityPy module is available")
-        return True
-
-    tlog("[PREFLIGHT] Installing UnityPy module...")
-    code, _, _ = run([sys.executable, "-m", "pip", "install", "UnityPy"])
-    if code == 0 and import_available("UnityPy"):
-        tlog("[PREFLIGHT] ✓ UnityPy installed and available")
-        return True
-
-    tlog("[PREFLIGHT] Trying --user install for UnityPy...")
-    code, _, _ = run([sys.executable, "-m", "pip", "install", "--user", "UnityPy"])
-    result = code == 0 and import_available("UnityPy")
-    if result:
-        tlog("[PREFLIGHT] ✓ UnityPy installed (--user) and available")
-    else:
+    result = ensure_python_module("UnityPy", import_name="UnityPy", required=False)
+    if not result:
         tlog("[PREFLIGHT] ⚠ UnityPy not available - Unity extraction will be limited")
     return result
 

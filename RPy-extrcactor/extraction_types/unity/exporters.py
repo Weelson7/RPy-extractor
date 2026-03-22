@@ -1,240 +1,225 @@
-"""Unity media exporters for standardized asset extraction and output organization."""
-import json
+"""Unity export backends and tool adapters."""
+import re
 import shutil
 from pathlib import Path
 from typing import Callable
-from dataclasses import dataclass
-from collections import defaultdict
 
+from extraction import run
 
-@dataclass
-class ExportJob:
-    """Represents a single asset export task."""
-    source_path: Path
-    output_path: Path
-    asset_name: str
-    media_type: str  # "image", "audio", "video", "model", etc.
-    source_container: str
-
-
-@dataclass
-class ExportResult:
-    """Result of a single export operation."""
-    job: ExportJob
-    success: bool
-    output_path: Path | None = None
-    error_reason: str | None = None
-    file_size: int = 0
-
-
-class MediaExporter:
-    """Unified interface for exporting media assets."""
-    
-    def __init__(self, output_base: Path, progress: Callable[[str], None] | None = None):
-        self.output_base = Path(output_base)
-        self.progress = progress or (lambda x: None)
-        self.export_results: list[ExportResult] = []
-        self.export_stats = {
-            "total": 0,
-            "success": 0,
-            "failed": 0,
-            "by_type": defaultdict(int),
-            "failures_by_reason": defaultdict(int),
-        }
-    
-    def export_image(self, job: ExportJob) -> ExportResult:
-        """Export image asset (Texture2D, Sprite, etc.)."""
-        try:
-            self.progress(f"[EXPORT] Preparing image export: {job.asset_name}")
-            
-            # Ensure output directory exists
-            output_dir = self.output_base / "images"
-            output_dir.mkdir(parents=True, exist_ok=True)
-            
-            # For now, placeholder: actual extraction uses specialized parsers in Slice 3
-            # This documents the export path and can be validated by checking directories
-            output_path = output_dir / f"{job.asset_name}.placeholder"
-            
-            self.progress(f"[EXPORT] Image export placeholder: {output_path}")
-            
-            return ExportResult(
-                job=job,
-                success=True,
-                output_path=output_path,
-                file_size=0,
-            )
-        except Exception as e:
-            self.progress(f"[EXPORT] Image export failed: {e}")
-            return ExportResult(
-                job=job,
-                success=False,
-                error_reason=str(e),
-            )
-    
-    def export_audio(self, job: ExportJob) -> ExportResult:
-        """Export audio asset (AudioClip, etc.)."""
-        try:
-            self.progress(f"[EXPORT] Preparing audio export: {job.asset_name}")
-            
-            output_dir = self.output_base / "audio"
-            output_dir.mkdir(parents=True, exist_ok=True)
-            
-            # Placeholder for Slice 3 implementation
-            output_path = output_dir / f"{job.asset_name}.placeholder"
-            
-            self.progress(f"[EXPORT] Audio export placeholder: {output_path}")
-            
-            return ExportResult(
-                job=job,
-                success=True,
-                output_path=output_path,
-                file_size=0,
-            )
-        except Exception as e:
-            self.progress(f"[EXPORT] Audio export failed: {e}")
-            return ExportResult(
-                job=job,
-                success=False,
-                error_reason=str(e),
-            )
-    
-    def export_video(self, job: ExportJob) -> ExportResult:
-        """Export video asset (VideoClip, etc.)."""
-        try:
-            self.progress(f"[EXPORT] Preparing video export: {job.asset_name}")
-            
-            output_dir = self.output_base / "video"
-            output_dir.mkdir(parents=True, exist_ok=True)
-            
-            # Placeholder for Slice 3 implementation
-            output_path = output_dir / f"{job.asset_name}.placeholder"
-            
-            self.progress(f"[EXPORT] Video export placeholder: {output_path}")
-            
-            return ExportResult(
-                job=job,
-                success=True,
-                output_path=output_path,
-                file_size=0,
-            )
-        except Exception as e:
-            self.progress(f"[EXPORT] Video export failed: {e}")
-            return ExportResult(
-                job=job,
-                success=False,
-                error_reason=str(e),
-            )
-    
-    def export_model(self, job: ExportJob) -> ExportResult:
-        """Export 3D model asset (Mesh, SkinnedMeshRenderer, etc.)."""
-        try:
-            self.progress(f"[EXPORT] Preparing model export: {job.asset_name}")
-            
-            output_dir = self.output_base / "models"
-            output_dir.mkdir(parents=True, exist_ok=True)
-            
-            # Placeholder for Slice 4 implementation
-            output_path = output_dir / f"{job.asset_name}.placeholder"
-            
-            self.progress(f"[EXPORT] Model export placeholder: {output_path}")
-            
-            return ExportResult(
-                job=job,
-                success=True,
-                output_path=output_path,
-                file_size=0,
-            )
-        except Exception as e:
-            self.progress(f"[EXPORT] Model export failed: {e}")
-            return ExportResult(
-                job=job,
-                success=False,
-                error_reason=str(e),
-            )
-    
-    def export_asset(self, job: ExportJob) -> ExportResult:
-        """Route asset to appropriate exporter based on media type."""
-        self.export_stats["total"] += 1
-        self.export_stats["by_type"][job.media_type] += 1
-        
-        try:
-            if job.media_type == "image":
-                result = self.export_image(job)
-            elif job.media_type == "audio":
-                result = self.export_audio(job)
-            elif job.media_type == "video":
-                result = self.export_video(job)
-            elif job.media_type == "model":
-                result = self.export_model(job)
-            else:
-                result = ExportResult(
-                    job=job,
-                    success=False,
-                    error_reason=f"Unknown media type: {job.media_type}",
-                )
-            
-            if result.success:
-                self.export_stats["success"] += 1
-            else:
-                self.export_stats["failed"] += 1
-                self.export_stats["failures_by_reason"][result.error_reason or "Unknown"] += 1
-            
-            self.export_results.append(result)
-            return result
-        
-        except Exception as e:
-            result = ExportResult(
-                job=job,
-                success=False,
-                error_reason=str(e),
-            )
-            self.export_stats["failed"] += 1
-            self.export_stats["failures_by_reason"][str(e)] += 1
-            self.export_results.append(result)
-            return result
-    
-    def get_export_summary(self) -> dict:
-        """Get summary of all exports."""
-        return {
-            "total_attempted": self.export_stats["total"],
-            "successful": self.export_stats["success"],
-            "failed": self.export_stats["failed"],
-            "by_media_type": dict(self.export_stats["by_type"]),
-            "failure_reasons": dict(self.export_stats["failures_by_reason"]),
-        }
-    
-    def write_export_manifest(self, output_dir: Path) -> Path:
-        """Write export manifest documenting all export attempts."""
-        output_dir = Path(output_dir)
-        output_dir.mkdir(parents=True, exist_ok=True)
-        
-        manifest_path = output_dir / "export_manifest.json"
-        
-        manifest_data = {
-            "summary": self.get_export_summary(),
-            "results": [
-                {
-                    "asset_name": result.job.asset_name,
-                    "media_type": result.job.media_type,
-                    "source_container": result.job.source_container,
-                    "success": result.success,
-                    "output_path": str(result.output_path) if result.output_path else None,
-                    "file_size": result.file_size,
-                    "error_reason": result.error_reason,
-                }
-                for result in self.export_results
-            ],
-        }
-        
-        with open(manifest_path, "w", encoding="utf-8") as f:
-            json.dump(manifest_data, f, indent=2)
-        
-        return manifest_path
+from .discovery import scan_unity_containers
 
 
 def create_deterministic_output_tree(base_dir: Path) -> None:
     """Create standardized output directory tree for all media types."""
     media_dirs = ["images", "audio", "video", "models", "animations", "materials", "text"]
-    
+
     for media_dir in media_dirs:
         (base_dir / media_dir).mkdir(parents=True, exist_ok=True)
+
+
+def _safe_name(raw_name: str, fallback: str) -> str:
+    candidate = (raw_name or "").strip()
+    if not candidate:
+        candidate = fallback
+    candidate = re.sub(r"[\\/:*?\"<>|]+", "_", candidate)
+    candidate = candidate.replace("\x00", "").strip(" .")
+    return candidate or fallback
+
+
+def _next_available(path: Path) -> Path:
+    if not path.exists():
+        return path
+    stem = path.stem
+    suffix = path.suffix
+    idx = 1
+    while True:
+        candidate = path.with_name(f"{stem}__{idx}{suffix}")
+        if not candidate.exists():
+            return candidate
+        idx += 1
+
+
+def _ext_selected(selected_exts: set[str] | None, ext: str) -> bool:
+    if selected_exts is None:
+        return True
+    return ext.lower() in selected_exts
+
+
+def find_external_tool(candidates: tuple[str, ...]) -> str | None:
+    """Return first available executable path in PATH."""
+    for name in candidates:
+        resolved = shutil.which(name)
+        if resolved:
+            return resolved
+    return None
+
+
+def export_unitypy_assets(
+    game_root: Path,
+    output_dir: Path,
+    selected_exts: set[str] | None,
+    progress: Callable[[str], None] | None,
+) -> tuple[int, list[dict], dict[str, int], list[str]]:
+    """Export Unity assets using UnityPy when available."""
+    exported_assets: list[dict] = []
+    logs: list[str] = []
+    by_type = {
+        "image": 0,
+        "audio": 0,
+        "text": 0,
+        "model": 0,
+    }
+
+    try:
+        import UnityPy  # type: ignore
+    except Exception as exc:
+        logs.append(f"[UNITY] UnityPy unavailable: {exc}")
+        return 0, exported_assets, by_type, logs
+
+    containers = scan_unity_containers(game_root, progress)
+    if progress:
+        progress(f"[UNITY] UnityPy export scanning {len(containers)} container(s)")
+
+    exported_count = 0
+    output_base = Path(output_dir)
+    images_dir = output_base / "images"
+    audio_dir = output_base / "audio"
+    text_dir = output_base / "text"
+    models_dir = output_base / "models"
+    images_dir.mkdir(parents=True, exist_ok=True)
+    audio_dir.mkdir(parents=True, exist_ok=True)
+    text_dir.mkdir(parents=True, exist_ok=True)
+    models_dir.mkdir(parents=True, exist_ok=True)
+
+    for container in containers:
+        try:
+            env = UnityPy.load(str(container))
+        except Exception as exc:
+            logs.append(f"[UNITY] Failed to load container {container.name}: {exc}")
+            continue
+
+        for obj in env.objects:
+            try:
+                obj_type = getattr(getattr(obj, "type", None), "name", str(getattr(obj, "type", "Unknown")))
+                data = obj.read()
+                base_name = _safe_name(
+                    str(getattr(data, "name", "") or ""),
+                    f"{container.stem}_{getattr(obj, 'path_id', 'obj')}",
+                )
+
+                if obj_type in {"Texture2D", "Sprite"}:
+                    image = getattr(data, "image", None)
+                    if image is None:
+                        continue
+                    ext = ".png"
+                    if not _ext_selected(selected_exts, ext):
+                        continue
+                    out_path = _next_available(images_dir / f"{base_name}{ext}")
+                    image.save(out_path)
+                    exported_assets.append({"name": out_path.name, "class_name": obj_type})
+                    by_type["image"] += 1
+                    exported_count += 1
+                    continue
+
+                if obj_type == "AudioClip":
+                    samples = getattr(data, "samples", None)
+                    wrote_audio = False
+                    if isinstance(samples, dict):
+                        for sample_name, sample_bytes in samples.items():
+                            sample_ext = Path(sample_name).suffix.lower() or ".wav"
+                            if not _ext_selected(selected_exts, sample_ext):
+                                continue
+                            out_name = _safe_name(Path(sample_name).stem, base_name)
+                            out_path = _next_available(audio_dir / f"{out_name}{sample_ext}")
+                            out_path.write_bytes(sample_bytes)
+                            exported_assets.append({"name": out_path.name, "class_name": obj_type})
+                            by_type["audio"] += 1
+                            exported_count += 1
+                            wrote_audio = True
+
+                    if not wrote_audio:
+                        raw_audio = getattr(data, "m_AudioData", b"") or b""
+                        if raw_audio:
+                            ext = ".bytes"
+                            if _ext_selected(selected_exts, ext):
+                                out_path = _next_available(audio_dir / f"{base_name}{ext}")
+                                out_path.write_bytes(raw_audio)
+                                exported_assets.append({"name": out_path.name, "class_name": obj_type})
+                                by_type["audio"] += 1
+                                exported_count += 1
+                    continue
+
+                if obj_type == "TextAsset":
+                    script = getattr(data, "script", b"")
+                    ext = ".txt"
+                    if not _ext_selected(selected_exts, ext):
+                        continue
+                    out_path = _next_available(text_dir / f"{base_name}{ext}")
+                    if isinstance(script, str):
+                        out_path.write_text(script, encoding="utf-8", errors="replace")
+                    else:
+                        out_path.write_bytes(bytes(script))
+                    exported_assets.append({"name": out_path.name, "class_name": obj_type})
+                    by_type["text"] += 1
+                    exported_count += 1
+                    continue
+
+                if obj_type == "Mesh":
+                    ext = ".obj"
+                    if not _ext_selected(selected_exts, ext):
+                        continue
+                    exporter = getattr(data, "export", None)
+                    if not callable(exporter):
+                        continue
+                    exported_mesh = exporter()
+                    if isinstance(exported_mesh, str) and exported_mesh.strip():
+                        out_path = _next_available(models_dir / f"{base_name}{ext}")
+                        out_path.write_text(exported_mesh, encoding="utf-8", errors="replace")
+                        exported_assets.append({"name": out_path.name, "class_name": obj_type})
+                        by_type["model"] += 1
+                        exported_count += 1
+                    continue
+            except Exception as exc:
+                logs.append(f"[UNITY] Object export failure in {container.name}: {exc}")
+
+    logs.append(
+        "[UNITY] UnityPy export summary: "
+        f"images={by_type['image']}, audio={by_type['audio']}, text={by_type['text']}, models={by_type['model']}"
+    )
+    return exported_count, exported_assets, by_type, logs
+
+
+def export_with_external_tool(
+    tool_label: str,
+    executable: str,
+    game_root: Path,
+    output_dir: Path,
+    progress: Callable[[str], None] | None,
+) -> tuple[int, list[str], str]:
+    """Run external Unity extraction tool and count produced files."""
+    logs: list[str] = []
+    export_dir = output_dir / f"{tool_label.lower()}_export"
+    export_dir.mkdir(parents=True, exist_ok=True)
+
+    command_variants = [
+        [executable, str(game_root), str(export_dir)],
+        [executable, "--input", str(game_root), "--output", str(export_dir)],
+        [executable, "-i", str(game_root), "-o", str(export_dir)],
+    ]
+
+    for cmd in command_variants:
+        code, _, _ = run(cmd)
+        if code != 0:
+            logs.append(f"[{tool_label}] command failed ({code}): {' '.join(cmd)}")
+            continue
+
+        exported_count = sum(1 for p in export_dir.rglob("*") if p.is_file())
+        if exported_count > 0:
+            if progress:
+                progress(f"[{tool_label}] Exported {exported_count} file(s) to {export_dir}")
+            logs.append(f"[{tool_label}] export succeeded with {exported_count} file(s)")
+            return exported_count, logs, str(export_dir)
+
+        logs.append(f"[{tool_label}] command returned success but no files were exported")
+
+    return 0, logs, str(export_dir)
