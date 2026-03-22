@@ -757,13 +757,97 @@ function renderSortingAssetsList() {
     if (asset.path === appState.selectedAssetPath) {
       btn.classList.add("active");
     }
-    btn.innerHTML = `<span class=\"sorting-asset-item__name\">${escapeHtml(asset.name)}</span><span class=\"sorting-asset-item__meta\">${escapeHtml(asset.ext)} • ${asset.type}</span>`;
+    
+    const nameSpan = document.createElement("span");
+    nameSpan.className = "sorting-asset-item__name";
+    nameSpan.textContent = asset.name;
+    nameSpan.style.cursor = "text";
+    nameSpan.title = "Double-click to rename";
+    
+    const metaSpan = document.createElement("span");
+    metaSpan.className = "sorting-asset-item__meta";
+    metaSpan.textContent = `${asset.ext} • ${asset.type}`;
+    
+    // Double-click to edit name
+    nameSpan.addEventListener("dblclick", async (e) => {
+      e.stopPropagation();
+      await startRenamingAsset(asset, nameSpan);
+    });
+    
+    btn.appendChild(nameSpan);
+    btn.appendChild(metaSpan);
+    
     btn.addEventListener("click", async () => {
       await previewAsset(asset.path);
       renderSortingAssetsList();
     });
+    
     DOM.sortingAssetsList.appendChild(btn);
   }
+}
+
+async function startRenamingAsset(asset, nameSpan) {
+  const currentName = asset.name;
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "sorting-asset-rename-input";
+  input.value = currentName;
+  input.style.width = "100%";
+  
+  // Replace the span with input
+  nameSpan.replaceWith(input);
+  input.focus();
+  input.select();
+  
+  async function submitRename() {
+    const newName = input.value.trim();
+    if (!newName) {
+      input.replaceWith(nameSpan);
+      return;
+    }
+    
+    if (newName === currentName) {
+      input.replaceWith(nameSpan);
+      return;
+    }
+    
+    // Call rename API
+    try {
+      const result = await api("/api/sort-rename", {
+        method: "POST",
+        body: { path: asset.path, newName: newName },
+      });
+      
+      if (result.success) {
+        setStepStatus(3, `Renamed to: ${result.name}`, "ok");
+        await loadSortingWindowAssets();
+        // Move to next file
+        await navigateAsset(1);
+      } else {
+        setStepStatus(3, result.error || "Rename failed", "error");
+        input.replaceWith(nameSpan);
+      }
+    } catch (err) {
+      setStepStatus(3, "Rename failed", "error");
+      input.replaceWith(nameSpan);
+    }
+  }
+  
+  function cancelRename() {
+    input.replaceWith(nameSpan);
+  }
+  
+  input.addEventListener("keydown", async (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      await submitRename();
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      cancelRename();
+    }
+  });
+  
+  input.addEventListener("blur", cancelRename);
 }
 
 async function fetchPreviewPayload(encodedPath) {

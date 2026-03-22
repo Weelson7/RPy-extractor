@@ -33,6 +33,7 @@ from handlers import (
     sort_keep_asset,
     sort_trash_asset,
     sort_undo_last_action,
+    sort_rename_asset,
     save_remaining_assets,
     list_all_logs,
     clear_all_logs,
@@ -323,6 +324,12 @@ class Handler(BaseHTTPRequestHandler):
 
             if path == "/api/sort-undo":
                 self.send_json_response(sort_undo_last_action(self.app_config))
+                return
+
+            if path == "/api/sort-rename":
+                encoded_path = str(data.get("path", ""))
+                new_name = str(data.get("newName", ""))
+                self.send_json_response(sort_rename_asset(self.app_config, encoded_path, new_name))
                 return
 
             if path == "/api/logs/clear":

@@ -794,6 +794,62 @@ def sort_undo_last_action(app_config: AppConfig) -> dict:
         return {"success": False, "error": str(exc)}
 
 
+def sort_rename_asset(app_config: AppConfig, encoded_path: str, new_name: str) -> dict:
+    """Rename an asset file in the sorting window."""
+    try:
+        out_dir = assets_dir(app_config)
+        asset_path, err = _resolve_asset_path_for_action(out_dir, encoded_path)
+        if err:
+            return {"success": False, "error": err}
+
+        assert asset_path is not None
+        
+        # Validate new name
+        new_name = new_name.strip()
+        if not new_name:
+            return {"success": False, "error": "New name cannot be empty"}
+        
+        # Prevent path traversal and invalid characters
+        if "/" in new_name or "\\" in new_name or ":" in new_name or new_name == ".":
+            return {"success": False, "error": "Invalid filename"}
+        
+        # Get parent directory and create new path
+        parent = asset_path.parent
+        new_path = parent / new_name
+        
+        # Check if target already exists
+        if new_path.exists() and new_path != asset_path:
+            return {"success": False, "error": f"File already exists: {new_name}"}
+        
+        # Rename the file
+        asset_path.rename(new_path)
+        
+        # Record in history for potential undo
+        session, history = _get_sort_history_session()
+        history.append(
+            {
+                "action": "rename",
+                "old_path": str(asset_path),
+                "new_path": str(new_path),
+            }
+        )
+        SESSIONS.set_current(session)
+        
+        # Return encoded path for the new file
+        rel = new_path.relative_to(out_dir)
+        new_encoded = "/".join(quote(part, safe="") for part in rel.parts)
+        
+        return {
+            "success": True,
+            "action": "rename",
+            "oldPath": encoded_path,
+            "newPath": new_encoded,
+            "name": new_path.name,
+        }
+    except Exception as exc:
+        return {"success": False, "error": str(exc)}
+
+
 def save_remaining_assets(app_config: AppConfig, encoded_paths: list[str], destination_path: str) -> dict:
     """Move remaining sorting assets to a user-selected destination folder."""
     try:

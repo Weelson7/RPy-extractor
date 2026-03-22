@@ -516,6 +516,25 @@ fieldset:last-of-type {
   color: var(--text-muted);
 }
 
+.sorting-asset-rename-input {
+  display: block;
+  font-family: "JetBrains Mono", "Consolas", monospace;
+  font-size: 0.82rem;
+  width: 100%;
+  padding: 4px;
+  border: 1px solid rgba(210, 139, 255, 0.5);
+  border-radius: 4px;
+  background: rgba(180, 79, 255, 0.15);
+  color: var(--text-primary);
+  box-sizing: border-box;
+}
+
+.sorting-asset-rename-input:focus {
+  outline: none;
+  border-color: rgba(210, 139, 255, 0.8);
+  box-shadow: 0 0 0 2px rgba(180, 79, 255, 0.2);
+}
+
 .sorting-window__preview {
   border: 1px solid rgba(180, 79, 255, 0.18);
   border-radius: 8px;
