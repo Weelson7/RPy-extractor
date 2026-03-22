@@ -812,7 +812,7 @@ async function previewAsset(encodedPath) {
     }
 
     if (payload.type === "video") {
-      DOM.sortingPreview.innerHTML = `<video controls src="${payload.url}"></video>`;
+      DOM.sortingPreview.innerHTML = `<video controls loop src="${payload.url}"></video>`;
       appState.currentPreviewType = "video";
       appState.currentPreviewElement = DOM.sortingPreview.querySelector("video");
       if (appState.currentPreviewElement && DOM.previewSpeedSelect) {
