@@ -11,6 +11,9 @@ const appState = {
   seenLogs: new Set(),
   currentTab: "step1",
   sortingAssets: [],
+  sortingOffset: 0,
+  sortingLimit: 100,
+  sortingTruncated: false,
   selectedAssetPath: "",
   selectedAssetIndex: -1,
   currentPreviewType: "",
@@ -53,6 +56,9 @@ const DOM = {
   refreshSortingWindowBtn: document.getElementById("refreshSortingWindowBtn"),
   saveCurrentAssetsBtn: document.getElementById("saveCurrentAssetsBtn"),
   clearSortingTrashBtn: document.getElementById("clearSortingTrashBtn"),
+  sortingPrevBtn: document.getElementById("sortingPrevBtn"),
+  sortingNextBtn: document.getElementById("sortingNextBtn"),
+  sortingPageInfo: document.getElementById("sortingPageInfo"),
   sortingAssetsList: document.getElementById("sortingAssetsList"),
   sortingPreviewMeta: document.getElementById("sortingPreviewMeta"),
   sortingPreview: document.getElementById("sortingPreview"),
@@ -221,13 +227,32 @@ function syncSelectedAssetIndex() {
   appState.selectedAssetIndex = getSelectedAssetIndex();
 }
 
+function updateSortingPaginationUi() {
+  const count = appState.sortingAssets.length;
+  const start = count > 0 ? appState.sortingOffset + 1 : 0;
+  const end = appState.sortingOffset + count;
+  const totalLabel = appState.sortingTruncated ? `${end}+` : `${end}`;
+
+  if (DOM.sortingPageInfo) {
+    DOM.sortingPageInfo.textContent = `${start}-${end}/${totalLabel}`;
+  }
+
+  if (DOM.sortingPrevBtn) {
+    DOM.sortingPrevBtn.disabled = appState.sortingOffset <= 0;
+  }
+  if (DOM.sortingNextBtn) {
+    DOM.sortingNextBtn.disabled = !appState.sortingTruncated;
+  }
+}
+
 async function selectAssetByIndex(index) {
   if (!appState.sortingAssets.length) {
     return;
   }
-  const max = appState.sortingAssets.length;
-  const wrapped = ((index % max) + max) % max;
-  const asset = appState.sortingAssets[wrapped];
+  if (index < 0 || index >= appState.sortingAssets.length) {
+    return;
+  }
+  const asset = appState.sortingAssets[index];
   if (!asset) {
     return;
   }
@@ -235,13 +260,53 @@ async function selectAssetByIndex(index) {
   renderSortingAssetsList();
 }
 
+async function loadNextAssetsPage() {
+  if (!appState.sortingTruncated) {
+    return false;
+  }
+  appState.sortingOffset += appState.sortingLimit;
+  await loadSortingWindowAssets();
+  if (appState.sortingAssets.length > 0) {
+    await selectAssetByIndex(0);
+    return true;
+  }
+  return false;
+}
+
+async function loadPreviousAssetsPage() {
+  if (appState.sortingOffset <= 0) {
+    return false;
+  }
+  appState.sortingOffset = Math.max(0, appState.sortingOffset - appState.sortingLimit);
+  await loadSortingWindowAssets();
+  if (appState.sortingAssets.length > 0) {
+    await selectAssetByIndex(appState.sortingAssets.length - 1);
+    return true;
+  }
+  return false;
+}
+
 async function navigateAsset(delta) {
   if (!appState.sortingAssets.length) {
     return;
   }
   const current = getSelectedAssetIndex();
-  const start = current >= 0 ? current : 0;
-  await selectAssetByIndex(start + delta);
+  const index = current >= 0 ? current : 0;
+  const target = index + delta;
+
+  if (target < 0) {
+    await loadPreviousAssetsPage();
+    return;
+  }
+
+  if (target >= appState.sortingAssets.length) {
+    if (delta > 0) {
+      await loadNextAssetsPage();
+    }
+    return;
+  }
+
+  await selectAssetByIndex(target);
 }
 
 async function keepCurrentAsset() {
@@ -454,7 +519,7 @@ DOM.extractBtn?.addEventListener("click", async () => {
     const result = await handleApiOperation(
       "extract",
       "/api/extract",
-      { method: "POST", body: { gamePath, selectedExts: null } },
+      { method: "POST", body: { gamePath, selectedExts: null, extractionType: "unity" } },
       (okResult) => {
         appState.extractionDone = true;
         const details = okResult.result;
@@ -488,26 +553,25 @@ DOM.extractBtn?.addEventListener("click", async () => {
 DOM.step2BrowseBtn?.addEventListener("click", async () => {
   try {
     const assetPath = (DOM.step2Path?.value || appState.step2Path || "").trim();
-    if (!assetPath) {
-      setStepStatus(2, "Set an assets path first", "warn");
-      return;
-    }
+    const qs = assetPath ? `?initialPath=${encodeURIComponent(assetPath)}` : "";
 
     const result = await handleApiOperation(
-      "open-assets-folder",
-      `/api/open-folder?path=${encodeURIComponent(assetPath)}`,
+      "browse-folder-step2",
+      `/api/browse-folder${qs}`,
       { method: "GET" },
-      () => {
-        setStepStatus(2, `✓ Opened: ${assetPath}`, "ok");
+      (okResult) => {
+        DOM.step2Path.value = okResult.path;
+        appState.step2Path = okResult.path;
+        setStepStatus(2, `✓ Path: ${okResult.path}`, "ok");
       },
-      "Could not open assets folder"
+      "Browse failed"
     );
 
-    if (!result.success) {
-      setStepStatus(2, result.error || "Could not open assets folder", "error");
+    if (!result.success && !result.cancelled) {
+      setStepStatus(2, result.error || "Browse failed", "error");
     }
   } catch (_err) {
-    setStepStatus(2, "Open folder error", "error");
+    setStepStatus(2, "Browse error", "error");
   }
 });
 
@@ -614,29 +678,31 @@ DOM.keepSelectedBtn?.addEventListener("click", async () => {
 async function loadSortingWindowAssets() {
   setStepStatus(3, "Loading sorting window assets...", "info");
   try {
-    const result = await api("/api/assets-window");
+    const result = await api(`/api/assets-window?offset=${appState.sortingOffset}&limit=${appState.sortingLimit}`);
     if (!result.success) {
       setStepStatus(3, result.error || "Failed to load assets", "error");
       return;
     }
 
     appState.sortingAssets = Array.isArray(result.assets) ? result.assets : [];
+    appState.sortingOffset = Number(result.offset || appState.sortingOffset || 0);
+    appState.sortingTruncated = Boolean(result.truncated);
     appState.previewCache.clear();
     syncSelectedAssetIndex();
     if (appState.selectedAssetIndex < 0 && appState.sortingAssets.length > 0) {
       appState.selectedAssetPath = appState.sortingAssets[0].path;
       syncSelectedAssetIndex();
     }
+    updateSortingPaginationUi();
     renderSortingAssetsList();
-    const truncated = Boolean(result.truncated);
-    if (truncated) {
+    if (appState.sortingTruncated) {
       setStepStatus(
         3,
-        `✓ Loaded first ${appState.sortingAssets.length} asset(s) (capped for performance)`,
+        `✓ Loaded ${appState.sortingAssets.length} asset(s) from offset ${appState.sortingOffset} (page size ${appState.sortingLimit})`,
         "ok"
       );
     } else {
-      setStepStatus(3, `✓ Loaded ${appState.sortingAssets.length} asset(s)`, "ok");
+      setStepStatus(3, `✓ Loaded ${appState.sortingAssets.length} asset(s) from offset ${appState.sortingOffset}`, "ok");
     }
 
     if (appState.sortingAssets.length > 0) {
@@ -644,6 +710,7 @@ async function loadSortingWindowAssets() {
     }
   } catch (_err) {
     setStepStatus(3, "Failed to load assets", "error");
+    updateSortingPaginationUi();
   }
 }
 
@@ -785,6 +852,14 @@ DOM.saveCurrentAssetsBtn?.addEventListener("click", async () => {
 
 DOM.clearSortingTrashBtn?.addEventListener("click", async () => {
   await clearSortingTrash();
+});
+
+DOM.sortingPrevBtn?.addEventListener("click", async () => {
+  await loadPreviousAssetsPage();
+});
+
+DOM.sortingNextBtn?.addEventListener("click", async () => {
+  await loadNextAssetsPage();
 });
 
 DOM.openSortingPanelBtn?.addEventListener("click", async () => {

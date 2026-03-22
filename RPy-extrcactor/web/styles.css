@@ -437,6 +437,21 @@ fieldset:last-of-type {
   color: var(--text-secondary);
 }
 
+.sorting-pagination {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.sorting-page-info {
+  font-family: "JetBrains Mono", "Consolas", monospace;
+  font-size: 0.8rem;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
 .sorting-assets-list {
   max-height: 260px;
   overflow-y: auto;

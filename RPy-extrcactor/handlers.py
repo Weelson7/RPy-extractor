@@ -12,6 +12,7 @@ from urllib.parse import quote, unquote
 
 from models import AppConfig, SESSIONS
 from extraction import detect_extensions, detect_extensions_in_dir, extract_assets, walk_files, SKIP_DIRS, tlog, log_append
+from extraction_types import resolve_extraction_type, default_selected_exts_for_type
 from sorting import (
     list_kept_files, get_summary, list_all_extensions, list_trash,
     move_extension_to_trash, restore_extension_from_trash,
@@ -72,12 +73,27 @@ def browse_folder(initial_path: str = "") -> dict:
         import tkinter as tk
         from tkinter import filedialog
 
+        # Resolve initial path to nearest existing directory to avoid falling
+        # back to root/home when a nested path does not exist yet.
+        initial_dir = Path(initial_path).expanduser() if initial_path else Path.home()
+        if not initial_dir.exists() or not initial_dir.is_dir():
+            probe = initial_dir
+            while True:
+                parent = probe.parent
+                if probe.exists() and probe.is_dir():
+                    break
+                if parent == probe:
+                    probe = Path.home()
+                    break
+                probe = parent
+            initial_dir = probe
+
         root = tk.Tk()
         root.withdraw()
         root.attributes("-topmost", True)
 
         selected = filedialog.askdirectory(
-            initialdir=initial_path or str(Path.home()),
+            initialdir=str(initial_dir),
             title="Select Game Folder",
             mustexist=True,
         )
@@ -133,6 +149,7 @@ def extract_repo(
     game_path: str,
     app_config: AppConfig,
     selected_exts: list[str] | None,
+    extraction_type: str | None,
     progress_callback: Callable[[str], None] | None = None,
 ) -> dict:
     """Extract from game path."""
@@ -146,7 +163,24 @@ def extract_repo(
             }
 
         output_dir = assets_dir(app_config)
+        resolved = resolve_extraction_type(game_root, extraction_type)
         selected_exts_set = set(selected_exts) if selected_exts else None
+        default_filter_applied = False
+
+        if selected_exts_set is None:
+            default_exts = default_selected_exts_for_type(resolved["resolved"])
+            if default_exts is not None:
+                selected_exts_set = default_exts
+                default_filter_applied = True
+
+        if progress_callback:
+            progress_callback(
+                f"[TYPE] requested={resolved['requested']} resolved={resolved['resolved']}"
+            )
+            if default_filter_applied:
+                progress_callback(
+                    f"[TYPE] applied default media filter ({len(selected_exts_set)} extensions)"
+                )
 
         result = extract_assets(
             game_root=game_root,
@@ -163,6 +197,8 @@ def extract_repo(
             "success": True,
             "result": result,
             "assetPath": str(output_dir),
+            "extractionType": resolved,
+            "defaultFilterApplied": default_filter_applied,
         }
     except Exception as exc:
         return {
@@ -537,31 +573,43 @@ def get_asset_preview_url(app_config: AppConfig, encoded_path: str) -> str:
         return ""
 
 
-def list_assets_for_sorting_window(app_config: AppConfig, max_assets: int = 100) -> dict:
+def list_assets_for_sorting_window(app_config: AppConfig, max_assets: int = 100, offset: int = 0) -> dict:
     """List assets for the sorting window.
 
     To keep UI latency low, this endpoint indexes at most ``max_assets`` files.
     """
     try:
         out_dir = assets_dir(app_config)
+        safe_offset = max(0, int(offset))
+        safe_limit = max(1, int(max_assets))
         if not out_dir.exists() or not out_dir.is_dir():
             return {
                 "success": True,
                 "assets": [],
                 "assetPath": str(out_dir),
                 "indexedCount": 0,
-                "indexedLimit": max_assets,
+                "indexedLimit": safe_limit,
+                "offset": safe_offset,
                 "truncated": False,
             }
 
         assets: list[dict[str, Any]] = []
         truncated = False
+        seen_count = 0
         for file_path in walk_files(out_dir, SKIP_DIRS):
             if not file_path.is_file():
                 continue
             # Hide internal trash folders from the sorting window.
             if any(part.startswith(".trash") for part in file_path.parts):
                 continue
+
+            if seen_count < safe_offset:
+                seen_count += 1
+                continue
+
+            if len(assets) >= safe_limit:
+                truncated = True
+                break
 
             rel = file_path.relative_to(out_dir)
             encoded_path = "/".join(quote(part, safe="") for part in rel.parts)
@@ -587,18 +635,15 @@ def list_assets_for_sorting_window(app_config: AppConfig, max_assets: int = 100)
                 }
             )
 
-            # Index only the first N assets to avoid expensive UI rendering.
-            if len(assets) >= max_assets:
-                truncated = True
-                break
+            seen_count += 1
 
-        assets.sort(key=lambda item: (item["ext"], item["name"]))
         return {
             "success": True,
             "assets": assets,
             "assetPath": str(out_dir),
             "indexedCount": len(assets),
-            "indexedLimit": max_assets,
+            "indexedLimit": safe_limit,
+            "offset": safe_offset,
             "truncated": truncated,
         }
     except Exception as exc:

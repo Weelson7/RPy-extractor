@@ -122,6 +122,8 @@ class Handler(BaseHTTPRequestHandler):
 
     def log_message(self, format: str, *args: Any) -> None:
         """Override logging to use tlog with verbose routing info."""
+        if str(self.path).startswith("/api/logs"):
+            return
         tlog(f"[HTTP] {self.command} {self.path} - {format % args}")
 
     def do_GET(self) -> None:
@@ -130,7 +132,8 @@ class Handler(BaseHTTPRequestHandler):
         path = unquote(parsed.path)
         query = parse_qs(parsed.query)
 
-        tlog(f"[GET] Route: {path}")
+        if path != "/api/logs":
+            tlog(f"[GET] Route: {path}")
 
         # ---- API Routes ----
         try:
@@ -170,7 +173,17 @@ class Handler(BaseHTTPRequestHandler):
                 return
 
             if path == "/api/assets-window":
-                self.send_json_response(list_assets_for_sorting_window(self.app_config))
+                offset_raw = query.get("offset", ["0"])[0]
+                limit_raw = query.get("limit", ["100"])[0]
+                try:
+                    offset = int(offset_raw)
+                except Exception:
+                    offset = 0
+                try:
+                    limit = int(limit_raw)
+                except Exception:
+                    limit = 100
+                self.send_json_response(list_assets_for_sorting_window(self.app_config, max_assets=limit, offset=offset))
                 return
 
             if path == "/api/assets-window-preview":
@@ -240,7 +253,14 @@ class Handler(BaseHTTPRequestHandler):
             if path == "/api/extract":
                 game_path = data.get("gamePath", "")
                 selected_exts = data.get("selectedExts", None)
-                result = extract_repo(game_path, self.app_config, selected_exts, self.progress_callback)
+                extraction_type = data.get("extractionType", "auto")
+                result = extract_repo(
+                    game_path,
+                    self.app_config,
+                    selected_exts,
+                    extraction_type,
+                    self.progress_callback,
+                )
                 self.send_json_response(result)
                 return
 
@@ -332,7 +352,8 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
-        tlog(f"[JSON] Status {status}: {len(body)} bytes")
+        if not str(self.path).startswith("/api/logs"):
+            tlog(f"[JSON] Status {status}: {len(body)} bytes")
 
     def _resolve_mime_type(self, file_path: Path) -> str:
         """Resolve MIME type for a file with logging."""
