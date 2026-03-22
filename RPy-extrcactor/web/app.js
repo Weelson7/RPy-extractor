@@ -754,119 +754,109 @@ function renderSortingAssetsList() {
     const btn = document.createElement("button");
     btn.type = "button";
     btn.className = "sorting-asset-item";
-    if (asset.path === appState.selectedAssetPath) {
+    const isActive = asset.path === appState.selectedAssetPath;
+    if (isActive) {
       btn.classList.add("active");
     }
-    
-    const nameSpan = document.createElement("span");
-    nameSpan.className = "sorting-asset-item__name";
-    nameSpan.textContent = asset.name;
-    nameSpan.style.cursor = "text";
-    nameSpan.title = "Double-click to rename";
+
+    if (isActive) {
+      const nameInput = document.createElement("input");
+      nameInput.type = "text";
+      nameInput.className = "sorting-asset-rename-input";
+      nameInput.value = asset.name;
+      nameInput.setAttribute("aria-label", `Rename ${asset.name}`);
+
+      // Keep editing interactions from re-triggering row selection while typing.
+      nameInput.addEventListener("click", (event) => event.stopPropagation());
+      nameInput.addEventListener("mousedown", (event) => event.stopPropagation());
+      nameInput.addEventListener("dblclick", (event) => event.stopPropagation());
+
+      nameInput.addEventListener("keydown", async (event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          await renameSelectedAssetAndAdvance(asset, nameInput.value);
+          return;
+        }
+        if (event.key === "Escape") {
+          event.preventDefault();
+          nameInput.value = asset.name;
+          nameInput.blur();
+        }
+      });
+
+      nameInput.addEventListener("blur", () => {
+        nameInput.value = asset.name;
+      });
+
+      btn.appendChild(nameInput);
+    } else {
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "sorting-asset-item__name";
+      nameSpan.textContent = asset.name;
+      btn.appendChild(nameSpan);
+    }
     
     const metaSpan = document.createElement("span");
     metaSpan.className = "sorting-asset-item__meta";
     metaSpan.textContent = `${asset.ext} • ${asset.type}`;
-    
-    // Double-click to edit name
-    nameSpan.addEventListener("dblclick", async (e) => {
-      e.stopPropagation();
-      await startRenamingAsset(asset, nameSpan);
-    });
-    
-    btn.appendChild(nameSpan);
     btn.appendChild(metaSpan);
-    
-      // Double-click to edit name
-      nameSpan.addEventListener("dblclick", async (e) => {
-        e.stopPropagation();
-        e.preventDefault();
-        await startRenamingAsset(asset, btn, nameSpan);
-      });
+
+    btn.addEventListener("click", async () => {
+      await previewAsset(asset.path);
+      renderSortingAssetsList();
+    });
+
     DOM.sortingAssetsList.appendChild(btn);
   }
-        // Don't navigate if we're editing
-        if (!btn.querySelector(".sorting-asset-rename-input")) {
 }
 
-        }
-async function startRenamingAsset(asset, nameSpan) {
-  const currentName = asset.name;
-  const input = document.createElement("input");
-  input.type = "text";
-  input.className = "sorting-asset-rename-input";
-  input.value = currentName;
-  input.style.width = "100%";
-  
-  // Replace the span with input
-  nameSpan.replaceWith(input);
-  input.focus();
-  input.select();
-  
-  let isProcessing = false;
-  
-  async function submitRename() {
-    if (isProcessing) return;
-    isProcessing = true;
-    
-    const newName = input.value.trim();
-    if (!newName) {
-      input.replaceWith(nameSpan);
-      isProcessing = false;
-      return;
-    }
-    
-    if (newName === currentName) {
-      input.replaceWith(nameSpan);
-      isProcessing = false;
-      return;
-    }
-    
-    // Call rename API
+async function renameSelectedAssetAndAdvance(asset, rawNewName) {
+  const currentName = String(asset?.name || "");
+  const newName = String(rawNewName || "").trim();
+  const currentIndex = getSelectedAssetIndex();
+  const nextPathHint = appState.sortingAssets[currentIndex + 1]?.path || "";
+
+  if (!newName) {
+    setStepStatus(3, "Rename failed: name cannot be empty", "error");
+    renderSortingAssetsList();
+    return;
+  }
+
+  if (newName !== currentName) {
     try {
       const result = await api("/api/sort-rename", {
         method: "POST",
-        body: { path: asset.path, newName: newName },
+        body: { path: asset.path, newName },
       });
-      
-      if (result.success) {
-        setStepStatus(3, `Renamed to: ${result.name}`, "ok");
-        await loadSortingWindowAssets();
-        // Move to next file
-        await navigateAsset(1);
-      } else {
+
+      if (!result.success) {
         setStepStatus(3, result.error || "Rename failed", "error");
-        if (input.parentNode) {
-          input.parentNode.replaceChild(nameSpan, input);
-        }
-        isProcessing = false;
+        renderSortingAssetsList();
+        return;
       }
-    } catch (err) {
+      setStepStatus(3, `Renamed to: ${result.name}`, "ok");
+    } catch (_err) {
       setStepStatus(3, "Rename failed", "error");
-      if (input.parentNode) {
-        input.parentNode.replaceChild(nameSpan, input);
-      }
-      isProcessing = false;
+      renderSortingAssetsList();
+      return;
     }
   }
-  
-  function cancelRename() {
-    if (input.parentNode) {
-      input.parentNode.replaceChild(nameSpan, input);
+
+  await loadSortingWindowAssets();
+
+  if (nextPathHint) {
+    const nextExists = appState.sortingAssets.some((candidate) => candidate.path === nextPathHint);
+    if (nextExists) {
+      await previewAsset(nextPathHint);
+      renderSortingAssetsList();
+      return;
     }
   }
-  
-  input.addEventListener("keydown", async (e) => {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      await submitRename();
-    } else if (e.key === "Escape") {
-      e.preventDefault();
-      cancelRename();
-    }
-  });
-  
-  input.addEventListener("blur", cancelRename);
+
+  const fallbackIndex = Math.max(0, Math.min(currentIndex, appState.sortingAssets.length - 1));
+  if (appState.sortingAssets.length > 0) {
+    await selectAssetByIndex(fallbackIndex);
+  }
 }
 
 async function fetchPreviewPayload(encodedPath) {
