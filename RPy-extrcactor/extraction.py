@@ -115,6 +115,14 @@ def try_python_archive_extract(archive: Path, output_dir: Path) -> tuple[bool, s
     if suffix not in PYTHON_ARCHIVE_SUFFIXES:
         return False, "Unsupported Python archive type."
 
+    if suffix == ".unitypackage":
+        try:
+            with tarfile.open(archive, "r:gz") as tf:
+                tf.extractall(output_dir)
+            return True, ""
+        except Exception as exc:
+            return False, str(exc)
+
     try:
         shutil.unpack_archive(str(archive), str(output_dir))
         return True, ""

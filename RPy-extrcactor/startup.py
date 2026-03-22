@@ -33,6 +33,12 @@ def module_available(module: str) -> bool:
     return code == 0
 
 
+def import_available(module: str) -> bool:
+    """Check if Python import works for a module."""
+    code, _, _ = run([sys.executable, "-c", f"import {module}"])
+    return code == 0
+
+
 def command_exists(name: str) -> bool:
     """Check if command exists in PATH."""
     return shutil.which(name) is not None
@@ -63,6 +69,28 @@ def ensure_unrpa() -> bool:
         tlog("[PREFLIGHT] ✓ unrpa installed (--user) and available")
     else:
         tlog("[PREFLIGHT] ✗ Failed to install unrpa")
+    return result
+
+
+def ensure_unitypy() -> bool:
+    """Ensure UnityPy is installed for Unity extraction."""
+    if import_available("UnityPy"):
+        tlog("[PREFLIGHT] ✓ UnityPy module is available")
+        return True
+
+    tlog("[PREFLIGHT] Installing UnityPy module...")
+    code, _, _ = run([sys.executable, "-m", "pip", "install", "UnityPy"])
+    if code == 0 and import_available("UnityPy"):
+        tlog("[PREFLIGHT] ✓ UnityPy installed and available")
+        return True
+
+    tlog("[PREFLIGHT] Trying --user install for UnityPy...")
+    code, _, _ = run([sys.executable, "-m", "pip", "install", "--user", "UnityPy"])
+    result = code == 0 and import_available("UnityPy")
+    if result:
+        tlog("[PREFLIGHT] ✓ UnityPy installed (--user) and available")
+    else:
+        tlog("[PREFLIGHT] ⚠ UnityPy not available - Unity extraction will be limited")
     return result
 
 
@@ -180,6 +208,32 @@ def startup_dependency_preflight() -> dict[str, object]:
         tlog("[PREFLIGHT] ⚠ unrar not found (7zip can extract most .rar files)")
     report.append(f"[OPTIONAL] unrar: {'✓ ready' if unrar_ready else '⚠ missing (7zip can handle most .rar)'}")
 
+    # Unity-specific tooling checks (OPTIONAL unless extracting Unity content)
+    tlog("[PREFLIGHT] Checking UnityPy module for Unity extraction...")
+    unitypy_ready = import_available("UnityPy")
+    if not unitypy_ready:
+        tlog("[PREFLIGHT] UnityPy not found, attempting installation...")
+        unitypy_ready = ensure_unitypy()
+    else:
+        tlog("[PREFLIGHT] ✓ UnityPy module available")
+    report.append(f"[UNITY] UnityPy: {'✓ ready' if unitypy_ready else '⚠ missing (Unity extraction fallback only)'}")
+
+    tlog("[PREFLIGHT] Checking AssetRipper CLI...")
+    assetripper_ready = any_command_exists(("AssetRipper.Console", "AssetRipper.Console.exe", "AssetRipper"))
+    if assetripper_ready:
+        tlog("[PREFLIGHT] ✓ AssetRipper available")
+    else:
+        tlog("[PREFLIGHT] ⚠ AssetRipper not found (optional Unity fallback)")
+    report.append(f"[UNITY] AssetRipper: {'✓ ready' if assetripper_ready else '⚠ missing (optional fallback)'}")
+
+    tlog("[PREFLIGHT] Checking UABEA CLI...")
+    uabea_ready = any_command_exists(("UABEAvalonia", "UABEAvalonia.exe", "UABEA", "UABEA.exe", "uabea-cli"))
+    if uabea_ready:
+        tlog("[PREFLIGHT] ✓ UABEA available")
+    else:
+        tlog("[PREFLIGHT] ⚠ UABEA not found (optional Unity fallback)")
+    report.append(f"[UNITY] UABEA: {'✓ ready' if uabea_ready else '⚠ missing (optional fallback)'}")
+
     # Overall status
     all_required = unrpa_ready
     status = "✓ PASS" if all_required else "✗ FAIL"
@@ -191,5 +245,8 @@ def startup_dependency_preflight() -> dict[str, object]:
         "unrpa": unrpa_ready,
         "sevenzip": sevenzip_ready,
         "unrar": unrar_ready,
+        "unitypy": unitypy_ready,
+        "assetripper": assetripper_ready,
+        "uabea": uabea_ready,
         "report": report,
     }

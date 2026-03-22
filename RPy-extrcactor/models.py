@@ -23,10 +23,10 @@ AUDIO_EXTS = {".mp3", ".ogg", ".wav", ".m4a", ".aac", ".opus", ".flac"}
 VIDEO_EXTS = {".mp4", ".webm", ".mov", ".m4v", ".mpeg", ".mpg"}
 
 ARCHIVE_SUFFIXES = {
-    ".rpa", ".zip", ".tar", ".tar.gz", ".tgz", ".tar.bz2", ".tbz", ".tbz2", ".tar.xz", ".txz", ".7z", ".rar",
+    ".rpa", ".zip", ".tar", ".tar.gz", ".tgz", ".tar.bz2", ".tbz", ".tbz2", ".tar.xz", ".txz", ".7z", ".rar", ".unitypackage",
 }
 PYTHON_ARCHIVE_SUFFIXES = {
-    ".zip", ".tar", ".tar.gz", ".tgz", ".tar.bz2", ".tbz", ".tbz2", ".tar.xz", ".txz",
+    ".zip", ".tar", ".tar.gz", ".tgz", ".tar.bz2", ".tbz", ".tbz2", ".tar.xz", ".txz", ".unitypackage",
 }
 
 SKIP_DIRS = {".git", ".venv", "__pycache__"}
