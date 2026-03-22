@@ -15,6 +15,7 @@ const appState = {
   selectedAssetIndex: -1,
   currentPreviewType: "",
   currentPreviewElement: null,
+  previewCache: new Map(),
 };
 
 const DOM = {
@@ -362,6 +363,26 @@ function setupKeyboardShortcuts() {
       return;
     }
 
+    if (event.code === "Space") {
+      const mediaElement = appState.currentPreviewElement;
+      if (
+        (appState.currentPreviewType === "audio" || appState.currentPreviewType === "video") &&
+        mediaElement
+      ) {
+        event.preventDefault();
+        try {
+          if (mediaElement.paused) {
+            await mediaElement.play();
+          } else {
+            mediaElement.pause();
+          }
+        } catch (_err) {
+          setStepStatus(3, "Cannot toggle media playback", "warn");
+        }
+      }
+      return;
+    }
+
     if (event.key === "ArrowUp") {
       event.preventDefault();
       await navigateAsset(-1);
@@ -600,13 +621,23 @@ async function loadSortingWindowAssets() {
     }
 
     appState.sortingAssets = Array.isArray(result.assets) ? result.assets : [];
+    appState.previewCache.clear();
     syncSelectedAssetIndex();
     if (appState.selectedAssetIndex < 0 && appState.sortingAssets.length > 0) {
       appState.selectedAssetPath = appState.sortingAssets[0].path;
       syncSelectedAssetIndex();
     }
     renderSortingAssetsList();
-    setStepStatus(3, `✓ Loaded ${appState.sortingAssets.length} asset(s)`, "ok");
+    const truncated = Boolean(result.truncated);
+    if (truncated) {
+      setStepStatus(
+        3,
+        `✓ Loaded first ${appState.sortingAssets.length} asset(s) (capped for performance)`,
+        "ok"
+      );
+    } else {
+      setStepStatus(3, `✓ Loaded ${appState.sortingAssets.length} asset(s)`, "ok");
+    }
 
     if (appState.sortingAssets.length > 0) {
       await previewAsset(appState.selectedAssetPath);
@@ -639,6 +670,43 @@ function renderSortingAssetsList() {
   }
 }
 
+async function fetchPreviewPayload(encodedPath) {
+  if (!encodedPath) {
+    return null;
+  }
+
+  if (appState.previewCache.has(encodedPath)) {
+    return appState.previewCache.get(encodedPath);
+  }
+
+  const payload = await api(`/api/assets-window-preview?path=${encodeURIComponent(encodedPath)}`);
+  appState.previewCache.set(encodedPath, payload);
+  return payload;
+}
+
+async function preloadAdjacentPreviews(currentIndex) {
+  if (currentIndex < 0 || currentIndex >= appState.sortingAssets.length) {
+    return;
+  }
+
+  const indexes = [currentIndex - 1, currentIndex + 1, currentIndex + 2];
+  const tasks = [];
+  for (const idx of indexes) {
+    if (idx < 0 || idx >= appState.sortingAssets.length) {
+      continue;
+    }
+    const targetPath = appState.sortingAssets[idx]?.path;
+    if (!targetPath || appState.previewCache.has(targetPath)) {
+      continue;
+    }
+    tasks.push(fetchPreviewPayload(targetPath));
+  }
+
+  if (tasks.length > 0) {
+    await Promise.allSettled(tasks);
+  }
+}
+
 async function previewAsset(encodedPath) {
   appState.selectedAssetPath = encodedPath;
   syncSelectedAssetIndex();
@@ -648,7 +716,7 @@ async function previewAsset(encodedPath) {
   DOM.sortingPreview.innerHTML = "";
 
   try {
-    const payload = await api(`/api/assets-window-preview?path=${encodeURIComponent(encodedPath)}`);
+    const payload = await fetchPreviewPayload(encodedPath);
     if (!payload.success) {
       DOM.sortingPreviewMeta.textContent = payload.error || "Preview failed";
       DOM.sortingPreview.textContent = "Could not render this asset.";
@@ -661,6 +729,7 @@ async function previewAsset(encodedPath) {
       DOM.sortingPreview.innerHTML = `<img src="${payload.url}" alt="${escapeHtml(payload.name || "image")}" />`;
       appState.currentPreviewType = "image";
       appState.currentPreviewElement = DOM.sortingPreview.querySelector("img");
+      await preloadAdjacentPreviews(appState.selectedAssetIndex);
       return;
     }
 
@@ -671,6 +740,7 @@ async function previewAsset(encodedPath) {
       if (appState.currentPreviewElement && DOM.previewSpeedSelect) {
         appState.currentPreviewElement.playbackRate = Number(DOM.previewSpeedSelect.value || "1");
       }
+      await preloadAdjacentPreviews(appState.selectedAssetIndex);
       return;
     }
 
@@ -681,6 +751,7 @@ async function previewAsset(encodedPath) {
       if (appState.currentPreviewElement && DOM.previewSpeedSelect) {
         appState.currentPreviewElement.playbackRate = Number(DOM.previewSpeedSelect.value || "1");
       }
+      await preloadAdjacentPreviews(appState.selectedAssetIndex);
       return;
     }
 
@@ -690,11 +761,14 @@ async function previewAsset(encodedPath) {
       DOM.sortingPreview.innerHTML = "";
       DOM.sortingPreview.appendChild(pre);
       appState.currentPreviewType = "text";
+      await preloadAdjacentPreviews(appState.selectedAssetIndex);
       return;
     }
 
     appState.currentPreviewType = "binary";
     DOM.sortingPreview.textContent = payload.message || "Binary preview not available for this type.";
+
+    await preloadAdjacentPreviews(appState.selectedAssetIndex);
   } catch (_err) {
     DOM.sortingPreviewMeta.textContent = "Preview failed";
     DOM.sortingPreview.textContent = "Could not render this asset.";
@@ -732,12 +806,25 @@ DOM.clearLogBtn?.addEventListener("click", async () => {
 });
 
 DOM.loadLogBtn?.addEventListener("click", async () => {
-  const result = await api("/api/open-log-dir", { method: "GET" });
+  const result = await api("/api/logs/load", { method: "GET" });
   if (!result.success) {
-    addLog(`[LOG] Failed to open log folder: ${result.error || "unknown error"}`);
+    addLog(`[LOG] Failed to load persisted logs: ${result.error || "unknown error"}`);
     return;
   }
-  addLog(`[LOG] Opened log folder: ${result.path}`);
+
+  const lines = Array.isArray(result.logs) ? result.logs : [];
+  if (lines.length === 0) {
+    addLog("[LOG] No persisted log lines found");
+    return;
+  }
+
+  for (const line of lines) {
+    if (typeof line === "string" && line.trim()) {
+      addLog(line);
+    }
+  }
+
+  addLog(`[LOG] Loaded ${lines.length} line(s) from ${result.source || "latest log"}`);
 });
 
 DOM.previewFullscreenBtn?.addEventListener("click", async () => {

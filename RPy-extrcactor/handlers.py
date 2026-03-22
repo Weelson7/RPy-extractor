@@ -537,14 +537,25 @@ def get_asset_preview_url(app_config: AppConfig, encoded_path: str) -> str:
         return ""
 
 
-def list_assets_for_sorting_window(app_config: AppConfig) -> dict:
-    """List assets for the sorting window."""
+def list_assets_for_sorting_window(app_config: AppConfig, max_assets: int = 100) -> dict:
+    """List assets for the sorting window.
+
+    To keep UI latency low, this endpoint indexes at most ``max_assets`` files.
+    """
     try:
         out_dir = assets_dir(app_config)
         if not out_dir.exists() or not out_dir.is_dir():
-            return {"success": True, "assets": [], "assetPath": str(out_dir)}
+            return {
+                "success": True,
+                "assets": [],
+                "assetPath": str(out_dir),
+                "indexedCount": 0,
+                "indexedLimit": max_assets,
+                "truncated": False,
+            }
 
         assets: list[dict[str, Any]] = []
+        truncated = False
         for file_path in walk_files(out_dir, SKIP_DIRS):
             if not file_path.is_file():
                 continue
@@ -576,8 +587,20 @@ def list_assets_for_sorting_window(app_config: AppConfig) -> dict:
                 }
             )
 
+            # Index only the first N assets to avoid expensive UI rendering.
+            if len(assets) >= max_assets:
+                truncated = True
+                break
+
         assets.sort(key=lambda item: (item["ext"], item["name"]))
-        return {"success": True, "assets": assets, "assetPath": str(out_dir)}
+        return {
+            "success": True,
+            "assets": assets,
+            "assetPath": str(out_dir),
+            "indexedCount": len(assets),
+            "indexedLimit": max_assets,
+            "truncated": truncated,
+        }
     except Exception as exc:
         return {"success": False, "error": str(exc), "assets": []}
 
@@ -648,7 +671,7 @@ def sort_trash_asset(app_config: AppConfig, encoded_path: str) -> dict:
 
         assert asset_path is not None
         rel = asset_path.relative_to(out_dir)
-        trash_root = out_dir / ".trash_sorting"
+        trash_root = out_dir / ".trash"
         target = trash_root / rel
         target.parent.mkdir(parents=True, exist_ok=True)
 
@@ -876,6 +899,38 @@ def clear_all_logs(app_config: AppConfig) -> dict:
         session["logs"] = []
         SESSIONS.set_current(session)
         return {"success": True}
+    except Exception as exc:
+        return {"success": False, "error": str(exc)}
+
+
+def load_log_file_entries(app_config: AppConfig, max_lines: int = 800) -> dict:
+    """Load persisted log lines from the newest log file in configured logDir."""
+    try:
+        log_dir = app_config.log_dir.resolve()
+        if not log_dir.exists() or not log_dir.is_dir():
+            return {"success": False, "error": f"Log directory not found: {log_dir}"}
+
+        candidates = sorted(
+            (path for path in log_dir.glob("*.log") if path.is_file()),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        if not candidates:
+            return {"success": True, "logs": [], "source": ""}
+
+        source = candidates[0]
+        with source.open("r", encoding="utf-8", errors="replace") as fh:
+            lines = [line.rstrip("\n") for line in fh]
+
+        if max_lines > 0:
+            lines = lines[-max_lines:]
+
+        return {
+            "success": True,
+            "logs": lines,
+            "source": str(source),
+            "count": len(lines),
+        }
     except Exception as exc:
         return {"success": False, "error": str(exc)}
 

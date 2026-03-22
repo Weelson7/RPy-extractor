@@ -36,6 +36,7 @@ from handlers import (
     save_remaining_assets,
     list_all_logs,
     clear_all_logs,
+    load_log_file_entries,
     open_log_dir,
     open_folder_path,
     get_session_state,
@@ -157,6 +158,10 @@ class Handler(BaseHTTPRequestHandler):
 
             if path == "/api/open-log-dir":
                 self.send_json_response(open_log_dir(self.app_config))
+                return
+
+            if path == "/api/logs/load":
+                self.send_json_response(load_log_file_entries(self.app_config))
                 return
 
             if path == "/api/open-folder":
