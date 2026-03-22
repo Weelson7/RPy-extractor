@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="RPy Extractor: Extract and sort RenPy game archives with ease" />
+  <title>RPy Extractor</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <!-- Ambient background grid ========================================== -->
+  <div class="ambient-grid" aria-hidden="true"></div>
+
+  <!-- Header ============================================================ -->
+  <header class="topbar">
+    <div class="topbar__inner">
+      <div class="brand">
+        <img class="brand__logo" src="logo.png" alt="RPy Extractor logo" />
+        <div>
+          <h1>RPy Extractor</h1>
+          <p>Extract and sort RenPy game archives.</p>
+        </div>
+      </div>
+      <div class="chip chip--info" id="serverState">Server booting...</div>
+    </div>
+  </header>
+
+  <!-- Main Content ====================================================== -->
+  <main class="layout">
+
+    <!-- Accordion containers for 3-step workflow ======================== -->
+    <div class="accordion-container">
+
+      <!-- EXTRACT: Game Setup ============================================= -->
+      <section class="accordion-section" id="step1Section" data-step="1">
+        <button class="accordion-header" id="step1Header" aria-expanded="true" aria-controls="step1Body">
+          <span class="step-icon">📦</span>
+          <span class="step-title">Extract Game Archives</span>
+          <span class="accordion-chevron">&#9662;</span>
+        </button>
+
+        <div class="accordion-body" id="step1Body" aria-hidden="false" role="region">
+          <div class="step-content">
+            <fieldset>
+              <legend>Game Source</legend>
+              <label for="gamePath">Game Path</label>
+              <div class="path-row">
+                <input id="gamePath" type="text" placeholder="C:/Games/MyRenPyGame" spellcheck="false" />
+                <button id="choosePathBtn" class="btn btn--ghost" type="button" aria-label="Browse for game folder">Browse...</button>
+              </div>
+
+              <div class="action-group">
+                <button id="extractBtn" class="btn btn--primary" type="button">Extract Archives</button>
+              </div>
+            </fieldset>
+
+            <div id="step1Status" class="step-status" aria-live="polite" aria-atomic="true"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- SCAN: Extension Selection ========================================= -->
+      <section class="accordion-section" id="step2Section" data-step="2">
+        <button class="accordion-header" id="step2Header" aria-expanded="false" aria-controls="step2Body">
+          <span class="step-icon">🔍</span>
+          <span class="step-title">Scan & Select Extensions</span>
+          <span class="accordion-chevron">&#9662;</span>
+        </button>
+
+        <div class="accordion-body" id="step2Body" aria-hidden="true" role="region">
+          <div class="step-content">
+            <fieldset>
+              <legend>Extension Discovery</legend>
+              <div class="path-group">
+                <label for="step2Path">Assets Folder Path:</label>
+                <div class="path-input-row">
+                  <input type="text" id="step2Path" class="path-input" placeholder="(auto-filled or browse)" />
+                  <button id="step2BrowseBtn" class="btn btn--icon" type="button" aria-label="Browse for assets folder">Browse</button>
+                </div>
+              </div>
+
+              <div class="action-group">
+                <button id="scanBtn" class="btn btn--secondary" type="button">Scan for Extensions</button>
+                <button id="selectAllBtn" class="btn btn--ghost" type="button">Select All</button>
+                <button id="selectNoneBtn" class="btn btn--ghost" type="button">Select None</button>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Available Extensions</legend>
+              <div id="extensionsField" class="extensions-field">
+                <div class="extensions-placeholder">(Scan first to populate)</div>
+                <div id="extensionsList" class="extensions-list" role="group"></div>
+              </div>
+
+              <button id="keepSelectedBtn" class="btn btn--primary" type="button">Keep Selected Extensions</button>
+            </fieldset>
+
+            <div id="step2Status" class="step-status" aria-live="polite" aria-atomic="true"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- STEP 3: Continue In Workspace ===================================== -->
+      <section class="accordion-section" id="step3Section" data-step="3">
+        <button class="accordion-header" id="step3Header" aria-expanded="false" aria-controls="step3Body">
+          <span class="step-icon">✓</span>
+          <span class="step-title">Continue In Sorting Window</span>
+          <span class="accordion-chevron">&#9662;</span>
+        </button>
+
+        <div class="accordion-body" id="step3Body" aria-hidden="true" role="region">
+          <div class="step-content" id="step3Content">
+            <p class="hint">Use the Sorting Window panel below to preview assets and continue review.</p>
+            <div class="action-group">
+              <button id="openSortingPanelBtn" class="btn btn--primary" type="button">Open Sorting Window</button>
+            </div>
+            <div id="step3Status" class="step-status" aria-live="polite" aria-atomic="true"></div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- Workspace Panels: Either Sorting Window or Activity Log ========== -->
+    <section class="log-section" aria-label="Workspace panels">
+      <h2>Workspace Panels</h2>
+      <div class="workspace-accordion">
+        <button class="workspace-accordion__header" id="sortingWindowHeader" aria-expanded="true" aria-controls="sortingWindowBody">
+          Sorting Window
+          <span class="accordion-chevron">&#9662;</span>
+        </button>
+        <div class="workspace-accordion__body" id="sortingWindowBody" aria-hidden="false">
+          <div class="sorting-window">
+            <div class="sorting-window__sidebar">
+              <div class="action-group">
+                <button id="refreshSortingWindowBtn" class="btn btn--secondary" type="button">Refresh Assets</button>
+                <button id="saveCurrentAssetsBtn" class="btn btn--primary" type="button">Save Current Assets</button>
+                <button id="clearSortingTrashBtn" class="btn btn--ghost" type="button">Clear Trash</button>
+              </div>
+              <div class="sorting-shortcuts-hint">
+                <span><kbd>Up</kbd>/<kbd>Down</kbd> Navigate</span>
+                <span><kbd>Right</kbd> Keep</span>
+                <span><kbd>Left</kbd> Trash</span>
+                <span><kbd>Ctrl</kbd>+<kbd>Z</kbd> Undo</span>
+                <span><kbd>S</kbd> Save Remaining</span>
+                <span><kbd>T</kbd> Clear Trash</span>
+              </div>
+              <div id="sortingAssetsList" class="sorting-assets-list" role="listbox" aria-label="Assets list"></div>
+            </div>
+            <div class="sorting-window__preview">
+              <div id="sortingPreviewMeta" class="asset-meta">Select an asset to preview</div>
+              <div class="sorting-preview-toolbar">
+                <button id="previewFullscreenBtn" class="btn btn--ghost" type="button">Fullscreen</button>
+                <label class="speed-control" for="previewSpeedSelect">Speed
+                  <select id="previewSpeedSelect">
+                    <option value="0.5">0.5x</option>
+                    <option value="0.75">0.75x</option>
+                    <option value="1" selected>1x</option>
+                    <option value="1.25">1.25x</option>
+                    <option value="1.5">1.5x</option>
+                    <option value="2">2x</option>
+                  </select>
+                </label>
+                <button id="previewMoreBtn" class="btn btn--ghost" type="button">...</button>
+              </div>
+              <div id="sortingPreview" class="asset-view"></div>
+            </div>
+          </div>
+        </div>
+
+        <button class="workspace-accordion__header" id="activityLogHeader" aria-expanded="false" aria-controls="activityLogBody">
+          Activity Log
+          <span class="accordion-chevron">&#9662;</span>
+        </button>
+        <div class="workspace-accordion__body" id="activityLogBody" aria-hidden="true">
+          <div class="action-group">
+            <button id="clearLogBtn" class="btn btn--ghost" type="button">Clear Log</button>
+            <button id="loadLogBtn" class="btn btn--secondary" type="button">Load Log</button>
+          </div>
+          <div class="log-container" aria-live="polite" aria-label="Real-time log output" id="mainLog"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

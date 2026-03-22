@@ -1,0 +1,195 @@
+"""Startup and dependency checking for RPy Extractor."""
+import shutil
+import subprocess
+import sys
+import os
+from pathlib import Path
+from typing import Callable
+from logging_utils import emit_log
+
+
+def tlog(message: str) -> None:
+    """Log with timestamp."""
+    emit_log(message)
+
+
+def run(cmd: list[str], cwd: Path | None = None) -> tuple[int, str, str]:
+    """Run command and capture output."""
+    proc = subprocess.run(
+        cmd,
+        cwd=str(cwd) if cwd else None,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+    )
+    return proc.returncode, proc.stdout, proc.stderr
+
+
+def module_available(module: str) -> bool:
+    """Check if Python module is available."""
+    code, _, _ = run([sys.executable, "-m", module, "--help"])
+    return code == 0
+
+
+def command_exists(name: str) -> bool:
+    """Check if command exists in PATH."""
+    return shutil.which(name) is not None
+
+
+def any_command_exists(names: tuple[str, ...]) -> bool:
+    """Check if any of the commands exist."""
+    return any(command_exists(name) for name in names)
+
+
+def ensure_unrpa() -> bool:
+    """Ensure unrpa is installed with detailed logging."""
+    if module_available("unrpa"):
+        tlog("[PREFLIGHT] ✓ unrpa module is available")
+        return True
+
+    tlog("[PREFLIGHT] Installing unrpa module...")
+    code, out, err = run([sys.executable, "-m", "pip", "install", "unrpa"])
+    if code == 0 and module_available("unrpa"):
+        tlog("[PREFLIGHT] ✓ unrpa installed and available")
+        return True
+    
+    # Try --user install as fallback
+    tlog("[PREFLIGHT] Trying --user install for unrpa...")
+    code, out, err = run([sys.executable, "-m", "pip", "install", "--user", "unrpa"])
+    result = code == 0 and module_available("unrpa")
+    if result:
+        tlog("[PREFLIGHT] ✓ unrpa installed (--user) and available")
+    else:
+        tlog("[PREFLIGHT] ✗ Failed to install unrpa")
+    return result
+
+
+def _check_7zip_installed() -> bool:
+    """Check if 7zip is installed, including common Windows paths with verbose logging."""
+    if any_command_exists(("7z", "7za", "7zr")):
+        tlog("[7ZIP] ✓ Found 7zip in PATH")
+        return True
+    
+    tlog("[7ZIP] Searching common installation paths...")
+    common_paths = [
+        Path("C:/Program Files/7-Zip"),
+        Path("C:/Program Files (x86)/7-Zip"),
+        Path(os.path.expandvars("%PROGRAMFILES%/7-Zip")),
+        Path(os.path.expandvars("%PROGRAMFILES(x86)%/7-Zip")),
+        Path(os.path.expandvars("%USERPROFILE%/scoop/apps/7zip/current")),
+        Path("C:/ProgramData/chocolatey/lib/7zip/tools"),
+        Path(os.path.expandvars("%ALLUSERSPROFILE%/chocolatey/lib/7zip/tools")),
+    ]
+    
+    for base_path in common_paths:
+        for exe in ("7z.exe", "7za.exe", "7zr.exe"):
+            exe_path = base_path / exe
+            if exe_path.exists():
+                tlog(f"[7ZIP] ✓ Found 7zip at: {exe_path}")
+                return True
+    
+    tlog("[7ZIP] 7zip not found in common paths")
+    return False
+
+
+def install_7zip_best_effort() -> bool:
+    """Attempt to install 7zip via winget/choco/scoop with detailed logging."""
+    tlog("[7ZIP] ✓ Verifying 7zip installation...")
+    
+    if _check_7zip_installed():
+        tlog("[7ZIP] ✓ 7zip is available")
+        return True
+    
+    tlog("[7ZIP] 7zip not found, attempting installation via package managers...")
+    
+    installers = [
+        ("winget", ["winget", "install", "--id", "7zip.7zip", "-e", "--accept-package-agreements", "--accept-source-agreements"]),
+        ("choco", ["choco", "install", "7zip", "-y"]),
+        ("scoop", ["scoop", "install", "7zip"]),
+    ]
+    
+    for installer_name, cmd in installers:
+        if not command_exists(installer_name):
+            tlog(f"[7ZIP] ✗ {installer_name} not available, skipping")
+            continue
+        
+        tlog(f"[7ZIP] Trying {installer_name}...")
+        code, stdout, stderr = run(cmd)
+        output = (stdout or stderr)[:200] if stdout or stderr else ""
+        
+        if code == 0:
+            tlog(f"[7ZIP] {installer_name} completed with status {code}")
+        else:
+            tlog(f"[7ZIP] {installer_name} failed with status {code}")
+        
+        if output:
+            tlog(f"[7ZIP] {installer_name} output: {output.split(chr(10))[0]}")
+        
+        if _check_7zip_installed():
+            tlog(f"[7ZIP] ✓ 7zip confirmed available after {installer_name}")
+            return True
+    
+    result = _check_7zip_installed()
+    if result:
+        tlog("[7ZIP] ✓ 7zip is now available")
+    else:
+        tlog("[7ZIP] ✗ 7zip not found - .7z file extraction will fail (optional)")
+    
+    return result
+
+
+def startup_dependency_preflight() -> dict[str, object]:
+    """Check all required dependencies at startup with detailed logging."""
+    report: list[str] = []
+
+    tlog("[PREFLIGHT] ========== Dependency Preflight Check ==========")
+    report.append("Dependency preflight start")
+
+    # Check unrpa (REQUIRED)
+    tlog("[PREFLIGHT] Checking unrpa Python module...")
+    unrpa_ready = module_available("unrpa")
+    if not unrpa_ready:
+        tlog("[PREFLIGHT] unrpa not found, attempting installation...")
+        unrpa_ready = ensure_unrpa()
+        if not unrpa_ready:
+            tlog("[PREFLIGHT] ✗ CRITICAL: unrpa installation failed")
+        else:
+            tlog("[PREFLIGHT] ✓ unrpa successfully installed")
+    else:
+        tlog("[PREFLIGHT] ✓ unrpa module available")
+    report.append(f"[REQUIRED] unrpa: {'✓ ready' if unrpa_ready else '✗ missing'}")
+
+    # Check 7zip (OPTIONAL but recommended)
+    tlog("[PREFLIGHT] Checking 7zip CLI...")
+    sevenzip_ready = any_command_exists(("7z", "7za", "7zr"))
+    if not sevenzip_ready:
+        tlog("[PREFLIGHT] 7zip not found in PATH, attempting installation...")
+        sevenzip_ready = install_7zip_best_effort()
+    else:
+        tlog("[PREFLIGHT] ✓ 7zip already available")
+    report.append(f"[OPTIONAL] 7zip: {'✓ ready' if sevenzip_ready else '⚠ missing (many archives still work)'}")
+
+    # Check unrar (OPTIONAL)
+    tlog("[PREFLIGHT] Checking unrar CLI...")
+    unrar_ready = command_exists("unrar")
+    if unrar_ready:
+        tlog("[PREFLIGHT] ✓ unrar available")
+    else:
+        tlog("[PREFLIGHT] ⚠ unrar not found (7zip can extract most .rar files)")
+    report.append(f"[OPTIONAL] unrar: {'✓ ready' if unrar_ready else '⚠ missing (7zip can handle most .rar)'}")
+
+    # Overall status
+    all_required = unrpa_ready
+    status = "✓ PASS" if all_required else "✗ FAIL"
+    tlog(f"[PREFLIGHT] {status} - Preflight check complete")
+    tlog("[PREFLIGHT] ==========================================")
+    
+    return {
+        "ok": all_required,
+        "unrpa": unrpa_ready,
+        "sevenzip": sevenzip_ready,
+        "unrar": unrar_ready,
+        "report": report,
+    }
