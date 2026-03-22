@@ -415,6 +415,28 @@ fieldset:last-of-type {
   gap: 12px;
 }
 
+.sorting-sort-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 0 10px;
+}
+
+.sorting-sort-row label {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.sorting-sort-select {
+  flex: 1;
+  min-width: 170px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(180, 79, 255, 0.25);
+  background: #120d24;
+  color: var(--text-primary);
+}
+
 @media (max-width: 900px) {
   .sorting-window {
     grid-template-columns: 1fr;
