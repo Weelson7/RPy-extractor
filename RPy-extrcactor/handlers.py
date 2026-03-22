@@ -739,7 +739,7 @@ def sort_trash_asset(app_config: AppConfig, encoded_path: str) -> dict:
 
 
 def sort_undo_last_action(app_config: AppConfig) -> dict:
-    """Undo the most recent keep/trash sorting action."""
+    """Undo the most recent keep/trash/rename sorting action."""
     try:
         out_dir = assets_dir(app_config)
         session, history = _get_sort_history_session()
@@ -784,6 +784,40 @@ def sort_undo_last_action(app_config: AppConfig) -> dict:
             return {
                 "success": True,
                 "undone": "trash",
+                "path": encoded,
+            }
+
+        if action == "rename":
+            old_raw = str(last.get("old_path", ""))
+            new_raw = str(last.get("new_path", ""))
+            old_path = Path(old_raw)
+            new_path = Path(new_raw)
+
+            if not new_path.exists():
+                SESSIONS.set_current(session)
+                return {"success": False, "error": "Cannot undo rename: renamed file no longer exists"}
+
+            old_path.parent.mkdir(parents=True, exist_ok=True)
+            restore_target = old_path
+            if restore_target.exists():
+                stem = restore_target.stem
+                suffix = restore_target.suffix
+                idx = 1
+                while True:
+                    candidate = restore_target.with_name(f"{stem}__undo{idx}{suffix}")
+                    if not candidate.exists():
+                        restore_target = candidate
+                        break
+                    idx += 1
+
+            shutil.move(str(new_path), str(restore_target))
+            SESSIONS.set_current(session)
+
+            rel = restore_target.relative_to(out_dir)
+            encoded = "/".join(quote(part, safe="") for part in rel.parts)
+            return {
+                "success": True,
+                "undone": "rename",
                 "path": encoded,
             }
 

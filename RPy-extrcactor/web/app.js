@@ -398,7 +398,8 @@ async function undoSortingAction() {
     return;
   }
 
-  setStepStatus(3, "Undo successful", "ok");
+  const undoneLabel = String(result.undone || "action");
+  setStepStatus(3, `Undo successful (${undoneLabel})`, "ok");
   await loadSortingWindowAssets();
   if (result.path) {
     await previewAsset(result.path);
