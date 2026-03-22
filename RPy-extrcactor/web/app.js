@@ -359,9 +359,10 @@ async function trashCurrentAsset() {
   }
 
   const currentIndex = getSelectedAssetIndex();
+  const currentPath = appState.selectedAssetPath;
   const result = await api("/api/sort-trash", {
     method: "POST",
-    body: { path: appState.selectedAssetPath },
+    body: { path: currentPath },
   });
   if (!result.success) {
     setStepStatus(3, result.error || "Trash failed", "error");
@@ -369,17 +370,25 @@ async function trashCurrentAsset() {
   }
 
   setStepStatus(3, `Trashed ${result.name || "asset"}`, "warn");
-  await loadSortingWindowAssets();
+  const removedIndex = appState.sortingAssets.findIndex((asset) => asset.path === currentPath);
+  if (removedIndex >= 0) {
+    appState.sortingAssets.splice(removedIndex, 1);
+  }
+  appState.previewCache.delete(currentPath);
 
-  if (appState.sortingAssets.length > 0) {
-    const nextIndex = Math.min(currentIndex, appState.sortingAssets.length - 1);
-    await selectAssetByIndex(nextIndex);
-  } else {
+  if (appState.sortingAssets.length === 0) {
     appState.selectedAssetPath = "";
     appState.selectedAssetIndex = -1;
     DOM.sortingPreviewMeta.textContent = "No assets available";
     DOM.sortingPreview.textContent = "All assets have been trashed from the sorting window.";
+    updateSortingPaginationUi();
+    renderSortingAssetsList();
+    return;
   }
+
+  const nextIndex = Math.max(0, Math.min(currentIndex, appState.sortingAssets.length - 1));
+  updateSortingPaginationUi();
+  await selectAssetByIndex(nextIndex);
 }
 
 async function undoSortingAction() {
@@ -834,6 +843,21 @@ async function renameSelectedAssetAndAdvance(asset, rawNewName) {
         renderSortingAssetsList();
         return;
       }
+
+      const renamedPath = String(result.newPath || asset.path);
+      const renamedExt = renamedPath.includes(".") ? `.${renamedPath.split(".").pop()}`.toLowerCase() : ".noext";
+      const target = appState.sortingAssets.find((candidate) => candidate.path === asset.path);
+      if (target) {
+        appState.previewCache.delete(target.path);
+        target.name = String(result.name || newName);
+        target.path = renamedPath;
+        target.ext = renamedExt;
+      }
+
+      if (appState.selectedAssetPath === asset.path) {
+        appState.selectedAssetPath = renamedPath;
+      }
+      applySortingToAssets();
       setStepStatus(3, `Renamed to: ${result.name}`, "ok");
     } catch (_err) {
       setStepStatus(3, "Rename failed", "error");
@@ -841,8 +865,7 @@ async function renameSelectedAssetAndAdvance(asset, rawNewName) {
       return;
     }
   }
-
-  await loadSortingWindowAssets();
+  renderSortingAssetsList();
 
   if (nextPathHint) {
     const nextExists = appState.sortingAssets.some((candidate) => candidate.path === nextPathHint);
