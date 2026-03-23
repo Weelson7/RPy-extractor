@@ -45,6 +45,7 @@ RPy-extractor/.trash*/
 tmp/
 assets/
 logs/
+merged-media/
 
 # Build/distribution artifacts
 build/

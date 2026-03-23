@@ -929,55 +929,6 @@ async function refreshMergerCandidates(options = {}) {
   }
 }
 
-async function fetchAllMergerCandidateNames() {
-  const workingDir = String(DOM.mergerWorkingDir?.value || appState.mergerWorkingDir || "").trim();
-  const namingPattern = String(DOM.mergerNamingPattern?.value || "number-to-name");
-  const allowedExts = Array.from(appState.mergerSelectedExts);
-
-  const names = new Set();
-  const pageLimit = 300;
-  let offset = 0;
-  let guard = 0;
-
-  while (guard < 500) {
-    guard += 1;
-    const payload = await api("/api/media-merger/list", {
-      method: "POST",
-      body: {
-        workingDir,
-        namingPattern,
-        allowedExts,
-        offset,
-        limit: pageLimit,
-      },
-    });
-
-    if (!payload.success) {
-      throw new Error(payload.error || "Could not list merger candidates");
-    }
-
-    const candidates = Array.isArray(payload.candidates) ? payload.candidates : [];
-    for (const candidate of candidates) {
-      const name = String(candidate?.name || "").trim();
-      if (name) {
-        names.add(name);
-      }
-    }
-
-    if (!payload.truncated) {
-      break;
-    }
-
-    const nextOffset = Number(payload.offset || offset) + Number(payload.limit || pageLimit);
-    if (!Number.isFinite(nextOffset) || nextOffset <= offset) {
-      break;
-    }
-    offset = nextOffset;
-  }
-
-  return names;
-}
-
 async function initializeMediaMerger() {
   try {
     const payload = await api("/api/media-merger/state");
@@ -1947,6 +1898,8 @@ DOM.mergerTransitionType?.addEventListener("change", () => {
 
 DOM.mergerNamingPattern?.addEventListener("change", async () => {
   appState.mergerNamingPattern = String(DOM.mergerNamingPattern.value || "number-to-name");
+  appState.mergerSelectedCandidateNames.clear();
+  appState.mergerAutoSelectedOnce = false;
   await refreshMergerCandidates({ resetOffset: true });
 });
 
@@ -1988,23 +1941,11 @@ DOM.mergerSelectNoneExtBtn?.addEventListener("click", async () => {
   await refreshMergerCandidates({ resetOffset: true });
 });
 
-DOM.mergerSelectAllCandidatesBtn?.addEventListener("click", async () => {
-  if (DOM.mergerSelectAllCandidatesBtn) {
-    DOM.mergerSelectAllCandidatesBtn.disabled = true;
+DOM.mergerSelectAllCandidatesBtn?.addEventListener("click", () => {
+  for (const candidate of appState.mergerCandidates) {
+    appState.mergerSelectedCandidateNames.add(String(candidate.name || ""));
   }
-  setMediaMergerStatus("Selecting all candidates...", "info");
-
-  try {
-    appState.mergerSelectedCandidateNames = await fetchAllMergerCandidateNames();
-    renderMergerCandidates();
-    setMediaMergerStatus(`Selected ${appState.mergerSelectedCandidateNames.size} candidate(s)`, "ok");
-  } catch (_err) {
-    setMediaMergerStatus("Could not select all candidates", "error");
-  } finally {
-    if (DOM.mergerSelectAllCandidatesBtn) {
-      DOM.mergerSelectAllCandidatesBtn.disabled = false;
-    }
-  }
+  renderMergerCandidates();
 });
 
 DOM.mergerSelectNoneCandidatesBtn?.addEventListener("click", () => {
@@ -2070,23 +2011,45 @@ DOM.mergerBuildBtn?.addEventListener("click", async () => {
       return;
     }
 
-    if (Array.isArray(payload.outputs) && payload.outputs.length > 0) {
+    // Clear all selected candidates after successful build
+    appState.mergerSelectedCandidateNames.clear();
+    
+    const outputs = Array.isArray(payload.outputs) ? payload.outputs : [];
+    if (outputs.length > 0) {
+      const builtCount = Number(payload.builtCount || outputs.length || 0);
+      const mergedCount = Number(payload.mergedCount || 0);
+      const trashedCount = Number(payload.trashedCount || 0);
+      const failures = Array.isArray(payload.failures) ? payload.failures : [];
+      const statusType = payload.partial ? "warn" : "ok";
+      const failureText = failures.length > 0 ? `, failed: ${failures.length}` : "";
+
       setMediaMergerStatus(
-        `Build complete: ${payload.outputs.length} output(s) (${payload.mergedCount} item(s), trashed: ${payload.trashedCount})`,
-        "ok"
+        `Build complete: ${builtCount} output(s) (${mergedCount} item(s), trashed: ${trashedCount}${failureText})`,
+        statusType
       );
-      for (const item of payload.outputs) {
-        const candidateName = String(item?.candidateName || "candidate");
-        const outputPath = String(item?.outputPath || "");
-        addLog(`[MERGER] Created [${candidateName}] ${outputPath}`);
+
+      for (const item of outputs) {
+        const candidateName = String(item.candidateName || "candidate");
+        const outPath = String(item.outputPath || "");
+        if (outPath) {
+          addLog(`[MERGER] Created (${candidateName}) ${outPath}`);
+        }
+      }
+
+      for (const failure of failures) {
+        const candidateName = String(failure.candidateName || "candidate");
+        const errorText = String(failure.error || "unknown error");
+        addLog(`[MERGER] Failed (${candidateName}) ${errorText}`);
       }
     } else {
-    setMediaMergerStatus(
-      `Build complete: ${payload.outputName} (${payload.mergedCount} item(s), trashed: ${payload.trashedCount})`,
-      "ok"
-    );
-    addLog(`[MERGER] Created ${payload.outputPath}`);
+      setMediaMergerStatus(
+        `Build complete: ${payload.outputName} (${payload.mergedCount} item(s), trashed: ${payload.trashedCount})`,
+        "ok"
+      );
+      addLog(`[MERGER] Created ${payload.outputPath}`);
     }
+
+    renderMergerCandidates();
 
     if (trashAfterBuild) {
       await refreshMergerCandidates();

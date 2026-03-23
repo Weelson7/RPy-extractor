@@ -27,24 +27,6 @@ def _resolve_working_dir(app_config: AppConfig, incoming: str) -> Path:
     return assets_dir(app_config).resolve()
 
 
-def _candidate_output_name(raw_output_name: str, candidate_name: str, idx: int, total: int) -> str:
-    if total <= 1:
-        return str(raw_output_name or "").strip()
-
-    base_name = str(raw_output_name or "").strip()
-    safe_candidate = re.sub(r"[^A-Za-z0-9._-]+", "_", str(candidate_name or "").strip()).strip("._-")
-    if not safe_candidate:
-        safe_candidate = f"candidate_{idx + 1}"
-
-    if not base_name:
-        return f"{safe_candidate}.mp4"
-
-    parsed = Path(base_name)
-    stem = parsed.stem or "merged"
-    suffix = parsed.suffix or ".mp4"
-    return f"{stem}_{safe_candidate}{suffix}"
-
-
 def get_media_merger_state(app_config: AppConfig) -> dict[str, Any]:
     working_dir = assets_dir(app_config)
     if not working_dir.exists():
@@ -198,13 +180,7 @@ def build_media_merger_output(app_config: AppConfig, payload: dict[str, Any]) ->
             "error": "selectedPaths must be an array",
         }
 
-    entries = list_media_entries(working_dir, allowed_exts=MERGE_MEDIA_EXTS)
-    if isinstance(selected_candidates, list) and selected_candidates:
-        selected_paths = expand_selected_paths_from_candidates(
-            entries=entries,
-            naming_pattern=naming_pattern,
-            selected_candidates=selected_candidates,
-        )
+    raw_output_name = str(payload.get("outputName", "")).strip()
 
     transition_type = str(payload.get("transitionType", "diapo")).strip().lower()
     if transition_type not in {"diapo", "fade"}:
@@ -235,98 +211,123 @@ def build_media_merger_output(app_config: AppConfig, payload: dict[str, Any]) ->
     except Exception:
         end_last_image_time = 0.0
 
-    output_name_raw = str(payload.get("outputName", "")).strip()
-    selected_paths_clean = [str(item) for item in selected_paths if str(item).strip()]
+    normalized_selected_paths = [str(item) for item in selected_paths if str(item).strip()]
+    normalized_overlay_sound = str(payload.get("overlaySound", "")).strip()
+    normalized_trash_after_build = bool(payload.get("trashAfterBuild", False))
 
-    # When multiple candidates are selected, build one output per candidate.
-    if isinstance(selected_candidates, list) and len(selected_candidates) > 1:
-        outputs: list[dict[str, Any]] = []
-        total_merged = 0
-        total_trashed = 0
-        candidate_specs = [spec for spec in selected_candidates if isinstance(spec, dict)]
+    if not selected_candidates:
+        result = build_merged_video(
+            working_dir=working_dir,
+            merger_dir=app_config.merger_dir,
+            selected_paths=normalized_selected_paths,
+            transition_type=transition_type,
+            diapo_delay=max(0.2, diapo_delay),
+            fade_cross_time=max(0.05, fade_cross_time),
+            overlay_sound_path=normalized_overlay_sound,
+            overlay_volume=max(0.0, min(1.0, overlay_volume)),
+            end_fadeout_time=max(0.0, end_fadeout_time),
+            end_last_image_time=max(0.0, end_last_image_time),
+            output_name=raw_output_name,
+            trash_after_build=normalized_trash_after_build,
+        )
 
-        for idx, spec in enumerate(candidate_specs):
-            candidate_name = str(spec.get("name", "")).strip() or f"candidate_{idx + 1}"
-            candidate_paths = expand_selected_paths_from_candidates(
-                entries=entries,
-                naming_pattern=naming_pattern,
-                selected_candidates=[spec],
+        if result.get("success"):
+            tlog(
+                "[MERGER] Build complete: "
+                f"{result.get('outputName', 'unknown')} "
+                f"({result.get('mergedCount', 0)} inputs, trashed={result.get('trashedCount', 0)})"
             )
-            candidate_paths_clean = [str(item) for item in candidate_paths if str(item).strip()]
-            if not candidate_paths_clean:
-                continue
+        else:
+            tlog(f"[MERGER] Build failed: {result.get('error', 'unknown error')}")
+        return result
 
-            result = build_merged_video(
-                working_dir=working_dir,
-                merger_dir=app_config.merger_dir,
-                selected_paths=candidate_paths_clean,
-                transition_type=transition_type,
-                diapo_delay=max(0.2, diapo_delay),
-                fade_cross_time=max(0.05, fade_cross_time),
-                overlay_sound_path=str(payload.get("overlaySound", "")).strip(),
-                overlay_volume=max(0.0, min(1.0, overlay_volume)),
-                end_fadeout_time=max(0.0, end_fadeout_time),
-                end_last_image_time=max(0.0, end_last_image_time),
-                output_name=_candidate_output_name(output_name_raw, candidate_name, idx, len(candidate_specs)),
-                trash_after_build=bool(payload.get("trashAfterBuild", False)),
+    entries = list_media_entries(working_dir, allowed_exts=MERGE_MEDIA_EXTS)
+    outputs: list[dict[str, Any]] = []
+    failures: list[dict[str, str]] = []
+
+    base_name = ""
+    base_suffix = ".mp4"
+    if raw_output_name:
+        parsed = Path(raw_output_name)
+        base_name = parsed.stem or "merged"
+        base_suffix = parsed.suffix or ".mp4"
+
+    for idx, candidate_spec in enumerate(selected_candidates):
+        candidate_name = str(candidate_spec.get("name", "")).strip()
+        if not candidate_name:
+            failures.append({"candidateName": "", "error": "Missing candidate name"})
+            continue
+
+        candidate_paths = expand_selected_paths_from_candidates(
+            entries=entries,
+            naming_pattern=naming_pattern,
+            selected_candidates=[candidate_spec],
+        )
+
+        safe_candidate = re.sub(r"[^A-Za-z0-9._-]+", "_", candidate_name).strip("._-") or f"candidate_{idx + 1}"
+        output_name_for_candidate = (
+            f"{base_name}_{safe_candidate}{base_suffix}" if base_name else f"{safe_candidate}.mp4"
+        )
+
+        result = build_merged_video(
+            working_dir=working_dir,
+            merger_dir=app_config.merger_dir,
+            selected_paths=[str(item) for item in candidate_paths if str(item).strip()],
+            transition_type=transition_type,
+            diapo_delay=max(0.2, diapo_delay),
+            fade_cross_time=max(0.05, fade_cross_time),
+            overlay_sound_path=normalized_overlay_sound,
+            overlay_volume=max(0.0, min(1.0, overlay_volume)),
+            end_fadeout_time=max(0.0, end_fadeout_time),
+            end_last_image_time=max(0.0, end_last_image_time),
+            output_name=output_name_for_candidate,
+            trash_after_build=normalized_trash_after_build,
+        )
+
+        if result.get("success"):
+            tlog(
+                "[MERGER] Build complete: "
+                f"{result.get('outputName', 'unknown')} for {candidate_name} "
+                f"({result.get('mergedCount', 0)} inputs, trashed={result.get('trashedCount', 0)})"
             )
-            if not result.get("success"):
-                return {
-                    "success": False,
-                    "error": f"{candidate_name}: {result.get('error', 'Media merge failed')}",
-                }
-
             outputs.append(
                 {
                     "candidateName": candidate_name,
-                    "outputName": result.get("outputName", ""),
-                    "outputPath": result.get("outputPath", ""),
-                    "mergedCount": int(result.get("mergedCount", 0)),
-                    "totalDuration": float(result.get("totalDuration", 0.0)),
-                    "trashedCount": int(result.get("trashedCount", 0)),
+                    "outputPath": str(result.get("outputPath", "")),
+                    "outputName": str(result.get("outputName", "")),
+                    "mergedCount": int(result.get("mergedCount", 0) or 0),
+                    "totalDuration": float(result.get("totalDuration", 0) or 0),
+                    "trashedCount": int(result.get("trashedCount", 0) or 0),
                 }
             )
-            total_merged += int(result.get("mergedCount", 0))
-            total_trashed += int(result.get("trashedCount", 0))
+        else:
+            error_text = str(result.get("error", "unknown error"))
+            tlog(f"[MERGER] Build failed for {candidate_name}: {error_text}")
+            failures.append({"candidateName": candidate_name, "error": error_text})
 
-        if not outputs:
-            return {
-                "success": False,
-                "error": "No valid candidate media files to merge",
-            }
-
+    if not outputs:
         return {
-            "success": True,
-            "batch": True,
-            "outputs": outputs,
-            "outputName": outputs[0].get("outputName", ""),
-            "outputPath": outputs[0].get("outputPath", ""),
-            "mergedCount": total_merged,
-            "trashedCount": total_trashed,
+            "success": False,
+            "error": "All selected candidates failed to build",
+            "failures": failures,
         }
 
-    result = build_merged_video(
-        working_dir=working_dir,
-        merger_dir=app_config.merger_dir,
-        selected_paths=selected_paths_clean,
-        transition_type=transition_type,
-        diapo_delay=max(0.2, diapo_delay),
-        fade_cross_time=max(0.05, fade_cross_time),
-        overlay_sound_path=str(payload.get("overlaySound", "")).strip(),
-        overlay_volume=max(0.0, min(1.0, overlay_volume)),
-        end_fadeout_time=max(0.0, end_fadeout_time),
-        end_last_image_time=max(0.0, end_last_image_time),
-        output_name=output_name_raw,
-        trash_after_build=bool(payload.get("trashAfterBuild", False)),
-    )
+    response = {
+        "success": True,
+        "outputs": outputs,
+        "builtCount": len(outputs),
+        "mergedCount": sum(int(item.get("mergedCount", 0) or 0) for item in outputs),
+        "trashedCount": sum(int(item.get("trashedCount", 0) or 0) for item in outputs),
+    }
 
-    if result.get("success"):
-        tlog(
-            "[MERGER] Build complete: "
-            f"{result.get('outputName', 'unknown')} "
-            f"({result.get('mergedCount', 0)} inputs, trashed={result.get('trashedCount', 0)})"
-        )
-    else:
-        tlog(f"[MERGER] Build failed: {result.get('error', 'unknown error')}")
+    if failures:
+        response["partial"] = True
+        response["failures"] = failures
 
-    return result
+    if len(outputs) == 1:
+        first = outputs[0]
+        response["outputPath"] = first.get("outputPath", "")
+        response["outputName"] = first.get("outputName", "")
+        response["totalDuration"] = first.get("totalDuration", 0)
+
+    return response
