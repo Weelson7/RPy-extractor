@@ -442,7 +442,7 @@ def _build_ffmpeg_filter(
         video_out = "vend_fade"
         audio_out = "aend_fade"
 
-    return ";".join(lines), video_out, audio_out, total_duration
+    return ";\n".join(lines), video_out, audio_out, total_duration
 
 
 def build_merged_video(

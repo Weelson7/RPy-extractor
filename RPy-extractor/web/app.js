@@ -929,6 +929,55 @@ async function refreshMergerCandidates(options = {}) {
   }
 }
 
+async function fetchAllMergerCandidateNames() {
+  const workingDir = String(DOM.mergerWorkingDir?.value || appState.mergerWorkingDir || "").trim();
+  const namingPattern = String(DOM.mergerNamingPattern?.value || "number-to-name");
+  const allowedExts = Array.from(appState.mergerSelectedExts);
+
+  const names = new Set();
+  const pageLimit = 300;
+  let offset = 0;
+  let guard = 0;
+
+  while (guard < 500) {
+    guard += 1;
+    const payload = await api("/api/media-merger/list", {
+      method: "POST",
+      body: {
+        workingDir,
+        namingPattern,
+        allowedExts,
+        offset,
+        limit: pageLimit,
+      },
+    });
+
+    if (!payload.success) {
+      throw new Error(payload.error || "Could not list merger candidates");
+    }
+
+    const candidates = Array.isArray(payload.candidates) ? payload.candidates : [];
+    for (const candidate of candidates) {
+      const name = String(candidate?.name || "").trim();
+      if (name) {
+        names.add(name);
+      }
+    }
+
+    if (!payload.truncated) {
+      break;
+    }
+
+    const nextOffset = Number(payload.offset || offset) + Number(payload.limit || pageLimit);
+    if (!Number.isFinite(nextOffset) || nextOffset <= offset) {
+      break;
+    }
+    offset = nextOffset;
+  }
+
+  return names;
+}
+
 async function initializeMediaMerger() {
   try {
     const payload = await api("/api/media-merger/state");
@@ -1939,11 +1988,23 @@ DOM.mergerSelectNoneExtBtn?.addEventListener("click", async () => {
   await refreshMergerCandidates({ resetOffset: true });
 });
 
-DOM.mergerSelectAllCandidatesBtn?.addEventListener("click", () => {
-  for (const candidate of appState.mergerCandidates) {
-    appState.mergerSelectedCandidateNames.add(String(candidate.name || ""));
+DOM.mergerSelectAllCandidatesBtn?.addEventListener("click", async () => {
+  if (DOM.mergerSelectAllCandidatesBtn) {
+    DOM.mergerSelectAllCandidatesBtn.disabled = true;
   }
-  renderMergerCandidates();
+  setMediaMergerStatus("Selecting all candidates...", "info");
+
+  try {
+    appState.mergerSelectedCandidateNames = await fetchAllMergerCandidateNames();
+    renderMergerCandidates();
+    setMediaMergerStatus(`Selected ${appState.mergerSelectedCandidateNames.size} candidate(s)`, "ok");
+  } catch (_err) {
+    setMediaMergerStatus("Could not select all candidates", "error");
+  } finally {
+    if (DOM.mergerSelectAllCandidatesBtn) {
+      DOM.mergerSelectAllCandidatesBtn.disabled = false;
+    }
+  }
 });
 
 DOM.mergerSelectNoneCandidatesBtn?.addEventListener("click", () => {
