@@ -33,7 +33,12 @@ const appState = {
   mergerSelectedExts: new Set(),
   mergerExtensionsInitialized: false,
   mergerCandidates: [],
+  mergerOffset: 0,
+  mergerLimit: 120,
+  mergerTruncated: false,
+  mergerTotalCount: 0,
   mergerSelectedCandidateNames: new Set(),
+  mergerAutoSelectedOnce: false,
   mergerConflictResolutions: new Map(),
   mergerConflictDrafts: new Map(),
   mergerCandidateLoops: new Map(),
@@ -104,6 +109,10 @@ const DOM = {
   mergerSelectNoneExtBtn: document.getElementById("mergerSelectNoneExtBtn"),
   mergerExtensionsList: document.getElementById("mergerExtensionsList"),
   mergerCandidatesList: document.getElementById("mergerCandidatesList"),
+  mergerCandidatesMeta: document.getElementById("mergerCandidatesMeta"),
+  mergerPrevBtn: document.getElementById("mergerPrevBtn"),
+  mergerNextBtn: document.getElementById("mergerNextBtn"),
+  mergerPageInfo: document.getElementById("mergerPageInfo"),
   mergerSelectAllCandidatesBtn: document.getElementById("mergerSelectAllCandidatesBtn"),
   mergerSelectNoneCandidatesBtn: document.getElementById("mergerSelectNoneCandidatesBtn"),
   mergerOutputName: document.getElementById("mergerOutputName"),
@@ -131,11 +140,22 @@ function addLog(message) {
   }
   appState.seenLogs.add(message);
   appState.logs.push(message);
+  if (appState.logs.length > 1200) {
+    const removed = appState.logs.shift();
+    if (typeof removed === "string") {
+      appState.seenLogs.delete(removed);
+    }
+  }
 
   const logLine = document.createElement("div");
   logLine.className = "log-line";
   logLine.innerHTML = `<span class="log-time">[${formatTime()}]</span> ${escapeHtml(message)}`;
   DOM.mainLog.appendChild(logLine);
+
+  while (DOM.mainLog.childElementCount > 500) {
+    DOM.mainLog.removeChild(DOM.mainLog.firstElementChild);
+  }
+
   DOM.mainLog.scrollTop = DOM.mainLog.scrollHeight;
 }
 
@@ -327,7 +347,9 @@ function conflictKey(candidateName, index) {
 
 function getConflictOrder(candidateName, conflict) {
   const key = conflictKey(candidateName, conflict.index);
-  const fallback = (Array.isArray(conflict.options) ? conflict.options : []).map((option) => String(option.path || "")).filter(Boolean);
+  const fallback = (Array.isArray(conflict.options) ? conflict.options : [])
+    .map((option) => String(option?.path || ""))
+    .filter(Boolean);
   return appState.mergerConflictDrafts.get(key)
     || appState.mergerConflictResolutions.get(key)
     || fallback;
@@ -342,6 +364,7 @@ function moveConflictItem(candidateName, index, fromIdx, toIdx) {
   const [item] = current.splice(fromIdx, 1);
   current.splice(toIdx, 0, item);
   appState.mergerConflictDrafts.set(key, current);
+  appState.mergerConflictResolutions.set(key, Array.from(current));
   renderMergerCandidates();
 }
 
@@ -426,7 +449,7 @@ function renderMergerExtensions() {
       } else {
         appState.mergerSelectedExts.delete(ext);
       }
-      await refreshMergerCandidates();
+      await refreshMergerCandidates({ resetOffset: true });
     });
 
     const text = document.createElement("span");
@@ -447,12 +470,31 @@ function renderMergerCandidates() {
     return;
   }
 
+  const totalCandidates = Number(appState.mergerTotalCount || 0);
+  const shownCount = Array.isArray(appState.mergerCandidates) ? appState.mergerCandidates.length : 0;
+  const start = shownCount > 0 ? appState.mergerOffset + 1 : 0;
+  const end = appState.mergerOffset + shownCount;
+
+  if (DOM.mergerCandidatesMeta) {
+    DOM.mergerCandidatesMeta.textContent = `${totalCandidates} candidate(s) total`;
+  }
+  if (DOM.mergerPageInfo) {
+    DOM.mergerPageInfo.textContent = `${start}-${end}/${totalCandidates}`;
+  }
+  if (DOM.mergerPrevBtn) {
+    DOM.mergerPrevBtn.disabled = appState.mergerOffset <= 0;
+  }
+  if (DOM.mergerNextBtn) {
+    DOM.mergerNextBtn.disabled = !appState.mergerTruncated;
+  }
+
   DOM.mergerCandidatesList.innerHTML = "";
   if (!Array.isArray(appState.mergerCandidates) || appState.mergerCandidates.length === 0) {
     DOM.mergerCandidatesList.innerHTML = "<div class=\"extensions-placeholder\">No matching candidates.</div>";
     return;
   }
 
+  const fragment = document.createDocumentFragment();
   for (const candidate of appState.mergerCandidates) {
     const name = String(candidate.name || "untitled");
     const indexes = Array.isArray(candidate.indexes) ? candidate.indexes : [];
@@ -460,7 +502,7 @@ function renderMergerCandidates() {
     const loopConfig = ensureCandidateLoopConfig(name);
     ensurePartLoopTrailingBlank(loopConfig);
 
-    const row = document.createElement("label");
+    const row = document.createElement("div");
     row.className = "media-merger-candidate";
 
     const checkbox = document.createElement("input");
@@ -512,7 +554,7 @@ function renderMergerCandidates() {
     entiretyRow.appendChild(entiretyTimes);
     loopsWrap.appendChild(entiretyRow);
 
-    loopConfig.partLoops.forEach((partLoop, rowIndex) => {
+    loopConfig.partLoops.forEach((partLoop) => {
       const row = document.createElement("div");
       row.className = "media-merger-loop-row";
 
@@ -526,10 +568,11 @@ function renderMergerCandidates() {
       indexesInput.value = String(partLoop.indexes || "");
       indexesInput.className = "media-merger-loop-indexes";
       indexesInput.addEventListener("input", () => {
+        const beforeLength = loopConfig.partLoops.length;
         partLoop.indexes = indexesInput.value;
         ensurePartLoopTrailingBlank(loopConfig);
         appState.mergerCandidateLoops.set(name, loopConfig);
-        if (rowIndex === loopConfig.partLoops.length - 1) {
+        if (loopConfig.partLoops.length > beforeLength) {
           renderMergerCandidates();
         }
       });
@@ -542,10 +585,11 @@ function renderMergerCandidates() {
       timesInput.value = String(partLoop.times || "");
       timesInput.className = "media-merger-loop-input";
       timesInput.addEventListener("input", () => {
+        const beforeLength = loopConfig.partLoops.length;
         partLoop.times = timesInput.value;
         ensurePartLoopTrailingBlank(loopConfig);
         appState.mergerCandidateLoops.set(name, loopConfig);
-        if (rowIndex === loopConfig.partLoops.length - 1) {
+        if (loopConfig.partLoops.length > beforeLength) {
           renderMergerCandidates();
         }
       });
@@ -561,6 +605,26 @@ function renderMergerCandidates() {
       loopsWrap.appendChild(row);
     });
 
+    const addLoopRowWrap = document.createElement("div");
+    addLoopRowWrap.className = "media-merger-loop-add-row";
+
+    const addLoopBtn = document.createElement("button");
+    addLoopBtn.type = "button";
+    addLoopBtn.className = "btn btn--ghost media-merger-plus-btn";
+    addLoopBtn.textContent = "+";
+    addLoopBtn.title = "Add part-loop row";
+    addLoopBtn.setAttribute("aria-label", "Add part-loop row");
+    addLoopBtn.addEventListener("click", (event) => {
+      event.preventDefault();
+      event.stopPropagation();
+      loopConfig.partLoops.push({ indexes: "", times: "" });
+      appState.mergerCandidateLoops.set(name, loopConfig);
+      renderMergerCandidates();
+    });
+
+    addLoopRowWrap.appendChild(addLoopBtn);
+    loopsWrap.appendChild(addLoopRowWrap);
+
     body.appendChild(loopsWrap);
 
     if (conflicts.length > 0) {
@@ -575,7 +639,9 @@ function renderMergerCandidates() {
       for (const conflict of conflicts) {
         const indexValue = String(conflict.index || "");
         const order = getConflictOrder(name, conflict);
-        const optionByPath = new Map((Array.isArray(conflict.options) ? conflict.options : []).map((option) => [String(option.path || ""), option]));
+        const optionByPath = new Map(
+          (Array.isArray(conflict.options) ? conflict.options : []).map((option) => [String(option.path || ""), option])
+        );
 
         const card = document.createElement("div");
         card.className = "media-merger-conflict-card";
@@ -635,22 +701,6 @@ function renderMergerCandidates() {
 
         card.appendChild(blocks);
 
-        const resolveBtn = document.createElement("button");
-        resolveBtn.type = "button";
-        resolveBtn.className = "btn btn--secondary media-merger-resolve-btn";
-        resolveBtn.textContent = "Resolve conflict";
-        resolveBtn.addEventListener("click", (event) => {
-          event.preventDefault();
-          event.stopPropagation();
-          const key = conflictKey(name, indexValue);
-          const latestOrder = getConflictOrder(name, conflict);
-          appState.mergerConflictResolutions.set(key, Array.from(latestOrder));
-          appState.mergerConflictDrafts.delete(key);
-          setMediaMergerStatus(`Resolved conflict for ${name} index ${indexValue}`, "ok");
-          renderMergerCandidates();
-        });
-        card.appendChild(resolveBtn);
-
         conflictWrap.appendChild(card);
       }
 
@@ -659,8 +709,10 @@ function renderMergerCandidates() {
 
     row.appendChild(checkbox);
     row.appendChild(body);
-    DOM.mergerCandidatesList.appendChild(row);
+    fragment.appendChild(row);
   }
+
+  DOM.mergerCandidatesList.appendChild(fragment);
 }
 
 function getSelectedMergerPaths() {
@@ -759,11 +811,59 @@ function getSelectedMergerPaths() {
   return paths;
 }
 
-async function refreshMergerCandidates() {
+function getSelectedCandidateBuildSpecs() {
+  const selectedNames = new Set(appState.mergerSelectedCandidateNames);
+  const specs = [];
+
+  for (const selectedName of selectedNames) {
+    const name = String(selectedName || "").trim();
+    if (!name) {
+      continue;
+    }
+
+    const loopConfig = ensureCandidateLoopConfig(name);
+    const partLoops = [];
+    const rawPartLoops = Array.isArray(loopConfig.partLoops) ? loopConfig.partLoops : [];
+    for (const row of rawPartLoops) {
+      const indexes = String(row?.indexes || "").trim();
+      const times = String(row?.times || "").trim();
+      if (!indexes || !times) {
+        continue;
+      }
+      partLoops.push({ indexes, times });
+    }
+
+    const conflictResolutions = {};
+    for (const [key, order] of appState.mergerConflictResolutions.entries()) {
+      const [candidateName, idx] = String(key).split("::");
+      if (candidateName !== name) {
+        continue;
+      }
+      if (idx && Array.isArray(order) && order.length > 0) {
+        conflictResolutions[idx] = Array.from(order);
+      }
+    }
+
+    specs.push({
+      name,
+      entiretyTimes: sanitizeLoopTimes(loopConfig.entiretyTimes),
+      partLoops,
+      conflictResolutions,
+    });
+  }
+
+  return specs;
+}
+
+async function refreshMergerCandidates(options = {}) {
+  const resetOffset = Boolean(options.resetOffset);
   const workingDir = String(DOM.mergerWorkingDir?.value || appState.mergerWorkingDir || "").trim();
   const namingPattern = String(DOM.mergerNamingPattern?.value || "number-to-name");
-  const previousSelection = new Set(appState.mergerSelectedCandidateNames);
   const shouldLoadAllByDefault = !appState.mergerExtensionsInitialized && appState.mergerSelectedExts.size === 0;
+
+  if (resetOffset) {
+    appState.mergerOffset = 0;
+  }
 
   setMediaMergerStatus("Refreshing media list...", "info");
 
@@ -774,6 +874,8 @@ async function refreshMergerCandidates() {
         workingDir,
         namingPattern,
         allowedExts: shouldLoadAllByDefault ? null : Array.from(appState.mergerSelectedExts),
+        offset: appState.mergerOffset,
+        limit: appState.mergerLimit,
       },
     });
 
@@ -800,48 +902,22 @@ async function refreshMergerCandidates() {
     appState.mergerExtensionsInitialized = true;
 
     appState.mergerCandidates = Array.isArray(payload.candidates) ? payload.candidates : [];
+    appState.mergerOffset = Math.max(0, Number(payload.offset || appState.mergerOffset || 0));
+    appState.mergerLimit = Math.max(1, Number(payload.limit || appState.mergerLimit || 120));
+    appState.mergerTotalCount = Math.max(0, Number(payload.totalCount || appState.mergerCandidates.length || 0));
+    appState.mergerTruncated = Boolean(payload.truncated);
 
-    const validCandidateNames = new Set(appState.mergerCandidates.map((candidate) => String(candidate.name || "")));
-    for (const key of Array.from(appState.mergerCandidateLoops.keys())) {
-      if (!validCandidateNames.has(key)) {
-        appState.mergerCandidateLoops.delete(key);
-      }
-    }
-
-    const validConflictKeys = new Set();
-    for (const candidate of appState.mergerCandidates) {
-      const candidateName = String(candidate.name || "");
-      const conflicts = Array.isArray(candidate.conflicts) ? candidate.conflicts : [];
-      for (const conflict of conflicts) {
-        validConflictKeys.add(conflictKey(candidateName, String(conflict.index || "")));
-      }
-    }
-    for (const key of Array.from(appState.mergerConflictResolutions.keys())) {
-      if (!validConflictKeys.has(key)) {
-        appState.mergerConflictResolutions.delete(key);
-      }
-    }
-    for (const key of Array.from(appState.mergerConflictDrafts.keys())) {
-      if (!validConflictKeys.has(key)) {
-        appState.mergerConflictDrafts.delete(key);
-      }
-    }
-
-    const validNames = new Set(appState.mergerCandidates.map((candidate) => String(candidate.name || "")));
-    appState.mergerSelectedCandidateNames = new Set(
-      Array.from(previousSelection).filter((name) => validNames.has(name))
-    );
-
-    if (appState.mergerSelectedCandidateNames.size === 0) {
+    if (!appState.mergerAutoSelectedOnce && appState.mergerSelectedCandidateNames.size === 0) {
       for (const candidate of appState.mergerCandidates) {
         appState.mergerSelectedCandidateNames.add(String(candidate.name || ""));
       }
+      appState.mergerAutoSelectedOnce = true;
     }
 
     renderMergerExtensions();
     renderMergerCandidates();
     setMediaMergerStatus(
-      `Loaded ${appState.mergerCandidates.length} candidate group(s) and ${Number(payload.fileCount || 0)} file(s)`,
+      `Loaded ${appState.mergerCandidates.length}/${appState.mergerTotalCount} candidate group(s) and ${Number(payload.fileCount || 0)} file(s)`,
       "ok"
     );
   } catch (_err) {
@@ -1797,7 +1873,7 @@ DOM.mergerBrowseBtn?.addEventListener("click", async () => {
 
     appState.mergerWorkingDir = payload.path;
     DOM.mergerWorkingDir.value = payload.path;
-    await refreshMergerCandidates();
+    await refreshMergerCandidates({ resetOffset: true });
   } catch (_err) {
     setMediaMergerStatus("Folder browse failed", "error");
   }
@@ -1810,7 +1886,7 @@ DOM.mergerTransitionType?.addEventListener("change", () => {
 
 DOM.mergerNamingPattern?.addEventListener("change", async () => {
   appState.mergerNamingPattern = String(DOM.mergerNamingPattern.value || "number-to-name");
-  await refreshMergerCandidates();
+  await refreshMergerCandidates({ resetOffset: true });
 });
 
 DOM.mergerSelectOverlayBtn?.addEventListener("click", async () => {
@@ -1838,23 +1914,23 @@ DOM.mergerSelectOverlayBtn?.addEventListener("click", async () => {
 });
 
 DOM.mergerRefreshListBtn?.addEventListener("click", async () => {
-  await refreshMergerCandidates();
+  await refreshMergerCandidates({ resetOffset: true });
 });
 
 DOM.mergerSelectAllExtBtn?.addEventListener("click", async () => {
   appState.mergerSelectedExts = new Set(appState.mergerExtensions.map((entry) => String(entry.ext || "")));
-  await refreshMergerCandidates();
+  await refreshMergerCandidates({ resetOffset: true });
 });
 
 DOM.mergerSelectNoneExtBtn?.addEventListener("click", async () => {
   appState.mergerSelectedExts.clear();
-  await refreshMergerCandidates();
+  await refreshMergerCandidates({ resetOffset: true });
 });
 
 DOM.mergerSelectAllCandidatesBtn?.addEventListener("click", () => {
-  appState.mergerSelectedCandidateNames = new Set(
-    appState.mergerCandidates.map((candidate) => String(candidate.name || ""))
-  );
+  for (const candidate of appState.mergerCandidates) {
+    appState.mergerSelectedCandidateNames.add(String(candidate.name || ""));
+  }
   renderMergerCandidates();
 });
 
@@ -1863,9 +1939,25 @@ DOM.mergerSelectNoneCandidatesBtn?.addEventListener("click", () => {
   renderMergerCandidates();
 });
 
+DOM.mergerPrevBtn?.addEventListener("click", async () => {
+  if (appState.mergerOffset <= 0) {
+    return;
+  }
+  appState.mergerOffset = Math.max(0, appState.mergerOffset - appState.mergerLimit);
+  await refreshMergerCandidates();
+});
+
+DOM.mergerNextBtn?.addEventListener("click", async () => {
+  if (!appState.mergerTruncated) {
+    return;
+  }
+  appState.mergerOffset += appState.mergerLimit;
+  await refreshMergerCandidates();
+});
+
 DOM.mergerBuildBtn?.addEventListener("click", async () => {
-  const selectedPaths = getSelectedMergerPaths();
-  if (selectedPaths.length === 0) {
+  const selectedCandidates = getSelectedCandidateBuildSpecs();
+  if (selectedCandidates.length === 0) {
     setMediaMergerStatus("No selected media candidates", "error");
     return;
   }
@@ -1885,7 +1977,8 @@ DOM.mergerBuildBtn?.addEventListener("click", async () => {
       method: "POST",
       body: {
         workingDir: String(DOM.mergerWorkingDir?.value || appState.mergerWorkingDir || "").trim(),
-        selectedPaths,
+        selectedCandidates,
+        namingPattern: String(DOM.mergerNamingPattern?.value || "number-to-name"),
         transitionType,
         diapoDelay,
         fadeCrossTime,
