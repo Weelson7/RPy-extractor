@@ -342,6 +342,21 @@ def _safe_move_to_trash(working_dir: Path, source_paths: list[Path]) -> int:
     return moved
 
 
+def _stage_media_for_ffmpeg(temp_root: Path, media_files: list[Path], overlay_file: Path | None) -> tuple[list[Path], Path | None]:
+    staged_inputs: list[Path] = []
+    for idx, src in enumerate(media_files):
+        dst = temp_root / f"i{idx:04d}{src.suffix.lower()}"
+        shutil.copy2(src, dst)
+        staged_inputs.append(dst)
+
+    staged_overlay: Path | None = None
+    if overlay_file is not None:
+        staged_overlay = temp_root / f"overlay{overlay_file.suffix.lower()}"
+        shutil.copy2(overlay_file, staged_overlay)
+
+    return staged_inputs, staged_overlay
+
+
 def _build_ffmpeg_filter(
     durations: list[float],
     has_native_audio: list[bool],
@@ -517,58 +532,64 @@ def build_merged_video(
         durations.append(duration)
         has_native_audio.append(True)
 
-    cmd: list[str] = [ffmpeg_bin, "-y"]
-    for media_path, media_type, duration in zip(media_files, media_types, durations):
-        if media_type == "image":
-            cmd.extend(["-loop", "1", "-t", f"{duration:.3f}", "-i", str(media_path)])
-        else:
-            cmd.extend(["-i", str(media_path)])
-
-    overlay_input_idx: int | None = None
-    if overlay_file:
-        overlay_input_idx = len(media_files)
-        cmd.extend(["-stream_loop", "-1", "-i", str(overlay_file)])
-
-    transition = "fade" if transition_type == "fade" else "diapo"
-    filter_complex, video_label, audio_label, total_duration = _build_ffmpeg_filter(
-        durations=durations,
-        has_native_audio=has_native_audio,
-        transition_type=transition,
-        fade_cross_time=max(0.05, fade_cross_time),
-        overlay_input_idx=overlay_input_idx,
-        overlay_volume=max(0.0, min(1.0, overlay_volume)),
-        end_fadeout_time=max(0.0, end_fadeout_time),
-        end_last_image_time=max(0.0, end_last_image_time),
-    )
-
-    cmd.extend(
-        [
-            "-filter_complex",
-            filter_complex,
-            "-map",
-            f"[{video_label}]",
-            "-map",
-            f"[{audio_label}]",
-            "-c:v",
-            "libx264",
-            "-preset",
-            "medium",
-            "-crf",
-            "20",
-            "-c:a",
-            "aac",
-            "-b:a",
-            "192k",
-            "-movflags",
-            "+faststart",
-            "-t",
-            f"{total_duration:.3f}",
-            str(output_file),
-        ]
-    )
-
     try:
-        with TemporaryDirectory(prefix="media_merge_") as _tmp:
+        with TemporaryDirectory(prefix="media_merge_") as tmp:
+            temp_root = Path(tmp)
+            staged_media_files, staged_overlay_file = _stage_media_for_ffmpeg(temp_root, media_files, overlay_file)
+
+            cmd: list[str] = [ffmpeg_bin, "-y"]
+            for media_path, media_type, duration in zip(staged_media_files, media_types, durations):
+                if media_type == "image":
+                    cmd.extend(["-loop", "1", "-t", f"{duration:.3f}", "-i", str(media_path)])
+                else:
+                    cmd.extend(["-i", str(media_path)])
+
+            overlay_input_idx: int | None = None
+            if staged_overlay_file:
+                overlay_input_idx = len(staged_media_files)
+                cmd.extend(["-stream_loop", "-1", "-i", str(staged_overlay_file)])
+
+            transition = "fade" if transition_type == "fade" else "diapo"
+            filter_complex, video_label, audio_label, total_duration = _build_ffmpeg_filter(
+                durations=durations,
+                has_native_audio=has_native_audio,
+                transition_type=transition,
+                fade_cross_time=max(0.05, fade_cross_time),
+                overlay_input_idx=overlay_input_idx,
+                overlay_volume=max(0.0, min(1.0, overlay_volume)),
+                end_fadeout_time=max(0.0, end_fadeout_time),
+                end_last_image_time=max(0.0, end_last_image_time),
+            )
+
+            filter_script = temp_root / "filter_complex.txt"
+            filter_script.write_text(filter_complex, encoding="utf-8")
+
+            cmd.extend(
+                [
+                    "-filter_complex_script",
+                    str(filter_script),
+                    "-map",
+                    f"[{video_label}]",
+                    "-map",
+                    f"[{audio_label}]",
+                    "-c:v",
+                    "libx264",
+                    "-preset",
+                    "medium",
+                    "-crf",
+                    "20",
+                    "-c:a",
+                    "aac",
+                    "-b:a",
+                    "192k",
+                    "-movflags",
+                    "+faststart",
+                    "-t",
+                    f"{total_duration:.3f}",
+                    str(output_file),
+                ]
+            )
+
             run = subprocess.run(cmd, capture_output=True, text=True, check=False)
             if run.returncode != 0:
                 error_text = (run.stderr or run.stdout or "ffmpeg failed").strip()
