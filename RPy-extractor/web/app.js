@@ -28,6 +28,8 @@ const appState = {
   mergerTransitionType: "diapo",
   mergerDiapoDelay: 3,
   mergerFadeCrossTime: 0.7,
+  mergerEndFadeoutTime: 0,
+  mergerEndLastImageTime: 0,
   mergerOverlaySound: "",
   mergerExtensions: [],
   mergerSelectedExts: new Set(),
@@ -102,6 +104,8 @@ const DOM = {
   mergerFadeCrossRow: document.getElementById("mergerFadeCrossRow"),
   mergerDiapoDelay: document.getElementById("mergerDiapoDelay"),
   mergerFadeCross: document.getElementById("mergerFadeCross"),
+  mergerEndFadeoutTime: document.getElementById("mergerEndFadeoutTime"),
+  mergerEndLastImageTime: document.getElementById("mergerEndLastImageTime"),
   mergerOverlaySound: document.getElementById("mergerOverlaySound"),
   mergerSelectOverlayBtn: document.getElementById("mergerSelectOverlayBtn"),
   mergerRefreshListBtn: document.getElementById("mergerRefreshListBtn"),
@@ -939,6 +943,8 @@ async function initializeMediaMerger() {
     appState.mergerTransitionType = String(payload.defaultTransition || "diapo");
     appState.mergerDiapoDelay = Number(payload.defaultDiapoDelay || 3);
     appState.mergerFadeCrossTime = Number(payload.defaultFadeCrossTime || 0.7);
+    appState.mergerEndFadeoutTime = Number(payload.defaultEndFadeoutTime || 0);
+    appState.mergerEndLastImageTime = Number(payload.defaultEndLastImageTime || 0);
 
     if (DOM.mergerWorkingDir) {
       DOM.mergerWorkingDir.value = appState.mergerWorkingDir;
@@ -954,6 +960,12 @@ async function initializeMediaMerger() {
     }
     if (DOM.mergerFadeCross) {
       DOM.mergerFadeCross.value = String(appState.mergerFadeCrossTime);
+    }
+    if (DOM.mergerEndFadeoutTime) {
+      DOM.mergerEndFadeoutTime.value = String(appState.mergerEndFadeoutTime);
+    }
+    if (DOM.mergerEndLastImageTime) {
+      DOM.mergerEndLastImageTime.value = String(appState.mergerEndLastImageTime);
     }
 
     syncMergerTransitionFields();
@@ -1965,6 +1977,8 @@ DOM.mergerBuildBtn?.addEventListener("click", async () => {
   const transitionType = String(DOM.mergerTransitionType?.value || "diapo");
   const diapoDelay = Number(DOM.mergerDiapoDelay?.value || "3");
   const fadeCrossTime = Number(DOM.mergerFadeCross?.value || "0.7");
+  const endFadeoutTime = Number(DOM.mergerEndFadeoutTime?.value || "0");
+  const endLastImageTime = Number(DOM.mergerEndLastImageTime?.value || "0");
   const overlaySound = String(DOM.mergerOverlaySound?.value || "").trim();
   const outputName = String(DOM.mergerOutputName?.value || "").trim();
   const trashAfterBuild = Boolean(DOM.mergerTrashToggle?.checked);
@@ -1982,6 +1996,8 @@ DOM.mergerBuildBtn?.addEventListener("click", async () => {
         transitionType,
         diapoDelay,
         fadeCrossTime,
+        endFadeoutTime,
+        endLastImageTime,
         overlaySound,
         outputName,
         trashAfterBuild,

@@ -110,7 +110,6 @@ def list_media_entries(working_dir: Path, allowed_exts: set[str] | None = None) 
                 "stem": file_path.stem,
                 "ext": ext,
                 "type": _infer_media_type(ext),
-                "size": file_path.stat().st_size,
             }
         )
 
@@ -131,7 +130,7 @@ def summarize_extensions(entries: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return summary
 
 
-def build_candidates(entries: list[dict[str, Any]], naming_pattern: str) -> list[dict[str, Any]]:
+def build_candidates(entries: list[dict[str, Any]], naming_pattern: str, include_files: bool = True) -> list[dict[str, Any]]:
     groups: dict[str, dict[str, Any]] = {}
 
     for entry in entries:
@@ -174,36 +173,142 @@ def build_candidates(entries: list[dict[str, Any]], naming_pattern: str) -> list
                     "options": [
                         {
                             "path": str(item["path"]),
-                            "name": str(item["name"]),
-                            "ext": str(item["ext"]),
-                            "type": str(item["type"]),
+                            "ext": str(item.get("ext", "")),
+                            "type": str(item.get("type", "")),
                         }
                         for item in sorted(indexed_files, key=lambda file_item: _natural_parts(str(file_item.get("name", ""))))
                     ],
                 }
             )
 
+        files_payload = [
+            {
+                "path": f["path"],
+                "ext": f["ext"],
+                "type": f["type"],
+                "parsedIndex": _extract_group(str(f.get("stem", "")), naming_pattern)[1],
+            }
+            for f in files
+        ]
+
         candidates.append(
             {
                 "name": group["name"],
                 "indexes": indexes,
-                "files": [
-                    {
-                        "path": f["path"],
-                        "name": f["name"],
-                        "ext": f["ext"],
-                        "type": f["type"],
-                        "size": f["size"],
-                        "parsedIndex": _extract_group(str(f.get("stem", "")), naming_pattern)[1],
-                    }
-                    for f in files
-                ],
+                "files": files_payload if include_files else [],
                 "conflicts": conflicts,
                 "count": len(files),
             }
         )
 
     return candidates
+
+
+def _sanitize_loop_times(raw_value: Any) -> int:
+    try:
+        parsed = int(str(raw_value).strip())
+        return parsed if parsed >= 1 else 1
+    except Exception:
+        return 1
+
+
+def _parse_loop_indexes(raw_indexes: Any) -> set[str]:
+    parts = [chunk.strip() for chunk in re.split(r"[\s,;]+", str(raw_indexes or "")) if chunk.strip()]
+    return set(parts)
+
+
+def expand_selected_paths_from_candidates(
+    entries: list[dict[str, Any]],
+    naming_pattern: str,
+    selected_candidates: list[dict[str, Any]],
+) -> list[str]:
+    all_candidates = build_candidates(entries, naming_pattern=naming_pattern, include_files=True)
+    by_name = {str(candidate.get("name", "")).lower(): candidate for candidate in all_candidates}
+
+    output_paths: list[str] = []
+
+    for spec in selected_candidates:
+        candidate_name = str(spec.get("name", "")).strip()
+        if not candidate_name:
+            continue
+
+        candidate = by_name.get(candidate_name.lower())
+        if not candidate:
+            continue
+
+        files = candidate.get("files", []) if isinstance(candidate.get("files"), list) else []
+        conflicts = candidate.get("conflicts", []) if isinstance(candidate.get("conflicts"), list) else []
+        conflict_by_index = {str(item.get("index", "")): item for item in conflicts}
+
+        emitted: set[str] = set()
+        buckets: dict[str, list[str]] = {}
+        parsed_index_by_path: dict[str, str] = {}
+
+        for file_item in files:
+            rel_path = str(file_item.get("path", "")).strip()
+            if not rel_path:
+                continue
+
+            parsed_index = str(file_item.get("parsedIndex", "")).strip()
+            bucket_key = parsed_index if parsed_index else f"__single__{rel_path}"
+            parsed_index_by_path[rel_path] = parsed_index
+            buckets.setdefault(bucket_key, []).append(rel_path)
+
+        base_candidate_paths: list[str] = []
+        conflict_resolutions = spec.get("conflictResolutions", {})
+        if not isinstance(conflict_resolutions, dict):
+            conflict_resolutions = {}
+
+        for bucket_key in buckets.keys():
+            bucket_paths = buckets.get(bucket_key, [])
+            conflict = conflict_by_index.get(bucket_key)
+
+            if conflict:
+                requested_order = conflict_resolutions.get(bucket_key, [])
+                if not isinstance(requested_order, list):
+                    requested_order = []
+
+                resolved_order = [str(path) for path in requested_order if str(path) in bucket_paths]
+                for rel_path in resolved_order:
+                    if rel_path not in emitted:
+                        base_candidate_paths.append(rel_path)
+                        emitted.add(rel_path)
+
+                for rel_path in bucket_paths:
+                    if rel_path not in emitted:
+                        base_candidate_paths.append(rel_path)
+                        emitted.add(rel_path)
+            else:
+                for rel_path in bucket_paths:
+                    if rel_path not in emitted:
+                        base_candidate_paths.append(rel_path)
+                        emitted.add(rel_path)
+
+        part_multiplier: dict[str, int] = {}
+        raw_part_loops = spec.get("partLoops", [])
+        if isinstance(raw_part_loops, list):
+            for row in raw_part_loops:
+                if not isinstance(row, dict):
+                    continue
+                indexes = _parse_loop_indexes(row.get("indexes", ""))
+                if not indexes:
+                    continue
+                times = _sanitize_loop_times(row.get("times", 1))
+                for idx in indexes:
+                    part_multiplier[idx] = times
+
+        expanded_by_parts: list[str] = []
+        for rel_path in base_candidate_paths:
+            idx = parsed_index_by_path.get(rel_path, "")
+            multiplier = part_multiplier.get(idx, 1)
+            for _ in range(multiplier):
+                expanded_by_parts.append(rel_path)
+
+        entirety_times = _sanitize_loop_times(spec.get("entiretyTimes", 1))
+        for _ in range(entirety_times):
+            output_paths.extend(expanded_by_parts)
+
+    return output_paths
 
 
 def _safe_output_name(raw_name: str) -> str:
@@ -244,6 +349,8 @@ def _build_ffmpeg_filter(
     fade_cross_time: float,
     overlay_input_idx: int | None,
     overlay_volume: float,
+    end_fadeout_time: float,
+    end_last_image_time: float,
 ) -> tuple[str, str, str, float]:
     lines: list[str] = []
 
@@ -307,6 +414,19 @@ def _build_ffmpeg_filter(
         lines.append(f"[{audio_out}][bgm]amix=inputs=2:duration=first:dropout_transition=2[aout]")
         audio_out = "aout"
 
+    if end_last_image_time > 0:
+        lines.append(f"[{video_out}]tpad=stop_mode=clone:stop_duration={end_last_image_time:.3f}[vend_hold]")
+        video_out = "vend_hold"
+        total_duration += end_last_image_time
+
+    safe_fadeout = min(max(0.0, end_fadeout_time), max(0.0, total_duration))
+    if safe_fadeout > 0:
+        fade_start = max(0.0, total_duration - safe_fadeout)
+        lines.append(f"[{video_out}]fade=t=out:st={fade_start:.3f}:d={safe_fadeout:.3f}[vend_fade]")
+        lines.append(f"[{audio_out}]afade=t=out:st={fade_start:.3f}:d={safe_fadeout:.3f}[aend_fade]")
+        video_out = "vend_fade"
+        audio_out = "aend_fade"
+
     return ";".join(lines), video_out, audio_out, total_duration
 
 
@@ -319,6 +439,8 @@ def build_merged_video(
     fade_cross_time: float,
     overlay_sound_path: str,
     overlay_volume: float,
+    end_fadeout_time: float,
+    end_last_image_time: float,
     output_name: str,
     trash_after_build: bool,
 ) -> dict[str, Any]:
@@ -415,6 +537,8 @@ def build_merged_video(
         fade_cross_time=max(0.05, fade_cross_time),
         overlay_input_idx=overlay_input_idx,
         overlay_volume=max(0.0, min(1.0, overlay_volume)),
+        end_fadeout_time=max(0.0, end_fadeout_time),
+        end_last_image_time=max(0.0, end_last_image_time),
     )
 
     cmd.extend(

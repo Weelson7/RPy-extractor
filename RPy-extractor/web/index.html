@@ -250,6 +250,18 @@
             </fieldset>
 
             <fieldset>
+              <legend>End</legend>
+              <div class="media-merger-row">
+                <label for="mergerEndFadeoutTime">fadeout (seconds)</label>
+                <input id="mergerEndFadeoutTime" type="number" min="0" step="0.05" value="0" />
+              </div>
+              <div class="media-merger-row">
+                <label for="mergerEndLastImageTime">last image (seconds)</label>
+                <input id="mergerEndLastImageTime" type="number" min="0" step="0.05" value="0" />
+              </div>
+            </fieldset>
+
+            <fieldset>
               <legend>Allowed Extensions</legend>
               <div class="action-group">
                 <button id="mergerRefreshListBtn" class="btn btn--secondary" type="button">Refresh List</button>
@@ -264,6 +276,14 @@
               <div class="action-group">
                 <button id="mergerSelectAllCandidatesBtn" class="btn btn--ghost" type="button">Select All</button>
                 <button id="mergerSelectNoneCandidatesBtn" class="btn btn--ghost" type="button">Select None</button>
+              </div>
+              <div class="media-merger-candidates-toolbar">
+                <span id="mergerCandidatesMeta" class="hint"></span>
+                <div class="action-group">
+                  <button id="mergerPrevBtn" class="btn btn--ghost" type="button">Prev</button>
+                  <button id="mergerNextBtn" class="btn btn--ghost" type="button">Next</button>
+                  <span id="mergerPageInfo" class="sorting-page-info">0-0/0</span>
+                </div>
               </div>
               <div id="mergerCandidatesList" class="media-merger-candidates"></div>
             </fieldset>

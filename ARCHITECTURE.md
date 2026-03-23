@@ -91,7 +91,7 @@ Responsibilities:
 - Detect mixed-type same-index conflicts.
 - Build merged video timeline via ffmpeg.
 - Preserve native video audio + optional looped overlay audio.
-- Support diapo/fade transitions and post-build trash option.
+- Support diapo/fade transitions, end controls (fadeout + frozen last frame), and post-build trash option.
 
 ## Frontend Architecture
 
@@ -115,6 +115,9 @@ Media Merger frontend flow:
 - Configure per-candidate loops:
   - loop entirety (times)
   - loop parts (indexes + times), auto-append blank row + explicit add-row button.
+- Configure timeline end behavior:
+  - fadeout time (video + audio fade at end)
+  - last image time (freeze final frame before ending)
 - Build via API with selected/expanded path order.
 
 ## Configuration Model
@@ -193,6 +196,10 @@ Dependency status endpoint:
 - /api/media-merger/list
 - /api/media-merger/build
 - /api/media-merger/browse-overlay
+
+`/api/media-merger/build` payload supports:
+- `endFadeoutTime`
+- `endLastImageTime`
 
 ## Data + State Notes
 

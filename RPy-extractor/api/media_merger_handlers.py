@@ -12,6 +12,7 @@ from media_merger.service import (
     MERGE_MEDIA_EXTS,
     build_candidates,
     build_merged_video,
+    expand_selected_paths_from_candidates,
     list_media_entries,
     summarize_extensions,
 )
@@ -40,6 +41,8 @@ def get_media_merger_state(app_config: AppConfig) -> dict[str, Any]:
         "defaultTransition": "diapo",
         "defaultDiapoDelay": 3.0,
         "defaultFadeCrossTime": 0.7,
+        "defaultEndFadeoutTime": 0.0,
+        "defaultEndLastImageTime": 0.0,
         "supportedOverlayAudioExts": sorted(MERGE_AUDIO_EXTS),
     }
 
@@ -106,6 +109,8 @@ def list_media_merger_candidates(
     working_dir_raw: str,
     naming_pattern: str,
     allowed_exts_raw: list[Any] | None,
+    offset: int = 0,
+    limit: int = 120,
 ) -> dict[str, Any]:
     working_dir = _resolve_working_dir(app_config, working_dir_raw)
     if not working_dir.exists() or not working_dir.is_dir():
@@ -125,17 +130,30 @@ def list_media_merger_candidates(
     all_entries = list_media_entries(working_dir, allowed_exts=MERGE_MEDIA_EXTS)
     extension_summary = summarize_extensions(all_entries)
     entries = list_media_entries(working_dir, allowed_exts=allowed_exts if allowed_exts is not None else MERGE_MEDIA_EXTS)
-    candidates = build_candidates(entries, naming_pattern=naming_pattern)
+    candidates = build_candidates(entries, naming_pattern=naming_pattern, include_files=False)
+    total_count = len(candidates)
+    safe_offset = max(0, int(offset))
+    safe_limit = max(1, min(300, int(limit)))
+    window = candidates[safe_offset : safe_offset + safe_limit]
+    truncated = safe_offset + len(window) < total_count
 
-    tlog(f"[MERGER] Listed candidates: {len(candidates)} groups in {working_dir}")
+    tlog(
+        "[MERGER] Listed candidates: "
+        f"{len(window)} of {total_count} groups in {working_dir} "
+        f"(offset={safe_offset}, limit={safe_limit})"
+    )
 
     return {
         "success": True,
         "workingDir": str(working_dir),
         "namingPattern": naming_pattern,
         "extensions": extension_summary,
-        "candidates": candidates,
+        "candidates": window,
         "fileCount": len(entries),
+        "offset": safe_offset,
+        "limit": safe_limit,
+        "totalCount": total_count,
+        "truncated": truncated,
         "supportedMediaExts": sorted(MERGE_MEDIA_EXTS),
     }
 
@@ -143,12 +161,31 @@ def list_media_merger_candidates(
 def build_media_merger_output(app_config: AppConfig, payload: dict[str, Any]) -> dict[str, Any]:
     working_dir = _resolve_working_dir(app_config, str(payload.get("workingDir", "")))
     selected_paths = payload.get("selectedPaths", [])
+    selected_candidates = payload.get("selectedCandidates", [])
 
-    if not isinstance(selected_paths, list):
+    naming_pattern = str(payload.get("namingPattern", "number-to-name")).strip().lower()
+    if naming_pattern not in {"number-to-name", "name-to-number"}:
+        naming_pattern = "number-to-name"
+
+    if selected_candidates and not isinstance(selected_candidates, list):
+        return {
+            "success": False,
+            "error": "selectedCandidates must be an array",
+        }
+
+    if not selected_candidates and not isinstance(selected_paths, list):
         return {
             "success": False,
             "error": "selectedPaths must be an array",
         }
+
+    if isinstance(selected_candidates, list) and selected_candidates:
+        entries = list_media_entries(working_dir, allowed_exts=MERGE_MEDIA_EXTS)
+        selected_paths = expand_selected_paths_from_candidates(
+            entries=entries,
+            naming_pattern=naming_pattern,
+            selected_candidates=selected_candidates,
+        )
 
     transition_type = str(payload.get("transitionType", "diapo")).strip().lower()
     if transition_type not in {"diapo", "fade"}:
@@ -169,6 +206,16 @@ def build_media_merger_output(app_config: AppConfig, payload: dict[str, Any]) ->
     except Exception:
         overlay_volume = 0.35
 
+    try:
+        end_fadeout_time = float(payload.get("endFadeoutTime", 0.0))
+    except Exception:
+        end_fadeout_time = 0.0
+
+    try:
+        end_last_image_time = float(payload.get("endLastImageTime", 0.0))
+    except Exception:
+        end_last_image_time = 0.0
+
     result = build_merged_video(
         working_dir=working_dir,
         merger_dir=app_config.merger_dir,
@@ -178,6 +225,8 @@ def build_media_merger_output(app_config: AppConfig, payload: dict[str, Any]) ->
         fade_cross_time=max(0.05, fade_cross_time),
         overlay_sound_path=str(payload.get("overlaySound", "")).strip(),
         overlay_volume=max(0.0, min(1.0, overlay_volume)),
+        end_fadeout_time=max(0.0, end_fadeout_time),
+        end_last_image_time=max(0.0, end_last_image_time),
         output_name=str(payload.get("outputName", "")).strip(),
         trash_after_build=bool(payload.get("trashAfterBuild", False)),
     )

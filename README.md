@@ -26,7 +26,6 @@ It runs as a Python app with a browser-based interface and is designed for creat
 2. Scan extensions and keep selected types.
 3. Continue in Workspace Panels:
 - Sorting Window for manual keep/trash/rename.
-- Media Merger for timeline builds with transitions, conflict resolution, and loop controls.
 - Media Merger for timeline builds with transitions, conflict ordering, and loop controls.
 
 ## Media Merger Highlights
@@ -36,6 +35,9 @@ It runs as a Python app with a browser-based interface and is designed for creat
 - `diapo` with delay
 - `fade` with cross time
 - Optional overlay soundtrack looped over native video audio.
+- End controls:
+- fadeout (`time`): fades video and audio at the timeline end.
+- last image (`time`): freezes the final frame for the configured duration (works when the last item is an image or a video).
 - Per-candidate controls:
 - Loop entirety (`times`)
 - Loop parts (indexes + times), with auto-add row and explicit `+` add-row button.
