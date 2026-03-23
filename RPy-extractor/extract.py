@@ -14,7 +14,7 @@ from logging_utils import configure_log_directory
 
 # Import all modular components
 from models import AppConfig, SESSIONS
-from startup import startup_dependency_preflight, tlog
+from startup import startup_dependency_preflight, dependency_status_snapshot, tlog
 from handlers import (
     get_initial_state,
     extract_repo,
@@ -127,6 +127,23 @@ class Handler(BaseHTTPRequestHandler):
             return
         tlog(f"[HTTP] {self.command} {self.path} - {format % args}")
 
+    def _is_request_origin_allowed(self) -> bool:
+        """Lightweight origin check for side-effect endpoints."""
+        allowed_prefixes = (
+            f"http://{self.app_config.host}:{self.app_config.port}",
+            f"http://127.0.0.1:{self.app_config.port}",
+            f"http://localhost:{self.app_config.port}",
+        )
+
+        origin = str(self.headers.get("Origin", "")).strip()
+        referer = str(self.headers.get("Referer", "")).strip()
+
+        if origin and not any(origin.startswith(prefix) for prefix in allowed_prefixes):
+            return False
+        if referer and not any(referer.startswith(prefix) for prefix in allowed_prefixes):
+            return False
+        return True
+
     def do_GET(self) -> None:
         """Handle GET requests."""
         parsed = urlparse(self.path)
@@ -168,9 +185,12 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json_response(load_log_file_entries(self.app_config))
                 return
 
+            if path == "/api/dependencies":
+                self.send_json_response(dependency_status_snapshot())
+                return
+
             if path == "/api/open-folder":
-                folder_path = query.get("path", [""])[0]
-                self.send_json_response(open_folder_path(folder_path))
+                self.send_json_response({"success": False, "error": "Use POST for this endpoint"}, 405)
                 return
 
             if path == "/api/assets-window":
@@ -336,6 +356,15 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json_response(clear_all_logs(self.app_config))
                 return
 
+            if path == "/api/open-folder":
+                if not self._is_request_origin_allowed():
+                    self.send_json_response({"success": False, "error": "Request origin not allowed"}, 403)
+                    return
+
+                folder_path = str(data.get("path", ""))
+                self.send_json_response(open_folder_path(folder_path))
+                return
+
             if path == "/api/save-remaining-assets":
                 encoded_paths = data.get("paths", [])
                 destination_path = str(data.get("destinationPath", ""))
@@ -399,8 +428,15 @@ class Handler(BaseHTTPRequestHandler):
     def serve_asset_preview(self, rel_path: str) -> None:
         """Serve asset preview file with logging."""
         try:
-            assets_dir = self.app_config.temp_path / self.app_config.output_dir_name
-            asset_path = assets_dir / unquote(rel_path)
+            assets_dir = (self.app_config.temp_path / self.app_config.output_dir_name).resolve()
+            asset_path = (assets_dir / unquote(rel_path)).resolve()
+
+            try:
+                asset_path.relative_to(assets_dir)
+            except Exception:
+                tlog(f"[PREVIEW] Blocked invalid path: {rel_path}")
+                self.send_error(404)
+                return
 
             if not asset_path.exists() or not asset_path.is_file():
                 tlog(f"[PREVIEW] Not found: {asset_path}")

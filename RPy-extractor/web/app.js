@@ -20,6 +20,7 @@ const appState = {
   currentPreviewType: "",
   currentPreviewElement: null,
   previewCache: new Map(),
+  dependencyStatuses: [],
 };
 
 const DOM = {
@@ -33,6 +34,8 @@ const DOM = {
   gamePath: document.getElementById("gamePath"),
   choosePathBtn: document.getElementById("choosePathBtn"),
   extractBtn: document.getElementById("extractBtn"),
+  refreshDepsBtn: document.getElementById("refreshDepsBtn"),
+  dependencyStatus: document.getElementById("dependencyStatus"),
   step1Status: document.getElementById("step1Status"),
 
   step2Path: document.getElementById("step2Path"),
@@ -105,6 +108,52 @@ function setStepStatus(stepId, message, type = "info") {
   const statusEl = document.getElementById(`step${stepId}Status`);
   if (statusEl) {
     statusEl.innerHTML = `<span class="status-${type}">${escapeHtml(message)}</span>`;
+  }
+}
+
+function renderDependencyStatuses() {
+  if (!DOM.dependencyStatus) {
+    return;
+  }
+
+  if (!Array.isArray(appState.dependencyStatuses) || appState.dependencyStatuses.length === 0) {
+    DOM.dependencyStatus.innerHTML = "<div class=\"extensions-placeholder\">No dependency data available.</div>";
+    return;
+  }
+
+  DOM.dependencyStatus.innerHTML = "";
+  for (const item of appState.dependencyStatuses) {
+    const card = document.createElement("div");
+    const stateClass = item.available ? "ok" : (item.required ? "missing" : "warn");
+    card.className = `dependency-card dependency-card--${stateClass}`;
+
+    const name = document.createElement("div");
+    name.className = "dependency-card__name";
+    name.textContent = item.label || item.id || "dependency";
+
+    const meta = document.createElement("div");
+    meta.className = "dependency-card__meta";
+    meta.textContent = item.available ? "available" : (item.required ? "required missing" : "optional missing");
+
+    card.appendChild(name);
+    card.appendChild(meta);
+    DOM.dependencyStatus.appendChild(card);
+  }
+}
+
+async function syncDependencyStatuses() {
+  try {
+    const payload = await api("/api/dependencies");
+    if (!payload.success) {
+      DOM.dependencyStatus.innerHTML = "<div class=\"extensions-placeholder\">Dependency status unavailable.</div>";
+      return;
+    }
+
+    appState.dependencyStatuses = Array.isArray(payload.dependencies) ? payload.dependencies : [];
+    renderDependencyStatuses();
+    addLog(`[DEPS] Refreshed ${appState.dependencyStatuses.length} dependency checks`);
+  } catch (_err) {
+    DOM.dependencyStatus.innerHTML = "<div class=\"extensions-placeholder\">Dependency status unavailable.</div>";
   }
 }
 
@@ -661,6 +710,10 @@ DOM.extractBtn?.addEventListener("click", async () => {
   }
 });
 
+DOM.refreshDepsBtn?.addEventListener("click", async () => {
+  await syncDependencyStatuses();
+});
+
 DOM.step2BrowseBtn?.addEventListener("click", async () => {
   try {
     const assetPath = (DOM.step2Path?.value || appState.step2Path || "").trim();
@@ -1180,6 +1233,7 @@ async function initializeApp() {
     setStatus("Ready", "ok");
     addLog("[BOOT] Connected to API");
     await syncLogs();
+    await syncDependencyStatuses();
     addLog("[BOOT] Activity log sync started");
     setInterval(syncLogs, 1200);
 

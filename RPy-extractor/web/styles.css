@@ -159,6 +159,44 @@ fieldset:last-of-type {
   min-height: 20px;
 }
 
+.dependency-status-grid {
+  margin-top: 10px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+}
+
+.dependency-card {
+  border: 1px solid rgba(180, 79, 255, 0.25);
+  border-radius: 8px;
+  background: rgba(13, 9, 27, 0.85);
+  padding: 8px 10px;
+}
+
+.dependency-card__name {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 0.9rem;
+}
+
+.dependency-card__meta {
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  margin-top: 4px;
+}
+
+.dependency-card--ok {
+  border-color: rgba(57, 255, 138, 0.5);
+}
+
+.dependency-card--warn {
+  border-color: rgba(255, 193, 77, 0.5);
+}
+
+.dependency-card--missing {
+  border-color: rgba(255, 68, 102, 0.6);
+}
+
 .status-info {
   color: var(--status-info);
 }

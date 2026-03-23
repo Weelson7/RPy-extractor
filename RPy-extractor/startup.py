@@ -243,3 +243,59 @@ def startup_dependency_preflight() -> dict[str, object]:
         "uabea": uabea_ready,
         "report": report,
     }
+
+
+def dependency_status_snapshot() -> dict[str, object]:
+    """Return dependency availability without install side effects."""
+    statuses = [
+        {
+            "id": "unrpa",
+            "label": "unrpa",
+            "required": True,
+            "available": module_available("unrpa"),
+            "category": "required",
+        },
+        {
+            "id": "sevenzip",
+            "label": "7zip (7z/7za/7zr)",
+            "required": False,
+            "available": any_command_exists(("7z", "7za", "7zr")),
+            "category": "optional",
+        },
+        {
+            "id": "unrar",
+            "label": "unrar",
+            "required": False,
+            "available": command_exists("unrar"),
+            "category": "optional",
+        },
+        {
+            "id": "unitypy",
+            "label": "UnityPy",
+            "required": False,
+            "available": import_available("UnityPy"),
+            "category": "unity",
+        },
+        {
+            "id": "assetripper",
+            "label": "AssetRipper",
+            "required": False,
+            "available": any_command_exists(("AssetRipper.Console", "AssetRipper.Console.exe", "AssetRipper")),
+            "category": "unity",
+        },
+        {
+            "id": "uabea",
+            "label": "UABEA",
+            "required": False,
+            "available": any_command_exists(("UABEAvalonia", "UABEAvalonia.exe", "UABEA", "UABEA.exe", "uabea-cli")),
+            "category": "unity",
+        },
+    ]
+
+    required_ok = all(item["available"] for item in statuses if item["required"])
+
+    return {
+        "success": True,
+        "requiredOk": required_ok,
+        "dependencies": statuses,
+    }

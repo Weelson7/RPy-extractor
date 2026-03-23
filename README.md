@@ -1,6 +1,6 @@
 # RPy Extractor
 
-RPy Extractor is a local-first desktop extractor and triage tool for game assets.
+RPy Extractor is a local-first desktop extraction and triage tool for game assets.
 
 It provides a browser UI backed by a Python HTTP server and supports:
 
@@ -9,6 +9,7 @@ It provides a browser UI backed by a Python HTTP server and supports:
 - Asset-by-asset sorting and preview.
 - Trash/undo/save workflows.
 - Multi-engine routing (RenPy, Unity, generic fallback).
+- Local-first extraction + review + export workflow.
 
 This implementation is authored by Weelson and is part of the C.O.R.E. initiative.
 
@@ -166,7 +167,7 @@ GET:
 - `/api/logs`
 - `/api/open-log-dir`
 - `/api/logs/load`
-- `/api/open-folder?path=...`
+- `/api/dependencies`
 - `/api/assets-window?offset=...&limit=...`
 - `/api/assets-window-preview?path=...`
 - `/api/session`
@@ -190,6 +191,7 @@ POST:
 - `/api/sort-rename`
 - `/api/logs/clear`
 - `/api/save-remaining-assets`
+- `/api/open-folder`
 
 ## Frontend UX Summary
 
@@ -215,6 +217,47 @@ Keyboard shortcuts:
 - S: save remaining
 - T: clear trash
 - Space: media play/pause
+
+## Product Positioning
+
+RPy Extractor is designed as a workflow tool, not just an unpacker.
+
+Core value proposition:
+
+- Extract game archives and raw asset folders.
+- Triage assets quickly with keyboard-first keep/trash operations.
+- Preview and rename in-context, then export only what matters.
+
+## Quick Comparison
+
+| Capability | RPy Extractor | Typical CLI Unpacker | Engine-Specific Viewer |
+|---|---|---|---|
+| Local-first operation | Yes | Yes | Usually |
+| Multi-engine routing | Yes (RenPy + Unity + generic) | Limited | Usually no |
+| Built-in triage workflow | Yes | No | Partial |
+| Keep/trash/undo in one UI | Yes | No | Rare |
+| Sorting-window media preview | Yes | No | Varies |
+| Save remaining curated set | Yes | Manual | Varies |
+
+## Sample Datasets and Benchmark
+
+Sample datasets are included for quick sanity checks and throughput smoke tests:
+
+- `samples/datasets/renpy-mini`
+- `samples/datasets/unity-mini`
+- `samples/datasets/mixed-mini`
+
+Run benchmark from repository root:
+
+```bash
+python scripts/benchmark_extract_triage.py --datasets samples/datasets --iterations 3
+```
+
+What the benchmark reports:
+
+- Extraction throughput (`copiedFiles/second`).
+- Indexed asset count for sorting window behavior.
+- Triage operation throughput (trash/restore ops per second).
 
 ## Configuration
 

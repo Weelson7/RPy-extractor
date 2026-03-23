@@ -547,8 +547,14 @@ def get_asset_preview_url(app_config: AppConfig, encoded_path: str) -> str:
     """Get direct URL for asset preview."""
     try:
         decoded = unquote(encoded_path)
-        asset_path = assets_dir(app_config) / decoded
-        
+        out_dir = assets_dir(app_config).resolve()
+        asset_path = (out_dir / decoded).resolve()
+
+        try:
+            asset_path.relative_to(out_dir)
+        except Exception:
+            return ""
+
         if asset_path.exists() and asset_path.is_file():
             return f"/preview/{quote(decoded, safe='/')}"
         
@@ -955,9 +961,14 @@ def get_asset_preview_content(app_config: AppConfig, encoded_path: str, max_line
     Media files are served by URL. Text-like files return first max_lines lines.
     """
     try:
-        out_dir = assets_dir(app_config)
+        out_dir = assets_dir(app_config).resolve()
         decoded = unquote(encoded_path)
-        asset_path = out_dir / decoded
+        asset_path = (out_dir / decoded).resolve()
+
+        try:
+            asset_path.relative_to(out_dir)
+        except Exception:
+            return {"success": False, "error": "Invalid asset path"}
 
         if not asset_path.exists() or not asset_path.is_file():
             return {"success": False, "error": f"Asset not found: {decoded}"}

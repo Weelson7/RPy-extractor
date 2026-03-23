@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="description" content="RPy Extractor: Extract and sort RenPy game archives with ease" />
+  <meta name="description" content="RPy Extractor: Local-first extraction and asset triage for RenPy, Unity, and mixed game folders" />
   <title>RPy Extractor</title>
   <link rel="stylesheet" href="/styles.css" />
 </head>
@@ -18,7 +18,7 @@
         <img class="brand__logo" src="logo.png" alt="RPy Extractor logo" />
         <div>
           <h1>RPy Extractor</h1>
-          <p>Extract and sort RenPy game archives.</p>
+          <p>Extract, triage, and export game assets across RenPy and Unity workflows.</p>
         </div>
       </div>
       <div class="chip chip--info" id="serverState">Server booting...</div>
@@ -51,6 +51,16 @@
 
               <div class="action-group">
                 <button id="extractBtn" class="btn btn--primary" type="button">Extract Archives</button>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Dependency Status</legend>
+              <div class="action-group">
+                <button id="refreshDepsBtn" class="btn btn--ghost" type="button">Refresh Dependencies</button>
+              </div>
+              <div id="dependencyStatus" class="dependency-status-grid" aria-live="polite">
+                <div class="extensions-placeholder">Loading dependency status...</div>
               </div>
             </fieldset>
 
