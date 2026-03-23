@@ -201,6 +201,24 @@ def startup_dependency_preflight() -> dict[str, object]:
         tlog("[PREFLIGHT] ⚠ unrar not found (7zip can extract most .rar files)")
     report.append(f"[OPTIONAL] unrar: {'✓ ready' if unrar_ready else '⚠ missing (7zip can handle most .rar)'}")
 
+    # Check ffmpeg toolchain (OPTIONAL, required for media merger build)
+    tlog("[PREFLIGHT] Checking ffmpeg CLI...")
+    ffmpeg_ready = command_exists("ffmpeg")
+    ffprobe_ready = command_exists("ffprobe")
+    media_merge_ready = ffmpeg_ready and ffprobe_ready
+    if media_merge_ready:
+        tlog("[PREFLIGHT] ✓ ffmpeg and ffprobe available")
+    else:
+        missing_parts: list[str] = []
+        if not ffmpeg_ready:
+            missing_parts.append("ffmpeg")
+        if not ffprobe_ready:
+            missing_parts.append("ffprobe")
+        tlog(f"[PREFLIGHT] ⚠ Missing {'/'.join(missing_parts)} (media merger build will be unavailable)")
+    report.append(
+        f"[OPTIONAL] ffmpeg: {'✓ ready' if media_merge_ready else '⚠ missing (required for media merger build)'}"
+    )
+
     # Unity-specific tooling checks (OPTIONAL unless extracting Unity content)
     tlog("[PREFLIGHT] Checking UnityPy module for Unity extraction...")
     unitypy_ready = import_available("UnityPy")
@@ -238,6 +256,7 @@ def startup_dependency_preflight() -> dict[str, object]:
         "unrpa": unrpa_ready,
         "sevenzip": sevenzip_ready,
         "unrar": unrar_ready,
+        "ffmpeg": media_merge_ready,
         "unitypy": unitypy_ready,
         "assetripper": assetripper_ready,
         "uabea": uabea_ready,
@@ -267,6 +286,13 @@ def dependency_status_snapshot() -> dict[str, object]:
             "label": "unrar",
             "required": False,
             "available": command_exists("unrar"),
+            "category": "optional",
+        },
+        {
+            "id": "ffmpeg",
+            "label": "ffmpeg + ffprobe",
+            "required": False,
+            "available": command_exists("ffmpeg") and command_exists("ffprobe"),
             "category": "optional",
         },
         {

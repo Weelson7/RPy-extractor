@@ -14,6 +14,7 @@ const appState = {
   sortingOffset: 0,
   sortingLimit: 100,
   sortingTruncated: false,
+  sortingTotalCount: 0,
   sortingSortBy: "nameAsc",
   selectedAssetPath: "",
   selectedAssetIndex: -1,
@@ -21,6 +22,21 @@ const appState = {
   currentPreviewElement: null,
   previewCache: new Map(),
   dependencyStatuses: [],
+  mergerWorkingDir: "",
+  mergerDir: "",
+  mergerNamingPattern: "number-to-name",
+  mergerTransitionType: "diapo",
+  mergerDiapoDelay: 3,
+  mergerFadeCrossTime: 0.7,
+  mergerOverlaySound: "",
+  mergerExtensions: [],
+  mergerSelectedExts: new Set(),
+  mergerExtensionsInitialized: false,
+  mergerCandidates: [],
+  mergerSelectedCandidateNames: new Set(),
+  mergerConflictResolutions: new Map(),
+  mergerConflictDrafts: new Map(),
+  mergerCandidateLoops: new Map(),
 };
 
 const DOM = {
@@ -53,6 +69,8 @@ const DOM = {
 
   sortingWindowHeader: document.getElementById("sortingWindowHeader"),
   sortingWindowBody: document.getElementById("sortingWindowBody"),
+  mediaMergerHeader: document.getElementById("mediaMergerHeader"),
+  mediaMergerBody: document.getElementById("mediaMergerBody"),
   activityLogHeader: document.getElementById("activityLogHeader"),
   activityLogBody: document.getElementById("activityLogBody"),
   clearLogBtn: document.getElementById("clearLogBtn"),
@@ -70,6 +88,28 @@ const DOM = {
   previewFullscreenBtn: document.getElementById("previewFullscreenBtn"),
   previewSpeedSelect: document.getElementById("previewSpeedSelect"),
   previewMoreBtn: document.getElementById("previewMoreBtn"),
+
+  mergerWorkingDir: document.getElementById("mergerWorkingDir"),
+  mergerBrowseBtn: document.getElementById("mergerBrowseBtn"),
+  mergerNamingPattern: document.getElementById("mergerNamingPattern"),
+  mergerTransitionType: document.getElementById("mergerTransitionType"),
+  mergerDiapoDelayRow: document.getElementById("mergerDiapoDelayRow"),
+  mergerFadeCrossRow: document.getElementById("mergerFadeCrossRow"),
+  mergerDiapoDelay: document.getElementById("mergerDiapoDelay"),
+  mergerFadeCross: document.getElementById("mergerFadeCross"),
+  mergerOverlaySound: document.getElementById("mergerOverlaySound"),
+  mergerSelectOverlayBtn: document.getElementById("mergerSelectOverlayBtn"),
+  mergerRefreshListBtn: document.getElementById("mergerRefreshListBtn"),
+  mergerSelectAllExtBtn: document.getElementById("mergerSelectAllExtBtn"),
+  mergerSelectNoneExtBtn: document.getElementById("mergerSelectNoneExtBtn"),
+  mergerExtensionsList: document.getElementById("mergerExtensionsList"),
+  mergerCandidatesList: document.getElementById("mergerCandidatesList"),
+  mergerSelectAllCandidatesBtn: document.getElementById("mergerSelectAllCandidatesBtn"),
+  mergerSelectNoneCandidatesBtn: document.getElementById("mergerSelectNoneCandidatesBtn"),
+  mergerOutputName: document.getElementById("mergerOutputName"),
+  mergerTrashToggle: document.getElementById("mergerTrashToggle"),
+  mergerBuildBtn: document.getElementById("mergerBuildBtn"),
+  mediaMergerStatus: document.getElementById("mediaMergerStatus"),
 
   mainLog: document.getElementById("mainLog"),
   serverState: document.getElementById("serverState"),
@@ -244,22 +284,607 @@ function setupAccordionHandlers() {
 
 function openWorkspacePanel(panelName) {
   const openSorting = panelName === "sorting";
+  const openMerger = panelName === "merger";
+  const openLog = panelName === "log";
+
   DOM.sortingWindowHeader.setAttribute("aria-expanded", String(openSorting));
   DOM.sortingWindowBody.setAttribute("aria-hidden", String(!openSorting));
-  DOM.activityLogHeader.setAttribute("aria-expanded", String(!openSorting));
-  DOM.activityLogBody.setAttribute("aria-hidden", String(openSorting));
+
+  DOM.mediaMergerHeader?.setAttribute("aria-expanded", String(openMerger));
+  DOM.mediaMergerBody?.setAttribute("aria-hidden", String(!openMerger));
+
+  DOM.activityLogHeader.setAttribute("aria-expanded", String(openLog));
+  DOM.activityLogBody.setAttribute("aria-hidden", String(!openLog));
 }
 
 function setupWorkspaceAccordionHandlers() {
   DOM.sortingWindowHeader?.addEventListener("click", () => {
     const sortingOpen = DOM.sortingWindowHeader.getAttribute("aria-expanded") === "true";
-    openWorkspacePanel(sortingOpen ? "log" : "sorting");
+    openWorkspacePanel(sortingOpen ? "merger" : "sorting");
+  });
+
+  DOM.mediaMergerHeader?.addEventListener("click", () => {
+    const mergerOpen = DOM.mediaMergerHeader.getAttribute("aria-expanded") === "true";
+    openWorkspacePanel(mergerOpen ? "log" : "merger");
   });
 
   DOM.activityLogHeader?.addEventListener("click", () => {
     const logOpen = DOM.activityLogHeader.getAttribute("aria-expanded") === "true";
     openWorkspacePanel(logOpen ? "sorting" : "log");
   });
+}
+
+function setMediaMergerStatus(message, type = "info") {
+  if (!DOM.mediaMergerStatus) {
+    return;
+  }
+  DOM.mediaMergerStatus.innerHTML = `<span class="status-${type}">${escapeHtml(message)}</span>`;
+}
+
+function conflictKey(candidateName, index) {
+  return `${String(candidateName || "")}::${String(index || "")}`;
+}
+
+function getConflictOrder(candidateName, conflict) {
+  const key = conflictKey(candidateName, conflict.index);
+  const fallback = (Array.isArray(conflict.options) ? conflict.options : []).map((option) => String(option.path || "")).filter(Boolean);
+  return appState.mergerConflictDrafts.get(key)
+    || appState.mergerConflictResolutions.get(key)
+    || fallback;
+}
+
+function moveConflictItem(candidateName, index, fromIdx, toIdx) {
+  const key = conflictKey(candidateName, index);
+  const current = Array.from(appState.mergerConflictDrafts.get(key) || appState.mergerConflictResolutions.get(key) || []);
+  if (!current.length || fromIdx < 0 || fromIdx >= current.length || toIdx < 0 || toIdx >= current.length) {
+    return;
+  }
+  const [item] = current.splice(fromIdx, 1);
+  current.splice(toIdx, 0, item);
+  appState.mergerConflictDrafts.set(key, current);
+  renderMergerCandidates();
+}
+
+function ensureCandidateLoopConfig(candidateName) {
+  const key = String(candidateName || "");
+  const existing = appState.mergerCandidateLoops.get(key);
+  if (existing) {
+    return existing;
+  }
+
+  const created = {
+    entiretyTimes: 1,
+    partLoops: [{ indexes: "", times: "" }],
+  };
+  appState.mergerCandidateLoops.set(key, created);
+  return created;
+}
+
+function sanitizeLoopTimes(rawValue) {
+  const parsed = Number.parseInt(String(rawValue || "").trim(), 10);
+  if (!Number.isFinite(parsed) || parsed < 1) {
+    return 1;
+  }
+  return parsed;
+}
+
+function parseLoopIndexes(rawIndexes) {
+  const parts = String(rawIndexes || "")
+    .split(/[\s,;]+/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+  return new Set(parts);
+}
+
+function ensurePartLoopTrailingBlank(loopConfig) {
+  if (!loopConfig || !Array.isArray(loopConfig.partLoops)) {
+    return;
+  }
+  if (loopConfig.partLoops.length === 0) {
+    loopConfig.partLoops.push({ indexes: "", times: "" });
+    return;
+  }
+
+  const last = loopConfig.partLoops[loopConfig.partLoops.length - 1];
+  const hasIndexes = String(last.indexes || "").trim().length > 0;
+  const hasTimes = String(last.times || "").trim().length > 0;
+  if (hasIndexes && hasTimes) {
+    loopConfig.partLoops.push({ indexes: "", times: "" });
+  }
+}
+
+function syncMergerTransitionFields() {
+  const transition = String(DOM.mergerTransitionType?.value || "diapo");
+  const isFade = transition === "fade";
+  if (DOM.mergerDiapoDelayRow) {
+    DOM.mergerDiapoDelayRow.style.display = isFade ? "none" : "grid";
+  }
+  if (DOM.mergerFadeCrossRow) {
+    DOM.mergerFadeCrossRow.style.display = isFade ? "grid" : "none";
+  }
+}
+
+function renderMergerExtensions() {
+  if (!DOM.mergerExtensionsList) {
+    return;
+  }
+  DOM.mergerExtensionsList.innerHTML = "";
+
+  for (const item of appState.mergerExtensions) {
+    const ext = String(item.ext || "");
+    const count = Number(item.count || 0);
+
+    const label = document.createElement("label");
+    label.className = "ext-checkbox";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = appState.mergerSelectedExts.has(ext);
+    checkbox.addEventListener("change", async (event) => {
+      if (event.target.checked) {
+        appState.mergerSelectedExts.add(ext);
+      } else {
+        appState.mergerSelectedExts.delete(ext);
+      }
+      await refreshMergerCandidates();
+    });
+
+    const text = document.createElement("span");
+    text.textContent = `${ext} (${count})`;
+
+    label.appendChild(checkbox);
+    label.appendChild(text);
+    DOM.mergerExtensionsList.appendChild(label);
+  }
+
+  if (appState.mergerExtensions.length === 0) {
+    DOM.mergerExtensionsList.innerHTML = "<div class=\"extensions-placeholder\">No media extensions detected.</div>";
+  }
+}
+
+function renderMergerCandidates() {
+  if (!DOM.mergerCandidatesList) {
+    return;
+  }
+
+  DOM.mergerCandidatesList.innerHTML = "";
+  if (!Array.isArray(appState.mergerCandidates) || appState.mergerCandidates.length === 0) {
+    DOM.mergerCandidatesList.innerHTML = "<div class=\"extensions-placeholder\">No matching candidates.</div>";
+    return;
+  }
+
+  for (const candidate of appState.mergerCandidates) {
+    const name = String(candidate.name || "untitled");
+    const indexes = Array.isArray(candidate.indexes) ? candidate.indexes : [];
+    const conflicts = Array.isArray(candidate.conflicts) ? candidate.conflicts : [];
+    const loopConfig = ensureCandidateLoopConfig(name);
+    ensurePartLoopTrailingBlank(loopConfig);
+
+    const row = document.createElement("label");
+    row.className = "media-merger-candidate";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.checked = appState.mergerSelectedCandidateNames.has(name);
+    checkbox.addEventListener("change", (event) => {
+      if (event.target.checked) {
+        appState.mergerSelectedCandidateNames.add(name);
+      } else {
+        appState.mergerSelectedCandidateNames.delete(name);
+      }
+    });
+
+    const content = document.createElement("div");
+    content.className = "media-merger-candidate__content";
+    content.textContent = `name: ${name}  indexes: [${indexes.join(", ")}]`;
+
+    const body = document.createElement("div");
+    body.className = "media-merger-candidate__body";
+    body.appendChild(content);
+
+    const loopsWrap = document.createElement("div");
+    loopsWrap.className = "media-merger-loops";
+
+    const entiretyRow = document.createElement("div");
+    entiretyRow.className = "media-merger-loop-row";
+
+    const entiretyLabel = document.createElement("span");
+    entiretyLabel.className = "media-merger-loop-label";
+    entiretyLabel.textContent = "loop entirety";
+
+    const entiretyInput = document.createElement("input");
+    entiretyInput.type = "number";
+    entiretyInput.min = "1";
+    entiretyInput.step = "1";
+    entiretyInput.value = String(sanitizeLoopTimes(loopConfig.entiretyTimes));
+    entiretyInput.className = "media-merger-loop-input";
+    entiretyInput.addEventListener("input", () => {
+      loopConfig.entiretyTimes = sanitizeLoopTimes(entiretyInput.value);
+      appState.mergerCandidateLoops.set(name, loopConfig);
+    });
+
+    const entiretyTimes = document.createElement("span");
+    entiretyTimes.className = "media-merger-loop-suffix";
+    entiretyTimes.textContent = "times";
+
+    entiretyRow.appendChild(entiretyLabel);
+    entiretyRow.appendChild(entiretyInput);
+    entiretyRow.appendChild(entiretyTimes);
+    loopsWrap.appendChild(entiretyRow);
+
+    loopConfig.partLoops.forEach((partLoop, rowIndex) => {
+      const row = document.createElement("div");
+      row.className = "media-merger-loop-row";
+
+      const label = document.createElement("span");
+      label.className = "media-merger-loop-label";
+      label.textContent = "loop parts";
+
+      const indexesInput = document.createElement("input");
+      indexesInput.type = "text";
+      indexesInput.placeholder = "indexes (e.g. 00,01)";
+      indexesInput.value = String(partLoop.indexes || "");
+      indexesInput.className = "media-merger-loop-indexes";
+      indexesInput.addEventListener("input", () => {
+        partLoop.indexes = indexesInput.value;
+        ensurePartLoopTrailingBlank(loopConfig);
+        appState.mergerCandidateLoops.set(name, loopConfig);
+        if (rowIndex === loopConfig.partLoops.length - 1) {
+          renderMergerCandidates();
+        }
+      });
+
+      const timesInput = document.createElement("input");
+      timesInput.type = "number";
+      timesInput.min = "1";
+      timesInput.step = "1";
+      timesInput.placeholder = "times";
+      timesInput.value = String(partLoop.times || "");
+      timesInput.className = "media-merger-loop-input";
+      timesInput.addEventListener("input", () => {
+        partLoop.times = timesInput.value;
+        ensurePartLoopTrailingBlank(loopConfig);
+        appState.mergerCandidateLoops.set(name, loopConfig);
+        if (rowIndex === loopConfig.partLoops.length - 1) {
+          renderMergerCandidates();
+        }
+      });
+
+      const timesSuffix = document.createElement("span");
+      timesSuffix.className = "media-merger-loop-suffix";
+      timesSuffix.textContent = "times";
+
+      row.appendChild(label);
+      row.appendChild(indexesInput);
+      row.appendChild(timesInput);
+      row.appendChild(timesSuffix);
+      loopsWrap.appendChild(row);
+    });
+
+    body.appendChild(loopsWrap);
+
+    if (conflicts.length > 0) {
+      const conflictWrap = document.createElement("div");
+      conflictWrap.className = "media-merger-conflicts";
+
+      const conflictTitle = document.createElement("div");
+      conflictTitle.className = "media-merger-conflicts__title";
+      conflictTitle.textContent = `conflicts: ${conflicts.length}`;
+      conflictWrap.appendChild(conflictTitle);
+
+      for (const conflict of conflicts) {
+        const indexValue = String(conflict.index || "");
+        const order = getConflictOrder(name, conflict);
+        const optionByPath = new Map((Array.isArray(conflict.options) ? conflict.options : []).map((option) => [String(option.path || ""), option]));
+
+        const card = document.createElement("div");
+        card.className = "media-merger-conflict-card";
+
+        const heading = document.createElement("div");
+        heading.className = "media-merger-conflict-card__heading";
+        heading.textContent = `index ${indexValue}`;
+        card.appendChild(heading);
+
+        const blocks = document.createElement("div");
+        blocks.className = "media-merger-conflict-blocks";
+
+        order.forEach((path, idx) => {
+          const option = optionByPath.get(path);
+          if (!option) {
+            return;
+          }
+
+          const block = document.createElement("div");
+          block.className = "media-merger-ext-block";
+
+          const extText = document.createElement("span");
+          extText.className = "media-merger-ext-block__label";
+          extText.textContent = String(option.ext || "");
+          block.appendChild(extText);
+
+          const controls = document.createElement("div");
+          controls.className = "media-merger-ext-block__controls";
+
+          const upBtn = document.createElement("button");
+          upBtn.type = "button";
+          upBtn.className = "btn btn--ghost media-merger-mini-btn";
+          upBtn.textContent = "Up";
+          upBtn.disabled = idx === 0;
+          upBtn.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            moveConflictItem(name, indexValue, idx, idx - 1);
+          });
+
+          const downBtn = document.createElement("button");
+          downBtn.type = "button";
+          downBtn.className = "btn btn--ghost media-merger-mini-btn";
+          downBtn.textContent = "Down";
+          downBtn.disabled = idx >= order.length - 1;
+          downBtn.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            moveConflictItem(name, indexValue, idx, idx + 1);
+          });
+
+          controls.appendChild(upBtn);
+          controls.appendChild(downBtn);
+          block.appendChild(controls);
+          blocks.appendChild(block);
+        });
+
+        card.appendChild(blocks);
+
+        const resolveBtn = document.createElement("button");
+        resolveBtn.type = "button";
+        resolveBtn.className = "btn btn--secondary media-merger-resolve-btn";
+        resolveBtn.textContent = "Resolve conflict";
+        resolveBtn.addEventListener("click", (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          const key = conflictKey(name, indexValue);
+          const latestOrder = getConflictOrder(name, conflict);
+          appState.mergerConflictResolutions.set(key, Array.from(latestOrder));
+          appState.mergerConflictDrafts.delete(key);
+          setMediaMergerStatus(`Resolved conflict for ${name} index ${indexValue}`, "ok");
+          renderMergerCandidates();
+        });
+        card.appendChild(resolveBtn);
+
+        conflictWrap.appendChild(card);
+      }
+
+      body.appendChild(conflictWrap);
+    }
+
+    row.appendChild(checkbox);
+    row.appendChild(body);
+    DOM.mergerCandidatesList.appendChild(row);
+  }
+}
+
+function getSelectedMergerPaths() {
+  const selectedNames = new Set(appState.mergerSelectedCandidateNames);
+  const paths = [];
+
+  for (const candidate of appState.mergerCandidates) {
+    const name = String(candidate.name || "");
+    if (!selectedNames.has(name)) {
+      continue;
+    }
+
+    const files = Array.isArray(candidate.files) ? candidate.files : [];
+    const conflictList = Array.isArray(candidate.conflicts) ? candidate.conflicts : [];
+    const conflictByIndex = new Map(conflictList.map((conflict) => [String(conflict.index || ""), conflict]));
+    const emitted = new Set();
+    const buckets = new Map();
+    const parsedIndexByPath = new Map();
+
+    for (const file of files) {
+      const relPath = String(file.path || "").trim();
+      if (!relPath) {
+        continue;
+      }
+      const parsedIndex = String(file.parsedIndex || "").trim();
+      const bucketKey = parsedIndex || `__single__${relPath}`;
+      parsedIndexByPath.set(relPath, parsedIndex);
+      if (!buckets.has(bucketKey)) {
+        buckets.set(bucketKey, []);
+      }
+      buckets.get(bucketKey).push(relPath);
+    }
+
+    const baseCandidatePaths = [];
+
+    for (const bucketKey of buckets.keys()) {
+      const conflict = conflictByIndex.get(bucketKey);
+      const bucketPaths = buckets.get(bucketKey) || [];
+
+      if (conflict) {
+        const resolvedOrder = getConflictOrder(name, conflict).filter((path) => bucketPaths.includes(path));
+        for (const relPath of resolvedOrder) {
+          if (!emitted.has(relPath)) {
+            baseCandidatePaths.push(relPath);
+            emitted.add(relPath);
+          }
+        }
+        for (const relPath of bucketPaths) {
+          if (!emitted.has(relPath)) {
+            baseCandidatePaths.push(relPath);
+            emitted.add(relPath);
+          }
+        }
+      } else {
+        for (const relPath of bucketPaths) {
+          if (!emitted.has(relPath)) {
+            baseCandidatePaths.push(relPath);
+            emitted.add(relPath);
+          }
+        }
+      }
+    }
+
+    const loopConfig = ensureCandidateLoopConfig(name);
+    const partMultiplier = new Map();
+    const partLoopRows = Array.isArray(loopConfig.partLoops) ? loopConfig.partLoops : [];
+    for (const row of partLoopRows) {
+      const indexes = parseLoopIndexes(row.indexes);
+      const timesRaw = String(row.times || "").trim();
+      if (indexes.size === 0 || !timesRaw) {
+        continue;
+      }
+      const times = sanitizeLoopTimes(timesRaw);
+      for (const idx of indexes) {
+        partMultiplier.set(idx, times);
+      }
+    }
+
+    const expandedByPartLoops = [];
+    for (const relPath of baseCandidatePaths) {
+      const parsedIndex = String(parsedIndexByPath.get(relPath) || "");
+      const multiplier = partMultiplier.get(parsedIndex) || 1;
+      for (let i = 0; i < multiplier; i += 1) {
+        expandedByPartLoops.push(relPath);
+      }
+    }
+
+    const entiretyTimes = sanitizeLoopTimes(loopConfig.entiretyTimes);
+    for (let loopIndex = 0; loopIndex < entiretyTimes; loopIndex += 1) {
+      for (const relPath of expandedByPartLoops) {
+        paths.push(relPath);
+      }
+    }
+  }
+
+  return paths;
+}
+
+async function refreshMergerCandidates() {
+  const workingDir = String(DOM.mergerWorkingDir?.value || appState.mergerWorkingDir || "").trim();
+  const namingPattern = String(DOM.mergerNamingPattern?.value || "number-to-name");
+  const previousSelection = new Set(appState.mergerSelectedCandidateNames);
+  const shouldLoadAllByDefault = !appState.mergerExtensionsInitialized && appState.mergerSelectedExts.size === 0;
+
+  setMediaMergerStatus("Refreshing media list...", "info");
+
+  try {
+    const payload = await api("/api/media-merger/list", {
+      method: "POST",
+      body: {
+        workingDir,
+        namingPattern,
+        allowedExts: shouldLoadAllByDefault ? null : Array.from(appState.mergerSelectedExts),
+      },
+    });
+
+    if (!payload.success) {
+      setMediaMergerStatus(payload.error || "Could not list media candidates", "error");
+      return;
+    }
+
+    appState.mergerWorkingDir = String(payload.workingDir || workingDir);
+    if (DOM.mergerWorkingDir) {
+      DOM.mergerWorkingDir.value = appState.mergerWorkingDir;
+    }
+
+    appState.mergerExtensions = Array.isArray(payload.extensions) ? payload.extensions : [];
+
+    if (shouldLoadAllByDefault) {
+      appState.mergerSelectedExts = new Set(appState.mergerExtensions.map((entry) => String(entry.ext || "")));
+    } else {
+      const available = new Set(appState.mergerExtensions.map((entry) => String(entry.ext || "")));
+      appState.mergerSelectedExts = new Set(
+        Array.from(appState.mergerSelectedExts).filter((ext) => available.has(ext))
+      );
+    }
+    appState.mergerExtensionsInitialized = true;
+
+    appState.mergerCandidates = Array.isArray(payload.candidates) ? payload.candidates : [];
+
+    const validCandidateNames = new Set(appState.mergerCandidates.map((candidate) => String(candidate.name || "")));
+    for (const key of Array.from(appState.mergerCandidateLoops.keys())) {
+      if (!validCandidateNames.has(key)) {
+        appState.mergerCandidateLoops.delete(key);
+      }
+    }
+
+    const validConflictKeys = new Set();
+    for (const candidate of appState.mergerCandidates) {
+      const candidateName = String(candidate.name || "");
+      const conflicts = Array.isArray(candidate.conflicts) ? candidate.conflicts : [];
+      for (const conflict of conflicts) {
+        validConflictKeys.add(conflictKey(candidateName, String(conflict.index || "")));
+      }
+    }
+    for (const key of Array.from(appState.mergerConflictResolutions.keys())) {
+      if (!validConflictKeys.has(key)) {
+        appState.mergerConflictResolutions.delete(key);
+      }
+    }
+    for (const key of Array.from(appState.mergerConflictDrafts.keys())) {
+      if (!validConflictKeys.has(key)) {
+        appState.mergerConflictDrafts.delete(key);
+      }
+    }
+
+    const validNames = new Set(appState.mergerCandidates.map((candidate) => String(candidate.name || "")));
+    appState.mergerSelectedCandidateNames = new Set(
+      Array.from(previousSelection).filter((name) => validNames.has(name))
+    );
+
+    if (appState.mergerSelectedCandidateNames.size === 0) {
+      for (const candidate of appState.mergerCandidates) {
+        appState.mergerSelectedCandidateNames.add(String(candidate.name || ""));
+      }
+    }
+
+    renderMergerExtensions();
+    renderMergerCandidates();
+    setMediaMergerStatus(
+      `Loaded ${appState.mergerCandidates.length} candidate group(s) and ${Number(payload.fileCount || 0)} file(s)`,
+      "ok"
+    );
+  } catch (_err) {
+    setMediaMergerStatus("Failed to refresh media list", "error");
+  }
+}
+
+async function initializeMediaMerger() {
+  try {
+    const payload = await api("/api/media-merger/state");
+    if (!payload.success) {
+      setMediaMergerStatus(payload.error || "Could not initialize media merger", "error");
+      return;
+    }
+
+    appState.mergerWorkingDir = String(payload.workingDir || "");
+    appState.mergerDir = String(payload.mergerDir || "");
+    appState.mergerNamingPattern = String(payload.defaultPattern || "number-to-name");
+    appState.mergerTransitionType = String(payload.defaultTransition || "diapo");
+    appState.mergerDiapoDelay = Number(payload.defaultDiapoDelay || 3);
+    appState.mergerFadeCrossTime = Number(payload.defaultFadeCrossTime || 0.7);
+
+    if (DOM.mergerWorkingDir) {
+      DOM.mergerWorkingDir.value = appState.mergerWorkingDir;
+    }
+    if (DOM.mergerNamingPattern) {
+      DOM.mergerNamingPattern.value = appState.mergerNamingPattern;
+    }
+    if (DOM.mergerTransitionType) {
+      DOM.mergerTransitionType.value = appState.mergerTransitionType;
+    }
+    if (DOM.mergerDiapoDelay) {
+      DOM.mergerDiapoDelay.value = String(appState.mergerDiapoDelay);
+    }
+    if (DOM.mergerFadeCross) {
+      DOM.mergerFadeCross.value = String(appState.mergerFadeCrossTime);
+    }
+
+    syncMergerTransitionFields();
+    await refreshMergerCandidates();
+  } catch (_err) {
+    setMediaMergerStatus("Media merger initialization failed", "error");
+  }
 }
 
 function isTypingTarget(target) {
@@ -346,7 +971,8 @@ function updateSortingPaginationUi() {
   const count = appState.sortingAssets.length;
   const start = count > 0 ? appState.sortingOffset + 1 : 0;
   const end = appState.sortingOffset + count;
-  const totalLabel = appState.sortingTruncated ? `${end}+` : `${end}`;
+  const safeTotal = Number.isFinite(appState.sortingTotalCount) ? appState.sortingTotalCount : end;
+  const totalLabel = Math.max(end, safeTotal);
 
   if (DOM.sortingPageInfo) {
     DOM.sortingPageInfo.textContent = `${start}-${end}/${totalLabel}`;
@@ -851,6 +1477,10 @@ async function loadSortingWindowAssets() {
     appState.sortingAssets = Array.isArray(result.assets) ? result.assets : [];
     appState.sortingOffset = Number(result.offset || appState.sortingOffset || 0);
     appState.sortingTruncated = Boolean(result.truncated);
+    const parsedTotalCount = Number(result.totalCount);
+    appState.sortingTotalCount = Number.isFinite(parsedTotalCount)
+      ? parsedTotalCount
+      : appState.sortingOffset + appState.sortingAssets.length;
     applySortingToAssets();
     appState.previewCache.clear();
     syncSelectedAssetIndex();
@@ -875,6 +1505,7 @@ async function loadSortingWindowAssets() {
     }
   } catch (_err) {
     setStepStatus(3, "Failed to load assets", "error");
+    appState.sortingTotalCount = appState.sortingOffset + appState.sortingAssets.length;
     updateSortingPaginationUi();
   }
 }
@@ -1152,6 +1783,139 @@ DOM.openSortingPanelBtn?.addEventListener("click", async () => {
   await loadSortingWindowAssets();
 });
 
+DOM.mergerBrowseBtn?.addEventListener("click", async () => {
+  const initialPath = String(DOM.mergerWorkingDir?.value || "").trim();
+  const qs = initialPath ? `?initialPath=${encodeURIComponent(initialPath)}` : "";
+  try {
+    const payload = await api(`/api/browse-folder${qs}`);
+    if (!payload.success) {
+      if (!payload.cancelled) {
+        setMediaMergerStatus(payload.error || "Could not browse folder", "error");
+      }
+      return;
+    }
+
+    appState.mergerWorkingDir = payload.path;
+    DOM.mergerWorkingDir.value = payload.path;
+    await refreshMergerCandidates();
+  } catch (_err) {
+    setMediaMergerStatus("Folder browse failed", "error");
+  }
+});
+
+DOM.mergerTransitionType?.addEventListener("change", () => {
+  appState.mergerTransitionType = String(DOM.mergerTransitionType.value || "diapo");
+  syncMergerTransitionFields();
+});
+
+DOM.mergerNamingPattern?.addEventListener("change", async () => {
+  appState.mergerNamingPattern = String(DOM.mergerNamingPattern.value || "number-to-name");
+  await refreshMergerCandidates();
+});
+
+DOM.mergerSelectOverlayBtn?.addEventListener("click", async () => {
+  try {
+    const payload = await api("/api/media-merger/browse-overlay", {
+      method: "POST",
+      body: {
+        initialPath: String(DOM.mergerOverlaySound?.value || appState.mergerWorkingDir || "").trim(),
+      },
+    });
+
+    if (!payload.success) {
+      if (!payload.cancelled) {
+        setMediaMergerStatus(payload.error || "Overlay selection failed", "error");
+      }
+      return;
+    }
+
+    appState.mergerOverlaySound = String(payload.path || "");
+    DOM.mergerOverlaySound.value = appState.mergerOverlaySound;
+    setMediaMergerStatus("Overlay sound selected", "ok");
+  } catch (_err) {
+    setMediaMergerStatus("Overlay selection failed", "error");
+  }
+});
+
+DOM.mergerRefreshListBtn?.addEventListener("click", async () => {
+  await refreshMergerCandidates();
+});
+
+DOM.mergerSelectAllExtBtn?.addEventListener("click", async () => {
+  appState.mergerSelectedExts = new Set(appState.mergerExtensions.map((entry) => String(entry.ext || "")));
+  await refreshMergerCandidates();
+});
+
+DOM.mergerSelectNoneExtBtn?.addEventListener("click", async () => {
+  appState.mergerSelectedExts.clear();
+  await refreshMergerCandidates();
+});
+
+DOM.mergerSelectAllCandidatesBtn?.addEventListener("click", () => {
+  appState.mergerSelectedCandidateNames = new Set(
+    appState.mergerCandidates.map((candidate) => String(candidate.name || ""))
+  );
+  renderMergerCandidates();
+});
+
+DOM.mergerSelectNoneCandidatesBtn?.addEventListener("click", () => {
+  appState.mergerSelectedCandidateNames.clear();
+  renderMergerCandidates();
+});
+
+DOM.mergerBuildBtn?.addEventListener("click", async () => {
+  const selectedPaths = getSelectedMergerPaths();
+  if (selectedPaths.length === 0) {
+    setMediaMergerStatus("No selected media candidates", "error");
+    return;
+  }
+
+  const transitionType = String(DOM.mergerTransitionType?.value || "diapo");
+  const diapoDelay = Number(DOM.mergerDiapoDelay?.value || "3");
+  const fadeCrossTime = Number(DOM.mergerFadeCross?.value || "0.7");
+  const overlaySound = String(DOM.mergerOverlaySound?.value || "").trim();
+  const outputName = String(DOM.mergerOutputName?.value || "").trim();
+  const trashAfterBuild = Boolean(DOM.mergerTrashToggle?.checked);
+
+  DOM.mergerBuildBtn.disabled = true;
+  setMediaMergerStatus("Building merged media...", "info");
+
+  try {
+    const payload = await api("/api/media-merger/build", {
+      method: "POST",
+      body: {
+        workingDir: String(DOM.mergerWorkingDir?.value || appState.mergerWorkingDir || "").trim(),
+        selectedPaths,
+        transitionType,
+        diapoDelay,
+        fadeCrossTime,
+        overlaySound,
+        outputName,
+        trashAfterBuild,
+      },
+    });
+
+    if (!payload.success) {
+      setMediaMergerStatus(payload.error || "Media merge failed", "error");
+      return;
+    }
+
+    setMediaMergerStatus(
+      `Build complete: ${payload.outputName} (${payload.mergedCount} item(s), trashed: ${payload.trashedCount})`,
+      "ok"
+    );
+    addLog(`[MERGER] Created ${payload.outputPath}`);
+
+    if (trashAfterBuild) {
+      await refreshMergerCandidates();
+    }
+  } catch (_err) {
+    setMediaMergerStatus("Media merge failed", "error");
+  } finally {
+    DOM.mergerBuildBtn.disabled = false;
+  }
+});
+
 DOM.clearLogBtn?.addEventListener("click", async () => {
   const result = await api("/api/logs/clear", { method: "POST", body: {} });
   if (!result.success) {
@@ -1242,6 +2006,7 @@ async function initializeApp() {
     setupKeyboardShortcuts();
     openAccordion(1);
     openWorkspacePanel("sorting");
+    await initializeMediaMerger();
     addLog("[BOOT] Ready");
   } catch (err) {
     setStatus("Error", "error");

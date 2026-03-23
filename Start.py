@@ -5,7 +5,7 @@ from pathlib import Path
 
 def main() -> int:
     root = Path(__file__).resolve().parent
-    app = root / "RPy-extrcactor" / "extract.py"
+    app = root / "RPy-extractor" / "extract.py"
     
     if not app.exists():
         print(f"[ERROR] Missing app file: {app}")

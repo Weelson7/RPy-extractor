@@ -2,7 +2,7 @@
 from pathlib import Path
 from typing import Callable
 
-from extraction import extract_assets
+from extraction_core import extract_assets
 
 from .base import DetectionResult, Extractor
 

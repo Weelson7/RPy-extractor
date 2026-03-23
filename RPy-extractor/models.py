@@ -45,6 +45,7 @@ class AppConfig:
     port: int
     temp_path: Path
     output_dir_name: str
+    merger_dir: Path
     web_dir_name: str
     log_dir: Path
 

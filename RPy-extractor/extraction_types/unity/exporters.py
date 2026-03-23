@@ -4,7 +4,7 @@ import shutil
 from pathlib import Path
 from typing import Callable
 
-from extraction import run
+from extraction_core import run
 
 from .discovery import scan_unity_containers
 

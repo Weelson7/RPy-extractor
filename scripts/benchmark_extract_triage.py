@@ -15,7 +15,7 @@ from pathlib import Path
 
 
 def _configure_runtime_imports(repo_root: Path) -> None:
-    runtime_root = repo_root / "RPy-extrcactor"
+    runtime_root = repo_root / "RPy-extractor"
     if str(runtime_root) not in sys.path:
         sys.path.insert(0, str(runtime_root))
 

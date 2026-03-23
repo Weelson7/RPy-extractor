@@ -1,4 +1,4 @@
-# RPy Extractor
+﻿# RPy Extractor
 
 RPy Extractor is a local-first desktop extraction and triage tool for game assets.
 
@@ -9,315 +9,172 @@ It provides a browser UI backed by a Python HTTP server and supports:
 - Asset-by-asset sorting and preview.
 - Trash/undo/save workflows.
 - Multi-engine routing (RenPy, Unity, generic fallback).
-- Local-first extraction + review + export workflow.
-
-This implementation is authored by Weelson and is part of the C.O.R.E. initiative.
 
 ## Ownership
 
 - Author: Weelson
 - Initiative: C.O.R.E.
-- Runtime app root: RPy-extrcactor
+- Runtime app root: RPy-extractor
 
 ## High-Level Architecture
 
-Runtime layers:
+1. Launcher
+- Start.py
+- Starts the app process.
 
-1. Launcher layer
-- [Start.py](Start.py)
-- Starts the app process with logging and path setup.
+2. Server and transport
+- RPy-extractor/extract.py
+- HTTP server, static files, and route dispatch.
 
-2. Server/API layer
-- [RPy-extrcactor/extract.py](RPy-extrcactor/extract.py)
-- Hosts static UI and HTTP JSON API routes.
-- Delegates business logic to handlers.
+3. API handler domains
+- RPy-extractor/api/session_handlers.py
+- RPy-extractor/api/extraction_handlers.py
+- RPy-extractor/api/sorting_handlers.py
+- RPy-extractor/api/log_handlers.py
+- RPy-extractor/api/common.py
 
-3. Application services
-- [RPy-extrcactor/handlers.py](RPy-extrcactor/handlers.py)
-- Request-level orchestration, path validation, and response shaping.
-
-4. Extraction engine
-- [RPy-extrcactor/extraction.py](RPy-extrcactor/extraction.py)
-- Archive detection/unpack, file walk, extension grouping, and output moves.
-- Shared extraction primitives used by engine-specific strategies.
+4. Generic extraction core
+- RPy-extractor/extraction_core/runtime.py
+- RPy-extractor/extraction_core/archive.py
+- RPy-extractor/extraction_core/file_ops.py
+- RPy-extractor/extraction_core/pipeline.py
 
 5. Strategy router
-- [RPy-extrcactor/extraction_types/orchestrator.py](RPy-extrcactor/extraction_types/orchestrator.py)
-- Detects engine and dispatches to the registered extractor.
+- RPy-extractor/extraction_types/orchestrator.py
+- RPy-extractor/extraction_types/registry.py
 
-6. Extractor strategies
-- [RPy-extrcactor/extraction_types/renpy_extractor.py](RPy-extrcactor/extraction_types/renpy_extractor.py)
-- [RPy-extrcactor/extraction_types/unity_extractor.py](RPy-extrcactor/extraction_types/unity_extractor.py)
-- [RPy-extrcactor/extraction_types/registry.py](RPy-extrcactor/extraction_types/registry.py)
+6. Extractor implementations
+- RPy-extractor/extraction_types/renpy_extractor.py
+- RPy-extractor/extraction_types/unity_extractor.py
 
-7. Unity tooling module
-- [RPy-extrcactor/extraction_types/unity/discovery.py](RPy-extrcactor/extraction_types/unity/discovery.py)
-- [RPy-extrcactor/extraction_types/unity/exporters.py](RPy-extrcactor/extraction_types/unity/exporters.py)
-- [RPy-extrcactor/extraction_types/unity/manifest.py](RPy-extrcactor/extraction_types/unity/manifest.py)
-- [RPy-extrcactor/extraction_types/unity/verify.py](RPy-extrcactor/extraction_types/unity/verify.py)
+7. Unity internals
+- RPy-extractor/extraction_types/unity/discovery.py
+- RPy-extractor/extraction_types/unity/exporters.py
+- RPy-extractor/extraction_types/unity/manifest.py
+- RPy-extractor/extraction_types/unity/verify.py
+- RPy-extractor/extraction_types/unity/phases/discovery_phase.py
+- RPy-extractor/extraction_types/unity/phases/export_phase.py
+- RPy-extractor/extraction_types/unity/phases/verification_phase.py
+- RPy-extractor/extraction_types/unity/phases/manifest_phase.py
 
 8. Frontend
-- [RPy-extrcactor/web/index.html](RPy-extrcactor/web/index.html)
-- [RPy-extrcactor/web/app.js](RPy-extrcactor/web/app.js)
-- [RPy-extrcactor/web/styles.css](RPy-extrcactor/web/styles.css)
+- RPy-extractor/web/index.html
+- RPy-extractor/web/app.js
+- RPy-extractor/web/styles.css
 
-9. Core models/config/logging
-- [RPy-extrcactor/models.py](RPy-extrcactor/models.py)
-- [RPy-extrcactor/startup.py](RPy-extrcactor/startup.py)
-- [RPy-extrcactor/logging_utils.py](RPy-extrcactor/logging_utils.py)
+9. Media merger module
+- RPy-extractor/media_merger/service.py
+- RPy-extractor/api/media_merger_handlers.py
 
-## Streamlined Module Responsibilities
+10. Core models and startup
+- RPy-extractor/models.py
+- RPy-extractor/startup.py
+- RPy-extractor/logging_utils.py
 
-This repo is now organized by responsibility boundaries:
+## Current Responsibility Boundaries
 
-- [RPy-extrcactor/extract.py](RPy-extrcactor/extract.py)
-Purpose: protocol and route wiring only.
-
-- [RPy-extrcactor/handlers.py](RPy-extrcactor/handlers.py)
-Purpose: endpoint business logic and request validation.
-
-- [RPy-extrcactor/extraction.py](RPy-extrcactor/extraction.py)
-Purpose: generic archive/file extraction utilities, independent of UI.
-
-- [RPy-extrcactor/extraction_types/unity_extractor.py](RPy-extrcactor/extraction_types/unity_extractor.py)
-Purpose: Unity flow orchestration only (discovery, exporter calls, manifests, verification).
-
-- [RPy-extrcactor/extraction_types/unity/exporters.py](RPy-extrcactor/extraction_types/unity/exporters.py)
-Purpose: Unity tooling integration and export backends:
-  - UnityPy export path.
-  - External tool adapters (AssetRipper/UABEA).
-
-- [RPy-extrcactor/startup.py](RPy-extrcactor/startup.py)
-Purpose: startup dependency preflight checks and best-effort installers.
-
-## Dependency Preflight
-
-Startup preflight is executed before server start in [RPy-extrcactor/extract.py](RPy-extrcactor/extract.py).
-
-Required:
-
-- `unrpa` Python module.
-
-Optional (recommended):
-
-- `7z`/`7za`/`7zr`.
-- `unrar`.
-- `UnityPy` Python module (for native Unity object export).
-- `AssetRipper` CLI (fallback/expanded Unity extraction path).
-- `UABEA` CLI (fallback/advanced Unity handling path).
-
-Implementation:
-
-- [RPy-extrcactor/startup.py](RPy-extrcactor/startup.py)
-
-## Archive Support
-
-Archive suffixes and extraction support live in [RPy-extrcactor/models.py](RPy-extrcactor/models.py) and [RPy-extrcactor/extraction.py](RPy-extrcactor/extraction.py).
-
-Supported archive inputs include:
-
-- `.rpa`
-- `.zip`
-- `.tar`
-- `.tar.gz` / `.tgz`
-- `.tar.bz2` / `.tbz` / `.tbz2`
-- `.tar.xz` / `.txz`
-- `.7z`
-- `.rar`
-- `.unitypackage`
-
-Notes:
-
-- `.unitypackage` is handled as a gzipped tar archive.
-- `.7z` and `.rar` rely on external tools where needed.
-
-## Unity Extraction Pipeline
-
-Primary flow:
-
-1. Detect Unity project markers.
-2. Build discovery index of Unity containers.
-3. Export assets with UnityPy when available.
-4. Attempt fallback exports via AssetRipper/UABEA if available.
-5. Run core generic extraction flow for archive/file traversal.
-6. Emit manifests and completeness reports.
-
-Key files:
-
-- [RPy-extrcactor/extraction_types/unity_extractor.py](RPy-extrcactor/extraction_types/unity_extractor.py)
-- [RPy-extrcactor/extraction_types/unity/discovery.py](RPy-extrcactor/extraction_types/unity/discovery.py)
-- [RPy-extrcactor/extraction_types/unity/exporters.py](RPy-extrcactor/extraction_types/unity/exporters.py)
-- [RPy-extrcactor/extraction_types/unity/verify.py](RPy-extrcactor/extraction_types/unity/verify.py)
-
-Current UnityPy export targets:
-
-- Images (`Texture2D`, `Sprite`) to `.png`.
-- Audio (`AudioClip`) to sample-provided extension or fallback bytes.
-- Text (`TextAsset`) to `.txt`.
-- Mesh (`Mesh`) to `.obj` when supported by object exporter.
-
-## API Reference (Current)
-
-GET:
-
-- `/api/state`
-- `/api/status`
-- `/api/extensions`
-- `/api/detected-extensions`
-- `/api/logs`
-- `/api/open-log-dir`
-- `/api/logs/load`
-- `/api/dependencies`
-- `/api/assets-window?offset=...&limit=...`
-- `/api/assets-window-preview?path=...`
-- `/api/session`
-- `/api/browse-folder`
-- `/preview/...`
-
-POST:
-
-- `/api/extract`
-- `/api/scan`
-- `/api/keep-selected`
-- `/api/trash`
-- `/api/restore`
-- `/api/delete`
-- `/api/clear-trash`
-- `/api/resume`
-- `/api/assets-preview`
-- `/api/sort-keep`
-- `/api/sort-trash`
-- `/api/sort-undo`
-- `/api/sort-rename`
-- `/api/logs/clear`
-- `/api/save-remaining-assets`
-- `/api/open-folder`
-
-## Frontend UX Summary
-
-Three-step accordion flow:
-
-1. Extract game archives.
-2. Scan and select extensions.
-3. Continue in sorting window.
-
-Sorting window highlights:
-
-- Fast list navigation and media preview.
-- Keep/trash/undo operations.
-- In-place rename of selected file name with Enter-to-apply.
-- Local-state interaction optimizations to reduce latency after actions.
-
-Keyboard shortcuts:
-
-- Up/Down: navigate
-- Right: keep
-- Left: trash
-- Ctrl+Z: undo
-- S: save remaining
-- T: clear trash
-- Space: media play/pause
-
-## Product Positioning
-
-RPy Extractor is designed as a workflow tool, not just an unpacker.
-
-Core value proposition:
-
-- Extract game archives and raw asset folders.
-- Triage assets quickly with keyboard-first keep/trash operations.
-- Preview and rename in-context, then export only what matters.
-
-## Quick Comparison
-
-| Capability | RPy Extractor | Typical CLI Unpacker | Engine-Specific Viewer |
-|---|---|---|---|
-| Local-first operation | Yes | Yes | Usually |
-| Multi-engine routing | Yes (RenPy + Unity + generic) | Limited | Usually no |
-| Built-in triage workflow | Yes | No | Partial |
-| Keep/trash/undo in one UI | Yes | No | Rare |
-| Sorting-window media preview | Yes | No | Varies |
-| Save remaining curated set | Yes | Manual | Varies |
-
-## Sample Datasets and Benchmark
-
-Sample datasets are included for quick sanity checks and throughput smoke tests:
-
-- `samples/datasets/renpy-mini`
-- `samples/datasets/unity-mini`
-- `samples/datasets/mixed-mini`
-
-Run benchmark from repository root:
-
-```bash
-python scripts/benchmark_extract_triage.py --datasets samples/datasets --iterations 3
-```
-
-What the benchmark reports:
-
-- Extraction throughput (`copiedFiles/second`).
-- Indexed asset count for sorting window behavior.
-- Triage operation throughput (trash/restore ops per second).
+- extract.py: protocol and route dispatch only.
+- api/*_handlers.py: endpoint logic grouped by domain.
+- extraction_core/*: archive and file extraction primitives.
+- unity_extractor.py: Unity pipeline coordinator only.
+- unity/phases/*: Unity phase implementation details.
+- media_merger/service.py: candidate grouping and ffmpeg merge orchestration.
+- api/media_merger_handlers.py: media merger workspace endpoints.
 
 ## Configuration
 
-Config file:
+Runtime config is loaded from RPy-extractor/config.json.
 
-- [RPy-extrcactor/config.json](RPy-extrcactor/config.json)
+Required keys:
+- host
+- port
+- tempPath
+- outputDir
+- mergerDir
+- webDir
+- logDir
 
-Fields:
+`mergerDir` is the output folder for merged media files built from the Media Merger workspace panel.
 
-- `host`
-- `port`
-- `tempPath`
-- `outputDir`
-- `webDir`
-- `logDir`
+## Dependency Preflight
 
-Rules:
+Startup preflight runs before server start in RPy-extractor/extract.py.
 
-- Relative paths are resolved from `RPy-extrcactor`.
-- Log directory is created automatically.
+Required:
+- unrpa Python module.
 
-## Run Instructions
+Optional:
+- 7z/7za/7zr
+- unrar
+- UnityPy
+- AssetRipper CLI
+- UABEA CLI
 
-From repository root:
+Implementation:
+- RPy-extractor/startup.py
 
-1. Ensure Python 3.10+ is installed.
-2. Start app:
+## Archive Support
 
-```bash
-python Start.py
-```
+Archive suffixes are defined in RPy-extractor/models.py.
+Extraction logic is in RPy-extractor/extraction_core/archive.py and RPy-extractor/extraction_core/pipeline.py.
 
-3. Open configured URL (default `http://127.0.0.1:8080`).
+Supported inputs:
+- .rpa
+- .zip
+- .tar
+- .tar.gz / .tgz
+- .tar.bz2 / .tbz / .tbz2
+- .tar.xz / .txz
+- .7z
+- .rar
+- .unitypackage
 
-## Development Guidelines
+## Unity Pipeline
 
-- Keep protocol wiring in [RPy-extrcactor/extract.py](RPy-extrcactor/extract.py), not in strategy modules.
-- Keep Unity tool invocation details in [RPy-extrcactor/extraction_types/unity/exporters.py](RPy-extrcactor/extraction_types/unity/exporters.py).
-- Keep startup dependency behavior in [RPy-extrcactor/startup.py](RPy-extrcactor/startup.py).
-- Prefer additive extractor strategies over branching endpoint logic.
+1. Discovery phase builds a container index.
+2. Export phase runs UnityPy and optional external fallbacks.
+3. Core extraction phase runs generic archive/file traversal.
+4. Verification phase computes completeness and quality gate.
+5. Manifest phase writes metadata and summaries.
 
-## Troubleshooting
+Coordinator:
+- RPy-extractor/extraction_types/unity_extractor.py
 
-1. Startup exits before server boot
-- Check terminal preflight output.
-- Validate Python executable and pip availability.
+## API Reference
 
-2. Unity extraction reports missing UnityPy
-- Install manually: `python -m pip install UnityPy`
-- Re-launch app to rerun preflight.
+GET:
+- /api/state
+- /api/status
+- /api/extensions
+- /api/detected-extensions
+- /api/logs
+- /api/open-log-dir
+- /api/logs/load
+- /api/dependencies
+- /api/assets-window?offset=...&limit=...
+- /api/assets-window-preview?path=...
+- /api/session
+- /api/browse-folder
+- /api/media-merger/state
+- /preview/...
 
-3. AssetRipper/UABEA not detected
-- Ensure executables are in PATH.
-- Use exact CLI binary names or add a wrapper script in PATH.
-
-4. Archive extraction failures
-- Install/verify 7zip and unrar.
-- Confirm source files are not locked by another process.
-
-## License
-
-No repository license file is currently present.
-Default assumption remains all rights reserved unless stated otherwise by the author.
+POST:
+- /api/extract
+- /api/scan
+- /api/keep-selected
+- /api/trash
+- /api/restore
+- /api/delete
+- /api/clear-trash
+- /api/resume
+- /api/assets-preview
+- /api/sort-keep
+- /api/sort-trash
+- /api/sort-undo
+- /api/sort-rename
+- /api/logs/clear
+- /api/save-remaining-assets
+- /api/open-folder
+- /api/media-merger/list
+- /api/media-merger/build
+- /api/media-merger/browse-overlay

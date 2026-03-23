@@ -34,12 +34,12 @@ Thumbs.db
 
 # Logs and runtime artifacts
 *.log
-RPy-extrcactor/logs/
+RPy-extractor/logs/
 
 # Extractor-generated working/output directories
-RPy-extrcactor/tmp/
-RPy-extrcactor/assets/
-RPy-extrcactor/.trash*/
+RPy-extractor/tmp/
+RPy-extractor/assets/
+RPy-extractor/.trash*/
 
 # User-local session output (if created outside app folder)
 tmp/

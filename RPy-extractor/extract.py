@@ -3,20 +3,17 @@ import json
 import mimetypes
 import os
 import sys
-import tempfile
-import threading
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
 from logging_utils import configure_log_directory
 
 # Import all modular components
 from models import AppConfig, SESSIONS
 from startup import startup_dependency_preflight, dependency_status_snapshot, tlog
-from handlers import (
-    get_initial_state,
+from api.extraction_handlers import (
     extract_repo,
     scan_extensions,
     get_extensions_list,
@@ -26,8 +23,9 @@ from handlers import (
     restore_from_trash_endpoint,
     delete_from_trash_endpoint,
     clear_trash_endpoint,
+)
+from api.sorting_handlers import (
     get_assets_for_preview,
-    get_asset_preview_url,
     list_assets_for_sorting_window,
     get_asset_preview_content,
     sort_keep_asset,
@@ -35,14 +33,25 @@ from handlers import (
     sort_undo_last_action,
     sort_rename_asset,
     save_remaining_assets,
+)
+from api.log_handlers import (
     list_all_logs,
     clear_all_logs,
     load_log_file_entries,
     open_log_dir,
     open_folder_path,
+)
+from api.session_handlers import (
+    get_initial_state,
     get_session_state,
     resume_session,
     browse_folder,
+)
+from api.media_merger_handlers import (
+    get_media_merger_state,
+    browse_overlay_sound,
+    list_media_merger_candidates,
+    build_media_merger_output,
 )
 
 
@@ -79,6 +88,14 @@ def get_app_config() -> AppConfig:
     output_raw = str(cfg.get("outputDir", "./assets"))
     output_dir_name = Path(output_raw).name or "assets"
 
+    # Resolve merger output directory
+    merger_raw = str(cfg.get("mergerDir", "./tmp/merged-media"))
+    merger_dir_path = Path(merger_raw)
+    if not merger_dir_path.is_absolute():
+        merger_dir_path = root / merger_dir_path
+    merger_dir_path.mkdir(parents=True, exist_ok=True)
+    tlog(f"[CONFIG] Merger output directory: {merger_dir_path}")
+
     # Resolve web directory
     web_raw = str(cfg.get("webDir", "web"))
     web_dir_path = Path(web_raw)
@@ -100,6 +117,7 @@ def get_app_config() -> AppConfig:
         port=port,
         temp_path=temp_path,
         output_dir_name=output_dir_name,
+        merger_dir=merger_dir_path,
         web_dir_name=str(web_dir_path),
         log_dir=log_dir_path,
     )
@@ -116,10 +134,93 @@ class Handler(BaseHTTPRequestHandler):
     """HTTP request handler."""
 
     app_config: Any = None
-    
-    # Route handlers mapping for cleaner dispatch
-    GET_ROUTES: dict[str, Callable[[], Any]] = {}
-    POST_ROUTES: dict[str, Callable[[dict], Any]] = {}
+
+    @staticmethod
+    def _safe_int(raw: str, default: int) -> int:
+        """Parse int query parameter with fallback."""
+        try:
+            return int(raw)
+        except Exception:
+            return default
+
+    def _build_get_routes(self, query: dict[str, list[str]]) -> dict[str, Any]:
+        """Build GET route handlers."""
+        offset = self._safe_int(query.get("offset", ["0"])[0], 0)
+        limit = self._safe_int(query.get("limit", ["100"])[0], 100)
+        encoded_path = query.get("path", [""])[0]
+        initial_path = query.get("initialPath", [""])[0]
+
+        return {
+            "/api/state": lambda: get_initial_state(self.app_config),
+            "/api/status": lambda: get_sort_status(self.app_config),
+            "/api/extensions": lambda: get_extensions_list(self.app_config),
+            "/api/detected-extensions": lambda: scan_extensions(self.app_config),
+            "/api/logs": lambda: list_all_logs(self.app_config),
+            "/api/open-log-dir": lambda: open_log_dir(self.app_config),
+            "/api/logs/load": lambda: load_log_file_entries(self.app_config),
+            "/api/dependencies": dependency_status_snapshot,
+            "/api/open-folder": lambda: ({"success": False, "error": "Use POST for this endpoint"}, 405),
+            "/api/assets-window": lambda: list_assets_for_sorting_window(self.app_config, max_assets=limit, offset=offset),
+            "/api/assets-window-preview": lambda: get_asset_preview_content(self.app_config, encoded_path),
+            "/api/session": lambda: get_session_state(self.app_config),
+            "/api/browse-folder": lambda: browse_folder(initial_path),
+            "/api/media-merger/state": lambda: get_media_merger_state(self.app_config),
+        }
+
+    def _build_post_routes(self, data: dict[str, Any]) -> dict[str, Any]:
+        """Build POST route handlers."""
+        game_path = str(data.get("gamePath", ""))
+        selected_exts = data.get("selectedExts", None)
+        extraction_type = data.get("extractionType", None)
+        asset_path = data.get("assetPath", None)
+        ext_folder = str(data.get("folder", ""))
+        encoded_path = str(data.get("path", ""))
+        new_name = str(data.get("newName", ""))
+        destination_path = str(data.get("destinationPath", ""))
+        encoded_paths = data.get("paths", [])
+        if not isinstance(encoded_paths, list):
+            encoded_paths = []
+
+        merger_working_dir = str(data.get("workingDir", ""))
+        naming_pattern = str(data.get("namingPattern", "number-to-name")).strip().lower()
+        if naming_pattern not in {"number-to-name", "name-to-number"}:
+            naming_pattern = "number-to-name"
+        allowed_exts = data.get("allowedExts", None)
+        if not isinstance(allowed_exts, list):
+            allowed_exts = None
+
+        return {
+            "/api/extract": lambda: extract_repo(
+                game_path,
+                self.app_config,
+                selected_exts,
+                extraction_type,
+                self.progress_callback,
+            ),
+            "/api/scan": lambda: scan_extensions(self.app_config, asset_path, self.progress_callback),
+            "/api/keep-selected": lambda: keep_selected(self.app_config, selected_exts if isinstance(selected_exts, list) else [], self.progress_callback),
+            "/api/trash": lambda: move_to_trash_endpoint(self.app_config, ext_folder, self.progress_callback),
+            "/api/restore": lambda: restore_from_trash_endpoint(self.app_config, ext_folder, self.progress_callback),
+            "/api/delete": lambda: delete_from_trash_endpoint(self.app_config, ext_folder, self.progress_callback),
+            "/api/clear-trash": lambda: clear_trash_endpoint(self.app_config, self.progress_callback),
+            "/api/resume": lambda: resume_session(self.app_config, game_path),
+            "/api/assets-preview": lambda: get_assets_for_preview(self.app_config, ext_folder),
+            "/api/sort-keep": lambda: sort_keep_asset(self.app_config, encoded_path),
+            "/api/sort-trash": lambda: sort_trash_asset(self.app_config, encoded_path),
+            "/api/sort-undo": lambda: sort_undo_last_action(self.app_config),
+            "/api/sort-rename": lambda: sort_rename_asset(self.app_config, encoded_path, new_name),
+            "/api/logs/clear": lambda: clear_all_logs(self.app_config),
+            "/api/open-folder": lambda: open_folder_path(str(data.get("path", ""))),
+            "/api/save-remaining-assets": lambda: save_remaining_assets(self.app_config, encoded_paths, destination_path),
+            "/api/media-merger/list": lambda: list_media_merger_candidates(
+                self.app_config,
+                merger_working_dir,
+                naming_pattern,
+                allowed_exts,
+            ),
+            "/api/media-merger/build": lambda: build_media_merger_output(self.app_config, data),
+            "/api/media-merger/browse-overlay": lambda: browse_overlay_sound(str(data.get("initialPath", ""))),
+        }
 
     def log_message(self, format: str, *args: Any) -> None:
         """Override logging to use tlog with verbose routing info."""
@@ -153,77 +254,20 @@ class Handler(BaseHTTPRequestHandler):
         if path != "/api/logs":
             tlog(f"[GET] Route: {path}")
 
-        # ---- API Routes ----
         try:
-            if path == "/api/state":
-                self.send_json_response(get_initial_state(self.app_config))
-                return
-
-            if path == "/api/status":
-                self.send_json_response(get_sort_status(self.app_config))
-                return
-
-            if path == "/api/extensions":
-                self.send_json_response(get_extensions_list(self.app_config))
-                return
-
-            if path == "/api/detected-extensions":
-                result = scan_extensions(self.app_config)
-                self.send_json_response(result)
-                return
-
-            if path == "/api/logs":
-                logs = list_all_logs(self.app_config)
-                self.send_json_response(logs)
-                return
-
-            if path == "/api/open-log-dir":
-                self.send_json_response(open_log_dir(self.app_config))
-                return
-
-            if path == "/api/logs/load":
-                self.send_json_response(load_log_file_entries(self.app_config))
-                return
-
-            if path == "/api/dependencies":
-                self.send_json_response(dependency_status_snapshot())
-                return
-
-            if path == "/api/open-folder":
-                self.send_json_response({"success": False, "error": "Use POST for this endpoint"}, 405)
-                return
-
-            if path == "/api/assets-window":
-                offset_raw = query.get("offset", ["0"])[0]
-                limit_raw = query.get("limit", ["100"])[0]
-                try:
-                    offset = int(offset_raw)
-                except Exception:
-                    offset = 0
-                try:
-                    limit = int(limit_raw)
-                except Exception:
-                    limit = 100
-                self.send_json_response(list_assets_for_sorting_window(self.app_config, max_assets=limit, offset=offset))
-                return
-
-            if path == "/api/assets-window-preview":
-                encoded_path = query.get("path", [""])[0]
-                self.send_json_response(get_asset_preview_content(self.app_config, encoded_path))
-                return
-
-            if path == "/api/session":
-                self.send_json_response(get_session_state(self.app_config))
-                return
-
-            if path == "/api/browse-folder":
-                initial_path = query.get("initialPath", [""])[0]
-                self.send_json_response(browse_folder(initial_path))
-                return
-
             if path.startswith("/preview/"):
                 rel_path = path[len("/preview/"):]
                 self.serve_asset_preview(rel_path)
+                return
+
+            route_handler = self._build_get_routes(query).get(path)
+            if route_handler:
+                payload = route_handler()
+                if isinstance(payload, tuple):
+                    data, status = payload
+                    self.send_json_response(data, int(status))
+                else:
+                    self.send_json_response(payload)
                 return
 
         except Exception as exc:
@@ -270,107 +314,13 @@ class Handler(BaseHTTPRequestHandler):
         tlog(f"[POST] Route: {path}")
 
         try:
-            # ---- API Routes ----
-            if path == "/api/extract":
-                game_path = data.get("gamePath", "")
-                selected_exts = data.get("selectedExts", None)
-                extraction_type = data.get("extractionType", None)
-                result = extract_repo(
-                    game_path,
-                    self.app_config,
-                    selected_exts,
-                    extraction_type,
-                    self.progress_callback,
-                )
-                self.send_json_response(result)
+            if path == "/api/open-folder" and not self._is_request_origin_allowed():
+                self.send_json_response({"success": False, "error": "Request origin not allowed"}, 403)
                 return
 
-            if path == "/api/scan":
-                asset_path = data.get("assetPath", None)
-                result = scan_extensions(self.app_config, asset_path, self.progress_callback)
-                self.send_json_response(result)
-                return
-
-            if path == "/api/keep-selected":
-                selected_exts = data.get("selectedExts", [])
-                result = keep_selected(self.app_config, selected_exts, self.progress_callback)
-                self.send_json_response(result)
-                return
-
-            if path == "/api/trash":
-                ext_folder = data.get("folder", "")
-                result = move_to_trash_endpoint(self.app_config, ext_folder, self.progress_callback)
-                self.send_json_response(result)
-                return
-
-            if path == "/api/restore":
-                ext_folder = data.get("folder", "")
-                result = restore_from_trash_endpoint(self.app_config, ext_folder, self.progress_callback)
-                self.send_json_response(result)
-                return
-
-            if path == "/api/delete":
-                ext_folder = data.get("folder", "")
-                result = delete_from_trash_endpoint(self.app_config, ext_folder, self.progress_callback)
-                self.send_json_response(result)
-                return
-
-            if path == "/api/clear-trash":
-                result = clear_trash_endpoint(self.app_config, self.progress_callback)
-                self.send_json_response(result)
-                return
-
-            if path == "/api/resume":
-                game_path = data.get("gamePath", "")
-                result = resume_session(self.app_config, game_path)
-                self.send_json_response(result)
-                return
-
-            if path == "/api/assets-preview":
-                ext_folder = data.get("folder", "")
-                result = get_assets_for_preview(self.app_config, ext_folder)
-                self.send_json_response(result)
-                return
-
-            if path == "/api/sort-keep":
-                encoded_path = str(data.get("path", ""))
-                self.send_json_response(sort_keep_asset(self.app_config, encoded_path))
-                return
-
-            if path == "/api/sort-trash":
-                encoded_path = str(data.get("path", ""))
-                self.send_json_response(sort_trash_asset(self.app_config, encoded_path))
-                return
-
-            if path == "/api/sort-undo":
-                self.send_json_response(sort_undo_last_action(self.app_config))
-                return
-
-            if path == "/api/sort-rename":
-                encoded_path = str(data.get("path", ""))
-                new_name = str(data.get("newName", ""))
-                self.send_json_response(sort_rename_asset(self.app_config, encoded_path, new_name))
-                return
-
-            if path == "/api/logs/clear":
-                self.send_json_response(clear_all_logs(self.app_config))
-                return
-
-            if path == "/api/open-folder":
-                if not self._is_request_origin_allowed():
-                    self.send_json_response({"success": False, "error": "Request origin not allowed"}, 403)
-                    return
-
-                folder_path = str(data.get("path", ""))
-                self.send_json_response(open_folder_path(folder_path))
-                return
-
-            if path == "/api/save-remaining-assets":
-                encoded_paths = data.get("paths", [])
-                destination_path = str(data.get("destinationPath", ""))
-                if not isinstance(encoded_paths, list):
-                    encoded_paths = []
-                self.send_json_response(save_remaining_assets(self.app_config, encoded_paths, destination_path))
+            route_handler = self._build_post_routes(data).get(path)
+            if route_handler:
+                self.send_json_response(route_handler())
                 return
 
             tlog(f"[404] POST route not found: {path}")
