@@ -188,6 +188,8 @@ class Handler(BaseHTTPRequestHandler):
         allowed_exts = data.get("allowedExts", None)
         if not isinstance(allowed_exts, list):
             allowed_exts = None
+        merger_offset = self._safe_int(str(data.get("offset", 0)), 0)
+        merger_limit = self._safe_int(str(data.get("limit", 120)), 120)
 
         return {
             "/api/extract": lambda: extract_repo(
@@ -217,6 +219,8 @@ class Handler(BaseHTTPRequestHandler):
                 merger_working_dir,
                 naming_pattern,
                 allowed_exts,
+                merger_offset,
+                merger_limit,
             ),
             "/api/media-merger/build": lambda: build_media_merger_output(self.app_config, data),
             "/api/media-merger/browse-overlay": lambda: browse_overlay_sound(str(data.get("initialPath", ""))),

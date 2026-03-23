@@ -3,7 +3,7 @@
   "port": 8081,
   "tempPath": "./tmp",
   "outputDir": "./assets",
-  "mergerDir": "./tmp/merged-media",
+  "mergerDir": "./merged-media",
   "webDir": "web",
   "logDir": "./logs"
 }

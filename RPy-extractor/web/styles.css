@@ -538,6 +538,23 @@ fieldset:last-of-type {
   font-size: 0.73rem;
 }
 
+.media-merger-loop-add-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.media-merger-plus-btn {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 999px;
+  line-height: 1;
+  font-size: 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 @media (max-width: 780px) {
   .media-merger-loop-row {
     grid-template-columns: 1fr;
@@ -1020,13 +1037,13 @@ input[type="text"]:focus {
   padding: 9px 12px;
   font-weight: 600;
   cursor: pointer;
-  transition: border-color 140ms, transform 140ms, box-shadow 140ms;
+  transition: border-color 70ms linear, transform 70ms linear, box-shadow 70ms linear;
 }
 
 .btn:hover {
   border-color: var(--accent-neon);
-  box-shadow: var(--shadow-neon);
-  transform: translateY(-1px);
+  box-shadow: 0 0 8px rgba(180, 79, 255, 0.2);
+  transform: translateY(0);
 }
 
 .btn:disabled {

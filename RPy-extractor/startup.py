@@ -87,13 +87,15 @@ def ensure_unitypy() -> bool:
     return result
 
 
-def _check_7zip_installed() -> bool:
-    """Check if 7zip is installed, including common Windows paths with verbose logging."""
+def _check_7zip_installed(verbose: bool = True) -> bool:
+    """Check if 7zip is installed, including common Windows paths."""
     if any_command_exists(("7z", "7za", "7zr")):
-        tlog("[7ZIP] ✓ Found 7zip in PATH")
+        if verbose:
+            tlog("[7ZIP] ✓ Found 7zip in PATH")
         return True
     
-    tlog("[7ZIP] Searching common installation paths...")
+    if verbose:
+        tlog("[7ZIP] Searching common installation paths...")
     common_paths = [
         Path("C:/Program Files/7-Zip"),
         Path("C:/Program Files (x86)/7-Zip"),
@@ -108,10 +110,12 @@ def _check_7zip_installed() -> bool:
         for exe in ("7z.exe", "7za.exe", "7zr.exe"):
             exe_path = base_path / exe
             if exe_path.exists():
-                tlog(f"[7ZIP] ✓ Found 7zip at: {exe_path}")
+                if verbose:
+                    tlog(f"[7ZIP] ✓ Found 7zip at: {exe_path}")
                 return True
     
-    tlog("[7ZIP] 7zip not found in common paths")
+    if verbose:
+        tlog("[7ZIP] 7zip not found in common paths")
     return False
 
 
@@ -119,7 +123,7 @@ def install_7zip_best_effort() -> bool:
     """Attempt to install 7zip via winget/choco/scoop with detailed logging."""
     tlog("[7ZIP] ✓ Verifying 7zip installation...")
     
-    if _check_7zip_installed():
+    if _check_7zip_installed(verbose=True):
         tlog("[7ZIP] ✓ 7zip is available")
         return True
     
@@ -148,11 +152,11 @@ def install_7zip_best_effort() -> bool:
         if output:
             tlog(f"[7ZIP] {installer_name} output: {output.split(chr(10))[0]}")
         
-        if _check_7zip_installed():
+        if _check_7zip_installed(verbose=True):
             tlog(f"[7ZIP] ✓ 7zip confirmed available after {installer_name}")
             return True
     
-    result = _check_7zip_installed()
+    result = _check_7zip_installed(verbose=True)
     if result:
         tlog("[7ZIP] ✓ 7zip is now available")
     else:
@@ -278,7 +282,7 @@ def dependency_status_snapshot() -> dict[str, object]:
             "id": "sevenzip",
             "label": "7zip (7z/7za/7zr)",
             "required": False,
-            "available": any_command_exists(("7z", "7za", "7zr")),
+            "available": _check_7zip_installed(verbose=False),
             "category": "optional",
         },
         {
