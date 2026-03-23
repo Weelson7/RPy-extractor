@@ -2070,11 +2070,23 @@ DOM.mergerBuildBtn?.addEventListener("click", async () => {
       return;
     }
 
+    if (Array.isArray(payload.outputs) && payload.outputs.length > 0) {
+      setMediaMergerStatus(
+        `Build complete: ${payload.outputs.length} output(s) (${payload.mergedCount} item(s), trashed: ${payload.trashedCount})`,
+        "ok"
+      );
+      for (const item of payload.outputs) {
+        const candidateName = String(item?.candidateName || "candidate");
+        const outputPath = String(item?.outputPath || "");
+        addLog(`[MERGER] Created [${candidateName}] ${outputPath}`);
+      }
+    } else {
     setMediaMergerStatus(
       `Build complete: ${payload.outputName} (${payload.mergedCount} item(s), trashed: ${payload.trashedCount})`,
       "ok"
     );
     addLog(`[MERGER] Created ${payload.outputPath}`);
+    }
 
     if (trashAfterBuild) {
       await refreshMergerCandidates();
