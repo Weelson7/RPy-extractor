@@ -46,6 +46,7 @@ tmp/
 assets/
 logs/
 merged-media/
+Test-games/
 
 # Build/distribution artifacts
 build/
