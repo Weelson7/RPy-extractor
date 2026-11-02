@@ -149,7 +149,7 @@ class ApiSecurity(unittest.TestCase):
 
     def test_index_carries_token(self) -> None:
         conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=10)
-        conn.request("GET", "/", headers={"Host": f"127.0.0.1:{self.port}"})
+        conn.request("GET", "/legacy/", headers={"Host": f"127.0.0.1:{self.port}"})
         html = conn.getresponse().read().decode("utf-8")
         conn.close()
         self.assertIn('name="rpyx-token" content="test-token"', html)

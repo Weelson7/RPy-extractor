@@ -77,3 +77,34 @@ def tree_hashes(folder: Path, skip_reserved: bool = False) -> dict[str, str]:
         if path.is_file() and not (skip_reserved and rel.startswith(".")):
             out[rel] = hashlib.sha256(path.read_bytes()).hexdigest()
     return out
+
+
+def make_rar(path: Path, members: dict[str, bytes]) -> Path:
+    """Minimal RAR 4 archive with stored (uncompressed) members, built from the format spec.
+    Free tools cannot create RAR files, so the L5 unrar test uses this builder."""
+    import struct
+    import zlib
+
+    def block(head_type: int, flags: int, payload: bytes) -> bytes:
+        body = struct.pack("<BHH", head_type, flags, 7 + len(payload)) + payload
+        return struct.pack("<H", zlib.crc32(body) & 0xFFFF) + body
+
+    dos_time = (2020 - 1980) << 25 | 1 << 21 | 1 << 16
+    out = b"Rar!\x1a\x07\x00" + block(0x73, 0, b"\0" * 6)
+    for name, data in members.items():
+        raw = name.replace("/", "\\").encode("ascii")
+        fields = struct.pack(
+            "<IIBIIBBHI",
+            len(data),
+            len(data),
+            0,
+            zlib.crc32(data),
+            dos_time,
+            20,
+            0x30,
+            len(raw),
+            0x20,
+        )
+        out += block(0x74, 0x8000, fields + raw) + data
+    path.write_bytes(out + block(0x7B, 0x4000, b""))
+    return path

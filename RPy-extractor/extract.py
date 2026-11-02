@@ -329,8 +329,8 @@ class Handler(BaseHTTPRequestHandler):
     def _serve_static_file(self, path: str) -> None:
         """Serve static file from web directory."""
         # Default to index.html for root
-        if path == "/" or path == "":
-            path = "/index.html"
+        if path == "" or path.endswith("/"):
+            path = f"{path or '/'}index.html"
 
         if path.startswith("/"):
             path = path[1:]

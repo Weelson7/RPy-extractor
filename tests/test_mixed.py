@@ -31,7 +31,6 @@ def make_mixed_game(root: Path) -> Path:
     return game
 
 
-@unittest.skipIf(sys.platform == "win32", "uses the POSIX fake Godot tools")
 class MixedPairwiseTests(unittest.TestCase):
     def test_pairs_and_singles(self) -> None:
         combos = [(p,) for p in PLUGINS] + list(itertools.combinations(PLUGINS, 2))

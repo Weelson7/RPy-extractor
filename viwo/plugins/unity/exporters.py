@@ -16,6 +16,7 @@ UNITYPY = DependencySpec(
 ASSETSTUDIO = DependencySpec(
     "assetstudiomod",
     "AssetStudioModCLI",
+    env_var="VIWO_ASSETSTUDIOMOD",
     executables=("AssetStudioModCLI",),
     install_dirs=("AssetStudioMod",),
     hint="install AssetStudioModCLI (MIT) from aelurum/AssetStudio",

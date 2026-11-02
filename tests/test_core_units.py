@@ -182,3 +182,12 @@ class WorkspaceTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class BuiltinPluginTests(unittest.TestCase):
+    def test_every_builtin_plugin_loads(self) -> None:
+        from viwo.core.wiring.registry import BUILTIN_PLUGINS, load_enabled
+
+        plugins, problems = load_enabled({pid: True for pid in BUILTIN_PLUGINS})
+        self.assertEqual(sorted(plugins), sorted(BUILTIN_PLUGINS))
+        self.assertEqual(problems, [])

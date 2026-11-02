@@ -12,6 +12,7 @@ MAGIC = b"GDPC"
 GDRE = DependencySpec(
     "gdre",
     "GDRE Tools",
+    env_var="VIWO_GDRE",
     executables=("gdre_tools", "gdre_tools.x86_64"),
     install_dirs=("GDRE Tools", "gdre_tools"),
     hint="install GDRE Tools (MIT) from GDRETools/gdsdecomp",
@@ -19,6 +20,7 @@ GDRE = DependencySpec(
 PCKTOOL = DependencySpec(
     "godotpcktool",
     "GodotPckTool",
+    env_var="VIWO_GODOTPCKTOOL",
     executables=("godotpcktool",),
     hint="install GodotPckTool (MIT); unencrypted PCKs only",
 )

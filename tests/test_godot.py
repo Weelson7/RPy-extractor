@@ -46,12 +46,17 @@ def embed(exe: Path, pck: bytes) -> Path:
 
 
 def fake_tools(folder: Path) -> str:
+    """Python stand-ins for the CLI tools; a .cmd wrapper makes them runnable on Windows."""
     lines = []
     for name, dep in (("gdre", "gdre"), ("pcktool", "godotpcktool")):
-        script = folder / f"fake_{name}"
+        script = folder / f"fake_{name}.py"
         script.write_text(FAKE_TOOL.format(python=sys.executable, name=name))
         script.chmod(script.stat().st_mode | stat.S_IEXEC)
-        lines.append(f"{dep} = {script}")
+        tool = script
+        if sys.platform == "win32":
+            tool = folder / f"fake_{name}.cmd"
+            tool.write_text(f'@"{sys.executable}" "{script}" %*\r\n')
+        lines.append(f"{dep} = {tool}")
     return "[plugins]\ngodot = on\n[tools]\n" + "\n".join(lines) + "\n"
 
 
@@ -73,7 +78,6 @@ class IdentifyTests(unittest.TestCase):
             self.assertEqual(GodotPlugin().detect(FolderProbe(root)).confidence, 0.7)
 
 
-@unittest.skipIf(sys.platform == "win32", "fake CLI tools are POSIX scripts")
 class GodotPipelineTests(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
