@@ -10,6 +10,10 @@ first** (v1 moves files out of game folders and can delete a user-chosen
 folder), and the prototype is split into **A (viable core)** and
 **B (breadth)**.
 
+## 16.0 Prototype B composition (decided D16-D19)
+
+Prototype B = M7 Unreal unpack (+ AES key finder spare) · M8 custom plugins (Doom WAD/Freedoom in CI, Overwatch tos-sensitive) · M9 round trip for all four engines · M10 mixed mode + sanitizer phase 1 · **M11 capture pilot moved inside B**. Prototype A was extended first: legacy app removed, everything ported to ViWo, new UI.
+
 ## 16.1 Overview
 
 ```

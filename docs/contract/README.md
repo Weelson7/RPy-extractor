@@ -131,6 +131,11 @@ You accepted every recommendation on 2026-11-02, so this table is now the record
 | D13 | Runtime agents | journaled overlay + crash recovery |
 | D14 | Custom plugin showcase | open-source custom-engine game in CI; Overwatch as a `tos_sensitive` plugin tested by an independent operator |
 | D15 | Name | **Vidya Wormhole (ViWo)**; CLI `viwo` |
+| D16 | Custom-engine showcase (Prototype B) | **Doom WAD with Freedoom data** (BSD) as the CI-tested custom plugin, plus an **Overwatch (CASC/DataTool) plugin** marked `tos_sensitive` and tested only by the independent operator |
+| D17 | Round trip scope in B | **all four engines**: Ren'Py (override + safe RPA writer), Godot (PCK rebuild), Unreal (`_P.pak` via repak), Unity (UnityPy same-format replacement) |
+| D18 | Unreal AES keys | **user-supplied** (secret option, never stored) **plus an automated key-finder spare**; the finder runs as a subprocess and only on the user's own game files |
+| D19 | Runtime capture pilot | **inside Prototype B** (refusal policy, journaled overlay, RenderDoc harvest, diff against the static extraction) |
+| D20 | Real-game check | after Prototype B (you / the independent operator) |
 
 ## Not in this draft
 
