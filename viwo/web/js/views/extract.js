@@ -265,6 +265,7 @@ async function run(onExisting) {
   el.prog.el.closest(".panel").scrollIntoView({ block: "nearest" });
   try {
     const res = await api.extract(payload);
+    el.cancel.hidden = true;
     await el.prog.finish("ok", `${fmtNum(res.result.copiedFiles)} FILES COPIED`);
     setRunning(false);
     renderResult(el.result, res);
@@ -277,6 +278,7 @@ async function run(onExisting) {
       setRunning(false);
       next = await askDecision(err);
     } else {
+      el.cancel.hidden = true;
       await el.prog.finish(err.code === "cancelled" ? "cancel" : "fail", err.message);
       renderFailure(el.result, err);
       reveal();

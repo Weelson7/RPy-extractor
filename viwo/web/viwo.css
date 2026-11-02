@@ -657,6 +657,7 @@ kbd { margin-right: 6px; padding: 1px 6px; border: 1px solid var(--line); border
 .jp-warns li.more { color: var(--text-2); border-color: var(--line); }
 .jp .feed { height: 220px; }
 .log.mini { max-height: 150px; }
+.mform + .jp { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--line-soft); }
 .reveal { animation: reveal 0.55s ease-out both; animation-delay: calc(var(--i, 0) * 70ms); }
 .skel { position: relative; overflow: hidden; padding: 4px 0 8px; }
 .skel .lbl { margin: 0; }
