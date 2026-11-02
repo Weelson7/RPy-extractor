@@ -40,7 +40,7 @@ RPy-extractor/            the v1 app ("legacy"), still serving the web UI
 | X2 | LoC caps apply to `viwo/` (product) and `tests/`; `RPy-extractor/` is legacy under a **ratchet** (may only shrink) | the legacy code predates the caps | shrinks as code is ported |
 | X3 | Three trash layouts (doc 4.3) not yet applied | curation is still legacy (X1) | with the curation port |
 | X4 | No separate `unpack` CLI command yet | `extract` covers it; the unpack loop takes explicit files so the command is a thin addition | next CLI pass |
-| X5 | `[tools]` in the ini is keyed by **dependency id** (e.g. `sevenzip`), not backend id as doc 9 said | one tool can serve several backends (7-Zip serves zip/tar/7z/rar spares) | doc 9 updated at the end of the run |
+| X5 | `[tools]` in the ini is keyed by **dependency id** (e.g. `sevenzip`), not backend id as doc 9 said | one tool can serve several backends (7-Zip serves zip/tar/7z/rar spares) | done: doc 9 updated |
 | X6 | Legacy extraction code (`extraction_types/`, `extraction_core/archive.py`, `pipeline.py`) deleted; Unity games use the `generic` plugin until M5 lands | the v1 route now runs the ViWo core; keeping two pipelines would double the surface | M5 |
 
 ## Notes per milestone
@@ -74,3 +74,30 @@ offsets. Tests use fake CLI tools (POSIX only; skipped on Windows CI).
 **Mixed mode (pulled forward from M10, small).** Pairwise runs over generic/renpy/unity/godot
 on one mixed fixture: every run selects exactly the requested set, the game folder is
 unchanged, results are deterministic.
+
+## Prototype A exit check (doc 14.4)
+
+| # | Criterion | Result |
+|---|-----------|--------|
+| 1 | Ren'Py, Unity, Godot fixtures extract via CLI and HTTP on Linux and Windows CI; game folder unchanged | **Linux: yes. Windows: yes for generic/Ren'Py/Unity**; the Godot and mixed pipeline tests use POSIX fake tools and are skipped on Windows (identification/carving tests do run there) |
+| 2 | Failover cases with fakes; L5 with real tools | fakes: all four availability cases + outcome kinds; real tools verified locally: **unrpa, py7zr, UnityPy**. Not verified (not installable here): 7-Zip CLI, unrar, AssetStudioModCLI, GDRE Tools, GodotPckTool; the nightly CI job installs 7-Zip on Linux |
+| 3 | v1 web UI works; intended differences listed | real-server Chromium check: extract, re-extract dialog, replace. Differences listed below |
+| 4 | Re-run gives an identical workspace | yes (names + hashes) for a re-run of the same request. A `viwo replay <run record>` command does not exist yet |
+| 5 | Product LoC <= 5,500; ini boots on the native runner | **2,339 LoC**; boots on Linux and Windows runners |
+
+**Intended differences from v1** (golden behavior changes, all deliberate):
+1. Files are **copied** from the game folder, never moved (v1 moved them: H1).
+2. A non-empty folder that ViWo did not create is never cleared; extraction into it is refused (H2).
+3. Re-extracting into an existing workspace asks: replace / new / cancel (v1 silently wiped it).
+4. Unity exports land in the per-extension layout (`png/`, `wav/`, `txt/`, `obj/`) instead of `images/`, `audio/`...; v1's Unity-only result keys (`discoveredCount`, `qualityGatePass`...) are gone (they were meaningless: F11).
+5. Duplicate files are recognized by content hash, not by modification time (F6).
+6. Workspaces contain `.viwo-workspace` and `.extraction_metadata/` (provenance + run records); dot-folders are hidden from step 3, sorting and the merger.
+7. `/api/dependencies` lists backend dependencies per owner plugin; unrpa is no longer required at startup, and no packages are installed at boot.
+8. The API needs the per-start token (hotfix H3); the UI sends it automatically.
+
+## Next (after Prototype A)
+
+- Port curation (sorting, trash with the three layouts) and the media merger into `viwo/core` (X1, X3).
+- `viwo replay`, `viwo unpack`, HTTP job routes (`/api/jobs/...`), `/api/plugins`, `/api/detect`.
+- Real-binary L5 checks for GDRE Tools, GodotPckTool, AssetStudioModCLI, 7-Zip, unrar (tool lock file).
+- Prototype B (doc 16): Unreal unpack, custom plugins, round trip, sanitizer phase 1, capture pilot.

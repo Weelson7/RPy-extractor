@@ -4,6 +4,27 @@ RPy Extractor is a local-first desktop tool to extract, triage, and compose game
 
 It runs as a Python app with a browser-based interface and is designed for creators, modders, and archivists who want a fast workflow from raw game files to curated outputs.
 
+## Vidya Wormhole (ViWo): the new core
+
+This app is being rebuilt as **ViWo**, a cross-platform game asset extraction and curation
+framework (contract: [docs/contract/](docs/contract/README.md), status:
+[docs/prototype-a/STATUS.md](docs/prototype-a/STATUS.md)). The web UI below still works;
+extraction now runs through the ViWo core, which never modifies the game folder.
+
+```bash
+python -m viwo.cli info                                  # OS layer, plugins, slot bindings
+python -m viwo.cli detect "/path/to/game"                # engine detection
+python -m viwo.cli extract "/path/to/game" --workspace ./ws   # extract into a workspace
+python -m viwo.cli serve                                 # web UI (same as python Start.py)
+```
+
+Supported in Prototype A: generic archives (zip, tar, 7z, rar), Ren'Py (safe RPA reader, unrpa
+as spare), Unity (UnityPy, AssetStudioModCLI as spare), Godot (GDRE Tools, GodotPckTool as spare;
+PCKs embedded in executables). Wiring is configured in `startup.ini`.
+
+Tests: `python -m unittest discover -s tests -t .` (set `VIWO_L5=1` to include real-tool
+tests); code size caps: `python tools/loc_count.py --report`.
+
 ## What You Can Do
 
 - Extract archives and asset folders from supported game structures.

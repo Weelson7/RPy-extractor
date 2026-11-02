@@ -74,9 +74,10 @@ default        = failover        ; failover | main_only | supplement
 ; export.unity = supplement   ; post-prototype (D7)
 
 [tools]
-; explicit tool locations (ToolLocator step 1, doc 1.2)
-sevenzip-cli    = C:\Program Files\7-Zip\7z.exe
-ghidra-headless = /opt/ghidra_12.2/support/analyzeHeadless
+; explicit tool locations (ToolLocator step 1, doc 1.2), keyed by DEPENDENCY id
+; (one tool can serve several backends, e.g. sevenzip serves four slots)
+sevenzip        = C:\Program Files\7-Zip\7z.exe
+ghidra          = /opt/ghidra_12.2/support/analyzeHeadless
 
 [options.unreal]
 engine_version = UE5.3           ; plugin options; secrets are NOT allowed here

@@ -1,3 +1,10 @@
+> **Note (2026-11): this document describes the v1 app ("RPy Extractor").** The project is being
+> rebuilt as **Vidya Wormhole (ViWo)**. The architecture contract is in
+> [docs/contract/](docs/contract/README.md) and implementation status in
+> [docs/prototype-a/STATUS.md](docs/prototype-a/STATUS.md). Extraction now runs through the
+> `viwo/` package; `extraction_core/archive.py`, `pipeline.py` and `extraction_types/` described
+> below were removed.
+
 # RPy Extractor Architecture
 
 ## Overview
