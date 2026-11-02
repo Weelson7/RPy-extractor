@@ -29,6 +29,15 @@ viwo config check startup.ini distros/*.ini  # strict config validation
 ```
 Always run format, lint, caps and the full test suite before committing.
 
+## Versioning and commits (owner's rule, enforced by a pre-commit hook)
+Version `va.b.c`: `a` product release (roadmap finished; CI runs on its tag), `b` feature
+(new feature or overhaul), `c` tweak (every commit). Never run `git commit` yourself:
+```powershell
+python tools/version.py commit -m "message" [--feature|--major] [--push]   # checks, bump, commit, tag
+```
+The hook refuses a commit whose version is not past the latest `v*` tag. Push the branch with
+all tags (`--push`). Do not put model names in commit messages.
+
 ## Code size caps (enforced by tools/loc_count.py and a test)
 Non-blank, non-comment lines: function 40, class 200, file 250 (contracts 150, tests 400),
 params 6, line length 100, JS file 300. Package budgets are in `loc_caps.ini`; raise one only with

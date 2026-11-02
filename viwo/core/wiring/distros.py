@@ -18,7 +18,7 @@ import re
 import tempfile
 from pathlib import Path
 
-from viwo import __version__
+from viwo import CONTRACT_VERSION
 from viwo.backends import CORE_SLOTS, core_backends
 
 from .ini import KNOWN_SECTIONS, load_ini
@@ -60,7 +60,12 @@ def render(os_id: str, profile: str) -> str:
     plugins, (slots, backends, _) = _registry()
     on = enabled_for(profile)
     owners = {"core"} | {p for p, enabled in on.items() if enabled}
-    lines = [MARKER, f"; viwo {__version__} - distro {os_id}-{profile}", "", "[startup]"]
+    lines = [
+        MARKER,
+        f"; viwo contract {CONTRACT_VERSION} - distro {os_id}-{profile}",
+        "",
+        "[startup]",
+    ]
     lines += [f"os = {os_id}", f"profile = {profile}", "features = extraction, sorting, merger", ""]
     lines += [
         "[plugins]",

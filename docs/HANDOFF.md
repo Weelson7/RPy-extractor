@@ -106,6 +106,6 @@ every third-party tool lives under `third_party/`, CI only on major releases, co
 6. Report anything odd with the run record from `<workspace>/.extraction_metadata/runs/`.
 
 ## Conventions
-- Commit in batches; run format, lint, caps and tests first. Never put model names in commits.
+- Commit only with `python tools/version.py commit -m ... [--feature|--major] [--push]` (va.b.c, see CLAUDE.md). Never put model names in commits.
 - Keep `docs/prototype-b/STATUS.md` honest: move items out of "not verified" only with evidence.
 - `viwo config generate` after changing plugins or slots, or the drift test fails.

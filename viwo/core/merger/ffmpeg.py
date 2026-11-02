@@ -70,7 +70,8 @@ def probe(os, path: Path) -> tuple[float, bool]:
 def _inputs(t: Timeline) -> list[str]:
     lines = []
     for i, d in enumerate(t.durations):
-        lines.append(f"[{i}:v]{VIDEO_CHAIN},trim=duration={d:.3f},setpts=PTS-STARTPTS[v{i}]")
+        # the trailing fps restores a constant frame rate after setpts: xfade (ffmpeg 7+) needs one
+        lines.append(f"[{i}:v]{VIDEO_CHAIN},trim=duration={d:.3f},setpts=PTS-STARTPTS,fps=30[v{i}]")
         lines.append(
             f"[{i}:a]{AUDIO_FMT},atrim=duration={d:.3f},asetpts=N/SR/TB[a{i}]"
             if t.has_audio[i]
