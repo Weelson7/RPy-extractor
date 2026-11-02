@@ -1,5 +1,5 @@
 {
- "_comment": "Pinned third-party tools installed automatically into third_party/<id>/ (doc 10). Every download is checked against sha256 before use. Change a pin only together with its checksum. Not available as pinned GitHub releases (left out): unrar (7-Zip covers RAR), QuickBMS, DataTool, RenderDoc.",
+ "_comment": "Pinned third-party tools installed automatically into third_party/<id>/ (doc 10). Every download is checked against sha256 before use. Change a pin only together with its checksum. Still to add (required, see docs/HANDOFF.md item 1): unrar, quickbms, datatool, renderdoccmd + rdpython.",
  "python": {
   "unitypy": "UnityPy==1.25.4",
   "py7zr": "py7zr==1.1.4",

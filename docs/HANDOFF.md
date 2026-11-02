@@ -36,9 +36,21 @@ every third-party tool lives under `third_party/`, CI only on major releases, co
      pin its checksum), ffmpeg `.gz` binaries, GDRE needing its `.pck` next to the exe.
    - Add a CLI `viwo install [--all|<id>]` (same code) and an `L5` test that installs into a temp
      home; add `lz4` (Skyrim SE BSA) to the Python pins.
-   - Not pinnable on GitHub, so still missing from the automated pipeline: unrar (7-Zip covers
-     RAR), QuickBMS, DataTool (Overwatch), RenderDoc (capture). Find official pinned sources with
-     checksums or leave the plugin reporting "needs tool" (never a manual instruction).
+   - **Required (owner): automate the four tools still missing** the same way (pinned version,
+     size and sha256 in `viwo/data/tools.json`, installed into `third_party/<id>/`, no manual step):
+     - `unrar`: RARLAB's official builds (rarlab.com; Windows `unrarw64.exe` is a self-extractor:
+       unpack it with the bundled 7-Zip, `7z x`; Linux `rarlinux-x64-<ver>.tar.gz` contains `unrar`).
+     - `quickbms`: the official QuickBMS zip (aluigi.altervista.org; the cloud session could not
+       reach that host, so pin it from Windows), plus a pinned scripts pack into
+       `third_party/quickbms/scripts`, set as the default `[options.quickbms] scripts`.
+     - `datatool`: overtools/OWLib release or CI artifact (pin the newest tagged build; it is a
+       .NET app, so include its runtime need in the check). The Overwatch plugin stays explicit-only.
+     - `renderdoccmd` + `rdpython`: RenderDoc's official portable zip (renderdoc.org/builds,
+       `RenderDoc_<ver>_64.zip` on Windows, `renderdoc_<ver>.tar.gz` on Linux); `rdpython` is the
+       Python that can import its `renderdoc` module: install the matching embeddable Python into
+       `third_party/rdpython/` and point the tool there.
+     A new installer kind may be needed (`sfx`: run 7-Zip on a self-extracting exe). Compute every
+     checksum from the real asset; never install without one. Hosts outside GitHub must be HTTPS.
    - `strict_preflight = on` is still reserved: implement it in `api/server.py serve()` as exit 4
      (doc 9) when an enabled plugin has no bound main backend after preflight.
 2. **Landing animation (owner's request).** On page load, before the app, a full-screen landing
