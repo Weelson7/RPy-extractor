@@ -12,7 +12,7 @@ contract with its reason.
 | M1 | hotfix (merged); LoC counter + caps file; CI workflow (Linux + Windows); v1 result-shape checks | done |
 | M2 | `viwo/contracts`, `viwo/os` (process with tree-kill, tool locator, fs rules) for Linux + Windows; conformance tests | done |
 | M3 | flat startup ini; slot binder (failover); stage runner (probe, detect, select, identify/carve, unpack, collect copy/move, provenance, verify, report); workspace ownership + lock; jobs + run records + envelope; CLI `info/detect/extract/slots/serve`; v1 server delegates extraction to the core; `generic` plugin; zip/tar/7z/rar/py7zr backends | done (see notes) |
-| M4 | `renpy` plugin: safe RPA reader (main) + unrpa subprocess (spare) | todo |
+| M4 | `renpy` plugin: safe RPA reader (main) + unrpa subprocess (spare) | done |
 | M5 | `unity` plugin: UnityPy (main) / AssetStudioModCLI (spare) | todo |
 | M6 | `godot` plugin: PCK identify + carving of embedded PCKs, GDRE (main) / GodotPckTool (spare) | todo |
 
@@ -48,3 +48,9 @@ RPy-extractor/            the v1 app ("legacy"), still serving the web UI
 **M3 (lean core).** v1 `/api/extract` and `/api/dependencies` now run through `viwo.api.legacy`.
 Verified: 21 core tests + 10 legacy tests green; real-server UI check in Chromium: extract,
 re-extract shows the decision dialog, "replace" succeeds. Legacy Python shrank 4,246 -> 2,430 LoC.
+
+**M4 (Ren'Py).** Safe RPA reader for RPA-2.0/3.0 (XOR key, prefixes); the pickled index
+may only reference `_codecs.encode` and `bytes`. A malicious `__reduce__` payload is refused
+without running (test). unrpa (GPL-3.0) runs as a subprocess spare; L5 confirmed real unrpa
+reads our RPA fixtures. Source root is `game/` only (v1 rule). RPA-1.0/3.2/ALT variants fall
+through to the spare.
