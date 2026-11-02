@@ -42,9 +42,20 @@ then `README.md` ("Philosophy", "Legal and disclaimer"), then `docs/prototype-b/
   real-GPU RenderDoc checks.
 - **Audits applied:** web UI/UX (16 fixes), CLI UX, backend quality; see the commit messages.
 
+## Release state
+- GitHub release **v1.0.0** is published (wheel, sdist, `ViWo-1.0.0-windows-x64.zip`, SHA256SUMS)
+  by the release workflow on the tag push.
+- CI on the v1.0.0 tag: every Windows job green (Python 3.11, 3.13, real tools); the three Linux
+  jobs failed on one test, the Ren'Py decompile fake tool had no shebang. Fixed in v1.0.1 and
+  verified in WSL (full suite 165 OK on Linux). CI runs only on major tags: start it by hand once
+  (Actions > ci > Run workflow on `makeover`) to see Linux green.
+- v1.0.1 carries the fixes found by executing the sqc suite and the real-browser smoke.
+
 ## Open work (after 1.0)
 
-1. **Run the sqc P0 subset by hand** (`sqc/00-README.md`); report with `viwo diag`.
+1. **Run the sqc P0 subset by hand** (`sqc/00-README.md`); the CLI/API-runnable checks were
+   executed tonight (results and open items in the v1.0.1 commit message and STATUS); the GUI
+   click checks and OPERATOR checks remain yours. Report with `viwo diag`.
 2. **Create the `vidya_wormhole_indexes` repository** and split `indexes/` out (commands in
    `docs/indexes.md`); publish its first release (`indexes-v1.0.zip` + `SHA256SUMS.txt`) so
    `viwo indexes update` has something to fetch. Add real QuickBMS script pins per game (none
