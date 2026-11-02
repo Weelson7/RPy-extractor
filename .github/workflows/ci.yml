@@ -1,20 +1,25 @@
 name: ci
 
+# Cost policy: a push or pull request runs ONE Linux job (lint, caps, unit tests).
+# The full matrix (Windows, both Pythons) and the real-tool jobs run only when started
+# by hand (Actions > ci > Run workflow). No schedule. A newer push cancels an older run.
 on:
   push:
     branches: [main, makeover]
   pull_request:
-  schedule:
-    - cron: "17 3 * * *"
   workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
-        python: ["3.11", "3.13"]
+        os: ${{ github.event_name == 'workflow_dispatch' && fromJSON('["ubuntu-latest", "windows-latest"]') || fromJSON('["ubuntu-latest"]') }}
+        python: ${{ github.event_name == 'workflow_dispatch' && fromJSON('["3.11", "3.13"]') || fromJSON('["3.13"]') }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -31,8 +36,8 @@ jobs:
         run: python -m unittest discover -s tests -t . -v
 
   real-tools:
-    # L5: real third-party tools at pinned versions, nightly and on demand.
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    # L5: real third-party tools at pinned versions, on demand only.
+    if: github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: false
       matrix:

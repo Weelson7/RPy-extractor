@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sys
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -16,7 +17,13 @@ from .binder import bind_all
 from .ini import StartupConfig, load_ini
 from .registry import collect, load_enabled
 
-DEFAULT_INI = Path(__file__).resolve().parents[3] / "startup.ini"
+# Frozen build (viwo.exe): startup.ini sits next to the executable; otherwise the repo root.
+_HOME = (
+    Path(sys.executable).parent
+    if getattr(sys, "frozen", False)
+    else Path(__file__).resolve().parents[3]
+)
+DEFAULT_INI = _HOME / "startup.ini"
 
 
 @dataclass

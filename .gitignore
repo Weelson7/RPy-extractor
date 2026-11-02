@@ -1,57 +1,47 @@
+
 # =========================================================
-# RPy Extractor - Git Ignore
 # Author: Weelson
-# Project: C.O.R.E.
-# =========================================================
-
-# Python bytecode and caches
-__pycache__/
-*.py[cod]
-*$py.class
-
-# Virtual environments
-.venv/
-venv/
-env/
-ENV/
-
-# Tooling caches
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-.coverage
-htmlcov/
-
-# IDE/editor metadata
-.vscode/
-.idea/
-*.swp
-*.swo
-
-# OS metadata
-.DS_Store
-Thumbs.db
-
-# Logs and runtime artifacts
-*.log
-RPy-extractor/logs/
-
-# Extractor-generated working/output directories
-RPy-extractor/tmp/
-RPy-extractor/assets/
-RPy-extractor/.trash*/
-
-# User-local session output (if created outside app folder)
-tmp/
-assets/
-logs/
-merged-media/
-Test-games/
-
 # Build/distribution artifacts
+# Extractor-generated working/output directories
+# IDE/editor metadata
+# Logs and runtime artifacts
+# OS metadata
+# Project: C.O.R.E.
+# Python bytecode and caches
+# RPy Extractor - Git Ignore
+# Tooling caches
+# User-local session output (if created outside app folder)
+# ViWo runtime data (startup.ini [server])
+# Virtual environments
+*$py.class
+*.egg-info/
+*.log
+*.py[cod]
+*.swo
+*.swp
+.DS_Store
+.coverage
+.idea/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
+.venv/
+.vscode/
+ENV/
+RPy-extractor/.trash*/
+RPy-extractor/assets/
+RPy-extractor/logs/
+RPy-extractor/tmp/
+Test-games/
+Thumbs.db
+__pycache__/
+assets/
 build/
 dist/
-*.egg-info/
-
-# ViWo runtime data (startup.ini [server])
+env/
+htmlcov/
+logs/
+merged-media/
+tmp/
+venv/
 viwo-data/
