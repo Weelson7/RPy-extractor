@@ -48,19 +48,16 @@ def png(width: int, height: int, rgba: bytes, offsets: tuple[int, int] | None = 
         b"\x89PNG\r\n\x1a\n",
         chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0)),
     ]
-    parts.append(chunk(b"IDAT", zlib.compress(raw, 9)))
+    parts.append(chunk(b"IDAT", zlib.compress(raw, 6)))
     if offsets is not None:
         parts.insert(2, chunk(b"grAb", struct.pack(">ii", *offsets)))
     return b"".join(parts) + chunk(b"IEND", b"")
 
 
 def _rgba(indices: list[int | None], palette: bytes) -> bytes:
-    out = bytearray()
-    for index in indices:
-        out += (
-            b"\x00\x00\x00\x00" if index is None else palette[index * 3 : index * 3 + 3] + b"\xff"
-        )
-    return bytes(out)
+    table = [palette[i * 3 : i * 3 + 3] + b"\xff" for i in range(256)]
+    clear = b"\x00\x00\x00\x00"
+    return b"".join(clear if i is None else table[i] for i in indices)
 
 
 def _column(data: bytes, start: int, height: int, pixels: list, x: int, width: int) -> None:
