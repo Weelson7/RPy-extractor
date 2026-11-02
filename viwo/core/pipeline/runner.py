@@ -19,6 +19,7 @@ from viwo.contracts.types import CancelToken, DetectionResult, ProgressEvent, Pr
 from ..workspace import resolve_target, workspace_lock
 from .collect import Source, collect
 from .failover import run_with_failover
+from .guard import changes, refuse_writes_inside, snapshot
 from .probe import FolderProbe
 from .select import select_plugins
 from .unpack import files_under, unpack_all
@@ -87,6 +88,7 @@ def extract(
     target = Path(request.workspace) if request.workspace else default_workspace
     if target is None:
         raise ViwoError("invalid_request", "no workspace given")
+    refuse_writes_inside(game, workspace=target, temp_folder=rt.temp_root)
     with workspace_lock(target):
         workspace = resolve_target(target, request.on_existing, default_workspace)
         rt.temp_root.mkdir(parents=True, exist_ok=True)
@@ -98,16 +100,22 @@ def extract(
             shutil.rmtree(work, ignore_errors=True)
 
 
-def _stages(run: Run, workspace: Path) -> ExtractionResult:
+def _select(run: Run) -> tuple[str, ...]:
     rt = run.rt
-    run.log(f"Workspace: {workspace}", "prepare")
     run.detections = detect_all(rt, FolderProbe(run.game))
     priorities = {pid: p.manifest.priority for pid, p in rt.plugins.items()}
     chosen = select_plugins(run.request, list(run.detections.values()), priorities)
     run.log(f"Selected plugin(s): {', '.join(chosen)}", "detect")
+    return chosen
+
+
+def _stages(run: Run, workspace: Path) -> ExtractionResult:
+    rt = run.rt
+    run.log(f"Workspace: {workspace}", "prepare")
+    before = snapshot(run.game)
+    chosen = _select(run)
     skip = {d.lower() for pid in chosen for d in rt.plugins[pid].skip_dirs()}
-    items = files_under(run.game, "game", skip)
-    unpacked = unpack_all(rt, items, run.work / "unpack", run.ctx)
+    unpacked = unpack_all(rt, files_under(run.game, "game", skip), run.work / "unpack", run.ctx)
     runs = [_export(run, pid) for pid in chosen]
     sources = _game_sources(run, chosen)
     sources += [Source(d, True, label) for d, label in unpacked.origins.items()]
@@ -120,6 +128,9 @@ def _stages(run: Run, workspace: Path) -> ExtractionResult:
     if run.cancel.cancelled:
         raise ViwoError("cancelled", "extraction cancelled")
     warnings = _verify(unpacked, collected) + [w for r in runs for w in r.warnings]
+    touched = changes(before, snapshot(run.game))
+    if touched:  # ViWo never writes there; a running game may (saves, logs)
+        warnings.append(f"GAME FOLDER CHANGED during extraction: {', '.join(touched[:10])}")
     warnings += [
         w for pid in chosen for w in rt.plugins[pid].verify(run.ctx(pid), collected.collected)
     ]
