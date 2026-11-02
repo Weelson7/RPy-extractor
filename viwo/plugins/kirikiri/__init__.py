@@ -17,6 +17,7 @@ from viwo.contracts.workspace import safe_member
 
 MAGIC = b"XP3\r\n \n\x1a\x8b\x67\x01"
 ENCRYPTED = 0x80000000
+LIMIT = 4 << 30  # one segment
 MANIFEST = PluginManifest(
     "kirikiri", "KiriKiri (XP3)", "0.1.0", engine_type="kirikiri", priority=12
 )
@@ -62,6 +63,20 @@ def entries(index: bytes):
         yield name, encrypted, [(f & 7 == 1, o, n, p) for f, o, n, p in segments]
 
 
+def _segment(fh, compressed: bool, offset: int, size: int, packed: int) -> bytes:
+    """One segment, inflated to no more than its declared size (zip-bomb guard)."""
+    if size < 0 or packed < 0 or size > LIMIT or packed > LIMIT:
+        raise ValueError("segment size out of range")
+    fh.seek(offset)
+    chunk = fh.read(packed)
+    if not compressed:
+        return chunk
+    data = zlib.decompressobj().decompress(chunk, size)
+    if len(data) != size:
+        raise ValueError("segment does not inflate to its declared size")
+    return data
+
+
 class Xp3Builtin(Unarchiver):
     backend_id, owner, license = "xp3-builtin", "kirikiri", "MIT"
 
@@ -76,14 +91,11 @@ class Xp3Builtin(Unarchiver):
                     if encrypted:
                         locked += 1
                         continue
-                    data = b""
-                    for compressed, offset, _, packed in segments:
-                        fh.seek(offset)
-                        chunk = fh.read(packed)
-                        data += zlib.decompress(chunk) if compressed else chunk
                     target = dest.joinpath(*rel.parts)
                     target.parent.mkdir(parents=True, exist_ok=True)
-                    target.write_bytes(data)
+                    with open(target, "wb") as out:  # segment by segment, never all in memory
+                        for segment in segments:
+                            out.write(_segment(fh, *segment))
                     written += 1
         except (OSError, ValueError, struct.error, zlib.error, IndexError) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"bad XP3: {exc}")

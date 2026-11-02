@@ -60,7 +60,10 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def _tool_commands(command) -> None:
-    """survey, repack, capture, sanitize."""
+    """survey, repack, capture, sanitize, config."""
+    cf = command("config", "generate the distro config files, or check config files strictly")
+    cf.add_argument("action", choices=["generate", "check"])
+    cf.add_argument("paths", nargs="*", type=Path, help="check: files; generate: output folder")
     su = command("survey", "read-only coverage report for a game or a whole library")
     su.add_argument("folder", type=Path)
     su.add_argument("--deep", action="store_true", help="also run the carver on unknown blobs")
@@ -137,7 +140,7 @@ def _run(args) -> Envelope:
     if args.command == "detect":
         found = detect_all(rt, FolderProbe(args.game))
         return Envelope.success({k: v.to_legacy_dict() for k, v in found.items()})
-    if args.command in ("repack", "sanitize", "survey", "capture"):
+    if args.command in ("repack", "sanitize", "survey", "capture", "config"):
         return workspace_command(rt, args)
     sink = None if args.json else (lambda e: print(e.legacy_line(), file=sys.stderr))
     if args.command == "unpack":

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from pathlib import Path, PurePosixPath
 
 MARKER = ".viwo-workspace"
@@ -45,10 +46,31 @@ def next_free(path: Path) -> Path:
         index += 1
 
 
+RESERVED = re.compile(r"^(con|prn|aux|nul|com[0-9]|lpt[0-9])(\..*)?$", re.IGNORECASE)
+
+
 def safe_member(name: str) -> PurePosixPath | None:
-    """An archive member name as a relative path, or None when it would leave the target
-    (absolute, drive letter, "..")."""
+    """An archive member name as a relative path, or None when it could leave the target on
+    any OS: absolute, "..", a drive or stream (":" anywhere), Windows device names, or parts
+    ending in "." / " " (which Windows silently rewrites)."""
     parts = [p for p in name.replace("\\", "/").split("/") if p not in ("", ".")]
-    if not parts or ".." in parts or ":" in parts[0] or name.startswith(("/", "\\")):
+    if not parts or name.startswith(("/", "\\")):
         return None
+    for part in parts:
+        if part == ".." or ":" in part or part[-1] in ". " or RESERVED.match(part):
+            return None
     return PurePosixPath(*parts)
+
+
+def inside(root: Path, target: Path) -> bool:
+    """True when target (after resolving links) is root or lies under it, and no existing
+    component between them is a symbolic link."""
+    base, path = root.resolve(), target.resolve()
+    if path != base and base not in path.parents:
+        return False
+    probe = target
+    while probe != root and probe != probe.parent:
+        if probe.is_symlink():
+            return False
+        probe = probe.parent
+    return True

@@ -16,6 +16,7 @@ CHUNK = 1 << 16
 LIMIT = 64 << 20  # inflated bytes kept in memory per stream
 MIN_OUT = 64
 MAX_STREAMS = 50_000
+TOTAL = 1 << 30  # inflated bytes per input file (zip-bomb guard)
 TEXT_BYTES = frozenset(range(32, 127)) | {9, 10, 13}
 
 
@@ -46,8 +47,9 @@ def inflate(m, start: int, end: int, wbits: int) -> Stream | None:
     return Stream(start, consumed, b"".join(parts))
 
 
-def find_streams(m, size: int, taken: list[tuple[int, int]], cancel) -> list[Stream]:
-    """Streams outside the taken (offset, size) ranges, earliest first, non-overlapping."""
+def find_streams(m, size: int, taken: list[tuple[int, int]], cancel):
+    """Yield streams outside the taken (offset, size) ranges, earliest first, one at a time
+    (callers write and drop each), up to TOTAL inflated bytes per input file."""
     taken = sorted(taken)
     edges = [o for o, _ in taken]
 
@@ -58,15 +60,16 @@ def find_streams(m, size: int, taken: list[tuple[int, int]], cancel) -> list[Str
     starts = sorted(
         (pos, wbits) for head, wbits in HEADS for pos in _positions(m, head, cancel) if free(pos)
     )
-    found, covered = [], 0
+    found, covered, total = 0, 0, 0
     for pos, wbits in starts:
-        if pos < covered or cancel.cancelled or len(found) >= MAX_STREAMS:
+        if cancel.cancelled or found >= MAX_STREAMS or total > TOTAL:
+            return
+        if pos < covered:
             continue
         stream = inflate(m, pos, size, wbits)
         if stream is not None:
-            found.append(stream)
-            covered = pos + stream.consumed
-    return found
+            found, covered, total = found + 1, pos + stream.consumed, total + len(stream.data)
+            yield stream
 
 
 def _positions(m, head: bytes, cancel) -> list[int]:

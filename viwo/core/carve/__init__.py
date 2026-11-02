@@ -118,7 +118,8 @@ def count_embedded(path: Path, cancel) -> int:
         return 0
     with open(path, "rb") as fh, mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ) as m:
         hits = scan_buffer(m, size, cancel)
-        return len(hits) + len(find_streams(m, size, [(h.offset, h.size) for h in hits], cancel))
+        streams = find_streams(m, size, [(h.offset, h.size) for h in hits], cancel)
+        return len(hits) + sum(1 for _ in streams)
 
 
 def carve_file(path: Path, dest: Path, cancel) -> int:
@@ -128,13 +129,14 @@ def carve_file(path: Path, dest: Path, cancel) -> int:
         return 0
     with open(path, "rb") as fh, mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ) as m:
         hits = scan_buffer(m, size, cancel)
-        streams = find_streams(m, size, [(h.offset, h.size) for h in hits], cancel)
-        if not hits and not streams:
-            return 0
         dest.mkdir(parents=True, exist_ok=True)
         for hit in hits:
             _copy(fh, hit, dest / f"{path.name}@{hit.offset:08x}{hit.suffix}")
-        return len(hits) + sum(_write_stream(s, path.name, dest, cancel) for s in streams)
+        streams = find_streams(m, size, [(h.offset, h.size) for h in hits], cancel)
+        written = len(hits) + sum(_write_stream(s, path.name, dest, cancel) for s in streams)
+    if not written:
+        dest.rmdir()
+    return written
 
 
 class SignatureCarver(Carver):

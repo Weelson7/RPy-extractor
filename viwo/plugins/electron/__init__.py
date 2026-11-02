@@ -36,7 +36,9 @@ def _walk(tree: dict, prefix: str = ""):
         if "files" in node:
             yield from _walk(node, path)
         elif not node.get("unpacked") and "offset" in node:
-            yield path, int(node["offset"]), int(node.get("size", 0))
+            offset, size = int(node["offset"]), int(node.get("size", 0))
+            if offset >= 0 and size >= 0:  # negative values would read to the end of the file
+                yield path, offset, size
 
 
 class AsarBuiltin(Unarchiver):
@@ -52,9 +54,10 @@ class AsarBuiltin(Unarchiver):
             except (UnicodeDecodeError, ValueError) as exc:
                 return Outcome(OutcomeKind.FAILED, error=f"bad asar header: {exc}")
             written = 0
+            total = archive.stat().st_size
             for name, offset, size in _walk(tree):
                 rel = safe_member(name)
-                if rel is None or ctx.cancel.cancelled:
+                if rel is None or ctx.cancel.cancelled or found[1] + offset + size > total:
                     continue
                 fh.seek(found[1] + offset)
                 target = dest.joinpath(*rel.parts)

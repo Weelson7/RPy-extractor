@@ -51,20 +51,22 @@ def _walk(root: Path, skip: set[str], avoid: Path):
         here = Path(dirpath)
         dirnames[:] = sorted(d for d in dirnames if d not in skip and (here / d).resolve() != avoid)
         for name in sorted(filenames):
-            if name not in (ws.MARKER, ws.EXPORT_MAP, *ws.LEGACY_MARKERS):
+            if name not in (ws.MARKER, ws.EXPORT_MAP, *ws.LEGACY_MARKERS) and not os.path.islink(
+                here / name
+            ):  # links are never followed: they could point outside the game
                 yield here / name
 
 
-def _place(src: Path, folder: Path, digest: str) -> Path | None:
-    """Target path, or None when an identical file (size + hash) is already there."""
+def _place(src: Path, folder: Path, digest: str) -> tuple[Path, bool]:
+    """(target path, True when an identical file (size + hash) is already there)."""
     candidate = folder / src.name
     index = 1
     while candidate.exists():
         if candidate.stat().st_size == src.stat().st_size and sha256(candidate) == digest:
-            return None
+            return candidate, True
         candidate = folder / ws.COLLISION.format(stem=src.stem, index=index, suffix=src.suffix)
         index += 1
-    return candidate
+    return candidate, False
 
 
 def collect(
@@ -100,12 +102,11 @@ def _where(source: Source, rel: str) -> dict:
 def _collect_one(src: Path, folder: Path, source: Source, report: CollectReport) -> None:
     folder.mkdir(parents=True, exist_ok=True)
     digest = sha256(src)
-    target = _place(src, folder, digest)
-    if target is None:
-        return
-    (shutil.move if source.move else shutil.copy2)(str(src), str(target))
-    report.by_ext[folder.name] += 1
-    rel = src.relative_to(source.root).as_posix()
+    target, duplicate = _place(src, folder, digest)
+    if not duplicate:
+        (shutil.move if source.move else shutil.copy2)(str(src), str(target))
+        report.by_ext[folder.name] += 1
+    rel = src.relative_to(source.root).as_posix()  # duplicates still get provenance (round trip)
     report.provenance.append(
         {
             "path": f"{folder.name}/{target.name}",

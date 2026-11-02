@@ -117,11 +117,14 @@ def _run(rt, req: CaptureRequest, known: set[str], sink, cancel) -> tuple:
 
 def capture(rt, req: CaptureRequest, sink=None, cancel=None) -> dict:
     say = sink or (lambda e: None)
+    if not ws.inside(req.game, req.exe) or not req.exe.is_file():  # policy covers the game only
+        raise ViwoError("refused", "the executable must be a file inside the game folder")
     warnings = check(rt, req.game, req.confirmed, _sensitive(rt, req.game))
     _restore_pending(rt, say)
     known = _prepare(rt, req)
     gathered, used, job, same = _run(rt, req, known, sink, cancel)
     new = gathered.provenance
+    (req.workspace / ws.METADATA_DIR).mkdir(parents=True, exist_ok=True)
     with open(req.workspace / ws.PROVENANCE_FILE, "a", encoding="utf-8") as fh:
         fh.writelines(json.dumps(p, sort_keys=True) + "\n" for p in gathered.provenance)
     report = {

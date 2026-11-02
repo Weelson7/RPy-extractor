@@ -46,11 +46,15 @@ class PlanItem:
 
 def edit_set(workspace: Path) -> tuple[list[Edit], list[str]]:
     """Workspace files whose content differs from what extraction wrote."""
-    path, edits, skipped = workspace / ws.PROVENANCE_FILE, [], []
+    path, edits, skipped, missing = workspace / ws.PROVENANCE_FILE, [], [], []
     lines = path.read_text(encoding="utf-8").splitlines() if path.is_file() else []
     for entry in map(json.loads, lines):
-        file = workspace / entry["path"]
-        if not file.is_file() or sha256(file) == entry["sha256"]:
+        rel = ws.safe_member(entry["path"])
+        file = workspace.joinpath(*rel.parts) if rel else None
+        if file is None or not file.is_file():
+            missing.append(entry["path"])
+            continue
+        if sha256(file) == entry["sha256"]:
             continue
         kind = entry.get("kind", "derived")
         if kind in ("loose", "member", "exported"):
@@ -58,6 +62,11 @@ def edit_set(workspace: Path) -> tuple[list[Edit], list[str]]:
             edits.append(Edit(file, kind, *where))
         else:
             skipped.append(f"{entry['path']}: {kind} file, writing it back is not supported yet")
+    if missing:  # renamed, moved or trashed since extraction: their edits cannot be traced
+        shown = ", ".join(missing[:5]) + (
+            f" and {len(missing) - 5} more" if len(missing) > 5 else ""
+        )
+        skipped.append(f"{len(missing)} extracted file(s) were moved, renamed or trashed: {shown}")
     return edits, skipped
 
 
@@ -96,10 +105,18 @@ def plan(rt, game: Path, edits: list[Edit]) -> tuple[list[PlanItem], list[str]]:
 
 
 def source_game(workspace: Path) -> Path:
-    records = sorted((workspace / ws.RUNS_DIR).glob("*.json"))
-    if not records:
-        raise ViwoError("not_found", "no run record: extract into this workspace first")
-    return Path(json.loads(records[-1].read_text(encoding="utf-8"))["request"]["game_path"])
+    """Game folder of the newest extraction run (capture records have no request)."""
+    runs = []
+    for record in (workspace / ws.RUNS_DIR).glob("*.json"):
+        try:
+            data = json.loads(record.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(data.get("request"), dict) and data["request"].get("game_path"):
+            runs.append((str(data.get("finished", "")), record.name, data["request"]["game_path"]))
+    if not runs:
+        raise ViwoError("not_found", "no extraction run record: extract into this workspace first")
+    return Path(max(runs)[2])
 
 
 def _policy(rt, items: list[PlanItem]) -> None:
@@ -144,20 +161,35 @@ def _verify(rt, packed: Path, members: dict[str, Path], ctx) -> list[str]:
     return bad
 
 
+def _override(item: PlanItem, target: Path) -> dict:
+    """Loose files copied over; never through a link or outside the patched copy."""
+    bad = []
+    for member, source in item.members.items():
+        rel = ws.safe_member(member)
+        dest = target.joinpath(*rel.parts) if rel else None
+        if dest is None or not ws.inside(target, dest.parent) or dest.is_symlink():
+            bad.append(member)
+            continue
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source, dest)
+        if sha256(dest) != sha256(source):
+            bad.append(member)
+    return {"container": "", "slot": "override", "members": len(item.members), "failed": bad}
+
+
+def _container(target: Path, rel: str) -> Path | None:
+    member = ws.safe_member(rel)
+    path = target.joinpath(*member.parts) if member else None
+    return path if path is not None and ws.inside(target, path) else None
+
+
 def _apply(rt, item: PlanItem, target: Path, ctx) -> dict:
     if item.slot == "override":
-        for member, source in item.members.items():
-            rel = ws.safe_member(member)
-            if rel is not None:
-                (target / rel).parent.mkdir(parents=True, exist_ok=True)
-                shutil.copy2(source, target / rel)
-        bad = [
-            m
-            for m, s in item.members.items()
-            if not (target / m).is_file() or sha256(target / m) != sha256(s)
-        ]
-        return {"container": "", "slot": "override", "members": len(item.members), "failed": bad}
-    container = target / item.container
+        return _override(item, target)
+    container = _container(target, item.container)
+    if container is None:  # a link or a crafted path would lead out of the copy
+        failed = {"failed": list(item.members), "error": "container is a link or outside the copy"}
+        return {"container": item.container, "slot": item.slot, **failed}
     ctx.log(
         f"Packing {item.container} ({item.slot}, {len(item.members)} member(s))", stage="repack"
     )
@@ -173,8 +205,11 @@ def _apply(rt, item: PlanItem, target: Path, ctx) -> dict:
     if not outcome.ok:
         return {**result, "failed": list(item.members), "error": outcome.error}
     out = rt.backends[used].output_for(container)
-    bad = rt.backends[used].verify(out, item.members, ctx)
-    bad = _verify(rt, out, item.members, ctx) if bad is None else bad
+    try:  # a packer's own verify must not abort the whole repack
+        bad = rt.backends[used].verify(out, item.members, ctx)
+        bad = _verify(rt, out, item.members, ctx) if bad is None else bad
+    except Exception as exc:  # noqa: BLE001 (reported per container)
+        bad, result["error"] = list(item.members), f"verify failed: {exc}"
     state = "verified" if not bad else f"{len(bad)} member(s) FAILED"
     ctx.log(f"Verify {out.name}: {state}", "info" if not bad else "warn", "repack")
     return {

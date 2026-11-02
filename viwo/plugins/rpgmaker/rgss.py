@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import mmap
 import struct
 from pathlib import Path, PurePosixPath
 
 from viwo.contracts.slots import Unarchiver
 from viwo.contracts.types import Outcome, OutcomeKind
+from viwo.contracts.workspace import safe_member
 
 MAGIC = b"RGSSAD\x00"
 MASK = 0xFFFFFFFF
@@ -63,33 +65,37 @@ def _entries_v3(blob: bytes):
 
 def entries(blob: bytes):
     """(name, offset, size, data key) for every entry."""
-    if not blob.startswith(MAGIC) or len(blob) < 12:
+    if blob[: len(MAGIC)] != MAGIC or len(blob) < 12:
         raise ValueError("not an RGSSAD archive")
     return list(_entries_v3(blob) if blob[7] == 3 else _entries_v1(blob))
 
 
 def safe_path(name: bytes) -> PurePosixPath | None:
-    parts = name.decode("utf-8", "replace").replace("\\", "/").split("/")
-    clean = [p for p in parts if p not in ("", ".")]
-    return PurePosixPath(*clean) if clean and ".." not in clean and ":" not in clean[0] else None
+    return safe_member(name.decode("utf-8", "replace"))
 
 
 class RgssadBuiltin(Unarchiver):
     backend_id, owner, license = "rgssad-builtin", "rpgmaker", "MIT"
 
     def extract(self, archive: Path, dest: Path, ctx) -> Outcome:
-        try:
-            blob = archive.read_bytes()
-            items = entries(blob)
+        try:  # memory-mapped: game archives can be large
+            with (
+                open(archive, "rb") as fh,
+                mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ) as blob,
+            ):
+                return Outcome(OutcomeKind.OK, _write_all(blob, dest, ctx))
         except (OSError, ValueError, struct.error) as exc:
             return Outcome(OutcomeKind.FAILED, error=str(exc))
-        written = 0
-        for name, offset, size, key in items:
-            rel = safe_path(name)
-            if ctx.cancel.cancelled or rel is None or offset + size > len(blob):
-                continue
-            target = dest.joinpath(*rel.parts)
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(decrypt(blob[offset : offset + size], key))
-            written += 1
-        return Outcome(OutcomeKind.OK, written)
+
+
+def _write_all(blob, dest: Path, ctx) -> int:
+    written = 0
+    for name, offset, size, key in entries(blob):
+        rel = safe_path(name)
+        if ctx.cancel.cancelled or rel is None or offset + size > len(blob):
+            continue
+        target = dest.joinpath(*rel.parts)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(decrypt(blob[offset : offset + size], key))
+        written += 1
+    return written

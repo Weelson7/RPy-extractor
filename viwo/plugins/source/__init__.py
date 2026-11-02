@@ -55,28 +55,42 @@ class VpkBuiltin(Unarchiver):
     backend_id, owner, license = "vpk-builtin", "source", "MIT"
 
     def extract(self, archive: Path, dest: Path, ctx) -> Outcome:
+        stem, written, handles = archive.name[: -len("_dir.vpk")], 0, {}
         try:
-            blob = archive.read_bytes()
-            entries, base = tree(blob)
+            with open(archive, "rb") as fh:
+                head = fh.read(28)
+                version, size = struct.unpack_from("<II", head, 4)
+                fh.seek(0)  # only the header and directory tree are read into memory
+                entries, base = tree(fh.read((12 if version == 1 else 28) + size))
+                for path, preload, index, offset, length in entries:
+                    rel = safe_member(path)
+                    if rel is None or ctx.cancel.cancelled:
+                        continue
+                    source = fh if index == 0x7FFF else _part(handles, archive, stem, index)
+                    if source is None:
+                        continue
+                    source.seek((base if index == 0x7FFF else 0) + offset)
+                    target = dest.joinpath(*rel.parts)
+                    target.parent.mkdir(parents=True, exist_ok=True)
+                    target.write_bytes(preload + source.read(length))
+                    written += 1
         except (OSError, ValueError, struct.error) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"bad VPK: {exc}")
-        stem, written, parts = archive.name[: -len("_dir.vpk")], 0, {}
-        for path, preload, index, offset, length in entries:
-            rel = safe_member(path)
-            if rel is None or ctx.cancel.cancelled:
-                continue
-            if index == 0x7FFF:
-                data = blob[base + offset : base + offset + length]
-            else:
-                part = archive.with_name(f"{stem}_{index:03d}.vpk")
-                if part not in parts:
-                    parts[part] = part.read_bytes() if part.is_file() else b""
-                data = parts[part][offset : offset + length]
-            target = dest.joinpath(*rel.parts)
-            target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(preload + data)
-            written += 1
+        finally:
+            for handle in handles.values():
+                handle.close()
         return Outcome(OutcomeKind.OK, written)
+
+
+def _part(handles: dict, archive: Path, stem: str, index: int):
+    """Open data part files lazily, keeping only one open at a time."""
+    if index not in handles:
+        for handle in handles.values():
+            handle.close()
+        handles.clear()
+        part = archive.with_name(f"{stem}_{index:03d}.vpk")
+        handles[index] = open(part, "rb") if part.is_file() else None
+    return handles[index]
 
 
 SLOT = SlotDefinition("unarchive.vpk", "unarchive", "source", "vpk-builtin", identify=identify_vpk)

@@ -10,16 +10,25 @@ HAS_DIRS, HAS_NAMES, COMPRESSED, EMBED_NAMES = 0x1, 0x2, 0x4, 0x100
 TOGGLE = 0x40000000
 
 
-def _lz4(data: bytes) -> bytes | None:
-    try:
-        import lz4.frame  # optional: Skyrim SE (BSA 105) compresses with LZ4 frames
-    except ImportError:
-        return None
-    return lz4.frame.decompress(data)
+def _inflate(data: bytes, size: int, lz4: bool = False) -> bytes | None:
+    """Decompress to no more than the declared size (zip-bomb guard); None without lz4."""
+    if lz4:
+        try:
+            import lz4.frame  # optional: Skyrim SE (BSA 105) compresses with LZ4 frames
+        except ImportError:
+            return None
+        out = lz4.frame.LZ4FrameDecompressor().decompress(data, max_length=size)
+    else:
+        out = zlib.decompressobj().decompress(data, size)
+    if len(out) != size:
+        raise ValueError("entry does not inflate to its declared size")
+    return out
 
 
-def _cstr(blob: bytes, pos: int) -> tuple[str, int]:
-    end = blob.index(b"\0", pos)
+def _cstr(blob, pos: int) -> tuple[str, int]:
+    end = blob.find(b"\0", pos)
+    if end < 0:
+        raise ValueError("unterminated name")
     return blob[pos:end].decode("cp1252", "replace"), end + 1
 
 
@@ -43,7 +52,8 @@ def bsa_entries(blob: bytes):
     for folder, size, offset in records:
         name, pos = _cstr(blob, pos) if flags & HAS_NAMES else (f"{offset:08x}", pos)
         compressed = bool(flags & COMPRESSED) != bool(size & TOGGLE)
-        out.append((f"{folder}\\{name}", offset, size & ~(TOGGLE | 0x80000000), compressed))
+        path = f"{folder}\\{name}" if folder else name  # archives without folder names
+        out.append((path, offset, size & ~(TOGGLE | 0x80000000), compressed))
     return version, flags, out
 
 
@@ -54,8 +64,8 @@ def bsa_data(blob: bytes, version: int, flags: int, entry) -> bytes | None:
         offset += 1 + blob[offset]
     if not compressed:
         return blob[offset:end]
-    body = blob[offset + 4 : end]
-    return _lz4(body) if version == 105 else zlib.decompress(body)
+    (original,) = struct.unpack_from("<I", blob, offset)
+    return _inflate(blob[offset + 4 : end], original, lz4=version == 105)
 
 
 def _names(blob: bytes, at: int, count: int) -> list[str]:
@@ -86,13 +96,13 @@ def ba2_files(blob: bytes):
             offset, packed, size = struct.unpack_from("<QII", blob, pos + 16)
             pos += 36
             raw = blob[offset : offset + (packed or size)]
-            yield names[i], zlib.decompress(raw) if packed else raw
+            yield names[i], _inflate(raw, size) if packed else raw
             continue
         chunks, _, height, width, mips, dxgi, cube = struct.unpack_from("<BHHHBBB", blob, pos + 13)
         pos, data = pos + 24, b""
         for _ in range(chunks):
             offset, packed, size = struct.unpack_from("<QII", blob, pos)
             raw = blob[offset : offset + (packed or size)]
-            data += zlib.decompress(raw) if packed else raw
+            data += _inflate(raw, size) if packed else raw
             pos += 24
         yield names[i], dds_header(width, height, mips, dxgi, bool(cube)) + data

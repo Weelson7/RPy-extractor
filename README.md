@@ -126,6 +126,23 @@ Everything lives in [`startup.ini`](startup.ini): enabled plugins, which tool is
 each job, tool locations, and the `[server]` section (host, port, default workspace, merger output,
 logs, temp folders).
 
+Ready-made configurations ("distros") live in [`distros/`](distros/): one per OS layer and
+profile, named `<os>-<profile>.ini` (`linux|windows` x `renpy|unity|unreal|godot|custom|mixed`).
+Point `startup.ini` at one with `[startup] base = distros/windows-unity.ini`; anything in
+`startup.ini` overrides it.
+
+```bash
+viwo config generate
+```
+
+```bash
+viwo config check startup.ini distros/*.ini
+```
+
+`generate` rewrites the 12 files from the plugin and slot registry (it never overwrites a file it did
+not generate); `check` enforces the rules strictly (file names, known sections, plugins, slots and
+backends, no secrets) and exits with code 2 on any problem.
+
 ## Development
 
 ```bash

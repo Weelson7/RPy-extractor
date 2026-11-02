@@ -149,6 +149,11 @@ FORMATTERS: dict[str, Any] = {
     "survey": survey,
     "repack": repack,
     "sanitize": sanitize,
+    "config": lambda d: (
+        f"Wrote {len(d['written'])} distro file(s) to {d['folder']}"
+        if "written" in d
+        else "OK: " + ", ".join(d["checked"])
+    ),
     "capture": lambda d: (
         f"Captured {d['gathered']} file(s) with {d['backend']}; "
         f"{d['newVsStatic']} not found by static extraction"

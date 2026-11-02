@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import json
 import mmap
+import re
 import shutil
 import struct
 import time
@@ -89,7 +90,9 @@ def _inspect(path: Path, workspace: Path) -> list[dict]:
     return []
 
 
-def _duplicates(files: list[Path], workspace: Path, renames: set[str]) -> list[dict]:
+def _duplicates(
+    files: list[Path], workspace: Path, renames: set[str], flagged: set[str]
+) -> list[dict]:
     """Identical files: keep the cleanest copy (no __N suffix, right extension, first path)."""
     by_size: dict[int, list[Path]] = {}
     for path in files:
@@ -100,10 +103,13 @@ def _duplicates(files: list[Path], workspace: Path, renames: set[str]) -> list[d
     out = []
     for same in (s for s in by_hash.values() if len(s) > 1):
         rel = {p: p.relative_to(workspace).as_posix() for p in same}
-        keep = min(same, key=lambda p: ("__" in p.stem, rel[p] in renames, rel[p]))
+        candidates = [p for p in same if rel[p] not in flagged]  # never trash the last copy
+        if len(candidates) < 2:
+            continue
+        keep = min(candidates, key=lambda p: ("__" in p.stem, rel[p] in renames, rel[p]))
         out += [
             _finding("core.duplicate", p, workspace, f"same bytes as {rel[keep]}", "trash")
-            for p in same
+            for p in candidates
             if p != keep
         ]
     return out
@@ -114,7 +120,7 @@ def plan(workspace: Path) -> dict:
     findings = [f for p in files for f in _inspect(p, workspace)]
     flagged = {f["path"] for f in findings if f["action"] == "trash"}
     renames = {f["path"] for f in findings if f["action"] == "rename"}
-    dupes = [f for f in _duplicates(files, workspace, renames) if f["path"] not in flagged]
+    dupes = _duplicates(files, workspace, renames, flagged)
     gone = {f["path"] for f in dupes}
     findings = [f for f in findings if f["path"] not in gone] + dupes
     plan_id = f"{time.strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
@@ -132,7 +138,39 @@ def _move(src: Path, dest: Path) -> Path:
     return target
 
 
+PLAN_ID = re.compile(r"^\d{8}-\d{6}-[0-9a-f]{6}$")
+
+
+def _plan_id(value) -> str:
+    if not PLAN_ID.match(str(value)):
+        raise ViwoError("invalid_request", f"not a sanitizer plan id: {value!r}")
+    return str(value)
+
+
+def _ws_file(workspace: Path, rel) -> Path | None:
+    """A path read back from a plan or journal, only if it stays inside the workspace."""
+    member = ws.safe_member(str(rel))
+    path = workspace.joinpath(*member.parts) if member else None
+    return path if path is not None and ws.inside(workspace, path) else None
+
+
+def _act(workspace: Path, finding: dict) -> str:
+    """Carry out one finding; returns where the file went (workspace-relative)."""
+    src = _ws_file(workspace, finding["path"])
+    if src is None or not src.is_file():
+        raise OSError("file is gone or outside the workspace")
+    if finding["action"] == "trash":
+        dest = trash.area(workspace, "items").joinpath(*Path(finding["path"]).parts)
+    else:
+        name = ws.safe_member(str(finding.get("to", "")))
+        if name is None or len(name.parts) != 1:
+            raise OSError("bad new name")
+        dest = src.with_name(name.name)
+    return _move(src, dest).relative_to(workspace).as_posix()
+
+
 def apply(workspace: Path, plan_id: str, accept: list[int] | str = "all-safe") -> dict:
+    plan_id = _plan_id(plan_id)
     path = workspace / ROOT / "plans" / f"{plan_id}.json"
     if not path.is_file():
         raise ViwoError("not_found", f"no sanitizer plan {plan_id}")
@@ -141,21 +179,14 @@ def apply(workspace: Path, plan_id: str, accept: list[int] | str = "all-safe") -
         picked = range(len(findings)) if accept == "all-safe" else sorted({int(i) for i in accept})
     except (TypeError, ValueError):
         raise ViwoError("invalid_request", "accept must be 'all-safe' or a list of indexes")
-    chosen = [i for i in picked if 0 <= i < len(findings)]
     journal, failed = [], []
-    for index in chosen:
-        finding, src = findings[index], workspace / findings[index]["path"]
-        if finding["action"] == "none" or not src.is_file():
-            continue
-        try:
-            dest = (
-                trash.area(workspace, "items") / finding["path"]  # same layout as SORT
-                if finding["action"] == "trash"
-                else src.with_name(finding["to"])
-            )
-            journal.append([_move(src, dest).relative_to(workspace).as_posix(), finding["path"]])
-        except OSError as exc:
-            failed.append(f"{finding['path']}: {exc}")
+    for index in (i for i in picked if 0 <= i < len(findings)):
+        finding = findings[index]
+        if finding["action"] in ("trash", "rename"):
+            try:
+                journal.append([_act(workspace, finding), finding["path"]])
+            except OSError as exc:
+                failed.append(f"{finding['path']}: {exc}")
     folder = workspace / ROOT / "journal"
     folder.mkdir(parents=True, exist_ok=True)
     record = folder / f"{plan_id}.json"  # several applies of one plan add up
@@ -172,13 +203,14 @@ def apply(workspace: Path, plan_id: str, accept: list[int] | str = "all-safe") -
 
 
 def undo(workspace: Path, token: str) -> dict:
-    path = workspace / ROOT / "journal" / f"{token}.json"
+    path = workspace / ROOT / "journal" / f"{_plan_id(token)}.json"
     if not path.is_file():
         raise ViwoError("not_found", f"nothing to undo for {token}")
     restored = 0
     for now, before in reversed(json.loads(path.read_text(encoding="utf-8"))):
-        if (workspace / now).is_file():
-            _move(workspace / now, workspace / before)
+        src, dest = _ws_file(workspace, now), _ws_file(workspace, before)
+        if src is not None and dest is not None and src.is_file():
+            _move(src, dest)
             restored += 1
     path.unlink()
     return {"restored": restored}

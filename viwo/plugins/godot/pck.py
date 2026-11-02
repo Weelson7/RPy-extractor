@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import struct
+import tempfile
 from pathlib import Path
 
 from viwo.contracts.slots import Match, Packer, Unarchiver
@@ -119,7 +120,8 @@ class GodotPckPacker(Packer):
         tool = ctx.os.tools.locate(PCKTOOL)
         if tool is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=PCKTOOL.hint)
-        root = ctx.scratch / f"pck-{container.stem}"
+        ctx.scratch.mkdir(parents=True, exist_ok=True)
+        root = Path(tempfile.mkdtemp(prefix="pck-", dir=ctx.scratch))  # one per pack call
         staged = stage_members(members, root)
         argv = [*tool.argv_prefix, "--pack", str(container), "--action", "add"]
         argv += ["--remove-prefix", str(root), *map(str, staged)]

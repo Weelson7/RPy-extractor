@@ -1,12 +1,12 @@
 name: ci
 
-# Cost policy: a push or pull request runs ONE Linux job (lint, caps, unit tests).
-# The full matrix (Windows, both Pythons) and the real-tool jobs run only when started
-# by hand (Actions > ci > Run workflow). No schedule. A newer push cancels an older run.
+# Cost policy (owner's rule): CI runs only for MAJOR releases, i.e. when a tag vN.0.0 is
+# pushed, or when started by hand (Actions > ci > Run workflow). Nothing runs on ordinary
+# pushes or pull requests, and there is no schedule. Run the tests locally instead:
+#   python -m unittest discover -s tests -t .   and   python tools/loc_count.py
 on:
   push:
-    branches: [main, makeover]
-  pull_request:
+    tags: ["v[0-9]+.0.0"]
   workflow_dispatch:
 
 concurrency:
@@ -18,8 +18,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: ${{ github.event_name == 'workflow_dispatch' && fromJSON('["ubuntu-latest", "windows-latest"]') || fromJSON('["ubuntu-latest"]') }}
-        python: ${{ github.event_name == 'workflow_dispatch' && fromJSON('["3.11", "3.13"]') || fromJSON('["3.13"]') }}
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.11", "3.13"]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -36,8 +36,7 @@ jobs:
         run: python -m unittest discover -s tests -t . -v
 
   real-tools:
-    # L5: real third-party tools at pinned versions, on demand only.
-    if: github.event_name == 'workflow_dispatch'
+    # L5: real third-party tools at pinned versions (major releases / by hand).
     strategy:
       fail-fast: false
       matrix:

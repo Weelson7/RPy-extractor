@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import mmap
 import struct
 import zlib
 from pathlib import Path
@@ -29,12 +30,17 @@ def _write(dest: Path, name: str, data: bytes) -> int:
     return 1
 
 
+def _mapped(archive: Path, read):
+    """Run read(blob) over a read-only memory map (multi-GB archives are never loaded)."""
+    with open(archive, "rb") as fh, mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ) as blob:
+        return read(blob)
+
+
 class BsaBuiltin(Unarchiver):
     backend_id, owner, license = "bsa-builtin", "bethesda", "MIT"
 
     def extract(self, archive: Path, dest: Path, ctx) -> Outcome:
-        try:
-            blob = archive.read_bytes()
+        def read(blob) -> tuple[int, int]:
             version, flags, entries = bsa_entries(blob)
             written, skipped = 0, 0
             for entry in entries:
@@ -43,8 +49,12 @@ class BsaBuiltin(Unarchiver):
                 data = bsa_data(blob, version, flags, entry)
                 if data is None:
                     skipped += 1
-                    continue
-                written += _write(dest, entry[0], data)
+                else:
+                    written += _write(dest, entry[0], data)
+            return written, skipped
+
+        try:
+            written, skipped = _mapped(archive, read)
         except (OSError, ValueError, struct.error, zlib.error, IndexError) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"bad BSA: {exc}")
         notes = (f"{skipped} LZ4 entries need the 'lz4' Python package",) if skipped else ()
@@ -55,15 +65,18 @@ class Ba2Builtin(Unarchiver):
     backend_id, owner, license = "ba2-builtin", "bethesda", "MIT"
 
     def extract(self, archive: Path, dest: Path, ctx) -> Outcome:
-        try:
-            blob, written = archive.read_bytes(), 0
+        def read(blob) -> int:
+            written = 0
             for name, data in ba2_files(blob):
                 if ctx.cancel.cancelled:
                     break
                 written += _write(dest, name, data)
+            return written
+
+        try:
+            return Outcome(OutcomeKind.OK, _mapped(archive, read))
         except (OSError, ValueError, struct.error, zlib.error, IndexError) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"bad BA2: {exc}")
-        return Outcome(OutcomeKind.OK, written)
 
 
 SLOTS = (

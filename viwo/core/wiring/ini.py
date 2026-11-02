@@ -9,6 +9,8 @@ from pathlib import Path
 from viwo.contracts.errors import ViwoError
 
 KNOWN_SECTIONS = {"startup", "plugins", "slots", "tools", "server"}
+STARTUP_KEYS = {"os", "profile", "features", "auto_install", "strict_preflight", "base"}
+MAX_LAYERS = 4
 SECRET_WORDS = ("key", "secret", "password", "token")
 
 
@@ -102,19 +104,49 @@ def _read_server(cfg: configparser.ConfigParser, out: StartupConfig, base: Path)
     out.server = server
 
 
+def _parser() -> configparser.ConfigParser:
+    return configparser.ConfigParser(inline_comment_prefixes=(";", "#"))
+
+
+def layers(path: Path) -> list[Path]:
+    """The file and the files it names with [startup] base = (relative to the naming file),
+    base first. At most MAX_LAYERS files; cycles and missing bases are errors."""
+    chain, current = [], path.resolve()
+    while current is not None:
+        if current in chain or len(chain) >= MAX_LAYERS:
+            raise ViwoError("invalid_request", f"{path}: base chain loops or is too deep")
+        chain.append(current)
+        cfg = _parser()
+        cfg.read(current, encoding="utf-8-sig")
+        base = cfg.get("startup", "base", fallback="").strip()
+        current = (current.parent / base).resolve() if base else None
+        if current is not None and not current.is_file():
+            raise ViwoError("invalid_request", f"{chain[-1]}: base file not found: {base}")
+    return list(reversed(chain))
+
+
+def _unknown_keys(cfg: configparser.ConfigParser, out: StartupConfig) -> None:
+    if cfg.has_section("startup"):
+        for key in cfg["startup"]:
+            if key not in STARTUP_KEYS:
+                out.problems.append(f"[startup] {key}: unknown key ignored")
+
+
 def load_ini(path: Path | None) -> StartupConfig:
-    """Parse the startup ini; missing file = built-in defaults."""
+    """Parse the startup ini (and its base layers); missing file = built-in defaults."""
     out = StartupConfig()
     if path is None or not path.exists():
         return out
-    cfg = configparser.ConfigParser(inline_comment_prefixes=(";", "#"))
+    cfg = _parser()
     try:
-        cfg.read(path, encoding="utf-8-sig")
+        files = layers(path)
+        cfg.read(files, encoding="utf-8-sig")  # later files override earlier ones
+        _unknown_keys(cfg, out)
         _read_startup(cfg, out)
         _read_tables(cfg, out, path.parent)
         _read_options(cfg, out)
         _read_server(cfg, out, path.parent)
     except (configparser.Error, ValueError) as exc:
         raise ViwoError("invalid_request", f"{path}: {exc}") from exc
-    out.source = str(path)
+    out.source = " <- ".join(str(f) for f in reversed(files))
     return out

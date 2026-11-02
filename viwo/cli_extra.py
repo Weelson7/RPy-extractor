@@ -128,10 +128,32 @@ def workspace_command(rt, args) -> Envelope:
         )
         return Envelope.success({"games": survey(rt, args.folder, args.deep, note)})
     if args.command == "capture":
-        from viwo.core.capture import capture
+        from viwo.core.capture import CaptureRequest, capture
 
         note = None if args.json else (lambda e: print(e.legacy_line(), file=sys.stderr))
-        return Envelope.success(
-            capture(rt, args.game, args.exe, args.workspace, args.confirm, note)
-        )
+        req = CaptureRequest(args.game, args.exe, args.workspace, args.confirm)
+        return Envelope.success(capture(rt, req, note))
+    if args.command == "config":
+        return _config(args)
     raise ViwoError("invalid_request", f"unknown command {args.command}")
+
+
+def _config(args) -> Envelope:
+    """viwo config generate [folder] | viwo config check [files] (strict; exit 2 on problems)."""
+    from viwo.core.wiring import distros
+    from viwo.core.wiring.boot import DEFAULT_INI
+
+    if args.action == "generate":
+        out = args.paths[0] if args.paths else DEFAULT_INI.parent / "distros"
+        report = distros.generate(out)
+        bad = {name: issues for name, issues in report.items() if issues}
+        if bad:
+            hint = "; ".join(f"{name}: {issues[0]}" for name, issues in sorted(bad.items()))
+            raise ViwoError("invalid_request", f"{len(bad)} distro file(s) not written", hint=hint)
+        return Envelope.success({"folder": str(out), "written": sorted(report)})
+    files = args.paths or [args.ini or DEFAULT_INI]
+    problems = {str(path): distros.check(path) for path in files}
+    if any(problems.values()):
+        hint = "; ".join(f"{f}: {p[0]}" for f, p in problems.items() if p)
+        raise ViwoError("invalid_request", "config check failed", hint=hint)
+    return Envelope.success({"checked": sorted(problems), "problems": problems})

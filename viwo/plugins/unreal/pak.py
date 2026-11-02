@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import struct
+import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -167,7 +168,8 @@ class RepakPatch(Packer):
         tool, info = ctx.os.tools.locate(REPAK), pak_info(container)
         if tool is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=REPAK.hint)
-        root = ctx.scratch / f"pak-{container.stem}"
+        ctx.scratch.mkdir(parents=True, exist_ok=True)
+        root = Path(tempfile.mkdtemp(prefix="pak-", dir=ctx.scratch))  # one per pack call
         for member, source in members.items():
             rel = safe_member(member)
             if rel is not None:
