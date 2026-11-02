@@ -120,6 +120,9 @@ def _stages(run: Run, workspace: Path) -> ExtractionResult:
     if run.cancel.cancelled:
         raise ViwoError("cancelled", "extraction cancelled")
     warnings = _verify(unpacked, collected) + [w for r in runs for w in r.warnings]
+    warnings += [
+        w for pid in chosen for w in rt.plugins[pid].verify(run.ctx(pid), collected.collected)
+    ]
     result = ExtractionResult(
         True,
         run.request.mode,

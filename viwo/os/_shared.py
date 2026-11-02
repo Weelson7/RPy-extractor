@@ -93,7 +93,7 @@ class Locator(ToolLocator):
             return self._found(spec, Path(env_value), "env")
         if spec.kind == "python":
             name = spec.import_name or spec.dep_id
-            found = importlib.util.find_spec(name) is not None
+            found = _module_present(name)
             return (
                 ToolLocation(spec.dep_id, (sys.executable, "-m", name), "", "python")
                 if found
@@ -110,6 +110,15 @@ class Locator(ToolLocator):
                     if candidate.is_file():
                         return self._found(spec, candidate, "known_dir")
         return None
+
+
+def _module_present(name: str) -> bool:
+    if sys.modules.get(name) is not None:
+        return True
+    try:
+        return importlib.util.find_spec(name) is not None
+    except (ImportError, ValueError):  # e.g. a module blocked with sys.modules[name] = None
+        return False
 
 
 def open_with(command: Sequence[str]) -> tuple[bool, str]:

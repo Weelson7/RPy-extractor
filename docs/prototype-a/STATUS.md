@@ -13,7 +13,7 @@ contract with its reason.
 | M2 | `viwo/contracts`, `viwo/os` (process with tree-kill, tool locator, fs rules) for Linux + Windows; conformance tests | done |
 | M3 | flat startup ini; slot binder (failover); stage runner (probe, detect, select, identify/carve, unpack, collect copy/move, provenance, verify, report); workspace ownership + lock; jobs + run records + envelope; CLI `info/detect/extract/slots/serve`; v1 server delegates extraction to the core; `generic` plugin; zip/tar/7z/rar/py7zr backends | done (see notes) |
 | M4 | `renpy` plugin: safe RPA reader (main) + unrpa subprocess (spare) | done |
-| M5 | `unity` plugin: UnityPy (main) / AssetStudioModCLI (spare) | todo |
+| M5 | `unity` plugin: UnityPy (main) / AssetStudioModCLI (spare) | done |
 | M6 | `godot` plugin: PCK identify + carving of embedded PCKs, GDRE (main) / GodotPckTool (spare) | todo |
 
 ## Layout
@@ -54,3 +54,11 @@ may only reference `_codecs.encode` and `bytes`. A malicious `__reduce__` payloa
 without running (test). unrpa (GPL-3.0) runs as a subprocess spare; L5 confirmed real unrpa
 reads our RPA fixtures. Source root is `game/` only (v1 rule). RPA-1.0/3.2/ALT variants fall
 through to the spare.
+
+**M5 (Unity).** UnityPy export ported from v1 into small functions; outputs go to staging and are
+collected into the per-extension layout (D3), so the v1 F1 wipe cannot happen. AssetStudioModCLI
+is the spare (its exact CLI flags are from research, **not verified against the binary**: it is
+not installable here). Detection fixes v1 F2 (case-insensitive markers; `*_Data` alone = 0.5).
+Removed v1 placeholder "slices" and the always-passing completeness gate (F11). Tests use a fake
+`UnityPy` module; L5 checks real UnityPy on a corrupt container. **Gap:** no real Unity asset
+fixture yet (needs a redistributable sample; L7 manual check on a real game is pending).

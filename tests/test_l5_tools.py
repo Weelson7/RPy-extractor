@@ -40,5 +40,30 @@ class SevenZipTest(unittest.TestCase):
             self.assertEqual(result.archives_extracted, 1)
 
 
+@unittest.skipUnless(os.environ.get("VIWO_L5"), "L5 real-tool test (set VIWO_L5=1)")
+class UnityPyRobustnessTest(unittest.TestCase):
+    def test_corrupt_container_is_a_note_not_a_crash(self) -> None:
+        try:
+            import UnityPy  # noqa: F401
+        except ImportError:
+            self.skipTest("UnityPy not installed")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            game = root / "game"
+            (game / "G_Data").mkdir(parents=True)
+            (game / "UnityPlayer.dll").write_bytes(b"MZ")
+            (game / "G_Data" / "globalgamemanagers").write_bytes(b"UnityFS\0garbage" * 8)
+            rt = runtime(root, "[plugins]\nunity = on\n")
+            result = extract(
+                rt,
+                ExtractionRequest(str(game), str(root / "ws")),
+                "j",
+                lambda e: None,
+                CancelToken(),
+            )
+            self.assertTrue(result.success)
+            self.assertEqual(result.runs[0].backend, "unitypy")
+
+
 if __name__ == "__main__":
     unittest.main()

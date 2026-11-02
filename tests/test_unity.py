@@ -1,0 +1,118 @@
+"""L3: Unity plugin. UnityPy is replaced by a fake module (no game data in the repo)."""
+
+from __future__ import annotations
+
+import sys
+import tempfile
+import types
+import unittest
+from pathlib import Path
+from unittest import mock
+
+from tests.helpers import runtime, tree_hashes
+from viwo.contracts import CancelToken, ExtractionRequest
+from viwo.core.pipeline.probe import FolderProbe
+from viwo.core.pipeline.runner import extract
+from viwo.plugins.unity import UnityPlugin
+
+
+class _Image:
+    def save(self, path) -> None:
+        Path(path).write_bytes(b"PNG")
+
+
+def _obj(kind: str, path_id: int, **fields):
+    data = types.SimpleNamespace(**fields)
+    return types.SimpleNamespace(
+        type=types.SimpleNamespace(name=kind), path_id=path_id, parse_as_object=lambda: data
+    )
+
+
+def _broken():
+    def boom():
+        raise ValueError("corrupt object")
+
+    return types.SimpleNamespace(
+        type=types.SimpleNamespace(name="Texture2D"), path_id=9, parse_as_object=boom
+    )
+
+
+def fake_unitypy() -> types.ModuleType:
+    objects = [
+        _obj("Texture2D", 1, m_Name="hero", image=_Image()),
+        _obj("Sprite", 2, m_Name="hero", image=_Image()),  # same name -> hero__1.png
+        _obj("AudioClip", 3, m_Name="theme", samples={"theme.wav": b"RIFF"}),
+        _obj("TextAsset", 4, m_Name="dialog", m_Script="hello"),
+        _obj("Mesh", 5, m_Name="rock", export=lambda: "v 0 0 0\n"),
+        _obj("MonoBehaviour", 6, m_Name="ignored"),
+        _broken(),
+    ]
+    module = types.ModuleType("UnityPy")
+    module.load = lambda path: types.SimpleNamespace(objects=objects)
+    return module
+
+
+def make_unity_game(root: Path) -> Path:
+    game = root / "MyGame"
+    (game / "MyGame_Data").mkdir(parents=True)
+    (game / "UnityPlayer.dll").write_bytes(b"MZ")
+    (game / "MyGame_Data" / "globalgamemanagers").write_bytes(b"\0" * 16)
+    return game
+
+
+class UnityTests(unittest.TestCase):
+    def test_detection(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            game = make_unity_game(Path(tmp))
+            self.assertEqual(UnityPlugin().detect(FolderProbe(game)).confidence, 0.92)
+            (game / "UnityPlayer.dll").unlink()
+            (game / "MyGame_Data" / "globalgamemanagers").unlink()
+            self.assertEqual(UnityPlugin().detect(FolderProbe(game)).confidence, 0.5)
+
+    def test_export_into_extension_layout(self) -> None:
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            mock.patch.dict(sys.modules, {"UnityPy": fake_unitypy()}),
+        ):
+            root = Path(tmp)
+            game = make_unity_game(root)
+            rt = runtime(root, "[plugins]\nunity = on\n")
+            self.assertEqual(rt.bindings["export.unity"].main, "unitypy")
+            result = extract(
+                rt,
+                ExtractionRequest(str(game), str(root / "ws")),
+                "j",
+                lambda e: None,
+                CancelToken(),
+            )
+            files = tree_hashes(root / "ws", skip_reserved=True)
+            for expected in (
+                "png/hero.png",
+                "png/hero__1.png",
+                "wav/theme.wav",
+                "txt/dialog.txt",
+                "obj/rock.obj",
+            ):
+                self.assertIn(expected, files)
+            run = result.runs[0]
+            self.assertEqual((run.plugin_id, run.backend, run.exported), ("unity", "unitypy", 5))
+
+    def test_missing_exporters_degrade_to_a_warning(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(sys.modules, {"UnityPy": None}):
+            root = Path(tmp)
+            game = make_unity_game(root)
+            rt = runtime(root, "[plugins]\nunity = on\n")
+            self.assertFalse(rt.bindings["export.unity"].bound)
+            result = extract(
+                rt,
+                ExtractionRequest(str(game), str(root / "ws")),
+                "j",
+                lambda e: None,
+                CancelToken(),
+            )
+            self.assertTrue(result.success)
+            self.assertTrue(any("export.unity" in w for w in result.warnings))
+
+
+if __name__ == "__main__":
+    unittest.main()
