@@ -6,7 +6,7 @@ from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest
 from viwo.contracts.slots import SlotDefinition
 from viwo.contracts.types import DetectionResult
 
-from .mv import SUFFIXES, RpgMvExporter
+from .mv import SUFFIXES, RpgMvExporter, RpgMvPacker
 from .rgss import MAGIC, RgssadBuiltin
 
 MANIFEST = PluginManifest("rpgmaker", "RPG Maker", "0.1.0", engine_type="rpgmaker", priority=16)
@@ -20,6 +20,7 @@ SLOTS = (
         magic=(MAGIC,),
     ),
     SlotDefinition("export.rpgmaker", "export", "rpgmaker", "rpgmv-builtin"),
+    SlotDefinition("pack.rpgmaker", "pack", "rpgmaker", "rpgmv-pack"),
 )
 MARKERS = ("rpg_core.js", "rmmz_core.js", "rpg_managers.js", "rmmz_managers.js", "game.rgssad")
 MARKERS += ("game.rgss2a", "game.rgss3a", "rgss102e.dll", "rgss202e.dll", "rgss301.dll")
@@ -46,7 +47,10 @@ class RpgMakerPlugin(EnginePlugin):
         return SLOTS
 
     def backends(self):
-        return (RgssadBuiltin(), RpgMvExporter())
+        return (RgssadBuiltin(), RpgMvExporter(), RpgMvPacker())
+
+    def pack_slot(self, unarchive_slot: str) -> str:
+        return "pack.rpgmaker" if unarchive_slot == "exported" else ""
 
     def export_slot(self) -> str:
         return "export.rpgmaker"

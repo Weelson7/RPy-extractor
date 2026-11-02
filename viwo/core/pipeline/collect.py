@@ -23,6 +23,7 @@ class Source:
     kind: str = "derived"  # loose | member | export | derived (round trip, doc 18)
     container: str = ""  # game-relative container of "member" files
     prefix: str = ""  # game-relative root of "loose" files
+    mapped: dict = field(default_factory=dict)  # export rel -> [container, member, plugin]
 
 
 @dataclass
@@ -50,7 +51,7 @@ def _walk(root: Path, skip: set[str], avoid: Path):
         here = Path(dirpath)
         dirnames[:] = sorted(d for d in dirnames if d not in skip and (here / d).resolve() != avoid)
         for name in sorted(filenames):
-            if name not in (ws.MARKER, *ws.LEGACY_MARKERS):
+            if name not in (ws.MARKER, ws.EXPORT_MAP, *ws.LEGACY_MARKERS):
                 yield here / name
 
 
@@ -87,6 +88,15 @@ def collect(
     return report
 
 
+def _where(source: Source, rel: str) -> dict:
+    """Round-trip fields: what kind of file this is and where it would be written back."""
+    if rel in source.mapped:
+        container, member, plugin = source.mapped[rel]
+        return {"kind": "exported", "container": container, "member": member, "plugin": plugin}
+    member = f"{source.prefix}/{rel}".lstrip("/") if source.kind == "loose" else rel
+    return {"kind": source.kind, "container": source.container, "member": member}
+
+
 def _collect_one(src: Path, folder: Path, source: Source, report: CollectReport) -> None:
     folder.mkdir(parents=True, exist_ok=True)
     digest = sha256(src)
@@ -102,8 +112,6 @@ def _collect_one(src: Path, folder: Path, source: Source, report: CollectReport)
             "origin": f"{source.origin}:{rel}",
             "sha256": digest,
             "size": target.stat().st_size,
-            "kind": source.kind,
-            "container": source.container,
-            "member": f"{source.prefix}/{rel}".lstrip("/") if source.kind == "loose" else rel,
+            **_where(source, rel),
         }
     )

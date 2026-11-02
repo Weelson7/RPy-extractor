@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import sys
 import tempfile
@@ -148,8 +149,77 @@ class UnitySourceCoverageTests(unittest.TestCase):
                 return types.SimpleNamespace(objects=[])
 
             files = [assets / "chars", assets / "notes.txt"]
-            exporters._export_group(None, types.SimpleNamespace(load=load), files)
+            exporters._export_group(None, types.SimpleNamespace(load=load), files, {})
             self.assertEqual(calls, [2, 1, 1])
+
+
+class Environment:  # the class name is what the exporter looks for
+    pass
+
+
+def stateful_unitypy() -> types.ModuleType:
+    """Fake UnityPy whose containers are JSON {path_id: {type, name, script}}."""
+
+    def load(*paths):
+        env = Environment()
+        env.files, env.objects = {}, []
+        for path in paths:
+            state = json.loads(Path(path).read_text())
+            node = types.SimpleNamespace(name=path, parent=env)
+            env.files[path] = types.SimpleNamespace(
+                save=lambda packer=None, st=state: json.dumps(st).encode()
+            )
+            for pid, rec in state.items():
+                data = types.SimpleNamespace(m_Name=rec["name"], m_Script=rec["script"])
+                data.save = lambda rec=rec, data=data: rec.update(script=data.m_Script)
+                env.objects.append(
+                    types.SimpleNamespace(
+                        type=types.SimpleNamespace(name=rec["type"]),
+                        path_id=int(pid),
+                        assets_file=node,
+                        parse_as_object=lambda data=data: data,
+                    )
+                )
+        return env
+
+    module = types.ModuleType("UnityPy")
+    module.load = load
+    return module
+
+
+class UnityRoundTripTests(unittest.TestCase):
+    def test_text_asset_edit_is_written_back_and_verified(self) -> None:
+        from viwo.core.roundtrip import repack
+
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            mock.patch.dict(sys.modules, {"UnityPy": stateful_unitypy()}),
+        ):
+            root = Path(tmp)
+            game = make_unity_game(root)
+            assets = game / "MyGame_Data" / "resources.assets"
+            assets.write_text(
+                json.dumps({"7": {"type": "TextAsset", "name": "dialog", "script": "hello"}})
+            )
+            rt = runtime(root, "[plugins]\nunity = on\n")
+            extract(
+                rt,
+                ExtractionRequest(str(game), str(root / "ws")),
+                "j",
+                lambda e: None,
+                CancelToken(),
+            )
+            (root / "ws" / "txt" / "dialog.txt").write_text("bonjour")
+            report = repack(rt, root / "ws", root / "patched")
+            self.assertTrue(report["verified"], report)
+            self.assertEqual(report["plan"][0]["slot"], "pack.unity")
+            patched = json.loads(
+                (root / "patched" / "MyGame_Data" / "resources.assets").read_text()
+            )
+            self.assertEqual(patched["7"]["script"], "bonjour")
+            self.assertEqual(
+                json.loads(assets.read_text())["7"]["script"], "hello"
+            )  # original kept
 
 
 if __name__ == "__main__":

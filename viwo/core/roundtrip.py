@@ -34,6 +34,7 @@ class Edit:
     kind: str
     container: str
     member: str
+    plugin: str = ""  # owner of "exported" files
 
 
 @dataclass
@@ -52,8 +53,9 @@ def edit_set(workspace: Path) -> tuple[list[Edit], list[str]]:
         if not file.is_file() or sha256(file) == entry["sha256"]:
             continue
         kind = entry.get("kind", "derived")
-        if kind in ("loose", "member"):
-            edits.append(Edit(file, kind, entry.get("container", ""), entry.get("member", "")))
+        if kind in ("loose", "member", "exported"):
+            where = (entry.get("container", ""), entry.get("member", ""), entry.get("plugin", ""))
+            edits.append(Edit(file, kind, *where))
         else:
             skipped.append(f"{entry['path']}: {kind} file, writing it back is not supported yet")
     return edits, skipped
@@ -74,13 +76,17 @@ def plan(rt, game: Path, edits: list[Edit]) -> tuple[list[PlanItem], list[str]]:
     loose = {e.member: e.file for e in edits if e.kind == "loose"}
     if loose:
         items.append(PlanItem("", "override", loose))
-    for edit in (e for e in edits if e.kind == "member"):
-        groups[edit.container][edit.member] = edit.file
-    for container, members in sorted(groups.items()):
-        match = identify(game / container, rt.slots.values())
-        slot = _pack_slot(rt, match)
+    for edit in (e for e in edits if e.kind in ("member", "exported")):
+        groups[(edit.container, edit.plugin)][edit.member] = edit.file
+    for (container, owner), members in sorted(groups.items()):
+        if owner:  # exported by a plugin: its packer writes straight into the container
+            plugin, match = rt.plugins.get(owner), None
+            slot = plugin.pack_slot("exported") if plugin else ""
+        else:
+            match = identify(game / container, rt.slots.values())
+            slot = _pack_slot(rt, match)
         binding = rt.bindings.get(slot)
-        if not slot or match.embedded:
+        if not slot or (match is not None and match.embedded):
             warnings.append(f"{container}: no packer for this container (yet)")
         elif binding is None or not binding.bound:
             warnings.append(f"{container}: {slot} has no available backend (see `viwo slots`)")
@@ -164,7 +170,8 @@ def _apply(rt, item: PlanItem, target: Path, ctx) -> dict:
     if not outcome.ok:
         return {**result, "failed": list(item.members), "error": outcome.error}
     out = rt.backends[used].output_for(container)
-    bad = _verify(rt, out, item.members, ctx)
+    bad = rt.backends[used].verify(out, item.members, ctx)
+    bad = _verify(rt, out, item.members, ctx) if bad is None else bad
     return {
         **result,
         "output": out.relative_to(target).as_posix(),

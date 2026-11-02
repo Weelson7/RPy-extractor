@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
+
+from viwo.contracts import workspace as ws
 
 from .collect import Source
 from .probe import FolderProbe
@@ -17,10 +20,26 @@ def sources_for(run, chosen, moved: dict[Path, str], runs) -> list[Source]:
         sources.append(Source(folder, True, origin, kind=kind, container=container))
     staging = run.work / "staging"
     return sources + [
-        Source(staging / r.plugin_id, True, f"export:{r.backend}", kind="export")
+        Source(
+            staging / r.plugin_id,
+            True,
+            f"export:{r.backend}",
+            kind="export",
+            mapped=_export_map(staging / r.plugin_id, r.plugin_id),
+        )
         for r in runs
         if r.backend
     ]
+
+
+def _export_map(folder: Path, plugin_id: str) -> dict:
+    """Exporters may record which game container and member each exported file came from."""
+    path = folder / ws.EXPORT_MAP
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+    except ValueError:
+        return {}
+    return {rel: [str(c), str(m), plugin_id] for rel, (c, m) in raw.items()}
 
 
 def claimed(run, runs) -> frozenset[str]:

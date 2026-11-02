@@ -12,6 +12,7 @@ PROVENANCE_FILE = f"{METADATA_DIR}/provenance.jsonl"
 TRASH_DIR = ".trash"
 NOEXT = ".noext"
 COLLISION = "{stem}__{index}{suffix}"
+EXPORT_MAP = ".viwo-export-map.json"  # staging: exported file -> [container, member]
 
 
 def is_reserved(name: str) -> bool:

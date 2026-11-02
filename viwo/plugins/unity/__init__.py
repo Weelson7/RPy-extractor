@@ -7,6 +7,7 @@ from viwo.contracts.slots import SlotDefinition
 from viwo.contracts.types import DetectionResult
 
 from .exporters import AssetStudioModCli, UnityPyExporter
+from .pack import UnityPyPacker
 
 MANIFEST = PluginManifest(
     "unity",
@@ -33,6 +34,7 @@ SLOTS = (
         suffixes=(".unitypackage",),
     ),
     SlotDefinition("export.unity", "export", "unity", "unitypy", "assetstudiomod-cli"),
+    SlotDefinition("pack.unity", "pack", "unity", "unitypy-pack"),
 )
 CLAIMED = (".assets", ".ress", ".resource", ".unity3d", ".bundle", ".assetbundle", "")
 STRONG = (
@@ -68,7 +70,10 @@ class UnityPlugin(EnginePlugin):
         return SLOTS
 
     def backends(self):
-        return (UnityPyExporter(), AssetStudioModCli())
+        return (UnityPyExporter(), AssetStudioModCli(), UnityPyPacker())
+
+    def pack_slot(self, unarchive_slot: str) -> str:
+        return "pack.unity" if unarchive_slot == "exported" else ""
 
     def claimed_suffixes(self):
         return CLAIMED

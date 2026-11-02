@@ -111,6 +111,10 @@ class Packer(Backend):
         """The file this packer writes for a container (itself when rebuilt in place)."""
         return container
 
+    def verify(self, output: Path, members: dict[str, Path], ctx: "ExtractionContext"):
+        """Members not written back correctly, or None to verify by re-extraction."""
+        return None
+
     @abstractmethod
     def pack(self, container: Path, members: dict[str, Path], ctx: "ExtractionContext") -> Outcome:
         """container lies inside the patched copy; members map member path -> edited file."""

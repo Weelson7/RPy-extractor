@@ -90,6 +90,13 @@ class RpgMakerPipelineTests(unittest.TestCase):
             self.assertFalse(list(root.rglob("evil.txt")))  # traversal entry skipped
             self.assertEqual((root / "ws-mv" / "png" / "Actor2.png").read_bytes(), png)
             self.assertFalse((root / "ws-mv" / "rpgmvp").exists())  # decoded, not copied raw
+            from viwo.core.roundtrip import repack
+
+            (root / "ws-mv" / "png" / "Actor2.png").write_bytes(png + b"edited")
+            report = repack(runtime(root), root / "ws-mv", root / "mv-patched")
+            self.assertTrue(report["verified"], report)
+            patched = (root / "mv-patched" / "www" / "img" / "faces" / "Actor2.rpgmvp").read_bytes()
+            self.assertEqual(patched, encrypt_mv(png + b"edited"))
             (mv / "www" / "data" / "System.json").unlink()  # key recovered from the PNG header
             request = ExtractionRequest(str(mv), str(root / "ws-mv2"), plugins=("rpgmaker",))
             extract(runtime(root), request, "j", lambda e: None, CancelToken())

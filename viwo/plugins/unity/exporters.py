@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import gc
+import json
 import re
 from pathlib import Path
 
@@ -86,61 +87,85 @@ def _wanted(ctx, ext: str) -> bool:
     return ctx.selected_exts is None or ext in ctx.selected_exts
 
 
-def _write(ctx, kind: str, name: str, ext: str, payload: bytes) -> int:
+def _write(ctx, kind: str, name: str, ext: str, payload: bytes) -> Path | None:
     if not _wanted(ctx, ext):
-        return 0
+        return None
     folder = ctx.staging / kind
     folder.mkdir(parents=True, exist_ok=True)
-    ws.next_free(folder / f"{name}{ext}").write_bytes(payload)
-    return 1
+    target = ws.next_free(folder / f"{name}{ext}")
+    target.write_bytes(payload)
+    return target
 
 
-def _export_object(ctx, obj, fallback: str) -> int:
+def container_of(obj, files: list[Path], root: Path) -> str | None:
+    """Game-relative disk file an object was loaded from (for the round trip map)."""
+    node = getattr(obj, "assets_file", None)
+    while node is not None and type(getattr(node, "parent", None)).__name__ != "Environment":
+        node = getattr(node, "parent", None)
+    name = Path(str(getattr(node, "name", "") or "")).name
+    found = next((f for f in files if f.name == name), None)
+    return found.relative_to(root).as_posix() if found and root in found.parents else None
+
+
+def _export_object(ctx, obj, fallback: str, record: dict) -> int:
     kind = obj.type.name
     data = obj.parse_as_object()
     name = _name(data, fallback)
     if kind in ("Texture2D", "Sprite") and _wanted(ctx, ".png"):
         folder = ctx.staging / "images"
         folder.mkdir(parents=True, exist_ok=True)
-        data.image.save(ws.next_free(folder / f"{name}.png"))
+        target = ws.next_free(folder / f"{name}.png")
+        data.image.save(target)
+        if kind == "Texture2D" and record.get("where"):
+            record["map"][f"images/{target.name}"] = [record["where"], str(obj.path_id)]
         return 1
     if kind == "AudioClip":
         samples = data.samples or {}
         return sum(
-            _write(ctx, "audio", _name(data, Path(k).stem), Path(k).suffix.lower() or ".wav", v)
+            1
             for k, v in samples.items()
+            if _write(ctx, "audio", _name(data, Path(k).stem), Path(k).suffix.lower() or ".wav", v)
         )
     if kind == "TextAsset":
         script = getattr(data, "m_Script", "")
         raw = (
             script.encode("utf-8", "surrogateescape") if isinstance(script, str) else bytes(script)
         )
-        return _write(ctx, "text", name, ".txt", raw)
+        target = _write(ctx, "text", name, ".txt", raw)
+        if target and record.get("where"):
+            record["map"][f"text/{target.name}"] = [record["where"], str(obj.path_id)]
+        return int(target is not None)
     if kind == "Mesh":
         text = data.export()
-        return _write(ctx, "models", name, ".obj", text.encode("utf-8")) if text else 0
+        return int(
+            bool(text) and _write(ctx, "models", name, ".obj", text.encode("utf-8")) is not None
+        )
     return 0
 
 
-def _export_env(ctx, env, label: str) -> tuple[int, list[str]]:
+def _export_env(ctx, env, label: str, record: dict) -> tuple[int, list[str]]:
     exported, notes = 0, []
     for obj in env.objects:
         try:
-            exported += _export_object(ctx, obj, f"{label}_{obj.path_id}")
+            record["where"] = container_of(obj, record["files"], ctx.game_root)
+            exported += _export_object(ctx, obj, f"{label}_{obj.path_id}", record)
         except Exception as exc:  # one broken object must not stop the export
             notes.append(f"{label}#{obj.path_id}: {exc}"[:200])
     return exported, notes
 
 
-def _export_group(ctx, unitypy, files: list[Path]) -> tuple[int, list[str]]:
+def _export_group(ctx, unitypy, files: list[Path], mapping: dict) -> tuple[int, list[str]]:
     """Load a folder's containers together; fall back to one file at a time."""
+    record = {"files": files, "map": mapping}
     try:
-        return _export_env(ctx, unitypy.load(*[str(f) for f in files]), files[0].parent.name)
+        return _export_env(
+            ctx, unitypy.load(*[str(f) for f in files]), files[0].parent.name, record
+        )
     except Exception:  # a broken file poisons a group load: retry files one by one
         exported, notes = 0, []
         for path in files:
             try:
-                count, problems = _export_env(ctx, unitypy.load(str(path)), path.stem)
+                count, problems = _export_env(ctx, unitypy.load(str(path)), path.stem, record)
             except Exception as exc:  # unreadable container: note it and continue
                 count, problems = 0, [f"{path.name}: {exc}"[:200]]
             exported, notes = exported + count, notes + problems
@@ -161,15 +186,16 @@ class UnityPyExporter(Exporter):
         roots = [ctx.game_root]
         if str(ctx.options.get("include_cache", "")).lower() in ("1", "true", "yes", "on"):
             roots += cache_roots(ctx.game_root)
-        exported, notes = 0, []
+        exported, notes, mapping = 0, [], {}
         for root in roots:
             for files in groups(unity_containers(root)).values():
                 if ctx.cancel.cancelled:
                     break
-                count, problems = _export_group(ctx, UnityPy, files)
+                count, problems = _export_group(ctx, UnityPy, files, mapping)
                 exported, notes = exported + count, notes + problems
                 gc.collect()  # UnityPy keeps file handles until collected; Windows locks them
         ctx.log(f"UnityPy exported {exported} asset(s), {len(notes)} problem(s)", stage="export")
+        (ctx.staging / ws.EXPORT_MAP).write_text(json.dumps(mapping), encoding="utf-8")
         return Outcome(OutcomeKind.OK, exported, notes=tuple(notes[:50]))
 
 
