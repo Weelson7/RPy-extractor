@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import shutil
 import tarfile
 import zipfile
 from pathlib import Path
 
 from viwo.contracts.slots import Unarchiver
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
+from viwo.contracts.workspace import safe_member
 
 SEVENZIP = DependencySpec(
     "sevenzip",
@@ -26,8 +28,9 @@ def count_files(folder: Path) -> int:
     return sum(1 for p in folder.rglob("*") if p.is_file())
 
 
-def _done(dest: Path) -> Outcome:
-    return Outcome(OutcomeKind.OK, count_files(dest))
+def _done(dest: Path, skipped: int = 0) -> Outcome:
+    notes = (f"{skipped} unsafe member name(s) skipped",) if skipped else ()
+    return Outcome(OutcomeKind.OK, count_files(dest), notes=notes)
 
 
 def safe_tar_members(tf: tarfile.TarFile, dest: Path) -> list[tarfile.TarInfo]:
@@ -37,7 +40,7 @@ def safe_tar_members(tf: tarfile.TarFile, dest: Path) -> list[tarfile.TarInfo]:
     for member in tf.getmembers():
         target = (root / member.name).resolve()
         inside = target == root or root in target.parents
-        if inside and (member.isfile() or member.isdir()):
+        if inside and (member.isfile() or member.isdir()) and safe_member(member.name):
             keep.append(member)
     return keep
 
@@ -46,12 +49,21 @@ class ZipBackend(Unarchiver):
     backend_id, license = "py-zipfile", "PSF-2.0"
 
     def extract(self, archive, dest, ctx) -> Outcome:
+        skipped = 0
         try:
-            with zipfile.ZipFile(archive) as zf:  # zipfile strips ".." and absolute paths
-                zf.extractall(dest)
+            with zipfile.ZipFile(archive) as zf:
+                for info in zf.infolist():  # names that could not be stored safely are skipped
+                    rel = safe_member(info.filename)
+                    if rel is None:
+                        skipped += not info.is_dir()
+                    elif not info.is_dir():
+                        target = dest.joinpath(*rel.parts)
+                        target.parent.mkdir(parents=True, exist_ok=True)
+                        with zf.open(info) as src, open(target, "wb") as out:
+                            shutil.copyfileobj(src, out)
         except (zipfile.BadZipFile, OSError, RuntimeError, NotImplementedError) as exc:
             return Outcome(OutcomeKind.FAILED, error=str(exc)[:300])
-        return _done(dest)
+        return _done(dest, skipped)
 
 
 class TarBackend(Unarchiver):
@@ -61,13 +73,16 @@ class TarBackend(Unarchiver):
         try:
             with tarfile.open(archive, "r:*") as tf:
                 members = safe_tar_members(tf, dest)
+                skipped = sum(1 for m in tf.getmembers() if m.isfile()) - sum(
+                    1 for m in members if m.isfile()
+                )
                 if hasattr(tarfile, "data_filter"):
                     tf.extractall(dest, members=members, filter="data")
                 else:
                     tf.extractall(dest, members=members)
         except (tarfile.TarError, OSError) as exc:
             return Outcome(OutcomeKind.FAILED, error=str(exc)[:300])
-        return _done(dest)
+        return _done(dest, skipped)
 
 
 class _CliBackend(Unarchiver):

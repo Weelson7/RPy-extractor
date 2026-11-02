@@ -125,6 +125,9 @@ def plan(workspace: Path) -> dict:
     dupes = _duplicates(files, workspace, renames, flagged)
     gone = {f["path"] for f in dupes}
     findings = [f for f in findings if f["path"] not in gone] + dupes
+    for finding in findings:  # remembered so that a stale plan is never applied
+        file = workspace.joinpath(*Path(finding["path"]).parts)
+        finding["size"] = file.stat().st_size if file.is_file() else -1
     plan_id = f"{time.strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
     result = {"planId": plan_id, "scanned": len(files), "findings": findings}
     folder = workspace / ROOT / "plans"
@@ -181,9 +184,15 @@ def apply(workspace: Path, plan_id: str, accept: list[int] | str = "all-safe") -
         picked = range(len(findings)) if accept == "all-safe" else sorted({int(i) for i in accept})
     except (TypeError, ValueError):
         raise ViwoError("invalid_request", "accept must be 'all-safe' or a list of indexes")
+    chosen = [findings[i] for i in picked if 0 <= i < len(findings)]
+    for finding in chosen:
+        file = _ws_file(workspace, finding["path"])
+        if "size" in finding and file and file.is_file() and file.stat().st_size != finding["size"]:
+            raise ViwoError(
+                "invalid_request", f"plan is stale: {finding['path']} changed; scan again"
+            )
     journal, failed = [], []
-    for index in (i for i in picked if 0 <= i < len(findings)):
-        finding = findings[index]
+    for finding in chosen:
         if finding["action"] in ("trash", "rename"):
             try:
                 journal.append([_act(workspace, finding), finding["path"]])

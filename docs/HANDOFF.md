@@ -53,8 +53,9 @@ then `README.md` ("Philosophy", "Legal and disclaimer"), then `docs/prototype-b/
    RenderDoc capture on a real GPU game, QuickBMS on a real archive, DataTool on a real install,
    retoc on real UE5 data. The landing and every view were loaded in headless Edge (screenshots,
    zero console errors) and driven through the API and unit tests, not by real clicks.
-4. **Linux:** the installer was exercised on Windows only; the Linux pins (tar/zip, chmod from
-   archive modes) are covered by unit tests with fakes.
+4. **Windows Defender quarantines GodotPckTool v2.3** (ML false positive, see STATUS). Allow the
+   `third_party/godotpcktool` folder or wait for a newer upstream build; GDRE Tools covers
+   extraction meanwhile.
 5. **Next rungs** (README "What a reverse engineer can do"): meshes for other engines, fonts,
    Godot script decompile, localization tables, analysis backends (Ghidra headless), mod packaging,
    diffs between game versions.

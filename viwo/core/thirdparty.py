@@ -248,7 +248,15 @@ def _fetch(dep_id: str, spec: dict, root: Path, runner, say, cancel) -> None:
         if _download(spec["url"], file, spec["size"], say, cancel) != spec["sha256"]:
             raise ViwoError("refused", f"{file.name}: checksum mismatch, not installed")
         out = Path(tmp) / "out"
-        _unpack(spec["kind"], file, out, spec, runner, root.parent)
+        try:
+            _unpack(spec["kind"], file, out, spec, runner, root.parent)
+        except OSError as exc:
+            raise ViwoError(
+                "failed",
+                f"{file.name}: downloaded and verified, but it could not be unpacked ({exc})",
+                hint="an antivirus may have quarantined the file: check its history and allow "
+                "the third_party folder, then install again",
+            )
         dest = root / dep_id
         try:
             if dest.exists():

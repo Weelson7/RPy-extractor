@@ -65,7 +65,7 @@ export async function runLanding() {
   const paint = () => {
     el.stage.textContent = t.stage;
     el.frac.textContent = t.frac;
-    el.bar.classList.toggle("det", t.n > 0);
+    el.bar.classList.toggle("is-det", t.n > 0);
     el.bar.style.setProperty("--p", `${Math.round(t.pct)}%`);
     el.bar.setAttribute("aria-valuenow", String(Math.round(t.pct)));
   };

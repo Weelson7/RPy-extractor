@@ -47,8 +47,18 @@ def identify_pck(path: Path, head: bytes, tail: bytes) -> Match | None:
     return Match("unarchive.pck", path, chunk[0], chunk[1]) if chunk else None
 
 
+TOOL_NOISE = {"gdre_export.log"}
+
+
 def _files(dest: Path) -> int:
-    return sum(1 for p in dest.rglob("*") if p.is_file())
+    """Extracted files, without the tools' own logs."""
+    count = 0
+    for p in dest.rglob("*"):
+        if p.is_file() and p.name in TOOL_NOISE:
+            p.unlink()
+        elif p.is_file():
+            count += 1
+    return count
 
 
 class _PckCli(Unarchiver):
@@ -76,7 +86,10 @@ class _PckCli(Unarchiver):
         if not result.ok:
             kind = OutcomeKind.NEEDS_KEY if "encrypt" in text.lower() else OutcomeKind.FAILED
             return Outcome(kind, error=text[-300:] or f"exit {result.returncode}")
-        return Outcome(OutcomeKind.OK, _files(dest))
+        files = _files(dest)
+        if not files:
+            return Outcome(OutcomeKind.FAILED, error="the tool reported success but wrote no file")
+        return Outcome(OutcomeKind.OK, files)
 
 
 class GdreTools(_PckCli):

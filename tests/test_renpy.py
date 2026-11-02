@@ -129,7 +129,8 @@ class UnrpaSmokeTest(unittest.TestCase):
             self.assertEqual((root / "out/images/bg.png").read_bytes(), b"PNGDATA")
 
 
-FAKE_UNRPYC = """import sys
+FAKE_UNRPYC = """#!{python}
+import sys
 from pathlib import Path
 args = [a for a in sys.argv[1:] if not a.startswith("-") and a != "1"]
 for name in args:
@@ -139,7 +140,7 @@ for name in args:
 
 def fake_unrpyc(folder: Path) -> str:
     script = folder / "fake_unrpyc.py"
-    script.write_text(FAKE_UNRPYC)
+    script.write_text(FAKE_UNRPYC.format(python=sys.executable))
     script.chmod(script.stat().st_mode | stat.S_IEXEC)
     tool = script
     if sys.platform == "win32":

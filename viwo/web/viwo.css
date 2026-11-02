@@ -642,7 +642,7 @@ kbd { margin-right: 6px; padding: 1px 6px; border: 1px solid var(--line); border
 .jp-bar { flex: none; }
 .jp-frac { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--text); font-variant-numeric: tabular-nums; }
 /* real counts for the current stage: a determinate fill instead of the scan */
-.jp[data-state="running"] .jp-bar.det i { width: var(--p, 0%); animation: none; transform: none; opacity: 1; transition: width 0.3s ease-out; }
+.jp[data-state="running"] .jp-bar.is-det i { width: var(--p, 0%); animation: none; transform: none; opacity: 1; transition: width 0.3s ease-out; }
 .jp:not([data-state="running"]) .jp-bar i { width: 100%; animation: none; transform: none; transition: width 0.3s ease-out; }
 .jp[data-state="done"] .jp-bar i { background: var(--cyan); box-shadow: 0 0 10px var(--cyan); }
 .jp[data-state="fail"] .jp-bar i { background: var(--red-d); box-shadow: none; }
@@ -789,9 +789,9 @@ span.fpath { cursor: default; }
 .land-stage { font: 700 20px/1.1 var(--f-head); letter-spacing: 0.18em; color: #fff; text-shadow: 0 0 12px rgba(255, 59, 59, 0.55); }
 .landing.bad .land-stage { color: var(--amber); }
 .land-frac { font-size: 13px; color: var(--text); font-variant-numeric: tabular-nums; }
-.land-bar { height: 4px; overflow: hidden; background: rgba(255, 59, 59, 0.14); }
-.land-bar i { display: block; width: 32%; height: 100%; background: var(--red); box-shadow: 0 0 10px var(--red); animation: scan 1.3s linear infinite; }
-.land-bar.det i { width: var(--p, 0%); animation: none; transition: width 0.3s ease-out; }
+.land-bar { flex: none; height: 4px; min-height: 4px; max-height: 4px; overflow: hidden; background: rgba(255, 59, 59, 0.14); }
+.land-bar i { display: block; width: 32%; height: 4px; background: var(--red); box-shadow: 0 0 10px var(--red); animation: scan 1.3s linear infinite; }
+.land-bar.is-det i { width: var(--p, 0%); animation: none; transition: width 0.3s ease-out; }
 .land-lines { height: 15.5em; margin: 0; padding: 8px 12px; overflow: hidden; border-left: 2px solid var(--red); background: linear-gradient(90deg, rgba(255, 59, 59, 0.08), transparent 80%); font-size: 12.5px; line-height: 1.55; }
 .land-lines .ln { display: block; animation: reveal 0.25s ease-out; }
 .land-sum { margin: 0; min-height: 1.5em; color: var(--text); }

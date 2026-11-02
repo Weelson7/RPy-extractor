@@ -88,7 +88,7 @@ function blocker() {
 
 function bar() {
   if (!el.run) return;
-  if (!S.running) el.sum.textContent = `${base(el.game.value) || "no game"} · ${base(el.exe.value) || "no executable"} → workspace ${base(S.ws) || "—"}`;
+  if (!S.running) el.sum.textContent = `${base(el.game.value) || "no game"} · ${base(el.exe.value) || "no executable"} → ${base(S.ws) || "workspace"}`;
   el.why.textContent = blocker();
   el.run.disabled = Boolean(el.why.textContent);
   el.run.textContent = S.running ? "CAPTURING…" : "LAUNCH + CAPTURE";

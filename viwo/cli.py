@@ -186,6 +186,8 @@ def _run(args) -> Envelope:
         deps = check(rt, lambda e: None)  # versions: pinned ones are free, others run once
         return Envelope.success({"bindings": rt.info()["slots"], "dependencies": deps}, rt.problems)
     if args.command == "detect":
+        if not args.game.is_dir():
+            raise ViwoError("invalid_request", f"game folder not found: {args.game}")
         found = detect_all(rt, FolderProbe(args.game))
         return Envelope.success({k: v.to_legacy_dict() for k, v in found.items()})
     tool_commands = (

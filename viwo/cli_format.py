@@ -102,6 +102,8 @@ def _mb(size: int) -> str:
 
 
 def survey(data: dict) -> str:
+    if not data["games"]:
+        return "No games found: pick a game folder or a folder of game folders."
     lines = []
     for g in data["games"]:
         lines.append(f"\n{g['path']}")

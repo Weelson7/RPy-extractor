@@ -163,7 +163,7 @@ export function jobProgress(kind, { logClass = "feed", onStatus = null } = {}) {
   function paintBar() {
     const p = !t.ended && t.prog?.stage === t.cur ? t.prog : null;
     const pct = p?.total ? Math.min(100, Math.floor(((p.done - (K.ongoing ? 1 : 0)) / p.total) * 100)) : null;
-    el.bar.classList.toggle("det", pct !== null);
+    el.bar.classList.toggle("is-det", pct !== null);
     el.bar.style.setProperty("--p", `${pct ?? 0}%`);
     el.frac.textContent = !p || K.ongoing ? "" : pct !== null ? `${p.what ? `${p.what} · ` : ""}${fmt(p.done)} / ${fmt(p.total)} · ${pct}%` : p.text;
   }

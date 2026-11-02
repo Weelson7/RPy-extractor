@@ -19,7 +19,7 @@ CORE_SLOTS = (
         "core",
         "py-zipfile",
         "sevenzip-cli",
-        suffixes=(".zip",),
+        suffixes=(".zip", ".nw"),  # NW.js package.nw is a zip
         magic=(b"PK\x03\x04",),
     ),
     SlotDefinition(

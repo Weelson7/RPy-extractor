@@ -54,6 +54,14 @@ noise), streams, survey, sanitizer, round trip, capture policy, the journal with
   smoke test passes, and `viwo.exe install repak` downloads over HTTPS into `third_party/` next to
   the exe and binds the slot. Two bundle defects fixed: no `ssl` module collected, and a foreign
   OpenSSL DLL picked up from PATH (the interpreter's own copies now ship).
+- **Linux installer (WSL Ubuntu, Python 3.12):** `viwo install --all` into a Linux-only home
+  installed all 18 Linux pins (DataTool is Windows-only by design) and every slot bound; the
+  archive modes are applied on unpack, so the binaries run without a manual chmod.
+- **Windows Defender false positive:** the GodotPckTool v2.3 Windows binary is flagged by
+  Defender's ML heuristic (Trojan:Win32/Wacatac.B!ml) and quarantined right after download; the
+  installer reports it as a failed install with the antivirus hint. GDRE Tools (main) keeps `.pck`
+  extraction working; Godot patched copies (`pack.pck`) need the user to allow the
+  `third_party/godotpcktool` folder in Defender, or a newer upstream build. No newer release exists.
 - **Merger on ffmpeg 7:** xfade needs a constant frame rate after setpts (fixed, test green with
   ffmpeg 7.1.1 on Windows).
 

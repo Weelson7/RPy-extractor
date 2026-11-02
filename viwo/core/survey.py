@@ -128,6 +128,8 @@ def games_in(root: Path, rt) -> list[Path]:
     common/); a folder with files of its own is one game."""
     entries = [p for p in root.iterdir() if not p.name.startswith(".")]
     subs = sorted(p for p in entries if p.is_dir())
+    if not any(p.is_file() for p in root.rglob("*")):
+        return []  # nothing on disk: neither a game nor a library
     return subs if subs and all(p.is_dir() for p in entries) else [root]
 
 

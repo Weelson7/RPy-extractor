@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Mapping, Sequence
 
+from viwo.contracts.errors import ViwoError
 from viwo.contracts.pipeline import (
     GENERIC_PLUGIN_ID,
     ExtractionMode,
@@ -24,6 +25,13 @@ def select_plugins(
     )
     order = [d.plugin_id for d in ranked]
     enabled = set(order)
+    unknown = [p for p in request.plugins if p not in enabled]
+    if unknown and request.mode in (ExtractionMode.SINGLE, ExtractionMode.MIXED):
+        raise ViwoError(
+            "invalid_request",
+            f"unknown or disabled plugin(s): {', '.join(unknown)}",
+            hint=f"enabled plugins: {', '.join(sorted(enabled))}",
+        )
     if request.mode is ExtractionMode.SINGLE:
         chosen = [p for p in request.plugins[:1] if p in enabled]
     elif request.mode is ExtractionMode.MIXED:

@@ -11,8 +11,8 @@ Steps:
 2. `viwo extract C:\nope --workspace C:\sqc\_ws\cli2; $LASTEXITCODE`
 3. `viwo extract C:\sqc\zip-basic\game --workspace C:\sqc\zip-basic\game\x; $LASTEXITCODE`
 
-Expected: 1: one JSON document on stdout: `ok: true`, `data.workspace`, `data.runs[0].plugin_id
-= "generic"`, `data.files`, `warnings: []`; nothing on stderr (no progress lines in JSON mode).
+Expected: 1: one JSON document on stdout: `ok: true`, `data.workspace`, `data.plugins` contains
+`"generic"`, `data.files`, `warnings: []`; nothing on stderr (no progress lines in JSON mode).
 2: `viwo: invalid_request: ...` on stderr, exit 2. 3: `viwo: refused: ...`, exit 3.
 
 ## SQC-CLI-02 (P0) `viwo` (guide), `viwo -h`, `viwo <command> -h`

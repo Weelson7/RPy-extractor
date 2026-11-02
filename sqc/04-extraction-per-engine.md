@@ -80,8 +80,9 @@ Steps:
    = 64 zeros, run.
 
 Expected:
-- Step 1: exit code 3? No: `needs_key` maps to exit 2 with `viwo: needs_key: ...` and the hint to
-  pass `--option godot.encryption_key=<hex>`. The spare is NOT tried for needs-key.
+- Step 1: the run ends with exit 0 and a `needs_key` warning (summary and run record) naming
+  `godot.encryption_key`; nothing is extracted from that archive. The spare is NOT tried for
+  needs-key.
 - Step 2: the fake tool accepts any 64-hex key and the run succeeds; the run record shows
   `"encryption_key": "<secret>"`, never the value; the log (04 JOBS, activity console,
   `viwo-data\logs\*.log`) never contains the key.
@@ -100,7 +101,7 @@ Steps:
 Expected:
 - 1: plugin `unreal`, backend `repak`, the pak's files extracted.
 - 2: log `AES key found in Game-Win64-Shipping.exe and verified on the pak index`; extracted.
-- 3: `needs_key` (exit 2), hint names `unreal.aes_key`; nothing extracted.
+- 3: exit 0 with a `needs_key` warning naming `unreal.aes_key`; nothing extracted from the pak.
 - 4: extracted; run record stores `<secret>`.
 - 5: `retoc` converts `global.utoc/.ucas` to legacy (`OK global.utoc`), then repak unpacks.
 
