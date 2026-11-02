@@ -114,3 +114,82 @@ class CapsTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ReplayAndUnpackTests(unittest.TestCase):
+    def cli(self, *args: str) -> tuple[int, dict]:
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+            code = cli_main(list(args))
+        return code, json.loads(out.getvalue())
+
+    def test_replay_reproduces_the_workspace(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            game, ini = make_game(root), str(write_ini(root))
+            code, env = self.cli(
+                "--ini",
+                ini,
+                "--json",
+                "extract",
+                str(game),
+                "--workspace",
+                str(root / "ws"),
+                "--option",
+                "godot.encryption_key=" + "ab" * 32,
+                "--option",
+                "generic.level=2",
+            )
+            self.assertEqual(code, 0)
+            record = env["data"]["runRecord"]
+            stored = json.loads(Path(record).read_text())["request"]["options"]
+            self.assertEqual(
+                stored, {"godot": {"encryption_key": "<secret>"}, "generic": {"level": "2"}}
+            )
+            code, env = self.cli(
+                "--ini", ini, "--json", "replay", record, "--workspace", str(root / "again")
+            )
+            self.assertEqual((code, env["error"]["code"]), (1, "needs_key"))
+            code, env = self.cli(
+                "--ini",
+                ini,
+                "--json",
+                "replay",
+                record,
+                "--workspace",
+                str(root / "again"),
+                "--option",
+                "godot.encryption_key=" + "ab" * 32,
+            )
+            self.assertEqual(code, 0)
+            self.assertEqual(
+                tree_hashes(root / "again", skip_reserved=True),
+                tree_hashes(root / "ws", skip_reserved=True),
+            )
+
+    def test_unpack_one_archive(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            game, ini = make_game(root), str(write_ini(root))
+            code, env = self.cli(
+                "--ini",
+                ini,
+                "--json",
+                "unpack",
+                str(game / "outer.zip"),
+                "--out",
+                str(root / "out"),
+            )
+            self.assertEqual((code, env["data"]["archives"]), (0, 2))
+            files = tree_hashes(root / "out")
+            self.assertTrue(any(k.endswith("voice/hello.ogg") for k in files), files)
+            code, env = self.cli(
+                "--ini",
+                ini,
+                "--json",
+                "unpack",
+                str(game / "outer.zip"),
+                "--out",
+                str(root / "out"),
+            )
+            self.assertEqual(env["error"]["code"], "refused")

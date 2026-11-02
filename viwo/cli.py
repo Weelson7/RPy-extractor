@@ -8,6 +8,7 @@ import runpy
 import sys
 from pathlib import Path
 
+from viwo.cli_extra import replay_request, unpack_one
 from viwo.contracts.errors import Envelope, ViwoError
 from viwo.contracts.pipeline import ExtractionMode, ExtractionRequest, MixedPolicy, OnExisting
 from viwo.core.jobs import JobRunner
@@ -37,17 +38,31 @@ def _parser() -> argparse.ArgumentParser:
     ex.add_argument("--exts", help="comma-separated extensions to keep, e.g. .png,.ogg")
     ex.add_argument("--on-existing", choices=["new", "replace", "cancel"], default="ask")
     ex.add_argument("--option", action="append", default=[], help="plugin.key=value")
+    rp = sub.add_parser("replay", help="re-run the extraction stored in a run record")
+    rp.add_argument("record", type=Path)
+    rp.add_argument("--workspace", type=Path, required=True)
+    rp.add_argument("--on-existing", choices=["new", "replace", "cancel"], default="ask")
+    rp.add_argument("--option", action="append", default=[], help="secret: plugin.key=value")
+    up = sub.add_parser("unpack", help="unpack one archive (nested archives too)")
+    up.add_argument("archive", type=Path)
+    up.add_argument("--out", type=Path, required=True)
+    up.add_argument("--option", action="append", default=[], help="plugin.key=value")
     sv = sub.add_parser("serve", help="start the web UI (v1 server)")
     sv.add_argument("rest", nargs=argparse.REMAINDER)
     return ap
 
 
-def _request(args) -> ExtractionRequest:
+def _options(items: list[str]) -> dict[str, dict[str, str]]:
     options: dict[str, dict[str, str]] = {}
-    for item in args.option:
+    for item in items:
         owner_key, _, value = item.partition("=")
         owner, _, key = owner_key.partition(".")
         options.setdefault(owner, {})[key] = value
+    return options
+
+
+def _request(args) -> ExtractionRequest:
+    options = _options(args.option)
     mode, plugins = ExtractionMode.AUTO, ()
     if args.plugin:
         mode, plugins = ExtractionMode.SINGLE, (args.plugin,)
@@ -78,8 +93,16 @@ def _run(args) -> Envelope:
         found = detect_all(rt, FolderProbe(args.game))
         return Envelope.success({k: v.to_legacy_dict() for k, v in found.items()})
     sink = None if args.json else (lambda e: print(e.legacy_line(), file=sys.stderr))
+    if args.command == "unpack":
+        return Envelope.success(unpack_one(rt, args.archive, args.out, _options(args.option), sink))
+    if args.command == "replay":
+        request = replay_request(
+            args.record, args.workspace, OnExisting(args.on_existing), _options(args.option)
+        )
+    else:
+        request = _request(args)
     job = JobRunner(sink).submit(
-        "extract", lambda jid, s, c: extract(rt, _request(args), jid, s, c), background=False
+        "extract", lambda jid, s, c: extract(rt, request, jid, s, c), background=False
     )
     if job.error:
         raise ViwoError(**{k: job.error[k] for k in ("code", "message", "owner", "hint")})

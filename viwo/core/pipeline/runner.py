@@ -24,6 +24,8 @@ from .probe import FolderProbe
 from .select import select_plugins
 from .unpack import files_under, unpack_all
 
+SECRET = "<secret>"
+
 
 @dataclass
 class Run:
@@ -188,6 +190,16 @@ def _verify(unpacked, collected) -> list[str]:
     return warnings
 
 
+def _masked_options(run: Run) -> dict[str, dict[str, str]]:
+    """Plugin option values for replay; secret options are never written to disk."""
+    out: dict[str, dict[str, str]] = {}
+    for owner, values in run.request.plugin_options.items():
+        plugin = run.rt.plugins.get(owner)
+        secret = {o.key for o in plugin.manifest.options if o.kind == "secret"} if plugin else set()
+        out[owner] = {k: SECRET if k in secret else str(v) for k, v in values.items()}
+    return out
+
+
 def _report(run: Run, workspace: Path, result: ExtractionResult, provenance: list[dict]):
     meta = workspace / ws.METADATA_DIR
     (workspace / ws.RUNS_DIR).mkdir(parents=True, exist_ok=True)
@@ -202,8 +214,11 @@ def _report(run: Run, workspace: Path, result: ExtractionResult, provenance: lis
             "game_path": run.request.game_path,
             "mode": run.request.mode.value,
             "plugins": list(run.request.plugins),
-            "selected_exts": sorted(run.request.selected_exts or []),
-            "option_keys": {k: sorted(v) for k, v in run.request.plugin_options.items()},
+            "mixed_policy": run.request.mixed_policy.value,
+            "selected_exts": sorted(run.request.selected_exts)
+            if run.request.selected_exts is not None
+            else None,
+            "options": _masked_options(run),
         },
         "bindings": {sid: [b.main, b.spare] for sid, b in sorted(run.rt.bindings.items())},
         "result": {k: v for k, v in result.to_legacy_dict().items() if k != "logs"},
