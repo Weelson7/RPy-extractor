@@ -7,12 +7,9 @@ from typing import Any, Callable
 
 from viwo.contracts import workspace as ws
 from viwo.contracts.errors import ViwoError
-from viwo.contracts.types import ProgressEvent
-from viwo.core import sanitizer
 from viwo.core.curation import sorting, trash
 from viwo.core.merger import media
 from viwo.core.merger.build import build
-from viwo.core.survey import survey
 
 from .app import App
 
@@ -228,36 +225,7 @@ def merger_overlay(app: App, d: dict) -> dict:
     return {"success": True, "path": str(chosen.resolve())}
 
 
-RECIPES = [
-    {
-        "id": "phase1-safe",
-        "name": "Safe cleanup",
-        "lossy": False,
-        "rules": ["core.zero_byte", "core.junk", "core.extension", "core.duplicate", "core.health"],
-    }
-]
-
-
-def _sanitize(op: str) -> Callable[[App, dict], dict]:
-    def handler(app: App, d: dict) -> dict:
-        def run() -> dict:
-            if op == "plan":
-                return {"success": True, **sanitizer.plan(app.workspace)}
-            if op == "apply":
-                accept = d.get("accept") or "all-safe"
-                return {
-                    "success": True,
-                    **sanitizer.apply(app.workspace, str(d.get("planId", "")), accept),
-                }
-            return {"success": True, **sanitizer.undo(app.workspace, str(d.get("undoToken", "")))}
-
-        return app.locked(run)
-
-    return handler
-
-
 GET: dict[str, Callable[[App, dict], Any]] = {
-    "/api/sanitizer/recipes": lambda app, q: {"success": True, "recipes": RECIPES},
     "/api/status": status,
     "/api/workspace": workspace,
     "/api/dependencies": dependencies,
@@ -269,33 +237,7 @@ GET: dict[str, Callable[[App, dict], Any]] = {
 }
 
 
-def survey_library(app: App, d: dict) -> dict:
-    """Read-only coverage survey of a game folder or library, as a job (events per game)."""
-    folder = Path(str(d.get("folder", "")).strip())
-    if not str(folder) or not folder.is_dir():
-        return {"success": False, "error": f"Folder not found: {folder}", "code": "not_found"}
-
-    def run(jid, sink, cancel) -> dict:
-        def note(game: Path, index: int, total: int) -> None:
-            sink(
-                ProgressEvent(f"Surveying {game.name} ({index}/{total})", "info", "core", "survey")
-            )
-
-        return {"success": True, "games": survey(app.rt, folder, bool(d.get("deep")), note)}
-
-    job = app.jobs.submit_with_listener(
-        lambda e: app.log(e.legacy_line()), "survey", run, background=False
-    )
-    if job.error:
-        return {"success": False, "error": job.error["message"], "code": job.error["code"]}
-    return {**job.result, "jobId": job.job_id}
-
-
 POST: dict[str, Callable[[App, dict], Any]] = {
-    "/api/sanitizer/plan": _sanitize("plan"),
-    "/api/sanitizer/apply": _sanitize("apply"),
-    "/api/sanitizer/undo": _sanitize("undo"),
-    "/api/survey": survey_library,
     "/api/extract": lambda app, d: app.extract(d),
     "/api/workspace": open_workspace,
     "/api/trash": _group("move_to_trash", trash.trash_group),
@@ -314,3 +256,9 @@ POST: dict[str, Callable[[App, dict], Any]] = {
     "/api/media-merger/build": merger_build,
     "/api/media-merger/browse-overlay": merger_overlay,
 }
+
+
+from .handlers_tools import TOOL_GET, TOOL_POST  # noqa: E402  (tables merged last)
+
+GET.update(TOOL_GET)
+POST.update(TOOL_POST)

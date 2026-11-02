@@ -80,6 +80,23 @@ class RoundTripTests(unittest.TestCase):
                 repack(self.rt, ws, target)
         self.assertTrue((busy / "mine.txt").is_file())
 
+    def test_http_plan_and_build(self) -> None:
+        from viwo.api import app as app_module
+        from viwo.api.handlers import POST
+
+        game = self.root / "web"
+        game.mkdir()
+        make_zip(game / "data.zip", {"a.txt": b"a"})
+        ws = self.extract(game)
+        (ws / "txt" / "a.txt").write_bytes(b"b")
+        app = app_module.App(self.rt)
+        app.set_workspace(ws)
+        plan = POST["/api/repack"](app, {"plan": True})
+        self.assertEqual([p["slot"] for p in plan["plan"]], ["pack.zip"])
+        self.assertEqual(POST["/api/repack"](app, {})["code"], "invalid_request")
+        built = POST["/api/repack"](app, {"out": str(self.root / "web-patched")})
+        self.assertTrue(built["verified"] and built["jobId"], built)
+
     def test_nothing_edited_writes_nothing(self) -> None:
         game = self.root / "plain"
         game.mkdir()

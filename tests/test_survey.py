@@ -14,7 +14,7 @@ from tests.helpers import make_zip, runtime, tree_hashes, write_ini
 from tests.test_carve import blob
 from tests.test_doom import make_wad
 from viwo.api import app as app_module
-from viwo.api.handlers import survey_library
+from viwo.api.handlers_tools import survey_library
 from viwo.cli import main
 from viwo.core.survey import games_in, survey
 
