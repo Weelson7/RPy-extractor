@@ -17,6 +17,7 @@ from viwo.contracts.plugin import ExtractionContext
 from viwo.contracts.types import CancelToken, DetectionResult, ProgressEvent, ProgressSink
 
 from ..workspace import precheck, resolve_target, workspace_lock
+from .carving import carve_all
 from .collect import Source, collect
 from .failover import run_with_failover
 from .guard import changes, refuse_writes_inside, snapshot
@@ -126,15 +127,11 @@ def _stages(run: Run, workspace: Path) -> ExtractionResult:
     before = snapshot(run.game)
     chosen = _select(run)
     skip = {d.lower() for pid in chosen for d in rt.plugins[pid].skip_dirs()}
-    unpacked = unpack_all(rt, files_under(run.game, "game", skip), run.work / "unpack", run.ctx)
+    game_files = files_under(run.game, "game", skip)
+    unpacked = unpack_all(rt, game_files, run.work / "unpack", run.ctx)
     runs = [_export(run, pid) for pid in chosen]
-    sources = _game_sources(run, chosen)
-    sources += [Source(d, True, label) for d, label in unpacked.origins.items()]
-    sources += [
-        Source(run.work / "staging" / r.plugin_id, True, f"export:{r.backend}")
-        for r in runs
-        if r.backend
-    ]
+    carved, unpacked = _carve(run, runs, game_files, unpacked)
+    sources = _sources(run, chosen, {**unpacked.origins, **carved.origins}, runs)
     collected = collect(sources, workspace, run.request.selected_exts, skip, run.cancel)
     if run.cancel.cancelled:
         raise ViwoError("cancelled", "extraction cancelled")
@@ -156,10 +153,42 @@ def _stages(run: Run, workspace: Path) -> ExtractionResult:
         collected.collected,
         dict(collected.by_ext),
         dict(unpacked.by_backend),
-        tuple(warnings + unpacked.failures),
+        tuple(warnings + unpacked.failures + carved.failures),
         tuple(run.logs),
+        carved_files=carved.files,
     )
     return _report(run, workspace, result, collected.provenance)
+
+
+def _sources(run: Run, chosen, moved: dict[Path, str], runs) -> list[Source]:
+    """Game roots are copied; unpack, carve and export outputs are moved."""
+    sources = _game_sources(run, chosen) + [Source(d, True, o) for d, o in moved.items()]
+    staging = run.work / "staging"
+    return sources + [
+        Source(staging / r.plugin_id, True, f"export:{r.backend}") for r in runs if r.backend
+    ]
+
+
+def _carve(run: Run, runs, game_files, unpacked):
+    """Carve unknown blobs (game and unpacked), then unpack any archives found inside them.
+    Files an exporter decoded are left alone, unless that exporter failed or is missing."""
+    items = game_files + [i for d, o in unpacked.origins.items() for i in files_under(d, o, set())]
+    plugins = run.rt.plugins
+    claimed = {
+        s.lower() for r in runs if r.backend for s in plugins[r.plugin_id].claimed_suffixes()
+    }
+    carved = carve_all(run, frozenset(claimed), items)
+    nested = [i for d, o in carved.origins.items() for i in files_under(d, o, set())]
+    if nested:
+        more = unpack_all(run.rt, nested, run.work / "unpack-carved", run.ctx)
+        unpacked.origins.update(more.origins)
+        unpacked.found, unpacked.extracted = (
+            unpacked.found + more.found,
+            unpacked.extracted + more.extracted,
+        )
+        unpacked.by_backend.update(more.by_backend)
+        unpacked.failures += more.failures
+    return carved, unpacked
 
 
 def _game_sources(run: Run, chosen: tuple[str, ...]) -> list[Source]:
@@ -224,6 +253,7 @@ def _report(run: Run, workspace: Path, result: ExtractionResult, provenance: lis
             "mode": run.request.mode.value,
             "plugins": list(run.request.plugins),
             "mixed_policy": run.request.mixed_policy.value,
+            "carve": run.request.carve.value,
             "selected_exts": sorted(run.request.selected_exts)
             if run.request.selected_exts is not None
             else None,

@@ -53,6 +53,10 @@ def extraction(data: dict) -> str:
         f"Files         : {data['copiedFiles']} collected from {data['scannedFiles']} scanned",
     ]
     groups = ", ".join(f"{k} {v}" for k, v in data["copiedByExt"].items())
+    if data.get("carvedFiles"):
+        lines.append(
+            f"Carved        : {data['carvedFiles']} embedded file(s) from unrecognized data"
+        )
     lines.append(f"Groups        : {groups or '-'}")
     if data.get("byBackend"):
         lines.append(

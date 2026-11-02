@@ -4,18 +4,11 @@ import { h, fill, btn, panel, badge, meter, viewHead, toast, toastErr, busy, pre
 import { renderResult, renderFailure, renderIdle } from "./extract-result.js";
 import { openWorkspaceDialog } from "../workspace-dialog.js";
 
-const PRESETS = {
-  IMAGES: ".png .jpg .jpeg .webp .gif .bmp",
-  AUDIO: ".ogg .mp3 .wav .opus .flac .m4a",
-  VIDEO: ".webm .mp4 .mkv .mov .avi",
-  TEXT: ".txt .json .rpy .xml .csv",
-};
-const POLICIES = {
-  selected: "only the plugins picked below",
-  detected: "every plugin whose detection fired",
-  all: "every enabled plugin",
-};
-const S = { plugins: [], detect: null, mode: "auto", single: "", mixed: new Set(), policy: "selected", options: {}, running: false };
+const PRESETS = { IMAGES: ".png .jpg .jpeg .webp .gif .bmp .dds", AUDIO: ".ogg .mp3 .wav .opus .flac .m4a .wem .fsb",
+  VIDEO: ".webm .mp4 .mkv .mov .avi .bik", TEXT: ".txt .json .rpy .xml .csv" };
+const POLICIES = { selected: "only the plugins picked below", detected: "every plugin whose detection fired", all: "every enabled plugin" };
+const CARVE = { unknown: "in files nothing else recognizes", all: "in every file, executables included", off: "nowhere (off)" };
+const S = { plugins: [], detect: null, mode: "auto", single: "", mixed: new Set(), policy: "selected", options: {}, running: false, carve: "unknown" };
 const el = {};
 
 function mount(root) {
@@ -167,12 +160,22 @@ function renderOptions() {
     p.options.map((o) => optionField(p.id, o)))));
 }
 
+function renderCarve() {
+  el.carve.replaceChildren(...Object.keys(CARVE).map((k) => h("button", { type: "button", "aria-pressed": String(S.carve === k),
+    onclick: () => { S.carve = k; renderCarve(); } }, k.toUpperCase())));
+  el.carveNote.textContent = `find PNG, OGG, WAV, DDS, Bink, FSB, zip… hidden ${CARVE[S.carve]}`;
+}
+
 function runPanel() {
+  el.carve = h("div", { class: "seg sm", role: "group", "aria-label": "Carve embedded files" });
+  el.carveNote = h("span", { class: "dim" });
+  renderCarve();
   const presets = Object.entries(PRESETS).map(([k, v]) => btn(k, () => addExts(v), "sm ghost"));
   return panel("01.D", "FILTER + OUTPUT", null,
     h("label", { class: "lbl", for: "ext-filter" }, "EXTENSION FILTER (OPTIONAL)"),
     h("div", { class: "row" }, el.exts, btn("CLEAR", () => { el.exts.value = ""; }, "sm ghost")),
     h("div", { class: "row presets" }, h("span", { class: "dim" }, "ADD"), presets),
+    h("div", { class: "row policy" }, h("span", { class: "lbl" }, "EMBEDDED FILES"), el.carve, el.carveNote),
     h("div", { class: "kv target" }, h("span", { class: "lbl" }, "OUTPUT →"), el.target,
       h("div", { class: "row" }, h("span", { class: "dim small" }, "Extraction always writes into the active workspace."), btn("SWITCH", openWorkspaceDialog, "sm ghost"))));
 }
@@ -215,7 +218,7 @@ function buildPayload(onExisting) {
   const exts = parseExts(el.exts.value);
   const payload = { gamePath, selectedExts: exts.length ? exts : null, mixedPolicy: S.policy, pluginOptions,
     extractionType: S.mode === "auto" ? "auto" : S.mode === "single" ? S.single : "mixed",
-    plugins: S.mode === "mixed" ? [...S.mixed] : [] };
+    plugins: S.mode === "mixed" ? [...S.mixed] : [], carve: S.carve };
   if (onExisting) payload.onExisting = onExisting;
   return payload;
 }

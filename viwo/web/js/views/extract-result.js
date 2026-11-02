@@ -56,6 +56,7 @@ export function renderResult(host, res) {
       stat("COPIED", fmtNum(r.copiedFiles), "files to workspace"),
       stat("SCANNED", fmtNum(r.scannedFiles), "files inspected"),
       stat("ARCHIVES", `${fmtNum(r.archivesExtracted)}/${fmtNum(r.archivesFound)}`, "unpacked / found"),
+      r.carvedFiles ? stat("CARVED", fmtNum(r.carvedFiles), "embedded files found") : null,
       stat("MODE", String(r.mode || "?").toUpperCase(), `extractor ${res.extractorType || r.extractorType || "?"}`)),
     extChips(r.copiedByExt),
     pathRow("WORKSPACE", res.assetPath, [h("a", { class: "btn sm", href: "#workspace" }, "GROUPS →"), h("a", { class: "btn sm", href: "#sort" }, "SORT →")]),

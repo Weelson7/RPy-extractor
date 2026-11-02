@@ -5,6 +5,7 @@ from .os import OS, DesktopShell, FileSystemPolicy, ProcessRunner, ToolLocator
 from .pipeline import (
     GENERIC_PLUGIN_ID,
     LEGACY_RESULT_KEYS,
+    CarveMode,
     ExtractionMode,
     ExtractionRequest,
     ExtractionResult,
@@ -14,7 +15,7 @@ from .pipeline import (
     Stage,
 )
 from .plugin import EnginePlugin, ExtractionContext, GameProbe, PluginManifest, PluginOption
-from .slots import Backend, Exporter, Match, SlotBinding, SlotDefinition, Unarchiver
+from .slots import Backend, Carver, Exporter, Match, SlotBinding, SlotDefinition, Unarchiver
 from .types import (
     CancelToken,
     DependencySpec,

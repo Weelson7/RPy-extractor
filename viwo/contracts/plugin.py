@@ -97,6 +97,10 @@ class EnginePlugin(ABC):
     def skip_dirs(self) -> Iterable[str]:
         return ()
 
+    def claimed_suffixes(self) -> Iterable[str]:
+        """Suffixes (or exact lowercase names) the exporter decodes: not carved by default."""
+        return ()
+
     def export_slot(self) -> str:
         """Slot id run in the EXPORT stage, "" for none."""
         return ""

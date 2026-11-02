@@ -10,7 +10,13 @@ from pathlib import Path
 from viwo import cli_format
 from viwo.cli_extra import replay_request, unpack_one
 from viwo.contracts.errors import Envelope, ViwoError
-from viwo.contracts.pipeline import ExtractionMode, ExtractionRequest, MixedPolicy, OnExisting
+from viwo.contracts.pipeline import (
+    CarveMode,
+    ExtractionMode,
+    ExtractionRequest,
+    MixedPolicy,
+    OnExisting,
+)
 from viwo.core.jobs import JobRunner
 from viwo.core.pipeline.probe import FolderProbe
 from viwo.core.pipeline.runner import detect_all, extract
@@ -37,6 +43,12 @@ def _parser() -> argparse.ArgumentParser:
     ex.add_argument("--exts", help="comma-separated extensions to keep, e.g. .png,.ogg")
     ex.add_argument("--on-existing", choices=["new", "replace", "cancel"], default="ask")
     ex.add_argument("--option", action="append", default=[], help="plugin.key=value")
+    ex.add_argument(
+        "--carve",
+        choices=[c.value for c in CarveMode],
+        default="unknown",
+        help="find embedded files in blobs: unrecognized files (default), all files, or off",
+    )
     rp = sub.add_parser("replay", help="re-run the extraction stored in a run record")
     rp.add_argument("record", type=Path)
     rp.add_argument("--workspace", type=Path, required=True)
@@ -78,6 +90,7 @@ def _request(args) -> ExtractionRequest:
         MixedPolicy(args.policy),
         plugin_options=options,
         on_existing=OnExisting(args.on_existing),
+        carve=CarveMode(args.carve),
     )
 
 

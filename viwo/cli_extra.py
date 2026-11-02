@@ -8,7 +8,13 @@ import tempfile
 from pathlib import Path
 
 from viwo.contracts.errors import ViwoError
-from viwo.contracts.pipeline import ExtractionMode, ExtractionRequest, MixedPolicy, OnExisting
+from viwo.contracts.pipeline import (
+    CarveMode,
+    ExtractionMode,
+    ExtractionRequest,
+    MixedPolicy,
+    OnExisting,
+)
 from viwo.contracts.plugin import ExtractionContext
 from viwo.contracts.types import CancelToken, DetectionResult
 from viwo.core.pipeline.runner import SECRET
@@ -44,6 +50,7 @@ def replay_request(
         MixedPolicy(stored.get("mixed_policy", "selected")),
         plugin_options=options,
         on_existing=on_existing,
+        carve=CarveMode(stored.get("carve", "unknown")),
     )
 
 

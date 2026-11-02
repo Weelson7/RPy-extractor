@@ -34,6 +34,7 @@ SLOTS = (
     ),
     SlotDefinition("export.unity", "export", "unity", "unitypy", "assetstudiomod-cli"),
 )
+CLAIMED = (".assets", ".ress", ".resource", ".unity3d", ".bundle", ".assetbundle", "")
 STRONG = (
     "unityplayer.dll",
     "unityplayer.so",
@@ -68,6 +69,9 @@ class UnityPlugin(EnginePlugin):
 
     def backends(self):
         return (UnityPyExporter(), AssetStudioModCli())
+
+    def claimed_suffixes(self):
+        return CLAIMED
 
     def export_slot(self) -> str:
         return "export.unity"

@@ -16,6 +16,7 @@ class Stage(str, Enum):
     PROBE = "probe"
     DETECT = "detect"
     UNPACK = "unpack"
+    CARVE = "carve"
     EXPORT = "export"
     COLLECT = "collect"
     VERIFY = "verify"
@@ -43,6 +44,14 @@ class OnExisting(str, Enum):
     CANCEL = "cancel"
 
 
+class CarveMode(str, Enum):
+    """Signature carving: off, files nothing else recognizes (default), or every file."""
+
+    OFF = "off"
+    UNKNOWN = "unknown"
+    ALL = "all"
+
+
 @dataclass(frozen=True)
 class ExtractionRequest:
     game_path: str
@@ -54,6 +63,7 @@ class ExtractionRequest:
     mixed_threshold: float = 0.5
     plugin_options: Mapping[str, Mapping[str, Any]] = field(default_factory=dict)
     on_existing: OnExisting = OnExisting.ASK
+    carve: CarveMode = CarveMode.UNKNOWN
 
     @classmethod
     def from_payload(cls, data: Mapping[str, Any], workspace: str = "") -> "ExtractionRequest":
@@ -64,6 +74,7 @@ class ExtractionRequest:
         plugins = tuple(str(p).strip().lower() for p in data.get("plugins") or ())
         policy = str(data.get("mixedPolicy") or "selected").lower()
         on_existing = str(data.get("onExisting") or "ask").lower()
+        carve = str(data.get("carve") or "unknown").lower()
         mode = {"": ExtractionMode.AUTO, "auto": ExtractionMode.AUTO}.get(raw)
         if mode is None:
             mode = ExtractionMode.MIXED if raw == "mixed" else ExtractionMode.SINGLE
@@ -81,6 +92,7 @@ class ExtractionRequest:
             on_existing=OnExisting(on_existing)
             if on_existing in OnExisting._value2member_map_
             else OnExisting.ASK,
+            carve=CarveMode(carve) if carve in CarveMode._value2member_map_ else CarveMode.UNKNOWN,
         )
 
 
@@ -110,6 +122,7 @@ class ExtractionResult:
     logs: tuple[str, ...] = ()
     run_record: str = ""
     error: str = ""
+    carved_files: int = 0
 
     def to_legacy_dict(self) -> dict[str, Any]:
         """The v1 /api/extract `result` object; v1 keys always present (doc 3.5)."""
@@ -130,6 +143,7 @@ class ExtractionResult:
             "byBackend": dict(sorted(self.by_backend.items())),
             "runRecord": self.run_record,
             "workspace": self.workspace,
+            "carvedFiles": self.carved_files,
             "plugins": [
                 {
                     "id": r.plugin_id,

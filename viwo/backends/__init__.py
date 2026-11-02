@@ -10,6 +10,7 @@ TAR_SUFFIXES = (".tar", ".tar.gz", ".tgz", ".tar.bz2", ".tbz", ".tbz2", ".tar.xz
 
 CORE_SLOTS = (
     SlotDefinition("media.encode", "media.encode", "core", "ffmpeg"),
+    SlotDefinition("carve.signatures", "carve", "core", "signature-carver"),
     SlotDefinition(
         "unarchive.zip",
         "unarchive",
@@ -44,6 +45,15 @@ CORE_SLOTS = (
 
 
 def core_backends() -> list[Backend]:
+    from viwo.core.carve import SignatureCarver
     from viwo.core.merger.ffmpeg import FfmpegBackend
 
-    return [ZipBackend(), TarBackend(), SevenZipCli(), UnrarCli(), Py7zrBackend(), FfmpegBackend()]
+    return [
+        ZipBackend(),
+        TarBackend(),
+        SevenZipCli(),
+        UnrarCli(),
+        Py7zrBackend(),
+        FfmpegBackend(),
+        SignatureCarver(),
+    ]

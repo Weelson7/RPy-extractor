@@ -86,6 +86,14 @@ class Exporter(Backend):
         """Engine-native decoding of ctx.game_root into ctx.staging only."""
 
 
+class Carver(Backend):
+    families = frozenset({"carve"})
+
+    @abstractmethod
+    def carve(self, path: Path, dest: Path, ctx: "ExtractionContext") -> Outcome:
+        """Write every complete file embedded in path into dest (never decrypts)."""
+
+
 @dataclass(frozen=True)
 class SlotBinding:
     slot_id: str
