@@ -121,7 +121,7 @@ def list_media_entries(working_dir: Path, allowed_exts: set[str] | None = None) 
     for file_path in working_dir.rglob("*"):
         if not file_path.is_file():
             continue
-        if ".trash" in {part.lower() for part in file_path.parts}:
+        if any(part.startswith(".") for part in file_path.relative_to(working_dir).parts):
             continue
 
         ext = file_path.suffix.lower()

@@ -9,32 +9,12 @@ import threading
 # Constants
 # ============================================================================
 
-DEFAULT_COMMON_EXTS = {
-    ".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".tga", ".tif", ".tiff", ".dds", ".svg", ".ico",
-    ".ogg", ".mp3", ".wav", ".flac", ".opus", ".m4a", ".aac", ".wma", ".mid", ".midi",
-    ".mp4", ".webm", ".avi", ".mkv", ".mov", ".m4v", ".wmv", ".mpeg", ".mpg",
-    ".ttf", ".otf", ".woff", ".woff2", ".fon",
-    ".txt", ".json", ".xml", ".csv", ".md", ".rpy", ".rpym", ".ini",
-    ".pyc", ".pyo", ".rpyc", ".rpyo",  # Compiled Python & RenPy files
-}
-
 IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".svg", ".ico"}
 AUDIO_EXTS = {".mp3", ".ogg", ".wav", ".m4a", ".aac", ".opus", ".flac"}
 VIDEO_EXTS = {".mp4", ".webm", ".mov", ".m4v", ".mpeg", ".mpg"}
 
-ARCHIVE_SUFFIXES = {
-    ".rpa", ".zip", ".tar", ".tar.gz", ".tgz", ".tar.bz2", ".tbz", ".tbz2", ".tar.xz", ".txz", ".7z", ".rar", ".unitypackage",
-}
-PYTHON_ARCHIVE_SUFFIXES = {
-    ".zip", ".tar", ".tar.gz", ".tgz", ".tar.bz2", ".tbz", ".tbz2", ".tar.xz", ".txz", ".unitypackage",
-}
-
 SKIP_DIRS = {".git", ".venv", "__pycache__"}
-RPA_TEMP_PREFIX = "rpa_extract_"
 TRASH_DIR_NAME = ".trash"
-# Marks a folder as an extraction workspace owned by this app; only such
-# folders may be cleared before an extraction.
-WORKSPACE_MARKER = ".rpyx-workspace"
 
 
 # ============================================================================

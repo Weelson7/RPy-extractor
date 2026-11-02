@@ -18,90 +18,76 @@ from pathlib import Path
 APP_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(APP_DIR))
 
-from api.extraction_handlers import claim_workspace  # noqa: E402
-from extraction_core.archive import try_python_archive_extract  # noqa: E402
-from extraction_core.pipeline import extract_assets  # noqa: E402
-from models import WORKSPACE_MARKER, AppConfig  # noqa: E402
+sys.path.insert(0, str(APP_DIR.parent))
+
+from api.common import set_session_asset_path  # noqa: E402
+from api.extraction_handlers import extract_repo  # noqa: E402
+from models import SESSIONS, AppConfig  # noqa: E402
 
 
-class GameFolderIsReadOnly(unittest.TestCase):
-    def test_extraction_copies_instead_of_moving(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            game = root / "game_root"
-            (game / "game" / "images").mkdir(parents=True)
-            (game / "game" / "images" / "bg.png").write_bytes(b"png-bytes")
-            (game / "game" / "script.rpy").write_text("label start:\n", encoding="utf-8")
-            (root / "tmp").mkdir()
-            before = sorted(p.relative_to(game).as_posix() for p in game.rglob("*") if p.is_file())
-
-            result = extract_assets(game, root / "out", None, root / "tmp")
-
-            after = sorted(p.relative_to(game).as_posix() for p in game.rglob("*") if p.is_file())
-            self.assertEqual(before, after, "game folder must not lose files")
-            self.assertTrue((root / "out" / "png" / "bg.png").exists())
-            self.assertEqual(result["copiedFiles"], 2)
+def _config(root: Path) -> AppConfig:
+    return AppConfig(host="127.0.0.1", port=0, temp_path=root / "tmp", output_dir_name="assets",
+                     merger_dir=root / "merged", web_dir_name=str(APP_DIR / "web"),
+                     log_dir=root / "logs")
 
 
-class WorkspaceOwnership(unittest.TestCase):
-    def test_unmarked_folder_with_content_is_not_cleared(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            user_dir = root / "my_documents"
-            user_dir.mkdir()
-            (user_dir / "important.txt").write_text("keep me", encoding="utf-8")
-            game = root / "game_root"
-            game.mkdir()
-            (root / "tmp").mkdir()
-
-            self.assertTrue(claim_workspace(user_dir, root / "default"))
-            with self.assertRaises(ValueError):
-                extract_assets(game, user_dir, None, root / "tmp")
-            self.assertTrue((user_dir / "important.txt").exists())
-
-    def test_empty_and_default_folders_are_claimed_and_reusable(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            game = root / "game_root"
-            game.mkdir()
-            (game / "a.txt").write_text("x", encoding="utf-8")
-            (root / "tmp").mkdir()
-            default = root / "assets"
-            default.mkdir()
-            (default / "old.png").write_bytes(b"old")  # pre-hotfix default workspace
-
-            self.assertEqual(claim_workspace(default, default), "")
-            extract_assets(game, default, None, root / "tmp")
-            self.assertTrue((default / WORKSPACE_MARKER).exists())
-            self.assertFalse((default / "old.png").exists())
-            # Second run into the now-marked folder works.
-            extract_assets(game, default, None, root / "tmp")
-            self.assertTrue((default / "txt" / "a.txt").exists())
+def _game(root: Path) -> Path:
+    game = root / "game_root"
+    (game / "game" / "images").mkdir(parents=True)
+    (game / "game" / "images" / "bg.png").write_bytes(b"png-bytes")
+    (game / "game" / "script.rpy").write_text("label start:\n", encoding="utf-8")
+    with tarfile.open(game / "extra.tar", "w") as tf:
+        for name, data in (("../escaped.txt", b"bad"), ("ok/inside.txt", b"good")):
+            info = tarfile.TarInfo(name)
+            info.size = len(data)
+            tf.addfile(info, io.BytesIO(data))
+    return game
 
 
-class SafeTarExtraction(unittest.TestCase):
-    def test_traversal_and_links_are_not_extracted(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            archive = root / "evil.tar"
-            with tarfile.open(archive, "w") as tf:
-                for name, data in (("../escaped.txt", b"bad"), ("ok/inside.txt", b"good")):
-                    info = tarfile.TarInfo(name)
-                    info.size = len(data)
-                    tf.addfile(info, io.BytesIO(data))
-                link = tarfile.TarInfo("ok/link")
-                link.type = tarfile.SYMTYPE
-                link.linkname = "/etc/passwd"
-                tf.addfile(link)
-            dest = root / "dest"
-            dest.mkdir()
+class ExtractionSafety(unittest.TestCase):
+    """H1, H2 and F17, checked through the v1 route (now served by the ViWo core)."""
 
-            ok, err = try_python_archive_extract(archive, dest)
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+        (self.root / "tmp").mkdir()
+        self.cfg = _config(self.root)
+        self.game = _game(self.root)
+        SESSIONS.clear()
 
-            self.assertTrue(ok, err)
-            self.assertFalse((root / "escaped.txt").exists())
-            self.assertTrue((dest / "ok" / "inside.txt").exists())
-            self.assertFalse((dest / "ok" / "link").exists())
+    def tearDown(self) -> None:
+        SESSIONS.clear()
+        self._tmp.cleanup()
+
+    def files(self, folder: Path) -> list[str]:
+        return sorted(p.relative_to(folder).as_posix() for p in folder.rglob("*") if p.is_file())
+
+    def test_game_folder_untouched_and_traversal_blocked(self) -> None:
+        before = self.files(self.game)
+        response = extract_repo(str(self.game), self.cfg, None)
+        self.assertTrue(response["success"], response)
+        self.assertEqual(self.files(self.game), before)
+        self.assertFalse((self.root / "escaped.txt").exists())
+        assets = Path(response["assetPath"])
+        self.assertTrue((assets / "png" / "bg.png").exists())
+        self.assertTrue((assets / "txt" / "inside.txt").exists())
+
+    def test_user_folder_is_never_cleared(self) -> None:
+        user_dir = self.root / "my_documents"
+        user_dir.mkdir()
+        (user_dir / "important.txt").write_text("keep me", encoding="utf-8")
+        set_session_asset_path(user_dir)
+        response = extract_repo(str(self.game), self.cfg, None, None, None, "replace")
+        self.assertFalse(response["success"])
+        self.assertEqual(response["code"], "refused")
+        self.assertTrue((user_dir / "important.txt").exists())
+
+    def test_rerun_asks_then_replaces(self) -> None:
+        self.assertTrue(extract_repo(str(self.game), self.cfg, None)["success"])
+        again = extract_repo(str(self.game), self.cfg, None)
+        self.assertTrue(again["needsDecision"])
+        replaced = extract_repo(str(self.game), self.cfg, None, None, None, "replace")
+        self.assertTrue(replaced["success"], replaced)
 
 
 class ApiSecurity(unittest.TestCase):

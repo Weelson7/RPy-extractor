@@ -179,7 +179,7 @@ def list_kept_files(assets_dir: Path) -> dict[str, int]:
         return kept
 
     for item in assets_dir.iterdir():
-        if item.is_dir() and item.name != TRASH_DIR_NAME:
+        if item.is_dir() and not item.name.startswith("."):
             count = sum(1 for f in item.rglob("*") if f.is_file())
             if count > 0:
                 kept[item.name] = count
@@ -215,7 +215,7 @@ def list_all_extensions(assets_dir: Path) -> list[str]:
         return []
 
     for item in assets_dir.iterdir():
-        if item.is_dir() and item.name != TRASH_DIR_NAME:
+        if item.is_dir() and not item.name.startswith("."):
             exts.add(item.name)
 
     trash_dir = assets_dir / TRASH_DIR_NAME

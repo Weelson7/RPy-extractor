@@ -12,6 +12,9 @@ from typing import Any
 from urllib.parse import parse_qs, unquote, urlparse
 from logging_utils import configure_log_directory
 
+# The ViWo package lives at the repository root (one level up).
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 # Import all modular components
 from models import AppConfig, SESSIONS
 from startup import startup_dependency_preflight, dependency_status_snapshot, tlog
@@ -222,6 +225,7 @@ class Handler(BaseHTTPRequestHandler):
                 selected_exts,
                 extraction_type,
                 self.progress_callback,
+                data.get("onExisting"),
             ),
             "/api/scan": lambda: scan_extensions(self.app_config, asset_path, self.progress_callback),
             "/api/keep-selected": lambda: keep_selected(self.app_config, selected_exts if isinstance(selected_exts, list) else [], self.progress_callback),
