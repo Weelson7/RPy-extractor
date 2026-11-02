@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from viwo.contracts.errors import ViwoError
+from viwo.contracts.types import ProgressEvent
 from viwo.core.curation.trash import trash_files
 
 from .ffmpeg import FFMPEG, Timeline, filtergraph, probe
@@ -123,13 +124,30 @@ def _overlay(s: Settings) -> Path | None:
     return path
 
 
-def build_one(rt, workdir: Path, outdir: Path, rels: list[str], s: Settings, name: str) -> dict:
+def _say(sink, message: str) -> None:
+    if sink:
+        sink(ProgressEvent(message, "info", "core:merger", "merge"))
+
+
+@dataclass
+class Target:
+    """Where a build runs: runtime, source folder, output folder and progress sink."""
+
+    rt: Any
+    workdir: Path
+    outdir: Path
+    sink: Any = None
+
+
+def build_one(tg: Target, rels: list[str], s: Settings, name: str) -> dict:
+    rt, workdir, outdir, sink = tg.rt, tg.workdir, tg.outdir, tg.sink
     tool = rt.os.tools.locate(FFMPEG)
     if tool is None or not rt.bindings.get("media.encode") or not rt.bindings["media.encode"].bound:
         raise ViwoError(
             "unavailable", "ffmpeg/ffprobe are required for merger builds", hint=FFMPEG.hint
         )
     files, overlay = _inputs(workdir, rels), _overlay(s)
+    _say(sink, f"Probing {len(files)} input(s) for {output_name(name)}")
     timeline = _timeline(rt.os, files, s, overlay)
     graph, video, audio, total = filtergraph(timeline)
     outdir.mkdir(parents=True, exist_ok=True)
@@ -146,9 +164,11 @@ def build_one(rt, workdir: Path, outdir: Path, rels: list[str], s: Settings, nam
             argv += ["-filter_complex_script", str(script)]
         else:
             argv += ["-filter_complex", graph]
+        _say(sink, f"Encoding {total:.1f} s of video with ffmpeg")
         result = rt.os.process.run(argv + tail, timeout=6 * 3600)
     if not result.ok:
         raise ViwoError("failed", f"Merge failed: {(result.stderr or result.stdout)[-800:]}")
+    _say(sink, f"Wrote {target.name}")
     trashed = trash_files(workdir, files, "merger") if s.trash_after else 0
     return {
         "success": True,
@@ -160,20 +180,18 @@ def build_one(rt, workdir: Path, outdir: Path, rels: list[str], s: Settings, nam
     }
 
 
-def _per_candidate(rt, workdir: Path, outdir: Path, payload: dict, s: Settings) -> tuple:
+def _per_candidate(tg: Target, payload: dict, s: Settings) -> tuple:
     pattern = str(payload.get("namingPattern", PATTERNS[0])).lower()
     pattern = pattern if pattern in PATTERNS else PATTERNS[0]
     name = str(payload.get("outputName", "")).strip()
     stem, suffix = (Path(name).stem, Path(name).suffix or ".mp4") if name else ("", ".mp4")
-    entries, outputs, failures = list_entries(workdir), [], []
+    entries, outputs, failures = list_entries(tg.workdir), [], []
     for spec in payload.get("selectedCandidates") or []:
         label = str(spec.get("name", "")).strip()
         safe = re.sub(r"[^A-Za-z0-9._-]+", "_", label).strip("._-") or "candidate"
         try:
             rels = expand(entries, pattern, [spec])
-            done = build_one(
-                rt, workdir, outdir, rels, s, f"{stem}_{safe}{suffix}" if stem else safe
-            )
+            done = build_one(tg, rels, s, f"{stem}_{safe}{suffix}" if stem else safe)
             outputs.append(
                 {"candidateName": label, **{k: v for k, v in done.items() if k != "success"}}
             )
@@ -182,13 +200,19 @@ def _per_candidate(rt, workdir: Path, outdir: Path, payload: dict, s: Settings) 
     return outputs, failures
 
 
-def build(rt, workdir: Path, outdir: Path, payload: dict) -> dict:
+def build(rt, workdir: Path, outdir: Path, payload: dict, sink=None) -> dict:
     """selectedPaths -> one output; selectedCandidates -> one output per candidate."""
-    s = Settings.from_payload(payload)
+    tg, s = Target(rt, workdir, outdir, sink), Settings.from_payload(payload)
+    if s.transition == "fade" and s.cross >= s.delay:
+        raise ViwoError(
+            "invalid_request",
+            "The crossfade must be shorter than the image hold",
+            hint=f"crossfade {s.cross:g} s >= hold {s.delay:g} s",
+        )
     if not payload.get("selectedCandidates"):
         rels = [str(p) for p in payload.get("selectedPaths") or []]
-        return build_one(rt, workdir, outdir, rels, s, str(payload.get("outputName", "")).strip())
-    outputs, failures = _per_candidate(rt, workdir, outdir, payload, s)
+        return build_one(tg, rels, s, str(payload.get("outputName", "")).strip())
+    outputs, failures = _per_candidate(tg, payload, s)
     if not outputs:
         return {
             "success": False,

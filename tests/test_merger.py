@@ -79,6 +79,20 @@ class MergerBuildTests(unittest.TestCase):
             with self.assertRaises(ViwoError):
                 build(rt, work, root / "out", {"selectedPaths": ["../escape.png"]})
 
+    def test_progress_events_and_timing_validation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            work = root / "ws"
+            make_png(work / "01_frame.png")
+            rt, events = runtime(root), []
+            payload = {"selectedPaths": ["01_frame.png"], "diapoDelay": 0.4, "outputName": "one"}
+            build(rt, work, root / "out", payload, events.append)
+            self.assertEqual([e.stage for e in events], ["merge"] * 3)
+            bad = {**payload, "transitionType": "fade", "fadeCrossTime": 0.5}
+            with self.assertRaises(ViwoError) as err:
+                build(rt, work, root / "out", bad)
+            self.assertIn("crossfade", err.exception.message)
+
 
 if __name__ == "__main__":
     unittest.main()

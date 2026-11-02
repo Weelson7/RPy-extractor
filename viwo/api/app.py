@@ -26,7 +26,13 @@ class App:
         self.history: list[dict] = []
         self._log: deque[str] = deque(maxlen=2000)
         self._lock = threading.Lock()
-        self.server.logs.mkdir(parents=True, exist_ok=True)
+        for folder in (
+            self.server.logs,
+            self.server.temp,
+            self.server.workspace,
+            self.server.merged,
+        ):
+            folder.mkdir(parents=True, exist_ok=True)  # a fresh install works out of the box
 
     def log(self, line: str) -> None:
         stamped = f"[{time.strftime('%H:%M:%S')}] {line}"
@@ -104,10 +110,10 @@ class App:
         except ViwoError as exc:
             return {"success": False, "error": exc.message, "code": exc.code, "hint": exc.hint}
 
-    def locked_job(self, kind: str, folder: Path, fn: Callable[[], dict]) -> dict:
+    def locked_job(self, kind: str, folder: Path, fn: Callable[..., dict]) -> dict:
         def run() -> dict:
             job = self.jobs.submit_with_listener(
-                lambda e: self.log(e.legacy_line()), kind, lambda jid, s, c: fn(), background=False
+                lambda e: self.log(e.legacy_line()), kind, lambda jid, s, c: fn(s), background=False
             )
             if job.error:
                 return {

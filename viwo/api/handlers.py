@@ -48,6 +48,8 @@ def workspace(app: App, q: dict) -> dict:
 
 def open_workspace(app: App, d: dict) -> dict:
     path = Path(str(d.get("path", ""))).expanduser()
+    if path.resolve() == app.server.workspace.resolve():
+        path.mkdir(parents=True, exist_ok=True)
     if not path.is_dir():
         return {"success": False, "error": f"Folder not found: {path}", "code": "not_found"}
     app.set_workspace(path.resolve())
@@ -185,7 +187,7 @@ def merger_list(app: App, d: dict) -> dict:
         else None
     )
     entries = media.list_entries(folder, allowed or None)
-    groups = media.candidates(entries, pattern, include_files=False)
+    groups = media.candidates(entries, pattern, include_files=bool(d.get("includeFiles")))
     offset, limit = (
         max(0, int(d.get("offset", 0) or 0)),
         max(1, min(300, int(d.get("limit", 120) or 120))),
@@ -207,7 +209,9 @@ def merger_list(app: App, d: dict) -> dict:
 
 def merger_build(app: App, d: dict) -> dict:
     folder = _workdir(app, d)
-    return app.locked_job("merge", folder, lambda: build(app.rt, folder, app.server.merged, d))
+    return app.locked_job(
+        "merge", folder, lambda sink: build(app.rt, folder, app.server.merged, d, sink)
+    )
 
 
 def merger_overlay(app: App, d: dict) -> dict:
