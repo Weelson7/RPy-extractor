@@ -1,6 +1,7 @@
 // 06.C RENDER: transition / end / overlay / output settings, build as a "merge" job, results.
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, errorBox, toast, toastErr, busy, emit } from "../ui.js";
+import { h, fill, btn, panel, badge, errorBox, toast, toastErr, busy, emit, logLine } from "../ui.js";
+import { jobProgress } from "../progress.js";
 
 const O = { transitionType: "diapo", diapoDelay: 3, fadeCrossTime: 0.7, endFadeoutTime: 0, endLastImageTime: 0,
   overlaySound: "", overlayVolume: 0.35, outputName: "", trashAfterBuild: false };
@@ -24,13 +25,14 @@ export function outputPanel(context) {
   ctx = context;
   el.form = h("div", { class: "mform" });
   el.build = btn("BUILD TIMELINES", build, "primary lg");
-  el.status = h("div", { class: "progress" });
+  el.prog = jobProgress("merge", { logClass: "mini", onStatus: (text) => { if (running && text) el.sum.textContent = text; } });
+  el.prog.el.hidden = true;
   el.results = h("div", {});
   el.sum = h("div", { class: "ab-sum mono" });
   el.why = h("span", { class: "ab-why" });
   el.bar = h("div", { class: "actionbar" }, el.sum, el.why, el.build);
   renderForm();
-  return panel("06.C", "RENDER", null, el.form, el.status, el.results);
+  return panel("06.C", "RENDER", null, el.form, el.prog.el, el.results);
 }
 
 export const actionBar = () => el.bar;
@@ -89,49 +91,33 @@ function renderForm() {
   refreshBar();
 }
 
-/** Follow the merge job: last progress event ("Probing…", "Encoding…", "Wrote…") + elapsed time. */
-function tick(t0, known) {
-  const t = { id: null, from: 0, msg: "starting", busy: false };
-  return setInterval(async () => {
-    if (t.busy) return;
-    t.busy = true;
-    try {
-      t.id ||= (await api.jobs()).filter((j) => j.kind === "merge" && !known.has(j.id)).pop()?.id;
-      const page = t.id ? await api.events(t.id, t.from) : null;
-      if (page?.events.length) { t.from = page.next; t.msg = page.events[page.events.length - 1].message; }
-    } catch { /* the build call reports failures */ } finally { t.busy = false; }
-    el.sum.textContent = `RENDERING · ${t.msg} · ${Math.round((Date.now() - t0) / 1000)}s`;
-    fill(el.status, h("span", { class: "lbl live" }, "RENDERING"),
-      h("span", { class: "mono" }, `${t.msg} · ${Math.round((Date.now() - t0) / 1000)}s`), h("div", { class: "scan-bar" }, h("i", {})));
-  }, 700);
-}
-
 async function build() {
   const selected = ctx.specs();
   if (!selected.length) return toast("Select at least one candidate.", "warn");
   if (O.transitionType === "fade" && O.fadeCrossTime >= O.diapoDelay) return toast("Crossfade must be shorter than the image hold.", "warn");
-  const known = new Set((await api.jobs().catch(() => [])).map((j) => j.id));
-  const timer = tick(Date.now(), known);
   running = true;
   refreshBar();
   el.build.textContent = "RENDERING…";
-  el.status.scrollIntoView({ block: "nearest" });
   fill(el.results);
-  emit("jobs");
+  el.prog.el.hidden = false;
+  await el.prog.start({ total: selected.length });
+  el.prog.log.append(logLine(`// BUILD ${selected.length} TIMELINE(S) · ${O.transitionType.toUpperCase()}`));
+  el.prog.el.scrollIntoView({ block: "nearest" });
   try {
     const res = await api.mergerBuild({ ...O, namingPattern: ctx.pattern(), selectedCandidates: selected });
+    await el.prog.finish(res.partial ? "fail" : "ok", `${res.builtCount ?? 1} VIDEO(S) BUILT${res.partial ? " · SOME FAILED" : ""}`);
     renderResults(res);
+    el.results.firstElementChild?.classList.add("reveal");
     toast(`Built ${res.builtCount ?? 1} video(s).`, res.partial ? "warn" : "ok", res.partial ? "Some candidates failed." : "");
     if (O.trashAfterBuild) emit("workspace");
   } catch (err) {
+    await el.prog.finish("fail", String(err.code || "error").toUpperCase());
     fill(el.results, errorBox(err, "BUILD FAILED"), failures(err.payload?.failures));
     toastErr(err, "Build failed: ");
   } finally {
-    clearInterval(timer);
     running = false;
     el.build.textContent = "BUILD TIMELINES";
     refreshBar();
-    fill(el.status);
     emit("jobs");
   }
 }

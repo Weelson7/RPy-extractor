@@ -81,6 +81,15 @@ jobs:
           cd asm && for f in *.zip; do unzip -q -o "$f"; done
           tool=$(find "$PWD" -type f -name "AssetStudioModCLI" | head -1)
           chmod +x "$tool" && echo "VIWO_ASSETSTUDIOMOD=$tool" >> "$GITHUB_ENV"
+      - name: repak v0.2.3 and retoc v0.1.5 (Unreal; release binaries)
+        if: runner.os == 'Linux'
+        continue-on-error: true
+        run: |
+          gh release download v0.2.3 -R trumank/repak -p "repak_cli-x86_64-unknown-linux-gnu.tar.xz" -D ue
+          gh release download v0.1.5 -R trumank/retoc -p "retoc_cli-x86_64-unknown-linux-gnu.tar.xz" -D ue
+          cd ue && for f in *.tar.xz; do tar -xJf "$f"; done
+          echo "VIWO_REPAK=$(find "$PWD" -type f -name repak | head -1)" >> "$GITHUB_ENV"
+          echo "VIWO_RETOC=$(find "$PWD" -type f -name retoc | head -1)" >> "$GITHUB_ENV"
       - name: Freedoom 0.13.0 (BSD game data for the Doom plugin)
         shell: bash
         continue-on-error: true

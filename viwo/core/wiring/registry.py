@@ -14,6 +14,7 @@ BUILTIN_PLUGINS = {
     "unity": "viwo.plugins.unity:UnityPlugin",
     "godot": "viwo.plugins.godot:GodotPlugin",
     "doom": "viwo.plugins.doom:DoomPlugin",
+    "unreal": "viwo.plugins.unreal:UnrealPlugin",
 }
 
 

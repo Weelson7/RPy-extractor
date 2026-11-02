@@ -182,5 +182,30 @@ class AssetStudioModTest(unittest.TestCase):
             self.assertEqual(rt.bindings["export.unity"].main, "assetstudiomod-cli")
 
 
+@unittest.skipUnless(os.environ.get("VIWO_L5"), "L5 real-tool test (set VIWO_L5=1)")
+class RealUnrealToolsTest(unittest.TestCase):
+    def test_repak_built_pak_through_the_pipeline(self) -> None:
+        repak = _tool("VIWO_REPAK")
+        if repak is None:
+            self.skipTest("repak not installed (set VIWO_REPAK)")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            src = root / "src" / "Game" / "Content" / "UI"
+            src.mkdir(parents=True)
+            (src / "Logo.uasset").write_bytes(b"\xc1\x83\x2a\x9e real uasset bytes")
+            paks = root / "game" / "Game" / "Content" / "Paks"
+            paks.mkdir(parents=True)
+            pak = paks / "pakchunk0-Windows.pak"
+            proc = subprocess.run(
+                [str(repak), "pack", str(root / "src"), str(pak)], capture_output=True, text=True
+            )
+            self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+            rt = runtime(root, f"[plugins]\nunreal = on\n[tools]\nrepak = {repak}\n")
+            request = ExtractionRequest(str(root / "game"), str(root / "ws"))
+            result = extract(rt, request, "j", lambda e: None, CancelToken())
+            self.assertEqual(result.archives_extracted, 1, result.warnings)
+            self.assertTrue((root / "ws" / "uasset" / "Logo.uasset").is_file())
+
+
 if __name__ == "__main__":
     unittest.main()

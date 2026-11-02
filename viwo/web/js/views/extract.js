@@ -1,6 +1,7 @@
 // 01 EXTRACT: target, detection, mode, plugin options, filter, run + live feed.
 import { api } from "../api.js";
 import { h, fill, btn, panel, badge, meter, viewHead, toast, toastErr, busy, pref, logLine, emit, modal, errorBox, pad, fmtNum, bus } from "../ui.js";
+import { jobProgress, withSkeleton } from "../progress.js";
 import { renderResult, renderFailure, renderIdle } from "./extract-result.js";
 import { openWorkspaceDialog } from "../workspace-dialog.js";
 
@@ -18,8 +19,7 @@ function mount(root) {
   el.mode = h("div", {});
   el.options = h("details", { class: "optgroup", open: true });
   el.exts = h("input", { class: "input mono grow", id: "ext-filter", placeholder: "all extensions — or e.g. .png .ogg .webm", spellcheck: "false", oninput: () => updateBar() });
-  el.feed = h("pre", { class: "log feed", "aria-live": "off" });
-  el.progress = h("div", { class: "progress" });
+  el.prog = jobProgress("extract", { onStatus: (text) => { if (S.running && text) el.sum.textContent = text; } });
   el.result = h("div", { class: "result-host" });
   el.idle = h("div", { class: "idle" });
   el.sum = h("div", { class: "ab-sum mono" });
@@ -71,7 +71,7 @@ async function detect() {
   if (!path) return toast("Enter a game folder first.", "warn");
   pref("gamePath", path);
   try {
-    S.detect = await api.detect(path);
+    S.detect = await withSkeleton(el.detect, "PROBING ENGINE SIGNATURES…", () => api.detect(path), 3);
     if (S.mixed.size === 0) S.detect.auto.forEach((p) => S.mixed.add(p));
     if (!S.single) S.single = S.detect.auto[0] || "";
     renderDetect();
@@ -224,11 +224,11 @@ function buildPayload(onExisting) {
 }
 
 function feedPanel() {
-  return panel("01.E", "LIVE FEED", null, el.idle, el.progress, el.feed);
+  return panel("01.E", "LIVE FEED", null, el.idle, el.prog.el);
 }
 
 function renderIdleFeed() {
-  el.progress.hidden = el.feed.hidden = true;
+  el.prog.el.hidden = true;
   el.idle.hidden = false;
   renderIdle(el.idle);
 }
@@ -237,45 +237,12 @@ function setRunning(on) {
   S.running = on;
   el.run.textContent = on ? "EXTRACTING…" : "RUN EXTRACTION";
   el.cancel.hidden = !on;
-  if (on) {
-    el.idle.hidden = true;
-    el.progress.hidden = el.feed.hidden = false;
-  }
+  if (on) el.idle.hidden = !(el.prog.el.hidden = false);
   updateBar();
 }
 
-/** Follow the running extract job: discover it via /api/jobs, then stream its events. */
-function tracker(known) {
-  const t = { id: null, from: 0, count: 0, stage: "", start: Date.now(), busy: false };
-  const tick = async () => {
-    if (t.busy) return;
-    t.busy = true;
-    try {
-      if (!t.id) {
-        t.id = (await api.jobs()).filter((j) => j.kind === "extract" && !known.has(j.id)).pop()?.id || null;
-        if (t.id) emit("jobs");
-      }
-      if (t.id) {
-        const page = await api.events(t.id, t.from);
-        t.from = page.next;
-        page.events.forEach((e) => { t.count += 1; t.stage = e.stage || t.stage; el.feed.append(logLine(e.line, e.level)); });
-        if (page.events.length) el.feed.scrollTop = el.feed.scrollHeight;
-      }
-    } catch { /* keep polling; the run call reports failures */ } finally { t.busy = false; }
-    const secs = Math.round((Date.now() - t.start) / 1000);
-    if (S.running) el.sum.textContent = `EXTRACTING · ${(t.stage || "start").toUpperCase()} · ${t.count} events · ${secs}s`;
-    fill(el.progress, h("span", { class: S.running ? "lbl live" : "lbl" }, S.running ? "RUNNING" : "FINISHED"),
-      h("span", { class: "mono" }, `STAGE ${(t.stage || "start").toUpperCase()} · ${t.count} EVENTS · ${secs}s`),
-      S.running ? h("div", { class: "scan-bar" }, h("i", {})) : null);
-  };
-  t.timer = setInterval(tick, 600);
-  t.flush = async () => { clearInterval(t.timer); while (t.busy) await new Promise((r) => setTimeout(r, 50)); await tick(); };
-  S.tracker = t;
-  return t;
-}
-
 async function cancelJob() {
-  const id = S.tracker?.id;
+  const id = el.prog.id;
   if (!id) return toast("Job not registered yet — try again in a moment.", "warn");
   try { await api.cancel(id); toast("Cancellation requested.", "warn"); } catch (err) { toastErr(err); }
 }
@@ -290,25 +257,31 @@ async function askDecision(err) {
 async function run(onExisting) {
   const payload = buildPayload(onExisting);
   if (!payload || S.running) return;
-  let known = new Set(), next = null;
-  try { known = new Set((await api.jobs()).map((j) => j.id)); } catch { /* tracking is best-effort */ }
+  let next = null;
   setRunning(true);
-  el.feed.replaceChildren(logLine(`// RUN ${payload.extractionType.toUpperCase()} :: ${payload.gamePath}`));
-  el.feed.closest(".panel").scrollIntoView({ block: "nearest" });
-  const t = tracker(known);
-  emit("jobs");
+  fill(el.result);
+  await el.prog.start();
+  el.prog.log.append(logLine(`// RUN ${payload.extractionType.toUpperCase()} · CARVE ${payload.carve.toUpperCase()} :: ${payload.gamePath}`));
+  el.prog.el.closest(".panel").scrollIntoView({ block: "nearest" });
   try {
     const res = await api.extract(payload);
+    await el.prog.finish("ok", `${fmtNum(res.result.copiedFiles)} FILES COPIED`);
     setRunning(false);
-    await t.flush();
     renderResult(el.result, res);
-    el.result.scrollIntoView({ block: "nearest" });
+    reveal();
     toast(`Extraction complete: ${fmtNum(res.result.copiedFiles)} files copied.`, "ok");
   } catch (err) {
-    setRunning(false);
-    await t.flush();
-    if (err.payload?.needsDecision) next = await askDecision(err);
-    else { renderFailure(el.result, err); el.result.scrollIntoView({ block: "nearest" }); err.code === "cancelled" ? toast("Extraction cancelled.", "warn") : toastErr(err, "Extraction failed: "); }
+    if (err.payload?.needsDecision) {
+      el.prog.stop();
+      renderIdleFeed();
+      setRunning(false);
+      next = await askDecision(err);
+    } else {
+      await el.prog.finish(err.code === "cancelled" ? "cancel" : "fail", String(err.code || "error").toUpperCase());
+      renderFailure(el.result, err);
+      reveal();
+      err.code === "cancelled" ? toast("Extraction cancelled.", "warn") : toastErr(err, "Extraction failed: ");
+    }
   } finally {
     setRunning(false);
     emit("jobs");
@@ -316,6 +289,21 @@ async function run(onExisting) {
     renderIdle(el.idle);
   }
   if (next) run(next);
+}
+
+function reveal() {
+  el.result.firstElementChild?.classList.add("reveal");
+  el.result.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+}
+
+/** 07 SURVEY hands over a game folder: fill it in and detect straight away. */
+function show() {
+  if (!bus.gamePath) return;
+  el.path.value = bus.gamePath;
+  bus.gamePath = null;
+  S.detect = null;
+  updateBar();
+  detect();
 }
 
 async function loadPlugins() {
@@ -327,4 +315,4 @@ async function loadPlugins() {
   }
 }
 
-export default { mount };
+export default { mount, show };

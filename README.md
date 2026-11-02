@@ -6,7 +6,8 @@ Point ViWo at a game folder. It recognizes the engine, routes every container to
 available tool (with a spare when that tool is missing or fails), collects everything into one
 curated workspace, and records where every file came from. Your game is never modified.
 
-- **Engines:** Ren'Py, Unity, Godot, plus plain archives (zip, tar, 7z, rar) for anything else.
+- **Engines:** Ren'Py, Unity, Godot, Unreal, Doom engine, plain archives (zip, tar, 7z, rar), and a
+  carver that pulls standard files (images, audio, video, archives) out of anything unrecognized.
 - **Never touches the game:** files are copied, never moved; a workspace or temp folder inside the
   game folder is refused; every run compares the game folder before and after.
 - **Main + spare tools:** each job (unpack `.rpa`, export Unity assets, unpack a Godot PCK...) has a
@@ -55,6 +56,10 @@ for machine-readable output.
 | Ren'Py | `.rpa` archives | built-in safe reader | unrpa |
 | Unity | assets | UnityPy | AssetStudioModCLI |
 | Godot | `.pck`, PCK embedded in the executable | GDRE Tools | GodotPckTool |
+| Unreal | `.pak` (any version, AES per user key or found in the game executable) | repak | — |
+| Unreal 5 | IoStore `.utoc`/`.ucas` | retoc (to legacy assets) | retoc (raw packages) |
+| Doom engine | IWAD/PWAD: PNG, WAV, MIDI, maps | built-in reader | — |
+| anything else | files hidden inside unknown data, zlib/gzip streams | built-in carver | — |
 | media merger | video build | ffmpeg | — |
 
 From a checkout, `pip install -e ".[unity,sevenzip,renpy]"` installs the `viwo` command and the
