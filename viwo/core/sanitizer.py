@@ -136,7 +136,11 @@ def apply(workspace: Path, plan_id: str, accept: list[int] | str = "all-safe") -
     if not path.is_file():
         raise ViwoError("not_found", f"no sanitizer plan {plan_id}")
     findings = json.loads(path.read_text(encoding="utf-8"))["findings"]
-    chosen = range(len(findings)) if accept == "all-safe" else [int(i) for i in accept]
+    try:
+        picked = range(len(findings)) if accept == "all-safe" else sorted({int(i) for i in accept})
+    except (TypeError, ValueError):
+        raise ViwoError("invalid_request", "accept must be 'all-safe' or a list of indexes")
+    chosen = [i for i in picked if 0 <= i < len(findings)]
     journal, failed = [], []
     for index in chosen:
         finding, src = findings[index], workspace / findings[index]["path"]
@@ -153,7 +157,9 @@ def apply(workspace: Path, plan_id: str, accept: list[int] | str = "all-safe") -
             failed.append(f"{finding['path']}: {exc}")
     folder = workspace / ROOT / "journal"
     folder.mkdir(parents=True, exist_ok=True)
-    (folder / f"{plan_id}.json").write_text(json.dumps(journal), encoding="utf-8")
+    record = folder / f"{plan_id}.json"  # several applies of one plan add up
+    earlier = json.loads(record.read_text(encoding="utf-8")) if record.is_file() else []
+    record.write_text(json.dumps(earlier + journal), encoding="utf-8")
     return {"planId": plan_id, "applied": len(journal), "failed": failed, "undoToken": plan_id}
 
 

@@ -69,6 +69,14 @@ class SanitizerTests(unittest.TestCase):
             self.assertTrue(plan["success"] and plan["findings"], plan)
             done = POST["/api/sanitizer/apply"](app, {"planId": plan["planId"], "accept": [0]})
             self.assertEqual(done["applied"], 1)
+            odd = POST["/api/sanitizer/apply"](app, {"planId": plan["planId"], "accept": [999, -1]})
+            self.assertEqual(odd["applied"], 0)
+            self.assertEqual(
+                POST["/api/sanitizer/apply"](app, {"planId": plan["planId"], "accept": ["x"]})[
+                    "code"
+                ],
+                "invalid_request",
+            )
             self.assertEqual(
                 POST["/api/sanitizer/undo"](app, {"undoToken": done["undoToken"]})["restored"], 1
             )
