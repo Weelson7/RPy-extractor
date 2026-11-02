@@ -15,7 +15,7 @@ from pathlib import Path
 from tests.helpers import make_png, runtime, tree_hashes
 from viwo.contracts import CancelToken, ExtractionRequest
 from viwo.contracts.pipeline import CarveMode
-from viwo.core.carve import scan
+from viwo.core.carve import carve_file, scan
 from viwo.core.carve.formats import OGG_CRC
 from viwo.core.pipeline.runner import extract
 
@@ -155,6 +155,34 @@ class ScanTests(unittest.TestCase):
             path = Path(tmp) / "x.bin"
             path.write_bytes(b"\0" * 100 + out.getvalue())
             self.assertEqual([h.suffix for h in scan(path, CancelToken())], [".zip"])
+
+
+class StreamTests(unittest.TestCase):
+    def test_custom_archive_with_compressed_entries(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            png = make_png(root / "p.png", 8, 8).read_bytes()
+            text = b"dialogue line one\nline two\n" * 10
+            raw = random.Random(5).randbytes(500)
+            gz = __import__("gzip").compress(wav())
+            entries = [zlib.compress(png), zlib.compress(text), gz, zlib.compress(raw, 1)]
+            pack = b"MYPAK\x01" + b"".join(struct.pack("<I", len(e)) + e for e in entries)
+            path = root / "data.pak"
+            path.write_bytes(pack)
+            out = root / "out"
+            self.assertEqual(carve_file(path, out, CancelToken()), 4)
+            names = sorted(p.suffix for p in out.iterdir())
+            self.assertEqual(names, [".bin", ".png", ".txt", ".wav"])
+            self.assertIn(png, [p.read_bytes() for p in out.iterdir()])
+
+    def test_noise_with_zlib_headers_gives_nothing(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            rng = random.Random(11)
+            path = Path(tmp) / "noise.bin"
+            path.write_bytes(
+                b"".join(rng.randbytes(2048) + b"\x78\x9c" + b"\x1f\x8b\x08" for _ in range(500))
+            )
+            self.assertEqual(carve_file(path, Path(tmp) / "out", CancelToken()), 0)
 
 
 class CarvePipelineTests(unittest.TestCase):

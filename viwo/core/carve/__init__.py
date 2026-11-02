@@ -17,6 +17,7 @@ from viwo.contracts.types import Outcome, OutcomeKind
 
 from . import formats as f
 from . import formats2 as g
+from .streams import Stream, find_streams, is_text
 
 SIGNATURES = (  # (needle, offset of the file start relative to the needle, sizer)
     (b"\x89PNG\r\n\x1a\n", 0, f.png),
@@ -58,59 +59,93 @@ def _starts(m, end: int, cancel) -> list[tuple[int, object]]:
     return starts
 
 
-def scan(path: Path, cancel) -> list[Hit]:
+def scan_buffer(m, size: int, cancel) -> list[Hit]:
     """Non-overlapping embedded files, outermost first (a PNG inside a zip stays in the zip)."""
-    size = path.stat().st_size
-    if size < MIN_SIZE:
-        return []
     hits: list[Hit] = []
-    with open(path, "rb") as fh, mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ) as m:
-        covered, cache = 0, {}
-        for start, sizer in _starts(m, size, cancel):
-            if start < covered or cancel.cancelled:
-                continue
-            try:
-                found = (
-                    sizer(m, start, size, cache) if sizer is g.zip_file else sizer(m, start, size)
-                )
-            except (
-                IndexError,
-                ValueError,
-                OverflowError,
-                struct.error,
-            ):  # truncated structure: not a file
-                found = None
-            if found and found[0] >= MIN_SIZE and start + found[0] <= size:
-                hits.append(Hit(start, found[0], found[1]))
-                covered = start + found[0]
+    covered, cache = 0, {}
+    for start, sizer in _starts(m, size, cancel):
+        if start < covered or cancel.cancelled:
+            continue
+        try:
+            found = sizer(m, start, size, cache) if sizer is g.zip_file else sizer(m, start, size)
+        except (IndexError, ValueError, OverflowError, struct.error):  # truncated: not a file
+            found = None
+        if found and found[0] >= MIN_SIZE and start + found[0] <= size:
+            hits.append(Hit(start, found[0], found[1]))
+            covered = start + found[0]
     return hits
 
 
-def write_hits(path: Path, hits: list[Hit], dest: Path) -> int:
-    dest.mkdir(parents=True, exist_ok=True)
-    with open(path, "rb") as src:
+def scan(path: Path, cancel) -> list[Hit]:
+    size = path.stat().st_size
+    if size < MIN_SIZE:
+        return []
+    with open(path, "rb") as fh, mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ) as m:
+        return scan_buffer(m, size, cancel)
+
+
+def _copy(src, hit: Hit, target: Path) -> None:
+    src.seek(hit.offset)
+    with open(target, "wb") as out:
+        remaining = hit.size
+        while remaining:
+            chunk = src.read(min(1 << 20, remaining))
+            if not chunk:
+                break
+            out.write(chunk)
+            remaining -= len(chunk)
+
+
+def _write_stream(stream: Stream, stem: str, dest: Path, cancel) -> int:
+    """An inflated stream: one known file, the files inside it, or raw data (.txt/.bin)."""
+    data, at = stream.data, f"{stem}@{stream.offset:08x}"
+    inner = scan_buffer(data, len(data), cancel)
+    if len(inner) == 1 and inner[0].offset == 0 and inner[0].size == len(data):
+        (dest / f"{at}{inner[0].suffix}").write_bytes(data)
+        return 1
+    for hit in inner:
+        part = data[hit.offset : hit.offset + hit.size]
+        (dest / f"{at}+{hit.offset:08x}{hit.suffix}").write_bytes(part)
+    if not inner:
+        (dest / f"{at}{'.txt' if is_text(data) else '.bin'}").write_bytes(data)
+    return max(1, len(inner))
+
+
+def count_embedded(path: Path, cancel) -> int:
+    """How many embedded files and compressed streams a file holds (nothing is written)."""
+    size = path.stat().st_size
+    if size < MIN_SIZE:
+        return 0
+    with open(path, "rb") as fh, mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ) as m:
+        hits = scan_buffer(m, size, cancel)
+        return len(hits) + len(find_streams(m, size, [(h.offset, h.size) for h in hits], cancel))
+
+
+def carve_file(path: Path, dest: Path, cancel) -> int:
+    """Embedded files, then compressed streams in the gaps; returns files written."""
+    size = path.stat().st_size
+    if size < MIN_SIZE:
+        return 0
+    with open(path, "rb") as fh, mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ) as m:
+        hits = scan_buffer(m, size, cancel)
+        streams = find_streams(m, size, [(h.offset, h.size) for h in hits], cancel)
+        if not hits and not streams:
+            return 0
+        dest.mkdir(parents=True, exist_ok=True)
         for hit in hits:
-            src.seek(hit.offset)
-            with open(dest / f"{path.name}@{hit.offset:08x}{hit.suffix}", "wb") as out:
-                remaining = hit.size
-                while remaining:
-                    chunk = src.read(min(1 << 20, remaining))
-                    if not chunk:
-                        break
-                    out.write(chunk)
-                    remaining -= len(chunk)
-    return len(hits)
+            _copy(fh, hit, dest / f"{path.name}@{hit.offset:08x}{hit.suffix}")
+        return len(hits) + sum(_write_stream(s, path.name, dest, cancel) for s in streams)
 
 
 class SignatureCarver(Carver):
     """In-process carver (MIT, ours): PNG, JPEG, GIF, RIFF (WAV/WEM/AVI/WebP), Ogg/Opus,
-    MIDI, MP4/MOV, Bink, FMOD FSB5, Wwise BNK, DDS, glTF binary, zip and 7z."""
+    MIDI, MP4/MOV, Bink, FMOD FSB5, Wwise BNK, DDS, glTF binary, zip and 7z; plus zlib and
+    gzip streams, inflated and carved in turn."""
 
     backend_id, license = "signature-carver", "MIT"
 
     def carve(self, path: Path, dest: Path, ctx) -> Outcome:
         try:
-            hits = scan(path, ctx.cancel)
-            return Outcome(OutcomeKind.OK, write_hits(path, hits, dest) if hits else 0)
+            return Outcome(OutcomeKind.OK, carve_file(path, dest, ctx.cancel))
         except (OSError, ValueError) as exc:
             return Outcome(OutcomeKind.FAILED, error=str(exc))

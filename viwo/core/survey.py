@@ -15,7 +15,7 @@ from pathlib import Path
 
 from viwo.contracts.types import CancelToken
 
-from .carve import scan
+from .carve import count_embedded
 from .pipeline.carving import CODE, KNOWN, MIN_SIZE
 from .pipeline.identify import identify
 from .pipeline.probe import FolderProbe
@@ -89,7 +89,7 @@ def _classify(rt, report: GameSurvey, path: Path, claimed: frozenset[str], deep:
         return report.add("code", size)
     if size < MIN_SIZE:
         return report.add("small", size)
-    if deep and scan(path, CancelToken()):
+    if deep and count_embedded(path, CancelToken()):
         return report.add("carvable", size)
     kind = "unknown-dense" if dense(path, size) else "unknown"
     report.unknown.append({"file": path.name, "bytes": size, "dense": kind.endswith("dense")})
