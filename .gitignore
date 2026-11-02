@@ -52,3 +52,6 @@ Test-games/
 build/
 dist/
 *.egg-info/
+
+# ViWo runtime data (startup.ini [server])
+viwo-data/

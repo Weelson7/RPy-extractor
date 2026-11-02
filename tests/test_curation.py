@@ -6,9 +6,11 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from viwo.api.legacy import locked
+from tests.helpers import write_ini
+from viwo.api.app import App
 from viwo.contracts import ViwoError
 from viwo.core.curation import sorting, trash
+from viwo.core.wiring.boot import boot
 from viwo.core.workspace import workspace_lock
 from viwo.os.windows import WindowsFs
 
@@ -99,10 +101,11 @@ class LockTests(unittest.TestCase):
     def test_curation_is_busy_during_a_job(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             ws = make_workspace(Path(tmp))
+            app = App(boot(write_ini(Path(tmp), "[server]\nlogs = logs\n")))
             with workspace_lock(ws):
-                result = locked(ws, lambda: {"success": True})
+                result = app.locked(lambda: {"success": True}, ws)
             self.assertEqual(result["code"], "busy")
-            self.assertTrue(locked(ws, lambda: {"success": True})["success"])
+            self.assertTrue(app.locked(lambda: {"success": True}, ws)["success"])
 
 
 if __name__ == "__main__":

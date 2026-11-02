@@ -11,7 +11,7 @@ from typing import Mapping
 
 from viwo.contracts.os import OS, DesktopShell, FileSystemPolicy
 
-from ._shared import Locator, SubprocessRunner, open_with, tk_pick_folder
+from ._shared import Locator, SubprocessRunner, open_with, tk_pick_file, tk_pick_folder
 
 
 def _kill_group(proc: subprocess.Popen) -> None:
@@ -46,6 +46,9 @@ class LinuxShell(DesktopShell):
 
     def pick_folder(self, title: str, initial: Path | None = None) -> Path | None:
         return tk_pick_folder(title, initial)
+
+    def pick_file(self, title: str, initial: Path | None = None, patterns=()) -> Path | None:
+        return tk_pick_file(title, initial, patterns)
 
 
 class LinuxOS(OS):

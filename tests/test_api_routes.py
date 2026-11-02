@@ -6,12 +6,25 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from tests.helpers import make_game
-from viwo.api import legacy
+from tests.helpers import make_game, write_ini
+from viwo.api import app as app_module
 from viwo.api.routes import handle_get, handle_post
+from viwo.core.wiring.boot import boot
 
 
 class RouteTests(unittest.TestCase):
+    def setUp(self) -> None:
+        self._tmp = tempfile.TemporaryDirectory()
+        root = Path(self._tmp.name)
+        rt = boot(write_ini(root, "[server]\nworkspace = ws\nlogs = logs\ntemp = tmp\n"))
+        rt.temp_root = rt.config.server.temp
+        self.app = app_module.App(rt)
+        app_module.reset_app(self.app)
+
+    def tearDown(self) -> None:
+        app_module.reset_app()
+        self._tmp.cleanup()
+
     def test_distro_plugins_detect(self) -> None:
         body, status = handle_get("/api/distro", {})
         self.assertEqual((status, body["ok"], body["data"]["contract"]), (200, True, "1.0"))
@@ -29,9 +42,7 @@ class RouteTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             game = make_game(root)
-            response = legacy.extract_for_v1(
-                {"gamePath": str(game)}, root / "ws", root / "ws", root / "tmp"
-            )
+            response = self.app.extract({"gamePath": str(game)})
             self.assertTrue(response["success"], response)
         body, _ = handle_get("/api/jobs", {})
         job_id = body["data"][-1]["id"]

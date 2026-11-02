@@ -11,7 +11,7 @@ from typing import Mapping
 
 from viwo.contracts.os import OS, DesktopShell, FileSystemPolicy
 
-from ._shared import Locator, SubprocessRunner, tk_pick_folder
+from ._shared import Locator, SubprocessRunner, tk_pick_file, tk_pick_folder
 
 _FORBIDDEN = re.compile(r'[\\/:*?"<>|\x00-\x1f]')
 _RESERVED = {"con", "prn", "aux", "nul"} | {f"{p}{i}" for p in ("com", "lpt") for i in range(1, 10)}
@@ -65,6 +65,9 @@ class WindowsShell(DesktopShell):
 
     def pick_folder(self, title: str, initial: Path | None = None) -> Path | None:
         return tk_pick_folder(title, initial)
+
+    def pick_file(self, title: str, initial: Path | None = None, patterns=()) -> Path | None:
+        return tk_pick_file(title, initial, patterns)
 
 
 def _install_roots() -> list[Path]:

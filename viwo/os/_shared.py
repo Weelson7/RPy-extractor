@@ -143,3 +143,23 @@ def tk_pick_folder(title: str, initial: Path | None) -> Path | None:
         return Path(chosen) if chosen else None
     except Exception:
         return None
+
+
+def tk_pick_file(title: str, initial: Path | None, patterns: Sequence[str]) -> Path | None:
+    """v1 file dialog (tkinter); None when no display or cancelled."""
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        start = initial.parent if initial and initial.is_file() else (initial or Path.home())
+        types = [("Supported files", " ".join(patterns))] if patterns else []
+        chosen = filedialog.askopenfilename(
+            initialdir=str(start), title=title, filetypes=types + [("All files", "*.*")]
+        )
+        root.destroy()
+        return Path(chosen) if chosen else None
+    except Exception:
+        return None

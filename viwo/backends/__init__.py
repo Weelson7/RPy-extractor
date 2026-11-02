@@ -9,6 +9,7 @@ from .archives import Py7zrBackend, SevenZipCli, TarBackend, UnrarCli, ZipBacken
 TAR_SUFFIXES = (".tar", ".tar.gz", ".tgz", ".tar.bz2", ".tbz", ".tbz2", ".tar.xz", ".txz")
 
 CORE_SLOTS = (
+    SlotDefinition("media.encode", "media.encode", "core", "ffmpeg"),
     SlotDefinition(
         "unarchive.zip",
         "unarchive",
@@ -43,4 +44,6 @@ CORE_SLOTS = (
 
 
 def core_backends() -> list[Backend]:
-    return [ZipBackend(), TarBackend(), SevenZipCli(), UnrarCli(), Py7zrBackend()]
+    from viwo.core.merger.ffmpeg import FfmpegBackend
+
+    return [ZipBackend(), TarBackend(), SevenZipCli(), UnrarCli(), Py7zrBackend(), FfmpegBackend()]

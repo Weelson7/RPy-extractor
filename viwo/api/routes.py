@@ -14,18 +14,18 @@ from viwo.core.pipeline.probe import FolderProbe
 from viwo.core.pipeline.runner import detect_all
 from viwo.core.pipeline.select import select_plugins
 
-from .legacy import jobs, runtime
+from .app import get_app
 
 STATUS = {"invalid_request": 400, "refused": 403, "not_found": 404, "busy": 409, "internal": 500}
 
 
 def _distro() -> dict:
-    rt = runtime()
+    rt = get_app().rt
     return {**rt.info(), "contract": CONTRACT_VERSION, "features": list(rt.config.features)}
 
 
 def _plugins() -> list[dict]:
-    rt = runtime()
+    rt = get_app().rt
     out = []
     for plugin_id, plugin in sorted(rt.plugins.items()):
         m = plugin.manifest
@@ -48,7 +48,7 @@ def _detect(data: dict) -> dict:
     game = Path(str(data.get("gamePath", "")))
     if not game.is_dir():
         raise ViwoError("invalid_request", f"game folder not found: {game}")
-    rt = runtime()
+    rt = get_app().rt
     found = detect_all(rt, FolderProbe(game))
     priorities = {pid: p.manifest.priority for pid, p in rt.plugins.items()}
     chosen = select_plugins(ExtractionRequest(str(game)), list(found.values()), priorities)
@@ -56,14 +56,14 @@ def _detect(data: dict) -> dict:
 
 
 def _job(job_id: str, query: dict) -> dict:
-    job = jobs().get(job_id)
+    job = get_app().jobs.get(job_id)
     result = job.result.to_legacy_dict() if hasattr(job.result, "to_legacy_dict") else job.result
     return {**job.summary(), "result": result}
 
 
 def _events(job_id: str, query: dict) -> dict:
     start = int((query.get("from") or ["0"])[0])
-    events = jobs().get(job_id).events[start:]
+    events = get_app().jobs.get(job_id).events[start:]
     return {
         "from": start,
         "next": start + len(events),
@@ -72,7 +72,7 @@ def _events(job_id: str, query: dict) -> dict:
 
 
 def _cancel(job_id: str, data: dict) -> dict:
-    job = jobs().get(job_id)
+    job = get_app().jobs.get(job_id)
     job.cancel.cancel()
     return job.summary()
 
@@ -90,7 +90,7 @@ def handle_get(path: str, query: dict) -> tuple[dict, int] | None:
     static = {
         "/api/distro": _distro,
         "/api/plugins": _plugins,
-        "/api/jobs": lambda: [j.summary() for j in jobs().list()],
+        "/api/jobs": lambda: [j.summary() for j in get_app().jobs.list()],
     }
     if path in static:
         return _respond(static[path])

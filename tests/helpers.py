@@ -108,3 +108,25 @@ def make_rar(path: Path, members: dict[str, bytes]) -> Path:
         out += block(0x74, 0x8000, fields + raw) + data
     path.write_bytes(out + block(0x7B, 0x4000, b""))
     return path
+
+
+def make_png(path: Path, width: int = 16, height: int = 16, rgb=(255, 59, 59)) -> Path:
+    """Tiny valid PNG (solid colour) without any imaging library."""
+    import struct
+    import zlib
+
+    def chunk(kind: bytes, data: bytes) -> bytes:
+        return (
+            struct.pack(">I", len(data)) + kind + data + struct.pack(">I", zlib.crc32(kind + data))
+        )
+
+    raw = b"".join(b"\0" + bytes(rgb) * width for _ in range(height))
+    header = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_bytes(
+        b"\x89PNG\r\n\x1a\n"
+        + chunk(b"IHDR", header)
+        + chunk(b"IDAT", zlib.compress(raw))
+        + chunk(b"IEND", b"")
+    )
+    return path

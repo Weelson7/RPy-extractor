@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import runpy
 import sys
 from pathlib import Path
 
@@ -17,7 +16,6 @@ from viwo.core.pipeline.runner import detect_all, extract
 from viwo.core.wiring.boot import boot
 
 EXIT = {"invalid_request": 2, "needs_decision": 2, "refused": 3, "cancelled": 130}
-LEGACY_APP = Path(__file__).resolve().parent.parent / "RPy-extractor" / "extract.py"
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -47,8 +45,7 @@ def _parser() -> argparse.ArgumentParser:
     up.add_argument("archive", type=Path)
     up.add_argument("--out", type=Path, required=True)
     up.add_argument("--option", action="append", default=[], help="plugin.key=value")
-    sv = sub.add_parser("serve", help="start the web UI (v1 server)")
-    sv.add_argument("rest", nargs=argparse.REMAINDER)
+    sub.add_parser("serve", help="start the web UI (host/port from [server] in the ini)")
     return ap
 
 
@@ -112,10 +109,9 @@ def _run(args) -> Envelope:
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     if args.command == "serve":
-        sys.path.insert(0, str(LEGACY_APP.parent))
-        sys.argv = [str(LEGACY_APP), *args.rest]
-        runpy.run_path(str(LEGACY_APP), run_name="__main__")
-        return 0
+        from viwo.api.server import serve
+
+        return serve(args.ini)
     try:
         envelope = _run(args)
     except ViwoError as exc:

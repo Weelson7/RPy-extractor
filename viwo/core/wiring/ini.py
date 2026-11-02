@@ -8,7 +8,7 @@ from pathlib import Path
 
 from viwo.contracts.errors import ViwoError
 
-KNOWN_SECTIONS = {"startup", "plugins", "slots", "tools"}
+KNOWN_SECTIONS = {"startup", "plugins", "slots", "tools", "server"}
 SECRET_WORDS = ("key", "secret", "password", "token")
 
 
@@ -26,6 +26,26 @@ class StartupConfig:
     options: dict[str, dict[str, str]] = field(default_factory=dict)
     source: str = "defaults"
     problems: list[str] = field(default_factory=list)
+    server: "ServerConfig" = field(default_factory=lambda: ServerConfig.under(Path.cwd()))
+
+
+@dataclass
+class ServerConfig:
+    """[server] section: where the web server listens and keeps its data."""
+
+    host: str = "127.0.0.1"
+    port: int = 8081
+    workspace: Path = Path("viwo-data/workspace")  # default extraction workspace
+    merged: Path = Path("viwo-data/merged")  # media merger outputs
+    logs: Path = Path("viwo-data/logs")
+    temp: Path = Path("viwo-data/tmp")
+
+    @classmethod
+    def under(cls, base: Path) -> "ServerConfig":
+        d = cls()
+        return cls(
+            d.host, d.port, base / d.workspace, base / d.merged, base / d.logs, base / d.temp
+        )
 
 
 def _split(value: str) -> list[str]:
@@ -71,6 +91,17 @@ def _read_options(cfg: configparser.ConfigParser, out: StartupConfig) -> None:
             out.problems.append(f"unknown section [{section}] ignored")
 
 
+def _read_server(cfg: configparser.ConfigParser, out: StartupConfig, base: Path) -> None:
+    server = ServerConfig.under(base)
+    sec = cfg["server"] if cfg.has_section("server") else {}
+    server.host = str(sec.get("host", server.host))
+    server.port = int(sec.get("port", server.port))
+    for key in ("workspace", "merged", "logs", "temp"):
+        if key in sec:
+            setattr(server, key, (base / sec[key]).resolve())
+    out.server = server
+
+
 def load_ini(path: Path | None) -> StartupConfig:
     """Parse the startup ini; missing file = built-in defaults."""
     out = StartupConfig()
@@ -82,6 +113,7 @@ def load_ini(path: Path | None) -> StartupConfig:
         _read_startup(cfg, out)
         _read_tables(cfg, out, path.parent)
         _read_options(cfg, out)
+        _read_server(cfg, out, path.parent)
     except (configparser.Error, ValueError) as exc:
         raise ViwoError("invalid_request", f"{path}: {exc}") from exc
     out.source = str(path)

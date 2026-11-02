@@ -71,6 +71,11 @@ class DesktopShell(ABC):
     @abstractmethod
     def pick_folder(self, title: str, initial: Path | None = None) -> Path | None: ...
 
+    @abstractmethod
+    def pick_file(
+        self, title: str, initial: Path | None = None, patterns: Sequence[str] = ()
+    ) -> Path | None: ...
+
 
 class OS(ABC):
     """Host OS adapter. One instance per process."""
