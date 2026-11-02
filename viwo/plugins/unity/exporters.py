@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gc
 import re
 from pathlib import Path
 
@@ -86,6 +87,20 @@ def _export_object(ctx, obj, fallback: str) -> int:
     return 0
 
 
+def _export_container(ctx, unitypy, container: Path) -> tuple[int, list[str]]:
+    try:
+        env = unitypy.load(str(container))
+    except Exception as exc:  # unreadable container: note it and continue
+        return 0, [f"{container.name}: {exc}"[:200]]
+    exported, notes = 0, []
+    for obj in env.objects:
+        try:
+            exported += _export_object(ctx, obj, f"{container.stem}_{obj.path_id}")
+        except Exception as exc:  # one broken object must not stop the export
+            notes.append(f"{container.name}#{obj.path_id}: {exc}"[:200])
+    return exported, notes
+
+
 class UnityPyExporter(Exporter):
     backend_id, owner, license = "unitypy", "unity", "MIT"
 
@@ -101,16 +116,10 @@ class UnityPyExporter(Exporter):
         for container in unity_containers(ctx.game_root):
             if ctx.cancel.cancelled:
                 break
-            try:
-                env = UnityPy.load(str(container))
-            except Exception as exc:  # unreadable container: note it and continue
-                notes.append(f"{container.name}: {exc}"[:200])
-                continue
-            for obj in env.objects:
-                try:
-                    exported += _export_object(ctx, obj, f"{container.stem}_{obj.path_id}")
-                except Exception as exc:  # one broken object must not stop the export
-                    notes.append(f"{container.name}#{obj.path_id}: {exc}"[:200])
+            count, problems = _export_container(ctx, UnityPy, container)
+            exported += count
+            notes += problems
+            gc.collect()  # UnityPy keeps file handles until collected; Windows locks them
         ctx.log(f"UnityPy exported {exported} asset(s), {len(notes)} problem(s)", stage="export")
         return Outcome(OutcomeKind.OK, exported, notes=tuple(notes[:50]))
 
