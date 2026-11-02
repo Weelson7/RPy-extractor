@@ -1,4 +1,5 @@
 // Shared UI helpers: DOM builder (text-only, never innerHTML), toasts, modal, formatting.
+import { api } from "./api.js";
 
 /** Build an element. Strings become text nodes, so server data is never parsed as HTML. */
 export function h(tag, props = {}, ...kids) {
@@ -44,24 +45,58 @@ export function empty(title, text, ...actions) {
   return h("div", { class: "empty" }, h("b", {}, title), h("p", {}, text), actions.length ? h("div", { class: "row" }, actions) : null);
 }
 
-/** Error block that surfaces the server message, code and hint. */
-export function errorBox(err, title = "ERROR") {
+/** Error code -> [plain title, what to do next, optional [hash, view] link]. Every server code is covered. */
+export const ERRORS = {
+  offline: ["ViWo is not reachable", "Start ViWo again (python3 Start.py), then reload this page."],
+  http: ["Unexpected server reply", "Reload the page. If it keeps happening, check the terminal ViWo runs in."],
+  invalid_request: ["Check your input", "A path or option is not valid. Correct it and try again."],
+  not_found: ["Not found", "The file or folder is gone, or the path has a typo. Check it, or refresh this view."],
+  busy: ["Workspace busy", "Another job is using this workspace. Wait for it to finish, then try again.", ["#jobs", "04 JOBS"]],
+  unavailable: ["Tool not installed", "A tool this needs is missing. Install it, restart ViWo and try again.", ["#system", "05 SYSTEM"]],
+  needs_key: ["Encryption key needed", "These files are encrypted. Enter the key under ENGINE OPTIONS, then run again.", ["#extract", "01 EXTRACT"]],
+  needs_decision: ["Your choice is needed", "Answer the question ViWo asked, then run again."],
+  failed: ["It did not work", "The message above says why. The full log is in 04 JOBS.", ["#jobs", "04 JOBS"]],
+  cancelled: ["Cancelled", "Stopped on request. Run it again whenever you are ready."],
+  refused: ["Refused for safety", "ViWo only writes into an empty folder or one it created, never into a game folder. Pick another folder."],
+  internal: ["Something broke inside ViWo", "This is a bug, not your mistake. 04 JOBS has the details; please report it.", ["#jobs", "04 JOBS"]],
+};
+const errInfo = (err) => ERRORS[err?.code] || ["Something went wrong", "Try again. The activity console at the bottom has details."];
+
+/** Error block: what happened (server message + hint), in plain words, and what to do next. */
+export function errorBox(err, title = "", next = "") {
+  const [label, todo, link] = errInfo(err);
   return h("div", { class: "alert err", role: "alert" },
-    h("b", {}, title, err.code && !title.includes(String(err.code).toUpperCase()) ? ` // ${String(err.code).toUpperCase()}` : ""),
+    h("b", {}, title && title !== label.toUpperCase() ? `${title} // ${label.toUpperCase()}` : label.toUpperCase()),
     h("p", {}, err.message || String(err)),
-    err.hint ? h("p", { class: "hint" }, "HINT: ", err.hint) : null);
+    err.hint ? h("p", { class: "hint" }, "HINT: ", err.hint) : null,
+    h("p", { class: "next" }, h("b", {}, "NEXT"), next || todo, link ? [" ", h("a", { href: link[0] }, `Open ${link[1]} →`)] : null),
+    err.code ? h("small", { class: "mono dim" }, `code: ${err.code}`) : null);
 }
 
+/** Pointer to 05 SYSTEM wherever a feature depends on an optional tool. */
+export const toolLink = (text = "Some of this needs an optional tool.") =>
+  h("p", { class: "note" }, `${text} `, h("a", { href: "#system" }, "See 05 SYSTEM for what to install →"));
+
+export const stat = (label, value, sub = "", kind = "") =>
+  h("div", { class: `stat ${kind}` }, h("span", { class: "lbl" }, label), h("b", { class: "mono" }, value), sub ? h("small", {}, sub) : null);
+
+export const goBtn = (hash, label, kind = "primary") => h("a", { class: `btn ${kind}`, href: hash }, label);
+
+export const openBtn = (path, label = "OPEN FOLDER", kind = "sm ghost") =>
+  btn(label, () => api.openFolder(path).then(() => toast("Opened in your file manager.", "ok"), toastErr), kind);
+
 export function toast(message, kind = "info", detail = "") {
-  const label = { ok: "OK", warn: "WARN", err: "ERROR", info: "SYS" }[kind] || "SYS";
+  const label = { ok: "DONE", warn: "NOTE", err: "ERROR", info: "INFO" }[kind] || "INFO";
   const box = h("div", { class: `toast ${kind}`, role: kind === "err" ? "alert" : null },
     h("b", {}, label), h("span", {}, message), detail ? h("small", {}, detail) : null);
   $("#toasts").append(box);
-  setTimeout(() => box.classList.add("out"), kind === "err" ? 7000 : 4200);
-  setTimeout(() => box.remove(), kind === "err" ? 7500 : 4700);
+  const life = kind === "err" ? 8000 : 4200;
+  setTimeout(() => box.classList.add("out"), life);
+  setTimeout(() => box.remove(), life + 300);
 }
 
-export const toastErr = (err, prefix = "") => toast(`${prefix}${err.message || err}`, "err", err.hint || "");
+export const toastErr = (err, prefix = "") =>
+  toast(`${prefix}${err.message || err}`, err.code === "cancelled" ? "warn" : "err", err.hint || errInfo(err)[1]);
 
 function trapTab(e, root) {
   const items = [...root.querySelectorAll("button, input, select, textarea, a[href]")].filter((n) => !n.disabled);
@@ -71,11 +106,11 @@ function trapTab(e, root) {
   else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
 }
 
-/** BROWSE button that asks the server's native picker and fills `field` (silent when cancelled). */
-function browseBtn(field, pick) {
+/** BROWSE button: the server's native folder picker fills `field` (silent when cancelled). */
+export function browseBtn(field, after = null, pick = (p) => api.browse(p).then((r) => r.path)) {
   return btn("BROWSE", (e) => busy(e.currentTarget, async () => {
-    try { field.value = (await pick(field.value)) || field.value; } catch (err) {
-      if (!err.payload?.cancelled) toast("Picker unavailable on this host — type the path.", "warn", err.message);
+    try { field.value = (await pick(field.value.trim())) || field.value; after?.(field.value); } catch (err) {
+      if (!err.payload?.cancelled) toast("No folder picker on this computer: type or paste the path instead.", "warn", err.message);
     }
     field.focus();
   }), "ghost");
@@ -91,7 +126,7 @@ export function modal({ title, body, actions, input, tag = "// SYS" }) {
     const dlg = h("div", { class: "modal panel", role: "dialog", "aria-modal": "true", "aria-labelledby": "modal-t" },
       h("header", { class: "panel-h" }, h("span", { class: "idx" }, tag), h("h3", { id: "modal-t" }, title)),
       h("div", { class: "panel-b" }, body, input?.label ? h("label", { class: "lbl" }, input.label) : null,
-        input?.browse ? h("div", { class: "row" }, field, browseBtn(field, input.browse)) : field),
+        input?.browse ? h("div", { class: "row" }, field, browseBtn(field)) : field),
       h("footer", { class: "modal-f" }, buttons));
     const back = h("div", { class: "backdrop", onmousedown: (e) => e.target === back && close(null) }, dlg);
     const onKey = (e) => {
@@ -115,7 +150,8 @@ export function modal({ title, body, actions, input, tag = "// SYS" }) {
 
 export async function confirmBox(title, message, { ok = "CONFIRM", danger = false } = {}) {
   const res = await modal({ title, tag: danger ? "// WARNING" : "// CONFIRM", body: h("p", {}, message),
-    actions: [{ label: "CANCEL", value: false, kind: "ghost" }, { label: ok, value: true, kind: danger ? "danger" : "primary", primary: true }] });
+    // a destructive confirm starts on CANCEL, so a stray Enter never deletes anything
+    actions: [{ label: "CANCEL", value: false, kind: "ghost" }, { label: ok, value: true, kind: danger ? "danger" : "primary", primary: !danger }] });
   return res.value === true;
 }
 

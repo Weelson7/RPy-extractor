@@ -1,6 +1,6 @@
 // 03 SORT: keyboard-first triage of workspace assets with a large preview stage.
 import { api } from "../api.js";
-import { h, fill, btn, panel, meter, viewHead, empty, errorBox, toast, toastErr, promptBox, modal, fmtBytes, fmtNum, pad, bus, emit } from "../ui.js";
+import { h, fill, btn, panel, meter, viewHead, empty, errorBox, toast, toastErr, promptBox, modal, fmtBytes, fmtNum, pad, bus, emit, goBtn } from "../ui.js";
 import { audioStage } from "./sort-audio.js";
 import { skeleton, withSkeleton } from "../progress.js";
 
@@ -22,7 +22,7 @@ function mount(root) {
     h("div", { class: "acts-main" }, btn("← TRASH", trash, "danger"), btn("KEEP →", keep, "primary")),
     h("div", { class: "acts-sub" }, btn("UNDO", undo, "ghost undo"), btn("RENAME", rename, "ghost"), btn("SAVE REMAINING…", saveRemaining, "ghost")));
   root.append(
-    viewHead("03", "SORT", "Triage one asset at a time. KEEP marks it reviewed; TRASH moves it to the workspace trash (undo-able).",
+    viewHead("03", "SORT", "Go through your files one at a time. KEEP marks a file as reviewed; TRASH moves it to the workspace trash (CTRL+Z undoes it).",
       h("ul", { class: "legend", "aria-label": "Keyboard shortcuts" }, KEYS.map(([k, v]) => h("li", {}, h("kbd", {}, k), v)))),
     h("div", { class: "sort-grid" },
       panel("03.A", "QUEUE", el.pager, el.filters, el.list, el.review),
@@ -117,9 +117,11 @@ async function preview() {
   el.acts.querySelectorAll("button:not(.undo)").forEach((b) => { b.disabled = !a; });
   if (!a) {
     el.meta.replaceChildren();
-    el.stage.replaceChildren(S.items.length ? empty("NO MATCH", "No asset of the selected types on this page. Clear a type filter or page on.")
-      : empty("QUEUE EMPTY", S.total ? "Nothing on this page." : "No assets in the workspace yet. Extract a game first.",
-        h("a", { class: "btn primary", href: "#extract" }, "GO TO 01 EXTRACT")));
+    el.stage.replaceChildren(S.items.length ? empty("NO MATCH", "No file of the selected types on this page. Clear a type filter or go to the next page.")
+      : S.total ? empty("NOTHING ON THIS PAGE", "Go back a page to keep sorting.")
+        : empty(S.trashed ? "ALL SORTED" : "QUEUE EMPTY", S.trashed ? "Every file has been kept or trashed. Review the trash, or clean up duplicates next."
+          : "No files in this workspace yet. Extract a game first.",
+        S.trashed ? [goBtn("#workspace", "02 REVIEW TRASH →"), goBtn("#cleanup", "08 CLEAN UP →", "ghost")] : goBtn("#extract", "GO TO 01 EXTRACT")));
     return;
   }
   el.meta.replaceChildren(h("span", { class: "mono" }, `${pad(S.offset + S.idx + 1, 4)} / ${pad(S.total, 4)}`),
@@ -138,15 +140,18 @@ function stageFor(p, a) {
   if (p.type === "image") return h("figure", { class: "media img" }, h("img", { src: p.url, alt: p.name }), cap);
   if (p.type === "audio") return audioStage(p.url, cap);
   if (p.type === "video") return h("figure", { class: "media vid" }, h("video", { src: p.url, controls: true, preload: "metadata" }), cap);
-  if (p.type === "text") return h("figure", { class: "media txt" }, h("pre", { class: "mono" }, p.content || ""),
+  if (p.type === "text" && !binary(p.content)) return h("figure", { class: "media txt" }, h("pre", { class: "mono" }, p.content || ""),
     h("div", { class: "cap" }, h("b", {}, p.name), h("span", { class: "dim mono" }, `${p.lineCount} LINES${p.truncated && p.lineCount >= 50 ? " · FIRST 50 SHOWN" : ""}`)));
-  return h("figure", { class: "media bin" }, empty("NO PREVIEW", p.message || "Binary file — keep or trash it by name."), cap);
+  return h("figure", { class: "media bin" }, empty("NO PREVIEW", "ViWo cannot show this kind of file. Keep or trash it by its name and size."), cap);
 }
+
+/** The server reads unknown types as text: treat mostly-unprintable content as binary. */
+const binary = (t = "") => (t.match(/[\uFFFD\x00-\x08\x0E-\x1F]/g) || []).length > Math.max(4, t.length * 0.02);
 
 async function act(fn) {
   if (S.busy) return;
   S.busy = true;
-  try { await fn(); } catch (err) { toastErr(err, err.code === "busy" ? "Workspace busy: " : ""); } finally { S.busy = false; }
+  try { await fn(); } catch (err) { toastErr(err); } finally { S.busy = false; }
 }
 
 const current = () => (shown().includes(S.idx) ? S.items[S.idx] : null);
@@ -160,7 +165,7 @@ function keep() {
     S.done.push({ kind: "keep", path: a.path });
     const last = shown().pop() === S.idx && S.offset + S.items.length >= S.total;
     renderList();
-    if (last) toast("End of queue reached.", "ok");
+    if (last) toast("That was the last file.", "ok", "Next: review the trash in 02 WORKSPACE, or run 08 CLEANUP.");
     else move(1);
   });
 }
@@ -212,10 +217,10 @@ async function rename() {
 }
 
 async function saveRemaining() {
-  if (!S.items.length) return toast("No remaining assets to save.", "warn");
-  const res0 = await modal({ title: "SAVE REMAINING ASSETS", tag: "// MOVE OUT",
-    body: h("p", {}, "Move remaining assets out of the workspace into an existing folder (sub-folders are kept). Trashed files stay in the trash."),
-    input: { value: "", label: "DESTINATION FOLDER", placeholder: "/path/to/keep", browse: (p) => api.browse(p).then((r) => r.path) },
+  if (!S.items.length) return toast("No remaining files to save.", "warn");
+  const res0 = await modal({ title: "SAVE REMAINING FILES", tag: "// MOVE OUT",
+    body: h("p", {}, "Move the files still in the queue out of the workspace into an existing folder (sub-folders are kept). Trashed files stay in the trash."),
+    input: { value: "", label: "DESTINATION FOLDER", placeholder: "/path/to/keep", browse: true },
     actions: [{ label: "CANCEL", value: null, kind: "ghost" }, { label: `THIS PAGE (${S.items.length})`, value: "page" },
       { label: `ALL REMAINING (${fmtNum(S.total)})`, value: "all", kind: "primary", primary: true }] });
   const dest = res0.text.trim();

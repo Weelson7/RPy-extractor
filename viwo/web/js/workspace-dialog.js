@@ -12,7 +12,7 @@ export async function openWorkspaceDialog() {
         cur.owned ? badge("VIWO WORKSPACE", "ok") : badge("NOT CREATED BY VIWO", "warn"))),
   ];
   const res = await modal({ title: "SWITCH WORKSPACE", tag: "// WORKSPACE", body,
-    input: { value: cur.path, label: "FOLDER TO OPEN", browse: (p) => api.browse(p).then((r) => r.path) },
+    input: { value: cur.path, label: "FOLDER TO OPEN", browse: true },
     actions: [{ label: "CANCEL", value: false, kind: "ghost" }, { label: "OPEN", value: true, kind: "primary", primary: true }] });
   const path = res.text.trim();
   if (!res.value || !path || path === cur.path) return;

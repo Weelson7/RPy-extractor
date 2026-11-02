@@ -50,9 +50,9 @@ function unknownBlock(list, deep, onDeep) {
       h("span", { class: "dim small" }, "tries the carver on these blobs — slower")) : null];
 }
 
-const missingBlock = (tools) => (tools?.length ? h("div", { class: "alert warn" }, h("b", {}, "MISSING TOOLS · WOULD COVER MORE"),
+const missingBlock = (tools) => (tools?.length ? h("div", { class: "alert warn" }, h("b", {}, "OPTIONAL TOOLS NOT INSTALLED · WOULD COVER MORE"),
   h("ul", { class: "mono" }, tools.map((t) => h("li", {}, t))),
-  h("p", {}, h("a", { href: "#system" }, "Open 05 SYSTEM →"), " to see how to install or bind them.")) : null);
+  h("p", {}, h("a", { href: "#system" }, "Open 05 SYSTEM →"), " for what to install. Restart ViWo afterwards.")) : null);
 
 export function gameCard(g, i, { deep, onExtract, onDeep }) {
   const name = g.path.split(/[\\/]/).filter(Boolean).pop() || g.path;

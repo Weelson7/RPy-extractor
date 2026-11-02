@@ -1,6 +1,7 @@
 // 01 EXTRACT: target, detection, mode, plugin options, filter, run + live feed.
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, meter, viewHead, toast, toastErr, busy, pref, logLine, emit, modal, errorBox, pad, fmtNum, bus } from "../ui.js";
+import { h, fill, btn, panel, badge, meter, viewHead, toast, toastErr, pref, logLine, emit, modal, errorBox, pad, fmtNum, bus, browseBtn } from "../ui.js";
+import { slotText } from "./system.js";
 import { jobProgress, withSkeleton } from "../progress.js";
 import { renderResult, renderFailure, renderIdle } from "./extract-result.js";
 import { openWorkspaceDialog } from "../workspace-dialog.js";
@@ -41,35 +42,25 @@ function mount(root) {
 }
 
 function targetPanel() {
-  const browse = btn("BROWSE", (e) => busy(e.currentTarget, browseFolder), "ghost");
+  const browse = browseBtn(el.path, (path) => { pref("gamePath", path); detect(); });
   return panel("01.A", "TARGET GAME FOLDER", badge("READ-ONLY SOURCE", "ok"),
     h("label", { class: "lbl", for: "game-path" }, "GAME FOLDER PATH"),
     h("div", { class: "row" }, el.path, browse),
     h("p", { class: "note" }, "ViWo copies assets out into its workspace. Nothing inside this folder is written, moved or deleted."));
 }
 
-async function browseFolder() {
-  try {
-    const res = await api.browse(el.path.value.trim());
-    el.path.value = res.path;
-    pref("gamePath", res.path);
-    detect();
-  } catch (err) {
-    if (err.payload?.cancelled) return;
-    toast("Folder picker unavailable on this host — type the path instead.", "warn", err.message);
-  }
-}
-
 function detectPanel() {
-  el.detectBtn = btn("DETECT ENGINE", (e) => busy(e.currentTarget, detect), "");
-  el.detect.append(h("p", { class: "dim" }, "Run detection to see how confident each engine plugin is about this folder."));
+  el.detectBtn = btn("DETECT ENGINE", detect, "");
+  el.detect.append(h("p", { class: "dim" }, "Pick a game folder, then DETECT ENGINE (or press Enter in the path) to see which engine it uses."));
   return panel("01.B", "DETECT", el.detectBtn, el.detect);
 }
 
 async function detect() {
   const path = el.path.value.trim();
   if (!path) return toast("Enter a game folder first.", "warn");
+  if (el.detectBtn.disabled) return;
   pref("gamePath", path);
+  el.detectBtn.disabled = true;
   try {
     S.detect = await withSkeleton(el.detect, "PROBING ENGINE SIGNATURES…", () => api.detect(path), 3);
     if (S.mixed.size === 0) S.detect.auto.forEach((p) => S.mixed.add(p));
@@ -78,14 +69,27 @@ async function detect() {
     renderMode();
   } catch (err) {
     S.detect = null;
-    el.detect.replaceChildren(errorBox(err, "DETECTION FAILED"));
-  }
+    el.detect.replaceChildren(errorBox(err, "DETECTION FAILED", err.code === "invalid_request" ? "Check the folder path: it must be the game's own folder." : ""));
+  } finally { el.detectBtn.disabled = false; }
+}
+
+/** Formats the picked plugins handle that need a tool which is not installed (links to 05 SYSTEM). */
+function missingTools() {
+  const slots = bus.distro?.slots || {};
+  const gaps = pluginsInPlay().flatMap((p) => p.slots.filter((s) => slots[s] && !slots[s].main).map((s) => [p.name, s]));
+  if (!gaps.length) return null;
+  const how = [...new Set(gaps.flatMap(([, s]) => slots[s].reasons.map((r) => r.replace(/^[^(]*\(|\)$/g, ""))))];
+  return h("div", { class: "alert warn" }, h("b", {}, "OPTIONAL TOOLS NOT INSTALLED"),
+    h("p", {}, `${gaps.map(([n, s]) => `${n}: ${slotText(s)}`).join(" · ")}. Extraction still runs and copies everything else.`),
+    h("ul", { class: "small" }, how.map((x) => h("li", {}, x))),
+    h("p", {}, h("a", { href: "#system" }, "Open 05 SYSTEM for what to install →")));
 }
 
 function renderDetect() {
-  const rows = Object.entries(S.detect.detections).sort((a, b) => b[1].confidence - a[1].confidence);
+  const all = Object.entries(S.detect.detections).sort((a, b) => b[1].confidence - a[1].confidence);
+  const rows = all.filter(([, d]) => d.confidence > 0);
   const name = (id) => S.plugins.find((p) => p.id === id)?.name || id;
-  el.detect.replaceChildren(...rows.map(([id, d]) => {
+  el.detect.replaceChildren(missingTools() || "", ...rows.map(([id, d]) => {
     const auto = S.detect.auto.includes(id);
     const kind = d.confidence >= 0.7 ? "hi" : d.confidence >= 0.35 ? "mid" : "lo";
     return h("div", { class: `det ${auto ? "auto" : ""}` },
@@ -93,7 +97,7 @@ function renderDetect() {
         h("span", { class: "mono pct" }, `${pad(Math.round(d.confidence * 100), 3)}%`)),
       meter(d.confidence, kind),
       h("ul", { class: "evidence mono" }, d.evidence.length ? d.evidence.map((e) => h("li", {}, e)) : h("li", { class: "dim" }, "no signature found")));
-  }));
+  }), all.length > rows.length ? h("p", { class: "dim small det" }, `${all.length - rows.length} other engine plugins found no match.`) : "");
 }
 
 function modePanel() {
@@ -114,9 +118,9 @@ function chips(ids, isOn, onPick, role) {
 function renderMode() {
   el.seg?.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === S.mode)));
   const ids = S.plugins.map((p) => p.id);
-  const auto = S.detect?.auto?.length ? S.detect.auto.join(", ") : "run DETECT to preview";
+  const auto = S.detect?.auto?.length ? h("b", { class: "mono" }, S.detect.auto.join(", ")) : "none yet (run DETECT ENGINE)";
   const parts = {
-    auto: [h("p", { class: "note" }, "ViWo picks the plugin(s) from detection. Current pick: ", h("b", { class: "mono" }, auto))],
+    auto: [h("p", { class: "note" }, "ViWo picks the engine plugin(s) from detection. Current pick: ", auto)],
     single: [h("p", { class: "note" }, "Force one engine plugin."), chips(ids, (id) => id === S.single, (id) => { S.single = id; renderMode(); })],
     mixed: [h("p", { class: "note" }, "Run several plugins into one workspace."),
       chips(ids, (id) => S.mixed.has(id), (id) => { S.mixed.has(id) ? S.mixed.delete(id) : S.mixed.add(id); renderMode(); }),

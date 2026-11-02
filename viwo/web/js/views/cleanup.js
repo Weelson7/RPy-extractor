@@ -1,8 +1,7 @@
 // 08 CLEANUP: asset sanitizer, phase 1. Scan (read-only), tick findings, apply moves/renames, undo.
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, viewHead, assure, empty, errorBox, toast, toastErr, confirmBox, pref, fmtNum, bus, emit } from "../ui.js";
+import { h, fill, btn, panel, badge, viewHead, assure, empty, errorBox, toast, toastErr, confirmBox, pref, fmtNum, bus, emit, stat, goBtn } from "../ui.js";
 import { withSkeleton } from "../progress.js";
-import { stat } from "./extract-result.js";
 
 /** Rule -> [title, action label, badge kind, what it means]. Object order = display order. */
 const RULES = {
@@ -95,8 +94,9 @@ function render() {
   const f = S.plan?.findings || [];
   S.groups = [];
   el.count.textContent = S.plan ? `${fmtNum(f.length)} FINDING(S)` : "";
-  fill(el.find, S.err ? [errorBox(S.err, "SCAN FAILED"), S.err.code === "busy" ? h("p", { class: "note" }, "An extraction is writing to this workspace. Scan again once it has finished (see 04 JOBS).") : null]
-    : !S.plan ? idle() : !f.length ? (S.plan.scanned ? empty("WORKSPACE IS CLEAN", `${fmtNum(S.plan.scanned)} files scanned. Nothing to clean.`) : noFiles())
+  fill(el.find, S.err ? errorBox(S.err, "SCAN FAILED", S.err.code === "busy" ? "A job is writing to this workspace. Scan again once it has finished." : "")
+    : !S.plan ? idle() : !f.length ? (S.plan.scanned ? empty("WORKSPACE IS CLEAN", `${fmtNum(S.plan.scanned)} files scanned. Nothing to clean.`,
+      goBtn("#sort", "03 SORT →"), goBtn("#merger", "06 MAKE A VIDEO →", "ghost")) : noFiles())
       : groups(f));
   renderDone();
   sync();
@@ -121,11 +121,10 @@ function sync() {
   bar();
 }
 
-const noFiles = () => empty("WORKSPACE EMPTY", "Nothing to clean yet. Extract a game into this workspace first.",
-  h("a", { class: "btn primary", href: "#extract" }, "GO TO 01 EXTRACT"));
+const noFiles = () => empty("WORKSPACE EMPTY", "Nothing to clean yet. Extract a game into this workspace first.", goBtn("#extract", "GO TO 01 EXTRACT"));
 
 const idle = () => (S.files === 0 ? noFiles() : empty("NO SCAN YET",
-  "Press SCAN. ViWo reads every workspace file (read-only) and lists what could be cleaned. Nothing changes until you APPLY.", btn("SCAN NOW", () => scan(), "primary")));
+  "ViWo reads every workspace file (read-only) and lists what could be cleaned. Nothing changes until you press APPLY SELECTED.", btn("SCAN NOW", () => scan(), "primary")));
 
 function groups(findings) {
   const by = {};
@@ -141,8 +140,8 @@ function group(rule, items) {
     onchange: (e) => { open.forEach((i) => (e.target.checked ? S.sel.add(i) : S.sel.delete(i))); sync(); } }) : h("span", { class: "nochk", "aria-hidden": "true" }, "—");
   const tick = h("span", { class: "mono dim small" });
   if (open.length) S.groups.push({ open, all, tick });
-  return h("section", { class: `fgroup ${act === "REPORT ONLY" ? "report" : ""}`, "aria-label": title },
-    h("header", {}, all, h("b", {}, title), badge(fmtNum(items.length), "mute"), badge(act, kind), open.length ? tick : null, h("code", { class: "mono dim small rid" }, rule)),
+  return h("section", { class: `fgroup ${act === "REPORT ONLY" ? "report" : ""}`, "aria-label": title, title: `rule ${rule}` },
+    h("header", {}, all, h("b", {}, title), badge(`${fmtNum(items.length)} FILE${items.length === 1 ? "" : "S"}`, "mute"), badge(act, kind), open.length ? tick : null),
     h("p", { class: "note" }, why),
     h("ol", { class: "flist" }, items.slice(0, 500).map(row)),
     items.length > 500 ? h("p", { class: "dim small" }, `+${fmtNum(items.length - 500)} more not listed (still selectable with the group box)`) : null);
@@ -210,7 +209,7 @@ async function apply() {
     toast(`Cleanup applied: ${fmtNum(res.applied)} file(s) moved or renamed.`, failed.size ? "warn" : "ok", failed.size ? `${failed.size} failed` : "UNDO is available.");
     emit("workspace");
   } catch (err) {
-    toastErr(err, err.code === "busy" ? "Workspace busy: " : "Apply failed: ");
+    toastErr(err, "Cleanup not applied: ");
   } finally { S.busy = false; render(); }
 }
 
@@ -243,7 +242,7 @@ function renderDone() {
     h("ol", { class: "moved mono" }, d.moved.map((m) => h("li", {}, h("b", {}, m.a === "trash" ? "TRASH" : "RENAME"), h("span", { title: m.p }, m.p),
       h("i", {}, m.a === "trash" ? "→ workspace trash" : `→ ${m.to}`))), d.more ? h("li", { class: "dim" }, `+${fmtNum(d.more)} more`) : null),
     d.failed.length ? h("div", { class: "alert warn" }, h("b", {}, "NOT APPLIED"), h("ul", {}, d.failed.map((x) => h("li", {}, x)))) : null,
-    h("div", { class: "row" }, btn("UNDO THIS CLEANUP", undo, "primary"), h("a", { class: "btn ghost", href: "#workspace" }, "SEE TRASH IN 02 WORKSPACE →")),
+    h("div", { class: "row" }, btn("UNDO THIS CLEANUP", undo, "primary"), goBtn("#workspace", "SEE TRASH IN 02 WORKSPACE →", "ghost")),
     h("p", { class: "note" }, "UNDO stays available until your next SCAN.")));
 }
 

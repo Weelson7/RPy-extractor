@@ -1,6 +1,6 @@
 // 06 MERGER: pick candidates (numbered frame/clip groups), tune loops + conflict order, render MP4s.
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, viewHead, empty, errorBox, busy, fmtNum, bus } from "../ui.js";
+import { h, fill, btn, panel, badge, viewHead, empty, errorBox, busy, fmtNum, bus, goBtn } from "../ui.js";
 import { outputPanel, applyState, refreshBar, actionBar } from "./merger-output.js";
 import { withSkeleton } from "../progress.js";
 
@@ -18,11 +18,11 @@ function mount(root) {
   el.timeline = h("div", { class: "tline" });
   el.selCount = h("span", { class: "mono dim" });
   root.append(
-    viewHead("06", "MERGER", "Stitch numbered frames and clips from the active workspace into MP4 timelines — one video per candidate.",
+    viewHead("06", "MERGER", "Turn numbered frames and clips (01_walk.png, 02_walk.png…) from the workspace into MP4 videos: one video per group you tick.",
       btn("REFRESH", (e) => busy(e.currentTarget, load), "ghost")),
     el.banner,
     h("div", { class: "merge-grid" },
-      panel("06.A", "CANDIDATES", el.count, el.filters, el.list),
+      panel("06.A", "GROUPS", el.count, el.filters, el.list),
       h("div", { class: "col" }, panel("06.B", "TIMELINE", el.selCount, el.timeline),
         outputPanel({ specs, stats, pattern: () => S.pattern }))),
     actionBar());
@@ -33,9 +33,10 @@ async function load() {
   try {
     await withSkeleton(el.list, "INDEXING WORKSPACE MEDIA…", async () => { S.st = await api.mergerState(); applyState(S.st); await list(); }, 6);
     fill(el.banner,
-      S.st.encoder ? null : h("div", { class: "alert err", role: "alert" }, h("b", {}, "ENCODER MISSING // BUILD DISABLED"),
-        h("p", {}, "ffmpeg (with ffprobe) was not found, so timelines cannot be rendered."),
-        h("p", { class: "hint" }, "HINT: install ffmpeg (Linux: apt install ffmpeg · Windows: winget install ffmpeg) or set its path in startup.ini [tools], then restart ViWo.")),
+      S.st.encoder ? null : h("div", { class: "alert err", role: "alert" }, h("b", {}, "FFMPEG NOT INSTALLED // BUILD DISABLED"),
+        h("p", {}, "The merger needs ffmpeg (with ffprobe) to make videos. You can still pick groups; BUILD unlocks once ffmpeg is found."),
+        h("p", { class: "next" }, h("b", {}, "NEXT"), "Install ffmpeg (Linux: apt install ffmpeg · Windows: winget install ffmpeg) or set its path in startup.ini [tools], then restart ViWo. ",
+          h("a", { href: "#system" }, "Open 05 SYSTEM →"))),
       h("div", { class: "kv" }, h("span", { class: "lbl" }, "SOURCE"), h("code", { class: "mono path" }, S.st.workingDir)),
       h("div", { class: "kv" }, h("span", { class: "lbl" }, "OUTPUT"), h("code", { class: "mono path" }, S.st.mergerDir)));
   } catch (err) {
@@ -77,13 +78,14 @@ function renderList() {
   const rows = visible();
   if (!rows.length) {
     fill(el.list, empty(S.files ? "NO MATCH" : "NOTHING TO MERGE", S.files ? "No candidate matches these filters."
-      : "The active workspace has no images or videos. Extract a game or switch workspace.", S.files ? null : h("a", { class: "btn primary", href: "#extract" }, "GO TO 01 EXTRACT")));
+      : "This workspace has no images or videos yet. Extract a game, or use SWITCH (top right) to open another workspace.", S.files ? null : goBtn("#extract", "GO TO 01 EXTRACT")));
     return;
   }
   fill(el.list, rows.map((c) => h("label", { class: `cand ${S.sel.has(c.name) ? "on" : ""}` },
-    h("input", { type: "checkbox", checked: S.sel.has(c.name), onchange: (e) => toggle(c, e.target.checked) }),
+    h("input", { type: "checkbox", checked: S.sel.has(c.name), onchange: (e) => toggle(c, e.target.checked), "aria-label": `${c.name}, ${c.count} files` }),
     h("b", {}, c.name), h("span", { class: "mono dim" }, span(c)),
-    c.conflicts.length ? badge(`${c.conflicts.length} CONFLICT`, "warn") : null, badge(`${c.count}`, "mute"))),
+    c.conflicts.length ? h("span", { title: "Several files share one number: you pick their order" }, badge(`${c.conflicts.length} SAME-NUMBER`, "warn")) : null,
+    badge(`${c.count} FILES`, "mute"))),
   S.total > LIMIT ? h("div", { class: "row pager" },
     btn("‹ PREV", () => { S.offset -= LIMIT; reload(); }, "sm ghost", { disabled: S.offset === 0 }),
     h("span", { class: "mono" }, `${S.offset + 1}–${Math.min(S.total, S.offset + LIMIT)} / ${S.total}`),
@@ -125,7 +127,7 @@ const num = (label, value, set, min = 1) => h("label", { class: "nfield" }, h("s
 function renderTimeline() {
   el.selCount.textContent = `${S.sel.size} SELECTED`;
   refreshBar();
-  if (!S.sel.size) return fill(el.timeline, empty("NO CANDIDATE SELECTED", "Tick candidates on the left. Each one becomes its own MP4."));
+  if (!S.sel.size) return fill(el.timeline, empty("NOTHING TICKED YET", S.total ? "Tick groups in 06.A. Each one becomes its own MP4." : "Groups appear in 06.A once the workspace holds numbered images or clips."));
   fill(el.timeline, [...S.sel.values()].map(card));
 }
 

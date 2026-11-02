@@ -1,12 +1,9 @@
 // 01.F RESULT: counts, alarms, per-backend and per-plugin tables for one /api/extract response.
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, errorBox, fmtNum, toast, toastErr } from "../ui.js";
+import { h, fill, panel, badge, errorBox, fmtNum, stat, goBtn, openBtn, toolLink } from "../ui.js";
 import { stateBadge } from "./jobs.js";
 
 const ALARM = "GAME FOLDER CHANGED";
-
-export const stat = (label, value, sub = "") =>
-  h("div", { class: "stat" }, h("span", { class: "lbl" }, label), h("b", { class: "mono" }, value), sub ? h("small", {}, sub) : null);
 
 function table(head, rows, empty) {
   if (!rows.length) return h("p", { class: "dim" }, empty);
@@ -22,9 +19,8 @@ function alarm(lines) {
 }
 
 function pathRow(label, path, extra) {
-  const open = btn("OPEN FOLDER", () => api.openFolder(path).then(() => toast("Opened in file manager.", "ok"), toastErr), "sm ghost");
   return h("div", { class: "kv" }, h("span", { class: "lbl" }, label),
-    h("code", { class: "mono path" }, path || "—"), h("div", { class: "row" }, path ? open : null, extra));
+    h("code", { class: "mono path" }, path || "—"), h("div", { class: "row" }, path ? openBtn(path) : null, extra));
 }
 
 function pluginRows(plugins) {
@@ -59,28 +55,29 @@ export function renderResult(host, res) {
       r.carvedFiles ? stat("CARVED", fmtNum(r.carvedFiles), "embedded files found") : null,
       stat("MODE", String(r.mode || "?").toUpperCase(), `extractor ${res.extractorType || r.extractorType || "?"}`)),
     extChips(r.copiedByExt),
-    pathRow("WORKSPACE", res.assetPath, [h("a", { class: "btn sm", href: "#workspace" }, "GROUPS →"), h("a", { class: "btn sm", href: "#sort" }, "SORT →")]),
+    pathRow("WORKSPACE", res.assetPath),
+    h("div", { class: "row next-row" }, h("span", { class: "lbl" }, "NEXT"), goBtn("#workspace", "02 BROWSE BY TYPE →", "sm"),
+      goBtn("#sort", "03 SORT →", "sm"), goBtn("#cleanup", "08 CLEAN UP →", "sm"), goBtn("#merger", "06 MAKE A VIDEO →", "sm ghost")),
     other.length ? h("div", { class: "alert warn" }, h("b", {}, "WARNINGS"), h("ul", {}, other.map((w) => h("li", {}, w)))) : null,
-    h("h4", { class: "sub-h" }, "// BY BACKEND"),
-    table(["BACKEND", "FILES"], Object.entries(r.byBackend || {}).map(([k, v]) => [h("span", { class: "mono" }, k), h("span", { class: "mono" }, fmtNum(v))]), "No backend activity recorded."),
-    h("h4", { class: "sub-h" }, "// PLUGIN RUNS"),
-    table(["PLUGIN", "DETECTION", "EXPORTED", "BACKEND", "STATUS"], pluginRows(plugins), "No plugin ran."),
+    [...warnings, ...plugins.flatMap((p) => [p.error, ...(p.warnings || [])])].some((w) => /unavailable|install/i.test(w || ""))
+      ? toolLink("Some files were skipped because an optional tool is not installed.") : null,
+    h("h4", { class: "sub-h" }, "// WHICH TOOL HANDLED THE FILES"),
+    table(["TOOL (BACKEND)", "FILES"], Object.entries(r.byBackend || {}).map(([k, v]) => [h("span", { class: "mono" }, k), h("span", { class: "mono" }, fmtNum(v))]), "No backend activity recorded."),
+    h("h4", { class: "sub-h" }, "// ENGINE PLUGINS THAT RAN"),
+    table(["PLUGIN", "DETECTION", "EXPORTED", "TOOL", "STATUS"], pluginRows(plugins), "No plugin ran."),
     plugins.flatMap((p) => (p.warnings || []).map((w) => h("p", { class: "note warn-text" }, `${p.id}: ${w}`))),
     r.runRecord ? pathRow("RUN RECORD", String(r.runRecord)) : null));
 }
 
-const EXPLAIN = {
-  refused: "ViWo only writes into an empty folder or a folder it created itself, and never inside the game folder. Pick another workspace or empty this one.",
-  invalid_request: "Check the game folder path and the selected mode.",
-  busy: "Another job holds this workspace. Wait for it to finish (see 04 JOBS).",
-  cancelled: "The extraction was cancelled. Nothing in the game folder was touched.",
+const NEXT = {
+  refused: "ViWo only writes into an empty folder or one it created. Use SWITCH (top right) to pick another workspace, or empty this one.",
+  invalid_request: "Check the game folder path and the selected mode, then run again.",
+  cancelled: "Nothing in the game folder was touched. Run again whenever you are ready.",
 };
 
 export function renderFailure(host, err) {
-  const title = { refused: "TARGET NOT OWNED BY VIWO", cancelled: "EXTRACTION CANCELLED" }[err.code] || "EXTRACTION FAILED";
-  host.replaceChildren(panel("01.F", "RESULT", badge(String(err.code || "error").toUpperCase(), err.code === "cancelled" ? "warn" : "err"),
-    errorBox(err, title),
-    EXPLAIN[err.code] ? h("p", { class: "note" }, EXPLAIN[err.code]) : null));
+  host.replaceChildren(panel("01.F", "RESULT", badge(err.code === "cancelled" ? "CANCELLED" : "FAILED", err.code === "cancelled" ? "warn" : "err"),
+    errorBox(err, err.code === "cancelled" ? "EXTRACTION" : "EXTRACTION FAILED", NEXT[err.code])));
 }
 
 const STEPS = [["01", "TARGET", "pick the game folder — opened read-only, never modified"],
@@ -90,11 +87,12 @@ function lastRun(job) {
   const r = job.result || {};
   const ws = String(r.workspace || String(r.runRecord || "").split(/[\\/]\.extraction_metadata/)[0]);
   return h("div", { class: "lastrun" },
-    h("div", { class: "row" }, h("span", { class: "lbl" }, "// LAST RUN"), stateBadge(job.state), h("code", { class: "mono dim small" }, job.id)),
+    h("div", { class: "row" }, h("span", { class: "lbl" }, "// LAST RUN"), stateBadge(job.state),
+      h("span", { class: "mono dim small" }, new Date(job.started * 1000).toLocaleTimeString())),
     job.error ? errorBox(job.error, "RUN FAILED") : h("div", { class: "stats" },
       stat("COPIED", fmtNum(r.copiedFiles)), stat("SCANNED", fmtNum(r.scannedFiles)),
       stat("ARCHIVES", `${fmtNum(r.archivesExtracted)}/${fmtNum(r.archivesFound)}`), stat("WARNINGS", fmtNum(r.checks?.warnings?.length || 0))),
-    ws ? pathRow("WORKSPACE", ws) : null);
+    ws ? pathRow("WORKSPACE", ws, job.state === "succeeded" ? goBtn("#sort", "03 SORT →", "sm") : null) : null);
 }
 
 /** Idle LIVE FEED: last extract job summary + how it works. */
@@ -104,7 +102,7 @@ export async function renderIdle(host) {
     const job = (await api.jobs()).filter((j) => j.kind === "extract").pop();
     if (job) last = await api.job(job.id);
   } catch { /* the summary is optional */ }
-  fill(host, last ? lastRun(last) : h("p", { class: "dim" }, "No extraction yet in this server session."),
+  fill(host, last ? lastRun(last) : h("p", { class: "dim" }, "No extraction yet since ViWo started. Pick a game folder on the left to begin."),
     h("span", { class: "lbl" }, "// HOW IT WORKS"),
     h("ol", { class: "how" }, STEPS.map(([n, t, d]) => h("li", {}, h("b", { class: "mono" }, n), h("span", {}, t), h("small", {}, d)))));
 }

@@ -173,7 +173,7 @@ a.chip:hover { --b: var(--coral); }
   text-decoration: none;
   transition: color 0.15s;
 }
-.mods a b { font: 700 13px var(--f-mono); color: var(--red); opacity: 0.75; }
+.mods a b { font: 700 13px var(--f-mono); color: var(--red); }
 .mods a span { display: flex; flex-direction: column; font: 700 15px/1.15 var(--f-head); letter-spacing: 0.18em; }
 .mods small { font: 400 11px/1.3 var(--f-body); letter-spacing: 0.02em; color: var(--dim); margin-top: 2px; }
 .mods a:hover { --b: #4a1a1a; --f: #170b0c; color: var(--text); }
@@ -183,7 +183,7 @@ a.chip:hover { --b: var(--coral); }
 .rail-foot { margin-top: auto; padding: 18px 12px 0; }
 .ver { margin: 10px 2px 0; font-size: 10px; letter-spacing: 0.1em; color: var(--dim); }
 
-main { grid-area: main; min-width: 0; overflow: auto; padding: 22px 28px 28px; }
+main { grid-area: main; min-width: 0; overflow: auto; padding: 22px 28px 28px; scroll-padding-bottom: 84px; }
 main:focus { outline: none; }
 .view-h {
   position: relative;
@@ -414,6 +414,12 @@ input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var
 .alert { margin: 0 0 12px; padding: 10px 14px; border: 1px solid; border-left-width: 3px; }
 .alert b { font: 700 12px var(--f-head); letter-spacing: 0.15em; }
 .alert p { margin: 4px 0 0; }
+.alert .next b { margin-right: 8px; color: var(--amber); }
+.alert small { display: block; margin-top: 6px; }
+.note.first { margin: 0 0 12px; }
+.next-row { margin: 10px 0 4px; }
+.tbl tr.grp th { padding: 14px 10px 6px; color: var(--coral); border-bottom-color: var(--line-soft); }
+.deps td:nth-child(2) { color: var(--text-2); }
 .alert ul { margin: 6px 0 0; padding-left: 18px; }
 .alert.err { border-color: var(--red); background: rgba(255, 59, 59, 0.08); color: #ffcdc7; }
 .alert.warn { border-color: var(--amber); background: rgba(255, 179, 64, 0.06); color: #ffe2b8; }
@@ -496,7 +502,7 @@ kbd { margin-right: 6px; padding: 1px 6px; border: 1px solid var(--line); border
 .acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--line-soft); }
 .acts-main { flex: 1 1 280px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
 .acts-main .btn { height: 40px; font-size: 14px; }
-.acts-sub { flex: none; display: flex; align-items: center; gap: 8px; margin-left: auto; }
+.acts-sub { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
 
 /* ---------- jobs + system ---------- */
 .jobs-grid { display: grid; grid-template-columns: minmax(300px, 400px) minmax(0, 1fr); gap: 18px; align-items: start; }
@@ -527,14 +533,14 @@ kbd { margin-right: 6px; padding: 1px 6px; border: 1px solid var(--line); border
 .actionbar {
   position: sticky;
   bottom: -28px;
-  z-index: 5;
+  z-index: 102; /* above media previews lifted over the scanline overlay */
   display: flex;
   align-items: center;
   gap: 14px;
   margin: 18px -28px -28px;
   padding: 10px 28px;
   border-top: 1px solid var(--red);
-  background: linear-gradient(180deg, rgba(26, 10, 11, 0.97), rgba(12, 7, 8, 0.99));
+  background: linear-gradient(180deg, #1a0a0b, #0c0708);
   box-shadow: 0 -10px 24px rgba(0, 0, 0, 0.55);
 }
 .ab-sum { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12.5px; color: var(--text); }
@@ -726,7 +732,6 @@ kbd { margin-right: 6px; padding: 1px 6px; border: 1px solid var(--line); border
 .fgroup.report { border-left-color: var(--amber); }
 .fgroup > header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 9px 12px; border-bottom: 1px solid var(--line-soft); background: linear-gradient(90deg, rgba(255, 59, 59, 0.09), transparent 70%); }
 .fgroup > header > b { font: 700 14px var(--f-head); letter-spacing: 0.15em; }
-.fgroup .rid { margin-left: auto; }
 .fgroup > .note { margin: 8px 12px 6px; font-size: 12.5px; }
 .nochk { display: inline-block; width: 16px; text-align: center; color: var(--dim); }
 .flist { max-height: 340px; margin: 0; padding: 0 0 4px; overflow: auto; list-style: none; }
@@ -793,5 +798,16 @@ span.fpath { cursor: default; }
   .brand .sub { letter-spacing: 0.16em; }
   .mods a { gap: 10px; padding: 8px 10px; }
   .mods a span { letter-spacing: 0.12em; }
+}
+@media (max-width: 1200px) {
+  /* nav collapses to its numbers; names stay readable to screen readers and as tooltips */
+  :root { --rail: 64px; }
+  .brand { display: flex; justify-content: center; padding: 0; }
+  .brand .word, .brand .sub, .rail-foot, .chips .chip:nth-child(-n+2) { display: none; }
+  .mods { padding: 0 8px; }
+  .mods a { justify-content: center; padding: 11px 0; }
+  .mods a b { font-size: 15px; }
+  .mods a span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .tool-grid, .jobs-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); }
 }
 .btn.primary:disabled { opacity: 1; --b: var(--red-d); --f: repeating-linear-gradient(-45deg, #3a0f11 0 8px, #210909 8px 16px); color: var(--text-2); }

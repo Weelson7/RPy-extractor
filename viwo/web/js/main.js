@@ -11,10 +11,11 @@ import survey from "./views/survey.js";
 import cleanup from "./views/cleanup.js";
 import repack from "./views/repack.js";
 import { openWorkspaceDialog } from "./workspace-dialog.js";
+import { KIND } from "./views/jobs.js";
 
 const VIEWS = { extract, workspace, sort, jobs, system, merger, survey, cleanup, repack };
 const scroll = {};
-const state = { current: "", distro: null, dockOpen: pref("dock") === "1", logCount: -1, lastLog: "" };
+const state = { chips: "", current: "", distro: null, dockOpen: pref("dock") === "1", logCount: -1, lastLog: "" };
 
 function route() {
   const want = location.hash.slice(1);
@@ -50,23 +51,28 @@ function renderChips(jobList) {
   const running = (jobList || []).filter((j) => j.state === "running" || j.state === "queued");
   const slots = d ? Object.values(d.slots || {}) : [];
   const bound = slots.filter((s) => s.main).length;
+  const sig = JSON.stringify([d && d.os, bound, running.map((j) => j.kind), Boolean(jobList)]);
+  if (sig === state.chips) return; // the strip is a live region: re-render only on change
+  state.chips = sig;
   $("#status-chips").replaceChildren(
     chip("OS", d ? String(d.os).toUpperCase() : "…", d ? "ok" : ""),
     chip("PLUGINS", d ? String(d.plugins.length) : "…", d ? "ok" : ""),
-    Object.assign(chip("SLOTS", d ? `${bound}/${slots.length} BOUND` : "…", d && bound < slots.length ? "warn" : "ok", "#system"), {
-      title: "Backend slots bound to an installed tool. Unbound slots are optional: ViWo just skips those archive/export formats until the tool is installed. Click for 05 SYSTEM." }),
+    Object.assign(chip("FORMATS", d ? `${bound}/${slots.length} READY` : "…", d && bound === slots.length ? "ok" : "", "#system"), {
+      title: "Formats ViWo can handle right now. The rest need an optional tool: ViWo skips those formats until it is installed. Click for 05 SYSTEM." }),
     running.length
-      ? chip("RUNNING", `${running[0].kind.toUpperCase()}${running.length > 1 ? ` +${running.length - 1}` : ""}`, "live", "#jobs")
+      ? chip("RUNNING", `${(KIND[running[0].kind]?.[0] || running[0].kind).toUpperCase()}${running.length > 1 ? ` +${running.length - 1}` : ""}`, "live", "#jobs")
       : chip("JOB", jobList ? "IDLE" : "…", "", "#jobs"),
   );
 }
 
 async function pollStatus() {
   try {
-    if (!state.distro) state.distro = await api.distro();
+    if (!state.distro) bus.distro = state.distro = await api.distro();
     renderChips(await api.jobs());
   } catch (err) {
-    $("#status-chips").replaceChildren(chip("LINK", err.code === "offline" ? "OFFLINE" : "ERROR", "err"));
+    state.chips = "";
+    $("#status-chips").replaceChildren(Object.assign(chip("SERVER", err.code === "offline" ? "OFFLINE" : "ERROR", "err"),
+      { title: "ViWo's server does not answer. Start it again (python3 Start.py), then reload." }));
   }
 }
 
@@ -109,8 +115,9 @@ async function pollLogs() {
 function boot() {
   if (!hasToken()) {
     $("#main").prepend(h("div", { class: "alert err" }, h("b", {}, "NO API TOKEN"),
-      h("p", {}, "This page was not served by the ViWo server, so API calls will be rejected. Open the address printed by: python3 -m viwo.cli serve")));
+      h("p", {}, "This page was not opened from ViWo's server, so nothing will load. Start ViWo with python3 Start.py and open the address it prints.")));
   }
+  document.querySelectorAll(".mods a").forEach((a) => { a.title = a.querySelector("span").textContent.replace(/^([A-Z ]+)/, "$1 — "); });
   $("#dock-toggle").addEventListener("click", () => setDock(!state.dockOpen));
   $("#ws-btn").addEventListener("click", openWorkspaceDialog);
   $("#dock-clear").addEventListener("click", () => api.clearLogs().then(() => { state.logCount = -1; pollLogs(); }, toastErr));

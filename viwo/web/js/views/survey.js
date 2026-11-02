@@ -1,8 +1,7 @@
 // 07 SURVEY: read-only coverage check of one game or a whole library — what ViWo can pull, and what stays locked.
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, viewHead, empty, errorBox, toast, toastErr, busy, pref, logLine, fmtBytes, fmtNum, emit, bus } from "../ui.js";
+import { h, fill, btn, panel, badge, viewHead, empty, errorBox, toastErr, pref, logLine, fmtBytes, fmtNum, emit, bus, stat, browseBtn } from "../ui.js";
 import { jobProgress } from "../progress.js";
-import { stat } from "./extract-result.js";
 import { gameCard, categoryKey, dataBytes, coveredBytes, pct, covKind } from "./survey-card.js";
 
 const S = { games: null, deep: pref("surveyDeep") === "1", ranDeep: false, running: false };
@@ -24,7 +23,7 @@ function mount(root) {
     viewHead("07", "SURVEY", "What can ViWo pull? Survey one game or a folder of games: every file is sorted by what extraction would do with it. Read-only — nothing is copied or written."),
     panel("07.A", "GAME OR LIBRARY FOLDER", badge("READ-ONLY", "ok"),
       h("label", { class: "lbl", for: "survey-path" }, "FOLDER"),
-      h("div", { class: "row" }, el.path, btn("BROWSE", (e) => busy(e.currentTarget, browse), "ghost")),
+      h("div", { class: "row" }, el.path, browseBtn(el.path, bar)),
       h("div", { class: "row policy" }, h("span", { class: "lbl" }, "DEPTH"), el.deep,
         h("span", { class: "dim", id: "survey-deep-note" }, "also try the carver on unknown files — slower")),
       h("p", { class: "note" }, "A folder that looks like a game is surveyed as one game; otherwise each sub-folder is one game.")),
@@ -41,15 +40,6 @@ function setDeep(on) {
   bar();
 }
 
-async function browse() {
-  try {
-    el.path.value = (await api.browse(el.path.value.trim())).path;
-    bar();
-  } catch (err) {
-    if (!err.payload?.cancelled) toast("Folder picker unavailable on this host — type the path instead.", "warn", err.message);
-  }
-}
-
 function bar() {
   if (!el.run) return;
   const name = el.path.value.trim().split(/[\\/]/).filter(Boolean).pop();
@@ -61,7 +51,7 @@ function bar() {
 
 function renderIdle() {
   fill(el.cards, panel("07.C", "HOW TO READ A SURVEY", null,
-    empty("NO SURVEY YET", "Pick a game or library folder and press SURVEY. Each game gets a card, worst coverage first."),
+    empty("NO SURVEY YET", "Pick a game or library folder above and press SURVEY (bottom right). Each game gets a card, worst coverage first."),
     h("h4", { class: "sub-h" }, "// CATEGORIES"), categoryKey(),
     h("p", { class: "note" }, "Coverage = asset + container + engine + carvable, as a share of data bytes (code and tiny files excluded).")));
 }
@@ -86,7 +76,7 @@ async function run() {
     render();
   } catch (err) {
     await el.prog.finish("fail", err.message);
-    fill(el.cards, errorBox(err, "SURVEY FAILED"));
+    fill(el.cards, errorBox(err, "SURVEY FAILED", err.code === "not_found" ? "Check the folder path: pick a game folder or a folder that holds several games." : ""));
     toastErr(err, "Survey failed: ");
   } finally {
     S.running = false;
@@ -116,7 +106,7 @@ function render() {
   };
   const onDeep = () => { setDeep(true); run(); };
   fill(el.cards, games.length ? games.map((g, i) => gameCard(g, i, { deep: S.ranDeep, onExtract, onDeep }))
-    : empty("NO GAMES FOUND", "The folder holds no sub-folders or files to survey."));
+    : empty("NO GAMES FOUND", "This folder holds no sub-folders or files to survey. Pick the game's own folder, or the folder that holds your games."));
 }
 
 export default { mount };

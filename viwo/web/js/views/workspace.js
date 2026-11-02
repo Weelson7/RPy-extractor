@@ -1,29 +1,29 @@
 // 02 WORKSPACE: extension groups (kept / trashed), group actions, retain-selected, clear trash.
 import { api } from "../api.js";
-import { h, $, btn, panel, badge, viewHead, empty, errorBox, toast, toastErr, confirmBox, busy, fmtNum, bus, emit } from "../ui.js";
+import { h, btn, panel, badge, viewHead, empty, errorBox, toast, toastErr, confirmBox, busy, fmtNum, bus, emit, stat, goBtn, openBtn } from "../ui.js";
 import { withSkeleton } from "../progress.js";
 
 const S = { status: null, selected: new Set() };
 const el = {};
 
 function mount(root) {
-  el.totals = h("div", { class: "stats" });
+  el.totals = h("div", { class: "stats" }, ["TYPES", "KEPT FILES", "IN TRASH", "SELECTED"].map((l) => stat(l, "…")));
   el.body = h("div", {});
-  el.retain = btn("RETAIN SELECTED", retain, "primary");
+  el.retain = btn("KEEP ONLY SELECTED", retain, "primary");
   el.clear = btn("CLEAR TRASH", clearTrash, "danger");
   root.append(
-    viewHead("02", "WORKSPACE", "Extracted files are grouped by extension. Trash is reversible until you delete or clear it.",
+    viewHead("02", "WORKSPACE", "Your extracted files, grouped by file type. Trash a whole type you do not need; it stays recoverable until you delete it or clear the trash.",
       btn("REFRESH", (e) => busy(e.currentTarget, load), "ghost"),
-      btn("OPEN FOLDER", openFolder, "ghost")),
+      btn("OPEN FOLDER", () => (bus.ws?.path ? openBtn(bus.ws.path).click() : toast("No workspace yet.", "warn")), "ghost")),
     el.totals,
-    el.panel = panel("02.A", "EXTENSION GROUPS", h("div", { class: "row" }, el.retain, el.clear), el.body));
+    el.panel = panel("02.A", "FILE TYPES", h("div", { class: "row" }, el.retain, el.clear), el.body));
   bus.addEventListener("workspace", (e) => { if (e.detail?.switched) S.status = null; if (!root.hidden) load(); });
 }
 
 async function load() {
   el.panel.classList.add("syncing");
   try {
-    const status = await (S.status ? api.status() : withSkeleton(el.body, "READING EXTENSION GROUPS…", api.status, 6));
+    const status = await (S.status ? api.status() : withSkeleton(el.body, "READING WORKSPACE…", api.status, 6));
     S.status = status;
     const exts = new Set(status.allExtensions || []);
     S.selected = new Set([...S.selected].filter((e) => exts.has(e)));
@@ -39,33 +39,30 @@ function render() {
   const st = S.status;
   const exts = st.allExtensions || [];
   el.totals.replaceChildren(
-    stat("GROUPS", fmtNum(exts.length)), stat("KEPT FILES", fmtNum(st.totalKept), "ok"),
-    stat("IN TRASH", fmtNum(st.totalTrashed), st.totalTrashed ? "warn" : ""), stat("SELECTED", fmtNum(S.selected.size)));
+    stat("TYPES", fmtNum(exts.length), "file extensions"), stat("KEPT FILES", fmtNum(st.totalKept), "", "ok"),
+    stat("IN TRASH", fmtNum(st.totalTrashed), "recoverable", st.totalTrashed ? "warn" : ""), stat("SELECTED", fmtNum(S.selected.size), "tick types below"));
   el.retain.disabled = !S.selected.size;
   el.clear.disabled = !st.totalTrashed;
   if (!exts.length) {
-    el.body.replaceChildren(empty("WORKSPACE EMPTY", "No extracted groups yet. Run an extraction to fill this workspace.",
-      h("a", { class: "btn primary", href: "#extract" }, "GO TO 01 EXTRACT")));
+    el.body.replaceChildren(empty("WORKSPACE EMPTY", "Nothing extracted here yet. Extract a game, or use SWITCH (top right) to open another workspace.",
+      goBtn("#extract", "GO TO 01 EXTRACT")));
     return;
   }
   el.body.replaceChildren(h("table", { class: "tbl groups" },
-    h("thead", {}, h("tr", {}, h("th", { class: "chk" }, selectAll(exts)), [["EXTENSION"], ["KEPT", "num"], ["TRASHED", "num"], ["STATE"], ["ACTIONS", "num"]].map(([c, k]) => h("th", { class: k }, c)))),
+    h("thead", {}, h("tr", {}, h("th", { class: "chk" }, selectAll(exts)), [["TYPE"], ["KEPT", "num"], ["IN TRASH", "num"], ["STATE"], ["ACTIONS", "num"]].map(([c, k]) => h("th", { class: k }, c)))),
     h("tbody", {}, exts.map(row))));
 }
 
-const stat = (label, value, kind = "") =>
-  h("div", { class: `stat ${kind}` }, h("span", { class: "lbl" }, label), h("b", { class: "mono" }, value));
-
 function selectAll(exts) {
   const all = exts.length > 0 && exts.every((e) => S.selected.has(e));
-  return h("input", { type: "checkbox", "aria-label": "Select all groups", checked: all,
+  return h("input", { type: "checkbox", "aria-label": "Select all types", checked: all,
     onchange: (e) => { S.selected = e.target.checked ? new Set(exts) : new Set(); render(); } });
 }
 
 function row(ext) {
   const kept = S.status.kept?.[ext] || 0;
   const trashed = S.status.trashed?.[ext] || 0;
-  const state = kept && trashed ? badge("SPLIT", "warn") : kept ? badge("KEPT", "ok") : badge("TRASHED", "mute");
+  const state = kept && trashed ? badge("PARTLY TRASHED", "warn") : kept ? badge("KEPT", "ok") : badge("IN TRASH", "mute");
   const toggle = (e) => { e.target.checked ? S.selected.add(ext) : S.selected.delete(ext); render(); };
   return h("tr", { class: S.selected.has(ext) ? "sel" : "" },
     h("td", { class: "chk" }, h("input", { type: "checkbox", "aria-label": `Select .${ext}`, checked: S.selected.has(ext), onchange: toggle })),
@@ -74,9 +71,9 @@ function row(ext) {
     h("td", { class: "mono num" }, fmtNum(trashed)),
     h("td", {}, state),
     h("td", {}, h("div", { class: "actions" },
-      btn("TRASH", (e) => groupAction(e, "trash", ext), "sm ghost", { disabled: !kept }),
-      btn("RESTORE", (e) => groupAction(e, "restore", ext), "sm ghost", { disabled: !trashed }),
-      btn("DELETE", (e) => groupAction(e, "delete", ext), "sm danger", { disabled: !trashed }))));
+      btn("TRASH", (e) => groupAction(e, "trash", ext), "sm ghost", { disabled: !kept, "aria-label": `Trash all .${ext}` }),
+      btn("RESTORE", (e) => groupAction(e, "restore", ext), "sm ghost", { disabled: !trashed, "aria-label": `Restore all .${ext}` }),
+      btn("DELETE", (e) => groupAction(e, "delete", ext), "sm danger", { disabled: !trashed, "aria-label": `Delete trashed .${ext} forever` }))));
 }
 
 async function groupAction(e, action, ext) {
@@ -87,7 +84,7 @@ async function groupAction(e, action, ext) {
       const res = await api.group(action, ext);
       toast(res.message || `.${ext}: ${action} done`, "ok");
     } catch (err) {
-      toastErr(err, err.code === "busy" ? "Workspace busy: " : "");
+      toastErr(err);
     }
   });
   emit("workspace");
@@ -96,7 +93,7 @@ async function groupAction(e, action, ext) {
 async function retain() {
   const keep = [...S.selected];
   const drop = (S.status.allExtensions || []).filter((x) => !S.selected.has(x) && S.status.kept?.[x]);
-  if (!(await confirmBox("RETAIN SELECTED GROUPS", `Keep ${keep.map((x) => `.${x}`).join(" ")} and move ${drop.length} other group(s) to trash? You can restore them later.`, { ok: "RETAIN" }))) return;
+  if (!(await confirmBox("KEEP ONLY SELECTED TYPES", `Keep ${keep.map((x) => `.${x}`).join(" ")} and move the ${drop.length} other type(s) to the trash? You can restore them later.`, { ok: "KEEP ONLY THESE" }))) return;
   try {
     const res = await api.keepSelected(keep);
     toast(res.message || "Groups updated.", "ok");
@@ -112,12 +109,6 @@ async function clearTrash() {
     toast("Trash cleared.", "ok");
   } catch (err) { toastErr(err); }
   emit("workspace");
-}
-
-function openFolder() {
-  const path = $("#ws-path").title;
-  if (!path) return toast("No workspace yet.", "warn");
-  api.openFolder(path).then(() => toast("Opened in file manager.", "ok"), toastErr);
 }
 
 export default { mount, show: load };

@@ -1,7 +1,5 @@
 // 09 PATCHED COPY rendering: per-container strategy in plain words, first-run states, build result cards.
-import { api } from "../api.js";
-import { h, btn, badge, empty, errorBox, toast, toastErr, fmtNum } from "../ui.js";
-import { stat } from "./extract-result.js";
+import { h, btn, badge, empty, errorBox, fmtNum, stat, goBtn, openBtn, toolLink } from "../ui.js";
 
 const base = (p) => String(p).split(/[\\/]/).pop();
 const stem = (p) => base(p).replace(/\.[^.]+$/, "");
@@ -29,7 +27,7 @@ const memberList = (members) => h("details", { class: "members" }, h("summary", 
 export function planCard(item) {
   const [what, how] = strategy(item);
   return h("article", { class: "pcard" },
-    h("header", {}, h("b", {}, what), badge(item.slot.toUpperCase(), item.slot === "override" ? "ok" : "mute")),
+    h("header", {}, h("b", {}, what), h("span", { title: `slot ${item.slot}` }, badge(item.slot === "override" ? "LOOSE FILES" : "ARCHIVE", item.slot === "override" ? "ok" : "mute"))),
     h("p", { class: "note" }, how),
     item.container.includes("/") ? h("code", { class: "mono path" }, item.container) : null,
     memberList(item.members));
@@ -42,7 +40,7 @@ export function issueList(title, lines, kind = "warn") {
     h("ul", {}, lines.map((l) => {
       const at = l.indexOf(": ");
       return h("li", {}, at > 0 ? [h("code", { class: "mono" }, l.slice(0, at)), ` — ${l.slice(at + 2)}`] : l);
-    })));
+    })), lines.some((l) => /unavailable|install|no packer|no backend/i.test(l)) ? toolLink("Writing some of these back needs an optional tool.") : null);
 }
 
 const STEPS = [["01", "EDIT", "open files in the workspace with your own tools (image editor, text editor…) and save them in place"],
@@ -52,12 +50,11 @@ const STEPS = [["01", "EDIT", "open files in the workspace with your own tools (
 export const howTo = () => h("ol", { class: "how" }, STEPS.map(([n, t, d]) => h("li", {}, h("b", { class: "mono" }, n), h("span", {}, t), h("small", {}, d))));
 
 export const noExtraction = (err) => [empty("NO EXTRACTION IN THIS WORKSPACE", "A patched copy starts from an extraction: ViWo needs to know which game the files came from. Extract a game into this workspace first.",
-  h("a", { class: "btn primary", href: "#extract" }, "GO TO 01 EXTRACT")), err ? h("p", { class: "dim small" }, err.message) : null];
+  goBtn("#extract", "GO TO 01 EXTRACT")), err ? h("p", { class: "dim small" }, err.message) : null];
 
 export function noEdits(wsPath, replan) {
-  const open = () => api.openFolder(wsPath).then(() => toast("Opened in file manager.", "ok"), toastErr);
-  return [empty("NO EDITS YET", "Every workspace file still matches what extraction wrote, so there is nothing to put back.",
-    wsPath ? btn("OPEN WORKSPACE FOLDER", open, "ghost") : null, btn("PLAN AGAIN", replan, "primary")),
+  return [empty("NO EDITS YET", "Every workspace file still matches what extraction wrote, so there is nothing to put back. Edit a file, save it, then plan again.",
+    wsPath ? openBtn(wsPath, "OPEN WORKSPACE FOLDER", "ghost") : null, btn("PLAN AGAIN", replan, "primary")),
   h("span", { class: "lbl" }, "// HOW THE ROUND TRIP WORKS"), howTo()];
 }
 
@@ -65,8 +62,8 @@ function resultCard(r) {
   const ok = !r.failed?.length && !r.error;
   return h("article", { class: `rcard ${ok ? "ok" : "bad"}` },
     h("header", {}, h("b", { class: "mark", "aria-hidden": "true" }, ok ? "✓" : "✕"),
-      h("b", {}, r.container ? base(r.container) : "LOOSE FILES"), badge(ok ? "VERIFIED" : "FAILED", ok ? "ok" : "err"),
-      badge(String(r.slot).toUpperCase(), "mute"), r.backend ? badge(r.backend, "mute") : null),
+      h("b", { title: `slot ${r.slot}${r.backend ? ` · tool ${r.backend}` : ""}` }, r.container ? base(r.container) : "LOOSE FILES"),
+      badge(ok ? "VERIFIED" : "FAILED", ok ? "ok" : "err")),
     h("p", { class: "note" }, ok ? `${files(r.members)} written and read back identical.`
       : `${fmtNum(r.failed?.length || 0)} of ${files(r.members)} did not come back with your edit.`),
     r.output ? h("div", { class: "row" }, h("span", { class: "lbl" }, "WROTE"), h("code", { class: "mono path" }, r.output)) : null,
@@ -74,8 +71,6 @@ function resultCard(r) {
     r.failed?.length ? h("ul", { class: "bad-list mono" }, r.failed.slice(0, 50).map((m) => h("li", {}, `✕ ${m}`))) : null,
     (r.notes || []).map((n) => h("p", { class: "warn-text small" }, `⚠ ${n}`)));
 }
-
-const openBtn = (path) => btn("OPEN FOLDER", () => api.openFolder(path).then(() => toast("Opened in file manager.", "ok"), toastErr), "sm ghost");
 
 export function resultBody(res) {
   const results = res.results || [];
@@ -94,11 +89,9 @@ export function resultBody(res) {
 
 export const SHORT = { refused: "TARGET REFUSED", busy: "WORKSPACE BUSY", not_found: "NO EXTRACTION RECORD", invalid_request: "NO TARGET FOLDER" };
 
-const EXPLAIN = {
-  refused: "The target must be an empty folder, or a patched copy ViWo made earlier (it is replaced), and must not be inside the game folder.",
-  invalid_request: "Choose a target folder for the patched copy.",
-  busy: "Another job holds this workspace. Wait for it to finish (see 04 JOBS).",
+const NEXT = {
+  refused: "Use an empty folder, or a patched copy ViWo made earlier (it is replaced). Never a folder inside the game.",
+  invalid_request: "Choose a target folder for the patched copy in 09.B.",
 };
 
-export const failure = (err) => [errorBox(err, SHORT[err.code] || "BUILD FAILED"),
-  EXPLAIN[err.code] ? h("p", { class: "note" }, EXPLAIN[err.code]) : null];
+export const failure = (err) => errorBox(err, SHORT[err.code] || "PATCHED COPY FAILED", NEXT[err.code]);

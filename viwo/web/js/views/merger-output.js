@@ -1,6 +1,6 @@
 // 06.C RENDER: transition / end / overlay / output settings, build as a "merge" job, results.
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, errorBox, toast, toastErr, busy, emit, logLine } from "../ui.js";
+import { h, fill, btn, panel, badge, errorBox, toast, toastErr, busy, emit, logLine, openBtn } from "../ui.js";
 import { jobProgress } from "../progress.js";
 
 const O = { transitionType: "diapo", diapoDelay: 3, fadeCrossTime: 0.7, endFadeoutTime: 0, endLastImageTime: 0,
@@ -24,7 +24,7 @@ export function applyState(state) {
 export function outputPanel(context) {
   ctx = context;
   el.form = h("div", { class: "mform" });
-  el.build = btn("BUILD TIMELINES", build, "primary lg");
+  el.build = btn("BUILD VIDEOS", build, "primary lg");
   el.prog = jobProgress("merge", { logClass: "mini", onStatus: (text) => { if (running && text) el.sum.textContent = text; } });
   el.prog.el.hidden = true;
   el.results = h("div", {});
@@ -32,7 +32,7 @@ export function outputPanel(context) {
   el.why = h("span", { class: "ab-why" });
   el.bar = h("div", { class: "actionbar" }, el.sum, el.why, el.build);
   renderForm();
-  return panel("06.C", "RENDER", null, el.form, el.prog.el, el.results);
+  return panel("06.C", "VIDEO SETTINGS", null, el.form, el.prog.el, el.results);
 }
 
 export const actionBar = () => el.bar;
@@ -43,8 +43,8 @@ export function refreshBar() {
   const s = ctx.stats();
   const fade = O.transitionType === "fade";
   const est = (s.clips - s.videos) * O.diapoDelay - (fade ? Math.max(0, s.clips - s.timelines) * O.fadeCrossTime : 0) + s.timelines * (O.endLastImageTime || 0);
-  el.sum.textContent = s.timelines ? `${s.timelines} TIMELINE(S) · ${s.clips} CLIPS · ≈${Math.max(0, est).toFixed(1)} s${s.videos ? ` + ${s.videos} video clip(s)` : ""} · ${fade ? "CROSSFADE" : "CUT"}` : "no timeline selected";
-  el.why.textContent = !st?.encoder ? "ffmpeg missing" : running ? "rendering…" : !s.timelines ? "select a candidate"
+  el.sum.textContent = s.timelines ? `${s.timelines} VIDEO(S) · ${s.clips} CLIPS · ≈${Math.max(0, est).toFixed(1)} s${s.videos ? ` + ${s.videos} video clip(s)` : ""} · ${fade ? "CROSSFADE" : "CUT"}` : "no group ticked";
+  el.why.textContent = !st?.encoder ? "install ffmpeg (05 system)" : running ? "rendering…" : !s.timelines ? "tick a group"
     : fade && O.fadeCrossTime >= O.diapoDelay ? "crossfade ≥ image hold" : "";
   el.build.disabled = Boolean(el.why.textContent);
 }
@@ -77,14 +77,14 @@ function renderForm() {
   const fade = O.transitionType === "fade";
   const seg = h("div", { class: "seg sm", role: "group", "aria-label": "Transition" }, ["diapo", "fade"].map((t) =>
     h("button", { type: "button", "aria-pressed": String(O.transitionType === t), onclick: () => { O.transitionType = t; renderForm(); } },
-      t === "diapo" ? "CUT (DIAPO)" : "CROSSFADE")));
+      t === "diapo" ? "CUT" : "CROSSFADE")));
   fill(el.form,
     h("div", { class: "row" }, h("span", { class: "lbl" }, "TRANSITION"), seg),
     h("div", { class: "nums" }, field("IMAGE HOLD (S)", "diapoDelay"), field("CROSSFADE (S)", "fadeCrossTime", { disabled: !fade }),
       field("END FADE-OUT (S)", "endFadeoutTime"), field("HOLD LAST FRAME (S)", "endLastImageTime")),
     overlayRow(),
     h("label", { class: "lbl", for: "merge-name" }, "OUTPUT NAME"),
-    h("input", { class: "input mono", id: "merge-name", value: O.outputName, placeholder: "blank = candidate name · text = prefix (prefix_candidate.mp4)",
+    h("input", { class: "input mono", id: "merge-name", value: O.outputName, placeholder: "blank = group name · text = prefix (prefix_group.mp4)",
       oninput: (e) => { O.outputName = e.target.value; } }),
     h("label", { class: "field inline" }, h("span", { class: "lbl" }, "Move merged source files to the workspace trash after a successful build"),
       h("input", { type: "checkbox", checked: O.trashAfterBuild, onchange: (e) => { O.trashAfterBuild = e.target.checked; } })));
@@ -93,7 +93,7 @@ function renderForm() {
 
 async function build() {
   const selected = ctx.specs();
-  if (!selected.length) return toast("Select at least one candidate.", "warn");
+  if (!selected.length) return toast("Tick at least one group.", "warn");
   if (O.transitionType === "fade" && O.fadeCrossTime >= O.diapoDelay) return toast("Crossfade must be shorter than the image hold.", "warn");
   running = true;
   refreshBar();
@@ -101,7 +101,7 @@ async function build() {
   fill(el.results);
   el.prog.el.hidden = false;
   await el.prog.start({ total: selected.length });
-  el.prog.log.append(logLine(`// BUILD ${selected.length} TIMELINE(S) · ${O.transitionType.toUpperCase()}`));
+  el.prog.log.append(logLine(`// BUILD ${selected.length} VIDEO(S) · ${O.transitionType === "fade" ? "CROSSFADE" : "CUT"}`));
   el.prog.el.scrollIntoView({ block: "nearest" });
   try {
     const res = await api.mergerBuild({ ...O, namingPattern: ctx.pattern(), selectedCandidates: selected });
@@ -116,13 +116,13 @@ async function build() {
     toastErr(err, "Build failed: ");
   } finally {
     running = false;
-    el.build.textContent = "BUILD TIMELINES";
+    el.build.textContent = "BUILD VIDEOS";
     refreshBar();
     emit("jobs");
   }
 }
 
-const failures = (list) => (list?.length ? h("div", { class: "alert warn" }, h("b", {}, "FAILED CANDIDATES"),
+const failures = (list) => (list?.length ? h("div", { class: "alert warn" }, h("b", {}, "GROUPS THAT FAILED"),
   h("ul", {}, list.map((f) => h("li", {}, h("b", {}, f.candidateName), ": ", f.error)))) : null);
 
 const folderOf = (p) => p.replace(/[\\/][^\\/]*$/, "") || p;
@@ -134,6 +134,6 @@ function renderResults(res) {
       h("div", {}, h("b", {}, o.outputName), h("code", { class: "mono path block" }, o.outputPath)),
       h("div", { class: "row" }, badge(`${o.mergedCount} CLIPS`, "mute"), badge(`${Number(o.totalDuration || 0).toFixed(1)} S`, "ok"),
         o.trashedCount ? badge(`${o.trashedCount} TRASHED`, "warn") : null,
-        btn("OPEN FOLDER", () => api.openFolder(folderOf(o.outputPath)).then(() => toast("Opened in file manager.", "ok"), toastErr), "sm ghost")))),
+        openBtn(folderOf(o.outputPath))))),
     failures(res.failures));
 }

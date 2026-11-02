@@ -1,21 +1,20 @@
 // 09 PATCHED COPY: round trip. Plan the edit set, pick a target, build + verify a patched copy of the game.
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, viewHead, assure, toast, toastErr, busy, pref, logLine, fmtNum, bus, emit } from "../ui.js";
+import { h, fill, btn, panel, badge, viewHead, assure, toast, toastErr, busy, pref, logLine, fmtNum, bus, emit, stat, browseBtn } from "../ui.js";
 import { jobProgress, withSkeleton } from "../progress.js";
-import { stat } from "./extract-result.js";
 import { planCard, issueList, howTo, noExtraction, noEdits, resultBody, failure, SHORT } from "./repack-plan.js";
 
 const S = { plan: null, err: null, running: false, ws: null, files: null };
 const el = {};
 
 function mount(root) {
-  el.target = h("input", { class: "input mono grow", id: "repack-target", placeholder: "/path/to/patched-copy (empty folder)", spellcheck: "false",
+  el.target = h("input", { class: "input mono grow", id: "repack-target", placeholder: "/path/to/empty-folder", spellcheck: "false",
     oninput: () => { pref(`repackOut:${S.ws}`, el.target.value.trim()); bar(); } });
   el.planBtn = btn("PLAN", (e) => busy(e.currentTarget, plan), "primary");
   el.stats = h("div", { class: "stats" });
   el.plan = h("div", {});
   el.prog = jobProgress("repack", { logClass: "mini", onStatus: (text) => { if (S.running && text) el.sum.textContent = text; } });
-  el.progPanel = panel("09.D", "BUILD", null, el.prog.el);
+  el.progPanel = panel("09.C", "BUILD", null, el.prog.el);
   el.progPanel.hidden = true;
   el.result = h("div", {});
   el.sum = h("div", { class: "ab-sum mono" });
@@ -35,16 +34,8 @@ function mount(root) {
 }
 
 function targetPanel() {
-  const browse = btn("BROWSE", (e) => busy(e.currentTarget, async () => {
-    try {
-      el.target.value = (await api.browse(el.target.value.trim())).path;
-      pref(`repackOut:${S.ws}`, el.target.value);
-      bar();
-    } catch (err) {
-      if (!err.payload?.cancelled) toast("Folder picker unavailable on this host — type the path instead.", "warn", err.message);
-    }
-  }), "ghost");
-  return panel("09.C", "TARGET FOLDER", badge("NEW COPY", "ok"),
+  const browse = browseBtn(el.target, (path) => { pref(`repackOut:${S.ws}`, path); bar(); });
+  return panel("09.B", "TARGET FOLDER", badge("NEW COPY", "ok"),
     h("label", { class: "lbl", for: "repack-target" }, "PATCHED COPY GOES TO"),
     h("div", { class: "row" }, el.target, browse),
     h("p", { class: "note" }, "Use an empty folder, or a patched copy ViWo made earlier (it is replaced). Never inside the game folder: the original stays exactly as it is."));
@@ -72,7 +63,7 @@ async function plan() {
   } catch (err) {
     S.plan = null;
     S.err = err;
-    if (err.code !== "not_found") toastErr(err, err.code === "busy" ? "Workspace busy: " : "Plan failed: ");
+    if (err.code !== "not_found") toastErr(err, "Plan failed: ");
   }
   render();
 }
@@ -83,7 +74,7 @@ function render() {
   fill(el.stats, p ? [stat("EDITS", fmtNum(p.edits), "changed files"), stat("TARGETS", fmtNum(p.plan.length), "containers + override"),
     stat("SKIPPED", fmtNum(p.skipped.length)), stat("WARNINGS", fmtNum(p.warnings.length))] : null);
   if (S.err) fill(el.plan, S.err.code === "not_found" ? noExtraction(S.err) : failure(S.err));
-  else if (!p) fill(el.plan, S.files === 0 ? noExtraction() : [h("p", { class: "note" }, "Press PLAN to find the files you edited and see how each one goes back into the game. Planning only reads."),
+  else if (!p) fill(el.plan, S.files === 0 ? noExtraction() : [h("p", { class: "note first" }, "Press PLAN to find the files you edited and see how each one goes back into the game. Planning only reads."),
     h("span", { class: "lbl" }, "// HOW THE ROUND TRIP WORKS"), howTo()]);
   else fill(el.plan,
     h("div", { class: "kv" }, h("span", { class: "lbl" }, "SOURCE GAME"), h("code", { class: "mono path" }, p.game), h("div", { class: "row" }, badge("READ-ONLY", "ok"))),
@@ -131,15 +122,15 @@ async function build() {
     render();
     if (!res.results) {
       await el.prog.finish("ok", "NOTHING TO PATCH");
-      fill(el.result, panel("09.E", "RESULT", badge("NO CHANGES", "mute"), h("p", { class: "note" }, "No edit could be written back, so no copy was made.")));
+      fill(el.result, panel("09.D", "RESULT", badge("NO CHANGES", "mute"), h("p", { class: "note" }, "No edit could be written back, so no copy was made. The skipped list in 09.A says why.")));
     } else {
       await el.prog.finish(res.verified ? "ok" : "fail", res.verified ? "PATCHED COPY READY · VERIFIED" : "COPY BUILT · NOT VERIFIED");
-      fill(el.result, panel("09.E", "RESULT", badge(res.verified ? "VERIFIED ✓" : "NOT VERIFIED ✕", res.verified ? "ok" : "err"), resultBody(res)));
+      fill(el.result, panel("09.D", "RESULT", badge(res.verified ? "VERIFIED ✓" : "NOT VERIFIED ✕", res.verified ? "ok" : "err"), resultBody(res)));
       toast(res.verified ? "Patched copy ready and verified." : "Patched copy built, but some edits did not verify.", res.verified ? "ok" : "warn", res.target);
     }
   } catch (err) {
     await el.prog.finish("fail", SHORT[err.code] || "BUILD FAILED");
-    fill(el.result, panel("09.E", "RESULT", badge(String(err.code || "error").toUpperCase(), "err"), failure(err)));
+    fill(el.result, panel("09.D", "RESULT", badge(err.code === "cancelled" ? "CANCELLED" : "FAILED", err.code === "cancelled" ? "warn" : "err"), failure(err)));
     toastErr(err, "Patched copy failed: ");
   } finally {
     S.running = false;
