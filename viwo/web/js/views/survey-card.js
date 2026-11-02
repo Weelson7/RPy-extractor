@@ -74,6 +74,6 @@ export function gameCard(g, i, { deep, onExtract, onDeep }) {
     unknownBlock(g.unknown, deep, onDeep),
     missingBlock(g.missingTools));
   card.classList.add("sv-card", "reveal");
-  card.style.setProperty("--i", String(Math.min(i, 12)));
+  card.style.setProperty("--i", String(Math.min(i, 8)));
   return card;
 }

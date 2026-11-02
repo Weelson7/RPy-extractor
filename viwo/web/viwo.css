@@ -335,7 +335,7 @@ input[type="checkbox"] { width: 16px; height: 16px; margin: 0; accent-color: var
 .badge.mute { color: var(--text-2); border-color: var(--line); background: transparent; }
 .badge.live { color: #fff; border-color: var(--red); background: rgba(255, 59, 59, 0.3); animation: pulse 1.2s infinite; }
 .meter { position: relative; height: 8px; background: repeating-linear-gradient(90deg, rgba(255, 59, 59, 0.13) 0 6px, transparent 6px 8px); }
-.meter i { display: block; height: 100%; background: repeating-linear-gradient(90deg, var(--red) 0 6px, transparent 6px 8px); transition: width 0.5s; }
+.meter i { display: block; height: 100%; background: repeating-linear-gradient(90deg, var(--red) 0 6px, transparent 6px 8px); transition: width 0.3s ease-out; }
 .meter.hi i { background: repeating-linear-gradient(90deg, #ff6a5c 0 6px, transparent 6px 8px); filter: drop-shadow(0 0 4px rgba(255, 59, 59, 0.9)); }
 .meter.lo i { background: repeating-linear-gradient(90deg, var(--red-d) 0 6px, transparent 6px 8px); }
 .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-bottom: 18px; }
@@ -430,7 +430,7 @@ main > .alert { margin-bottom: 18px; }
 .empty p { margin: 6px auto 0; max-width: 46ch; }
 .empty .row { justify-content: center; margin-top: 14px; }
 .toasts { pointer-events: none; position: fixed; right: 22px; bottom: 118px; z-index: 120; display: flex; flex-direction: column; gap: 8px; width: min(400px, calc(100vw - 44px)); }
-.toast { --c: 9px; --f: #1a0b0c; display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; padding: 11px 16px; animation: tin 0.2s ease-out; transition: opacity 0.4s, transform 0.4s; }
+.toast { --c: 9px; --f: #1a0b0c; display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; padding: 11px 16px; animation: tin 0.2s ease-out; transition: opacity 0.25s ease-in, transform 0.25s ease-in; }
 .toast b { font: 700 11px/1.6 var(--f-head); letter-spacing: 0.16em; color: var(--red); }
 .toast small { grid-column: 2; color: var(--text-2); }
 .toast.ok { --b: rgba(62, 242, 224, 0.6); }
@@ -551,7 +551,7 @@ kbd { margin-right: 6px; padding: 1px 6px; border: 1px solid var(--line); border
 .optgroup { margin-top: 14px; border: 1px solid var(--line-soft); }
 .optgroup > summary { padding: 8px 12px; cursor: pointer; font: 700 12px var(--f-head); letter-spacing: 0.15em; color: var(--coral); }
 .optgroup > .optset { margin: 0 12px 12px; }
-.lastrun { margin-bottom: 16px; }
+.lastrun { margin-top: 16px; }
 .lastrun .row { margin-bottom: 10px; }
 .how { display: grid; gap: 8px; margin: 8px 0 0; padding: 0; list-style: none; }
 .how li { display: grid; grid-template-columns: 34px 90px 1fr; align-items: baseline; gap: 8px; padding: 9px 12px; border: 1px solid var(--line-soft); background: rgba(10, 5, 6, 0.6); }
@@ -637,15 +637,16 @@ kbd { margin-right: 6px; padding: 1px 6px; border: 1px solid var(--line); border
 .jp-rail [data-s="fail"] { color: #ff7266; }
 .jp-rail [data-s="fail"] i { border-color: #ff7266; background: #3a0d0f; }
 .jp-rail [data-s="fail"] i::after { content: "✕"; color: #ff7266; }
-.jp[data-state="done"] .jp-rail [data-s="done"] i { animation: pop 0.4s ease-out both; animation-delay: calc(var(--i, 0) * 70ms); }
+/* completion: nodes stay lit and pulse outward one after another (no fill, so nothing blinks out first) */
+.jp[data-state="done"] .jp-rail [data-s="done"] i { animation: pop 0.3s ease-out; animation-delay: calc(var(--i, 0) * 40ms); }
 .jp-bar { flex: none; }
-.jp:not([data-state="running"]) .jp-bar i { width: 100%; animation: none; transform: none; transition: width 0.5s; }
+.jp:not([data-state="running"]) .jp-bar i { width: 100%; animation: none; transform: none; transition: width 0.3s ease-out; }
 .jp[data-state="done"] .jp-bar i { background: var(--cyan); box-shadow: 0 0 10px var(--cyan); }
 .jp[data-state="fail"] .jp-bar i { background: var(--red-d); box-shadow: none; }
 .jp-tick { position: relative; display: flex; flex-direction: column; min-height: 66px; padding: 7px 12px; overflow: hidden; border-left: 2px solid var(--red); background: linear-gradient(90deg, rgba(255, 59, 59, 0.1), transparent 80%); font-size: 12.5px; line-height: 1.55; }
 .jp[data-state="running"] .jp-tick::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 30%; background: linear-gradient(180deg, transparent, rgba(255, 59, 59, 0.1), transparent); animation: sweep 2.6s linear infinite; pointer-events: none; }
 .jp-line { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--dim); }
-.jp-line.now { align-self: flex-start; color: #fff; animation: type calc(var(--n, 20) * 9ms + 60ms) steps(var(--n, 20)) both; }
+.jp-line.now { align-self: flex-start; color: #fff; animation: type calc(var(--n, 20) * 5ms + 40ms) steps(var(--n, 20)) both; }
 .jp-line.now::before { content: "› "; color: var(--red); }
 .jp-line.now.l-warn { color: var(--amber); }
 .jp[data-state="running"] .jp-line.now::after { content: "▌"; margin-left: 2px; color: var(--red); animation: pulse 0.9s steps(1) infinite; }
@@ -655,7 +656,7 @@ kbd { margin-right: 6px; padding: 1px 6px; border: 1px solid var(--line); border
 .jc span { font: 600 10px var(--f-head); letter-spacing: 0.13em; color: var(--dim); }
 .jc.warn { border-color: rgba(255, 179, 64, 0.5); }
 .jc.warn b { color: var(--amber); }
-.jc.bump b { animation: bump 0.6s ease-out; }
+.jc.bump b { animation: bump 0.4s ease-out; }
 .jp-warns { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; font-size: 12px; color: var(--amber); }
 .jp-warns:empty { display: none; }
 .jp-warns li { padding: 4px 9px; border-left: 2px solid var(--amber); background: rgba(255, 179, 64, 0.07); animation: tin 0.25s ease-out; word-break: break-word; }
@@ -664,7 +665,7 @@ kbd { margin-right: 6px; padding: 1px 6px; border: 1px solid var(--line); border
 .jp .feed { height: 220px; }
 .log.mini { max-height: 150px; }
 .mform + .jp { margin-top: 14px; padding-top: 14px; border-top: 1px dashed var(--line-soft); }
-.reveal { animation: reveal 0.55s ease-out both; animation-delay: calc(var(--i, 0) * 70ms); }
+.reveal { animation: reveal 0.3s cubic-bezier(0.2, 0.7, 0.2, 1) both; animation-delay: calc(var(--i, 0) * 50ms); }
 .skel { position: relative; overflow: hidden; padding: 4px 0 8px; }
 .skel .lbl { margin: 0; }
 .skel i { display: block; width: var(--w, 80%); height: 11px; margin-top: 12px; background: linear-gradient(90deg, rgba(255, 59, 59, 0.07) 30%, rgba(255, 59, 59, 0.22) 50%, rgba(255, 59, 59, 0.07) 70%) 0 0 / 300% 100%; animation: shimmer 1.5s linear infinite; }
@@ -779,11 +780,11 @@ span.fpath { cursor: default; }
 @keyframes alarm { 50% { --b: #ff9a90; filter: brightness(1.18); } }
 @keyframes flow { to { background-position: 20px 0; } }
 @keyframes node { 50% { box-shadow: 0 0 4px var(--red); filter: brightness(1.35); } }
-@keyframes pop { 0% { transform: rotate(45deg) scale(0.5); } 60% { transform: rotate(45deg) scale(1.3); box-shadow: 0 0 16px var(--cyan); } }
+@keyframes pop { 50% { transform: rotate(45deg) scale(1.35); box-shadow: 0 0 16px var(--cyan); } }
 @keyframes type { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0); } }
 @keyframes sweep { from { transform: translateY(-100%); } to { transform: translateY(340%); } }
 @keyframes bump { from { color: var(--cyan); text-shadow: 0 0 10px var(--cyan); } }
-@keyframes reveal { from { opacity: 0; transform: translateY(12px); filter: brightness(1.8); } }
+@keyframes reveal { from { opacity: 0; transform: translateY(8px); filter: brightness(1.6); } }
 @keyframes shimmer { to { background-position: -300% 0; } }
 @keyframes scany { to { top: 100%; } }
 @keyframes flicker { 0%, 96%, 100% { opacity: 1; } 97% { opacity: 0.6; } 98% { opacity: 1; } 99% { opacity: 0.75; } }

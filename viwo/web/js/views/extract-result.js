@@ -86,7 +86,7 @@ const STEPS = [["01", "TARGET", "pick the game folder — opened read-only, neve
 function lastRun(job) {
   const r = job.result || {};
   const ws = String(r.workspace || String(r.runRecord || "").split(/[\\/]\.extraction_metadata/)[0]);
-  return h("div", { class: "lastrun" },
+  return h("div", { class: "lastrun reveal" },
     h("div", { class: "row" }, h("span", { class: "lbl" }, "// LAST RUN"), stateBadge(job.state),
       h("span", { class: "mono dim small" }, new Date(job.started * 1000).toLocaleTimeString())),
     job.error ? errorBox(job.error, "RUN FAILED") : h("div", { class: "stats" },
@@ -95,14 +95,15 @@ function lastRun(job) {
     ws ? pathRow("WORKSPACE", ws, job.state === "succeeded" ? goBtn("#sort", "03 SORT →", "sm") : null) : null);
 }
 
-/** Idle LIVE FEED: last extract job summary + how it works. */
+/** Idle LIVE FEED: how it works (drawn at once, so nothing jumps), then the last extract job when it loads. */
 export async function renderIdle(host) {
+  const tail = h("div", {});
+  fill(host, h("span", { class: "lbl" }, "// HOW IT WORKS"),
+    h("ol", { class: "how" }, STEPS.map(([n, t, d]) => h("li", {}, h("b", { class: "mono" }, n), h("span", {}, t), h("small", {}, d)))), tail);
   let last = null;
   try {
     const job = (await api.jobs()).filter((j) => j.kind === "extract").pop();
     if (job) last = await api.job(job.id);
   } catch { /* the summary is optional */ }
-  fill(host, last ? lastRun(last) : h("p", { class: "dim" }, "No extraction yet since ViWo started. Pick a game folder on the left to begin."),
-    h("span", { class: "lbl" }, "// HOW IT WORKS"),
-    h("ol", { class: "how" }, STEPS.map(([n, t, d]) => h("li", {}, h("b", { class: "mono" }, n), h("span", {}, t), h("small", {}, d)))));
+  fill(tail, last ? lastRun(last) : h("p", { class: "dim" }, "No extraction yet since ViWo started. Pick a game folder on the left to begin."));
 }

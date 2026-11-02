@@ -161,7 +161,7 @@ export function jobProgress(kind, { logClass = "feed", onStatus = null } = {}) {
     const last = events.slice(-3);
     t.lines = [...t.lines, ...last].slice(-3);
     fill(el.tick, t.lines.map((e, i) => i === t.lines.length - 1
-      ? h("span", { class: `jp-line now ${e.level === "warn" ? "l-warn" : ""}`, style: `--n:${Math.min(90, e.message.length)}` }, e.message)
+      ? h("span", { class: `jp-line now ${e.level === "warn" ? "l-warn" : ""}`, style: `--n:${Math.min(80, e.message.length)}` }, e.message)
       : h("span", { class: "jp-line" }, e.message)));
     const w = t.warns;
     fill(el.warns, w.slice(-4).map((m) => h("li", {}, m)), w.length > 4 ? h("li", { class: "more" }, `+${w.length - 4} earlier warning(s) in the log`) : null);
@@ -233,7 +233,7 @@ export function jobProgress(kind, { logClass = "feed", onStatus = null } = {}) {
     if (note) el.stage.textContent = note;
     paintClock();
     say(`${el.verb.textContent.toLowerCase()}${note ? `: ${note}` : ""}`, true);
-    if (!RM.matches) await sleep(450 + 70 * Math.min(10, t.order.length));
+    if (!RM.matches) await sleep(250 + 40 * Math.min(10, t.order.length)); // lets the rail pop finish (300 ms + stagger)
   }
 
   return { el: root, log: el.log, start, finish, stop, get id() { return t?.id || null; } };
