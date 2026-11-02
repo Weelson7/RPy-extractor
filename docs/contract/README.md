@@ -120,7 +120,7 @@ These are the ideas the other documents build on. Each is up for debate.
 | D11 | Ren'Py RPA: should our own safe reader (restricted unpickler) be main, with unrpa as a subprocess spare? | yes; RPA indexes are pickles (doc 13.3) |
 | D12 | Should CATALOG → SELECT be a separate stage for huge games (CASC, Unreal)? | yes, optional |
 | D13 | Runtime agents: journaled overlay on the game folder, or a copy of the game? | overlay + crash recovery |
-| D14 | Custom plugin showcase: Overwatch (terms-of-service exposure, no real CI data) or an open-source custom-engine game? | — |
+| D14 | Custom plugin showcase | **decided:** an open-source custom-engine game in CI; Overwatch allowed as a `tos_sensitive` plugin whose real-data tests are run by an **independent operator** (doc 17.4b) |
 | D15 | Product and CLI name ("RPy Extractor" undersells a multi-engine framework) | — |
 
 ## Not in this draft

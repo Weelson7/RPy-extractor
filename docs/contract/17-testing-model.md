@@ -56,6 +56,22 @@ Fixture data is generated into a temporary folder at test time. Tiny
 committed binary files are allowed only when they can't be generated, each
 under 64 KB, with their origin noted.
 
+## 17.4b Terms-of-service-sensitive cases: independent operator
+
+Decision: tests that touch terms-of-service-sensitive targets (for example
+the Overwatch plugin against a real install) are **run by an independent
+operator**, never by the project's CI or maintainers.
+
+| Aspect | Rule |
+|--------|------|
+| Marking | a plugin or backend whose real-data use is terms-of-service-sensitive declares `tos_sensitive: true` in its manifest |
+| Project CI | runs only **fake-tool / synthetic** tests for such plugins (L1–L4). L5/L7 with real data never run in project CI |
+| Operator receives | a pinned build, the plugin, a **test protocol** (checklist + commands) and the expected run-record schema |
+| Operator returns | run records, metrics and pass/fail per checklist item, **never extracted assets**, plus the tool and game build versions used |
+| Operator's environment | their own machine and their own licensed copy; offline flags on |
+| What the operator can't do | override the framework's hard policies. Runtime capture on online/anti-cheat games stays refused for everyone |
+| Records | operator reports are stored as test evidence (`docs/evidence/<plugin>/<date>.md`) without assets ❓ |
+
 ## 17.5 Tooling and environment
 
 - **Python:** v1 uses 3.10+ syntax. Proposal: **3.11 as the minimum** (`tomllib`, better errors and `ExceptionGroup`, useful for job errors) and test **3.11 and 3.13** ❓.
