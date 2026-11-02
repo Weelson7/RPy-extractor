@@ -46,6 +46,14 @@ noise), streams, survey, sanitizer, round trip, capture policy, the journal with
   download early (now retried with a size check).
 - **Preflight API:** `POST /api/preflight` as a job with one event per check and install; the
   landing screen and 05 SYSTEM INSTALL buttons drive it.
+- **Web UI in a real browser (headless Edge, 1440x900):** the landing ran the real preflight
+  ("All 19 tools ready"), then 01 EXTRACT, 05 SYSTEM (19/19 tools, 33/33 formats), 10 CAPTURE and
+  11 SETTINGS rendered with zero JavaScript console errors. Interaction flows (install buttons,
+  settings apply, capture run) were exercised through the HTTP API and unit tests, not by clicks.
+- **Portable bundle (Windows):** `packaging/build_portable.py` builds `dist/viwo/viwo.exe`, the
+  smoke test passes, and `viwo.exe install repak` downloads over HTTPS into `third_party/` next to
+  the exe and binds the slot. Two bundle defects fixed: no `ssl` module collected, and a foreign
+  OpenSSL DLL picked up from PATH (the interpreter's own copies now ship).
 - **Merger on ffmpeg 7:** xfade needs a constant frame rate after setpts (fixed, test green with
   ffmpeg 7.1.1 on Windows).
 

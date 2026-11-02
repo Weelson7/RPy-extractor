@@ -46,3 +46,4 @@ tmp/
 venv/
 viwo-data/
 third_party/
+release/

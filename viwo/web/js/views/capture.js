@@ -33,7 +33,7 @@ function mount(root) {
       h("div", { class: "col" }, targetPanel(), panel("10.B", "BEFORE YOU START", el.checkBtn, el.before)),
       h("div", { class: "col" }, el.progPanel, el.result)),
     h("div", { class: "actionbar" }, el.sum, el.why, el.cancel, el.run));
-  bus.addEventListener("wspath", (e) => { S.ws = e.detail.path || ""; bar(); });
+  bus.addEventListener("wspath", (e) => { S.ws = e.detail.path || ""; if (el.wsNote) el.wsNote.textContent = S.ws || "—"; bar(); });
   bus.addEventListener("preflight", () => { S.info = null; renderBefore(); bar(); });
   S.ws = bus.ws?.path || "";
   renderBefore();
@@ -48,7 +48,7 @@ function targetPanel() {
     h("div", { class: "row" }, el.game, browseGame),
     h("label", { class: "lbl", for: "cap-exe" }, "EXECUTABLE TO LAUNCH (INSIDE THAT FOLDER)"),
     h("div", { class: "row" }, el.exe, browseExe),
-    h("p", { class: "note" }, "The captures go to the active workspace: ", h("code", { class: "mono" }, S.ws || "—"), ". Switch it in the top bar if you want them elsewhere."));
+    h("p", { class: "note" }, "The captures go to the active workspace: ", (el.wsNote = h("code", { class: "mono" }, S.ws || "—")), ". Switch it in the top bar if you want them elsewhere."));
 }
 
 async function check() {

@@ -51,8 +51,8 @@ then `README.md` ("Philosophy", "Legal and disclaimer"), then `docs/prototype-b/
    could be pinned from a trusted HTTPS source with a checksum tonight).
 3. **Not verified on real data** (unchanged list in STATUS.md): Unity round trip on a real file,
    RenderDoc capture on a real GPU game, QuickBMS on a real archive, DataTool on a real install,
-   retoc on real UE5 data; the landing and the two new views were checked by reading and by API
-   calls, not in a browser (no browser automation in the session).
+   retoc on real UE5 data. The landing and every view were loaded in headless Edge (screenshots,
+   zero console errors) and driven through the API and unit tests, not by real clicks.
 4. **Linux:** the installer was exercised on Windows only; the Linux pins (tar/zip, chmod from
    archive modes) are covered by unit tests with fakes.
 5. **Next rungs** (README "What a reverse engineer can do"): meshes for other engines, fonts,
