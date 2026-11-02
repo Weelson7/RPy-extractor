@@ -1,109 +1,107 @@
-# Prototype A: implementation status
+# Prototype A: status (closed)
 
-Unattended run started 2026-11-02 on branch `makeover`. Contract: `docs/contract/`.
-This file is the running log: plan, progress, and every deviation from the
-contract with its reason.
+Branch `makeover`. Contract: `docs/contract/`. This file records what Prototype A delivered,
+where it deviates from the contract and why, and the evidence for the exit check.
 
-## Plan (roadmap M0–M6)
+## Roadmap M0–M6
 
-| M | Scope in this run | Status |
-|---|-------------------|--------|
-| M0 | decisions closed, docs renamed (OS layer, ViWo) | done |
-| M1 | hotfix (merged); LoC counter + caps file; CI workflow (Linux + Windows); v1 result-shape checks | done |
-| M2 | `viwo/contracts`, `viwo/os` (process with tree-kill, tool locator, fs rules) for Linux + Windows; conformance tests | done |
-| M3 | flat startup ini; slot binder (failover); stage runner (probe, detect, select, identify/carve, unpack, collect copy/move, provenance, verify, report); workspace ownership + lock; jobs + run records + envelope; CLI `info/detect/extract/slots/serve`; v1 server delegates extraction to the core; `generic` plugin; zip/tar/7z/rar/py7zr backends | done (see notes) |
-| M4 | `renpy` plugin: safe RPA reader (main) + unrpa subprocess (spare) | done |
-| M5 | `unity` plugin: UnityPy (main) / AssetStudioModCLI (spare) | done |
-| M6 | `godot` plugin: PCK identify + carving of embedded PCKs, GDRE (main) / GodotPckTool (spare) | done |
+| M | Scope | Status |
+|---|-------|--------|
+| M0 | decisions closed (D0–D20), docs renamed (OS layer, ViWo) | done |
+| M1 | v1 hotfix (merged); LoC counter + caps; CI on Linux and Windows | done |
+| M2 | `viwo/contracts`, `viwo/os` (process tree-kill, tool locator, filename rules, pickers) | done |
+| M3 | ini wiring, slot binder with failover, stage runner, workspace ownership + lock, jobs, run records, envelope, CLI, `generic` plugin, zip/tar/7z/rar/py7zr backends | done |
+| M4 | `renpy`: safe RPA reader (main), unrpa subprocess (spare) | done |
+| M5 | `unity`: UnityPy (main), AssetStudioModCLI (spare), cache roots opt-in | done |
+| M6 | `godot`: PCK identify, embedded-PCK carving, GDRE Tools (main), GodotPckTool (spare) | done |
+| A+ | v1 removed: web server, curation, merger and UI rebuilt inside `viwo/` | done |
 
 ## Layout
 
 ```
-pyproject.toml            package "viwo", Python >= 3.11, console script `viwo`
-startup.ini               default startup wiring (doc 9, flat form)
-loc_caps.ini              LoC caps (doc 15); tools/loc_count.py enforces them
-viwo/contracts/           interfaces + value types (stdlib only)
-viwo/os/                  LinuxOS, WindowsOS
-viwo/core/                wiring (ini, registry, binder), pipeline, workspace, jobs
-viwo/backends/            core-owned backends (zip, tar, 7z, rar, py7zr)
-viwo/plugins/             generic, renpy, unity, godot
-viwo/cli.py               CLI
-tests/                    unittest suites (no extra test dependency)
-RPy-extractor/            the v1 app ("legacy"), still serving the web UI
+pyproject.toml     package "viwo", Python >= 3.11, console script `viwo`
+startup.ini        startup wiring: plugins, slots, tools, [server]
+loc_caps.ini       code size caps; tools/loc_count.py enforces them (CI L0)
+viwo/contracts/    interfaces + value types (stdlib only)
+viwo/os/           LinuxOS, WindowsOS
+viwo/core/         wiring, pipeline (+ game-folder guard), workspace, jobs, curation, merger
+viwo/backends/     core unpackers (zip, tar, 7z, rar, py7zr)
+viwo/plugins/      generic, renpy, unity, godot
+viwo/api/          local HTTP server (token, JSON-only, Host check), handlers, job routes
+viwo/web/          web UI (plain ES modules, no build step)
+viwo/cli.py        info | slots | detect | extract | replay | unpack | serve
+tests/             unittest suites L1–L6 (no extra test dependency)
 ```
 
-## Deviations from the contract (with reasons)
+The v1 application (`RPy-extractor/`) and its bridge are deleted; every feature runs on ViWo.
 
-| # | Deviation | Reason | Planned resolution |
-|---|-----------|--------|--------------------|
-| X1 | The v1 web server (`RPy-extractor/extract.py`) stays the HTTP front end. Only extraction (and dependency status) is delegated to the ViWo core; sorting, trash and the merger stay legacy code | Porting curation and merger (~1,400 legacy LoC) is not needed to prove the contract, and keeping them keeps the UI working | port to `viwo/core/workspace` + `viwo/core/merger` after Prototype A |
-| X2 | LoC caps apply to `viwo/` (product) and `tests/`; `RPy-extractor/` is legacy under a **ratchet** (may only shrink) | the legacy code predates the caps | shrinks as code is ported |
-| X3 | Three trash layouts (doc 4.3) not yet applied | curation is still legacy (X1) | with the curation port |
-| X4 | No separate `unpack` CLI command yet | `extract` covers it; the unpack loop takes explicit files so the command is a thin addition | next CLI pass |
-| X5 | `[tools]` in the ini is keyed by **dependency id** (e.g. `sevenzip`), not backend id as doc 9 said | one tool can serve several backends (7-Zip serves zip/tar/7z/rar spares) | done: doc 9 updated |
-| X6 | Legacy extraction code (`extraction_types/`, `extraction_core/archive.py`, `pipeline.py`) deleted; Unity games use the `generic` plugin until M5 lands | the v1 route now runs the ViWo core; keeping two pipelines would double the surface | M5 |
+## Deviations from the contract
 
-## Notes per milestone
+| # | Deviation | Reason | State |
+|---|-----------|--------|-------|
+| X1 | v1 server kept as front end during M3–M6 | keep the UI working while the core landed | **resolved**: server, curation and merger ported, v1 deleted |
+| X2 | legacy code under a shrink-only ratchet | it predated the caps | **resolved**: legacy deleted, ratchet removed |
+| X3 | three trash layouts pending | curation was legacy | **resolved**: `.trash/groups`, `.trash/items`, `.trash/merger`, with migration from the v1 layout |
+| X4 | no `unpack` CLI command | — | **resolved**: `viwo unpack`, plus `viwo replay` |
+| X5 | `[tools]` keyed by dependency id, not backend id | one tool serves several backends | kept; doc 9 updated |
+| X6 | Unity games used `generic` until M5 | — | **resolved** by M5 |
 
-**M3 (lean core).** v1 `/api/extract` and `/api/dependencies` now run through `viwo.api.legacy`.
-Verified: 21 core tests + 10 legacy tests green; real-server UI check in Chromium: extract,
-re-extract shows the decision dialog, "replace" succeeds. Legacy Python shrank 4,246 -> 2,430 LoC.
+## Notes
 
-**M4 (Ren'Py).** Safe RPA reader for RPA-2.0/3.0 (XOR key, prefixes); the pickled index
-may only reference `_codecs.encode` and `bytes`. A malicious `__reduce__` payload is refused
-without running (test). unrpa (GPL-3.0) runs as a subprocess spare; L5 confirmed real unrpa
-reads our RPA fixtures. Source root is `game/` only (v1 rule). RPA-1.0/3.2/ALT variants fall
-through to the spare.
+**Game integrity.** Files are copied from the game folder, never moved. A workspace or temp folder
+inside the game folder is refused before anything is written. Every run snapshots the game folder
+(path, size, mtime) before and after, and a difference becomes a `GAME FOLDER CHANGED` warning.
+Unity file handles are released after each container group (Windows locks were found on CI).
 
-**M5 (Unity).** UnityPy export ported from v1 into small functions; outputs go to staging and are
-collected into the per-extension layout (D3), so the v1 F1 wipe cannot happen. AssetStudioModCLI
-is the spare (its exact CLI flags are from research, **not verified against the binary**: it is
-not installable here). Detection fixes v1 F2 (case-insensitive markers; `*_Data` alone = 0.5).
-Removed v1 placeholder "slices" and the always-passing completeness gate (F11). Tests use a fake
-`UnityPy` module; L5 checks real UnityPy on a corrupt container. **Gap:** no real Unity asset
-fixture yet (needs a redistributable sample; L7 manual check on a real game is pending).
+**Archives are never forced open.** Recognized containers (by Godot trailer, suffix, or magic bytes
+for extension-less files) are unpacked recursively up to depth 10. There is no password or key
+guessing and no "try another format": an encrypted archive ends as `needs_key`, which never falls
+through to the spare. 7-Zip is called with `-p` and unrar with `-p-`, so neither can prompt.
 
-**M6 (Godot).** PCKs are identified by the `GDPC` magic, and PCKs embedded in executables by the
-`GDPC` trailer (size + magic), then carved out before unpacking. GDRE Tools is main
-(`--headless --extract= --output= [--key=]`), GodotPckTool spare. The encryption key is a
-`secret` plugin option: "needs key" outcomes do not fall through to the spare (it cannot
-decrypt). **Not verified against the real binaries:** the exact GDRE/GodotPckTool flags
-(tools not installable here), and whether carved PCKs from Godot 3 executables keep valid
-offsets. Tests use fake CLI tools (POSIX only; skipped on Windows CI).
+**Ren'Py.** RPA-2.0/3.0 with XOR key and prefixes. The pickled index may only reference
+`_codecs.encode` and `bytes`; a malicious `__reduce__` payload is refused without running.
+Other variants go to unrpa (GPL-3.0, subprocess).
 
-**Mixed mode (pulled forward from M10, small).** Pairwise runs over generic/renpy/unity/godot
-on one mixed fixture: every run selects exactly the requested set, the game folder is
-unchanged, results are deterministic.
+**Unity.** Containers in one folder load together (cross-file references), falling back to
+one-by-one. Signatures are searched in the first 4 KB. Cache / persistent-data roots are read only
+with the `include_cache` option.
 
-## Prototype A exit check (doc 14.4)
+**Godot.** GDRE and GodotPckTool flags are verified against their sources and on CI with the real
+binaries (standalone and embedded PCK). The key is a `secret` option and is masked in run records.
+
+**Web UI.** Rebuilt from scratch in an original red terminal style: 01 EXTRACT, 02 WORKSPACE,
+03 SORT, 04 JOBS, 05 SYSTEM, 06 MERGER. It went through three review rounds with screenshots
+at 1440 and 1280 px. Small text meets WCAG AA contrast. Media previews stream with byte ranges.
+
+**Security.** Per-start API token injected into the page, JSON-only POST, Host allow-list,
+contained static and preview paths, curation group names restricted to one plain folder name.
+
+## Exit check (doc 14.4)
 
 | # | Criterion | Result |
 |---|-----------|--------|
-| 1 | Ren'Py, Unity, Godot fixtures extract via CLI and HTTP on Linux and Windows CI; game folder unchanged | **Linux: yes. Windows: yes for generic/Ren'Py/Unity**; the Godot and mixed pipeline tests use POSIX fake tools and are skipped on Windows (identification/carving tests do run there) |
-| 2 | Failover cases with fakes; L5 with real tools | fakes: all four availability cases + outcome kinds. Real tools, **green on CI for Linux and Windows** (run 41409537968): unrpa, py7zr, UnityPy, and on Linux the real 7-Zip CLI (p7zip). Not verified against real binaries: unrar, AssetStudioModCLI, GDRE Tools, GodotPckTool |
-| 3 | v1 web UI works; intended differences listed | real-server Chromium check: extract, re-extract dialog, replace. Differences listed below |
-| 4 | Re-run gives an identical workspace | yes (names + hashes) for a re-run of the same request. A `viwo replay <run record>` command does not exist yet |
-| 5 | Product LoC <= 5,500; ini boots on the native runner | **2,339 LoC**; boots on Linux and Windows runners |
+| 1 | Ren'Py, Unity, Godot fixtures extract via CLI and HTTP on Linux and Windows CI; game folder unchanged | yes; Godot tests use cross-platform fake tools, so they run on Windows too |
+| 2 | Failover with fakes; L5 with real tools | fakes: all availability cases and outcome kinds. Real tools green on CI (run 41419317713): 7-Zip, unrar, py7zr, unrpa, UnityPy, AssetStudioModCLI, GDRE Tools, GodotPckTool, ffmpeg |
+| 3 | Web UI covers the v1 workflows; differences listed | yes: extract, workspace groups and trash, sort with undo, merger, jobs, system; differences below |
+| 4 | Re-run gives an identical workspace | yes (names + hashes); `viwo replay <run record>` reproduces a run |
+| 5 | Product LoC within budget; boots on native runners | ~4,000 / 5,500 Python LoC, web 2,2xx / 2,400; Linux and Windows |
 
-**Intended differences from v1** (golden behavior changes, all deliberate):
-1. Files are **copied** from the game folder, never moved (v1 moved them: H1).
-2. A non-empty folder that ViWo did not create is never cleared; extraction into it is refused (H2).
-3. Re-extracting into an existing workspace asks: replace / new / cancel (v1 silently wiped it).
-4. Unity exports land in the per-extension layout (`png/`, `wav/`, `txt/`, `obj/`) instead of `images/`, `audio/`...; v1's Unity-only result keys (`discoveredCount`, `qualityGatePass`...) are gone (they were meaningless: F11).
-5. Duplicate files are recognized by content hash, not by modification time (F6).
-6. Workspaces contain `.viwo-workspace` and `.extraction_metadata/` (provenance + run records); dot-folders are hidden from step 3, sorting and the merger.
-7. `/api/dependencies` lists backend dependencies per owner plugin; unrpa is no longer required at startup, and no packages are installed at boot.
-8. The API needs the per-start token (hotfix H3); the UI sends it automatically.
+**Open, by decision:** a check on a real commercial game (D20) happens after Prototype B. There is
+no redistributable real Unity asset fixture yet.
 
-## Next (after Prototype A)
+**Intended differences from v1:**
+1. Game files are copied, never moved.
+2. A non-empty folder ViWo did not create is never cleared.
+3. Re-extracting into an existing workspace asks: replace / new / cancel.
+4. Unity exports use the per-extension layout; v1's meaningless Unity-only keys are gone.
+5. Duplicates are recognized by content hash, not by modification time.
+6. Workspaces carry `.viwo-workspace` and `.extraction_metadata/` (provenance, run records).
+7. Dependencies are reported per slot; nothing is installed at startup.
+8. The API needs the per-start token; the UI sends it automatically.
 
-- Port curation (sorting, trash with the three layouts) and the media merger into `viwo/core` (X1, X3).
-- `viwo replay`, `viwo unpack`, HTTP job routes (`/api/jobs/...`), `/api/plugins`, `/api/detect`.
-- Real-binary L5 checks for GDRE Tools, GodotPckTool, AssetStudioModCLI, 7-Zip, unrar (tool lock file).
-- Prototype B (doc 16): Unreal unpack, custom plugins, round trip, sanitizer phase 1, capture pilot.
+## Next: Prototype B (doc 16)
 
-**CI evidence.** Run 41409537968 (`workflow_dispatch`, commit 627b0e2): Linux + Windows ×
-Python 3.11/3.13 (L0–L4, L6, legacy tests) and the real-tool jobs on both OSes, all green.
-The Windows real-tool job found a real bug before the fix: a failed UnityPy parse kept a file
-in the game folder locked until garbage collection; fixed by processing each container in its
-own scope followed by a collection.
+M7 Unreal (repak/retoc; user AES key first, otherwise key finder with candidates verified against
+the pak index), M8 custom plugins (Doom WAD with Freedoom on CI; Overwatch, operator-tested),
+M9 round trip into a patched game copy for all four engines, M10 mixed mode + sanitizer phase 1,
+M11 runtime capture pilot.
