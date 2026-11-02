@@ -46,7 +46,7 @@ function render() {
     return;
   }
   el.body.replaceChildren(h("table", { class: "tbl groups" },
-    h("thead", {}, h("tr", {}, h("th", { class: "chk" }, selectAll(exts)), ["EXTENSION", "KEPT", "TRASHED", "STATE", "ACTIONS"].map((c) => h("th", {}, c)))),
+    h("thead", {}, h("tr", {}, h("th", { class: "chk" }, selectAll(exts)), [["EXTENSION"], ["KEPT", "num"], ["TRASHED", "num"], ["STATE"], ["ACTIONS", "num"]].map(([c, k]) => h("th", { class: k }, c)))),
     h("tbody", {}, exts.map(row))));
 }
 
@@ -62,7 +62,7 @@ function selectAll(exts) {
 function row(ext) {
   const kept = S.status.kept?.[ext] || 0;
   const trashed = S.status.trashed?.[ext] || 0;
-  const state = kept && trashed ? badge("SPLIT", "warn") : kept ? badge("KEPT", "ok") : badge("TRASHED", "err");
+  const state = kept && trashed ? badge("SPLIT", "warn") : kept ? badge("KEPT", "ok") : badge("TRASHED", "mute");
   const toggle = (e) => { e.target.checked ? S.selected.add(ext) : S.selected.delete(ext); render(); };
   return h("tr", { class: S.selected.has(ext) ? "sel" : "" },
     h("td", { class: "chk" }, h("input", { type: "checkbox", "aria-label": `Select .${ext}`, checked: S.selected.has(ext), onchange: toggle })),
@@ -70,10 +70,10 @@ function row(ext) {
     h("td", { class: "mono num" }, fmtNum(kept)),
     h("td", { class: "mono num" }, fmtNum(trashed)),
     h("td", {}, state),
-    h("td", { class: "actions" },
+    h("td", {}, h("div", { class: "actions" },
       btn("TRASH", (e) => groupAction(e, "trash", ext), "sm ghost", { disabled: !kept }),
       btn("RESTORE", (e) => groupAction(e, "restore", ext), "sm ghost", { disabled: !trashed }),
-      btn("DELETE", (e) => groupAction(e, "delete", ext), "sm danger", { disabled: !trashed })));
+      btn("DELETE", (e) => groupAction(e, "delete", ext), "sm danger", { disabled: !trashed }))));
 }
 
 async function groupAction(e, action, ext) {

@@ -64,7 +64,7 @@ async function pollStatus() {
 async function refreshWorkspacePath() {
   try {
     const res = await api.assets(0, 1);
-    $("#ws-path").textContent = res.assetPath || "—";
+    $("#ws-path").textContent = res.assetPath ? `\u200e${res.assetPath}\u200e` : "—";
     $("#ws-path").title = res.assetPath || "";
   } catch { /* chip shows link state */ }
 }

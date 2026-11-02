@@ -17,6 +17,12 @@ export function h(tag, props = {}, ...kids) {
 
 export const $ = (sel, root = document) => root.querySelector(sel);
 
+/** replaceChildren that flattens arrays and skips null/false. */
+export function fill(node, ...kids) {
+  node.replaceChildren(...kids.flat(9).filter((k) => k != null && k !== false));
+  return node;
+}
+
 export const btn = (label, onclick, kind = "", extra = {}) =>
   h("button", { class: `btn ${kind}`, type: "button", onclick, ...extra }, label);
 

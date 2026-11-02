@@ -1,6 +1,6 @@
 // 05 SYSTEM: OS layer, slot bindings, plugins, dependencies, startup ini and problems.
 import { api } from "../api.js";
-import { h, btn, panel, badge, viewHead, errorBox, busy, fmtNum } from "../ui.js";
+import { h, fill, btn, panel, badge, viewHead, errorBox, busy, fmtNum } from "../ui.js";
 
 const el = {};
 
@@ -21,7 +21,7 @@ function mount(root) {
 
 async function load() {
   const [distro, plugins, deps] = await Promise.allSettled([api.distro(), api.plugins(), api.deps()]);
-  const show = (target, res, fn, title) => target.replaceChildren(res.status === "fulfilled" ? fn(res.value) : errorBox(res.reason, title));
+  const show = (target, res, fn, title) => fill(target, res.status === "fulfilled" ? fn(res.value) : errorBox(res.reason, title));
   show(el.slots, distro, slotsTable, "DISTRO UNAVAILABLE");
   show(el.startup, distro, startup, "DISTRO UNAVAILABLE");
   show(el.plugins, plugins, (list) => list.map(pluginCard), "PLUGINS UNAVAILABLE");

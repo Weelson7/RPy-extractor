@@ -1,6 +1,6 @@
 // 04 JOBS: job registry with state badges, detail, live event stream and cancel.
 import { api } from "../api.js";
-import { h, btn, panel, badge, viewHead, empty, errorBox, toast, toastErr, logLine, fmtNum, emit } from "../ui.js";
+import { h, fill, btn, panel, badge, viewHead, empty, errorBox, toast, toastErr, logLine, fmtNum, emit } from "../ui.js";
 
 const STATE_KIND = { running: "live", queued: "warn", succeeded: "ok", failed: "err", cancelled: "mute" };
 const S = { list: [], sel: null, from: 0, timer: 0, busy: false };
@@ -79,14 +79,14 @@ async function refreshDetail() {
     if (id !== S.sel) return;
     const live = job.state === "running" || job.state === "queued";
     el.cancel.hidden = !live;
-    el.head.replaceChildren(
+    fill(el.head,
       h("div", { class: "job-h" }, h("b", {}, String(job.kind).toUpperCase()), stateBadge(job.state), h("code", { class: "mono" }, job.id)),
       job.error ? errorBox(job.error, `JOB ${String(job.state).toUpperCase()}`) : null,
       facts(job.result));
     const stick = el.events.scrollHeight - el.events.scrollTop - el.events.clientHeight < 40;
     S.from = page.next;
     page.events.forEach((e) => el.events.append(logLine(e.line, e.level)));
-    if (!el.events.childNodes.length) el.events.append(h("span", { class: "ln dim" }, "// no events recorded\n"));
+    if (!el.events.childNodes.length && !live) el.events.append(h("span", { class: "ln dim" }, "// no events recorded\n"));
     if (stick) el.events.scrollTop = el.events.scrollHeight;
   } catch (err) {
     el.head.replaceChildren(errorBox(err, "JOB UNAVAILABLE"));

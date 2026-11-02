@@ -18,7 +18,7 @@ function mount(root) {
     btn("← TRASH", trash, "danger"), btn("KEEP →", keep, "primary"), btn("UNDO", undo, "ghost"),
     btn("RENAME", rename, "ghost"), btn("SAVE REMAINING…", saveRemaining, "ghost"));
   root.append(
-    viewHead("03", "SORT", "Triage assets one by one. Keep marks a file as reviewed; trash moves it to the workspace trash (undo-able).",
+    viewHead("03", "SORT", "Triage one asset at a time. KEEP marks it reviewed; TRASH moves it to the workspace trash (undo-able).",
       h("ul", { class: "legend", "aria-label": "Keyboard shortcuts" }, KEYS.map(([k, v]) => h("li", {}, h("kbd", {}, k), v)))),
     h("div", { class: "sort-grid" },
       panel("03.A", "ASSET QUEUE", el.pager, el.list),
@@ -107,7 +107,7 @@ function stageFor(p, a) {
   if (p.type === "audio") return h("figure", { class: "media aud" }, h("div", { class: "wave", "aria-hidden": "true" }, Array.from({ length: 48 }, (_, i) => h("i", { style: `height:${20 + ((i * 37) % 70)}%` }))), h("audio", { src: p.url, controls: true, preload: "metadata" }), cap);
   if (p.type === "video") return h("figure", { class: "media vid" }, h("video", { src: p.url, controls: true, preload: "metadata" }), cap);
   if (p.type === "text") return h("figure", { class: "media txt" }, h("pre", { class: "mono" }, p.content || ""),
-    h("div", { class: "cap" }, h("b", {}, p.name), h("span", { class: "dim mono" }, `${p.lineCount} LINES${p.truncated ? " · TRUNCATED" : ""}`)));
+    h("div", { class: "cap" }, h("b", {}, p.name), h("span", { class: "dim mono" }, `${p.lineCount} LINES${p.truncated && p.lineCount >= 50 ? " · FIRST 50 SHOWN" : ""}`)));
   return h("figure", { class: "media bin" }, empty("NO PREVIEW", p.message || "Binary file — keep or trash it by name."), cap);
 }
 

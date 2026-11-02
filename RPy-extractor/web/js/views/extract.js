@@ -1,6 +1,6 @@
 // 01 EXTRACT: target, detection, mode, plugin options, filter, run + live feed.
 import { api } from "../api.js";
-import { h, btn, panel, badge, meter, viewHead, toast, toastErr, busy, pref, logLine, emit, modal, errorBox, pad } from "../ui.js";
+import { h, fill, btn, panel, badge, meter, viewHead, toast, toastErr, busy, pref, logLine, emit, modal, errorBox, pad } from "../ui.js";
 import { renderResult, renderFailure } from "./extract-result.js";
 
 const PRESETS = {
@@ -130,6 +130,7 @@ function renderMode() {
 function pluginsInPlay() {
   if (S.mode === "single") return S.plugins.filter((p) => p.id === S.single);
   if (S.mode === "mixed" && S.policy === "selected") return S.plugins.filter((p) => S.mixed.has(p.id));
+  if (S.mode === "auto" && S.detect?.auto?.length) return S.plugins.filter((p) => S.detect.auto.includes(p.id));
   return S.plugins;
 }
 
@@ -222,7 +223,7 @@ function tracker(known) {
       }
     } catch { /* keep polling; the run call reports failures */ } finally { t.busy = false; }
     const secs = Math.round((Date.now() - t.start) / 1000);
-    el.progress.replaceChildren(h("span", { class: "lbl live" }, S.running ? "RUNNING" : "FINISHED"),
+    fill(el.progress, h("span", { class: S.running ? "lbl live" : "lbl" }, S.running ? "RUNNING" : "FINISHED"),
       h("span", { class: "mono" }, `STAGE ${(t.stage || "start").toUpperCase()} · ${t.count} EVENTS · ${secs}s`),
       S.running ? h("div", { class: "scan-bar" }, h("i", {})) : null);
   };
