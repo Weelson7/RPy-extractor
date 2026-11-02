@@ -130,9 +130,12 @@ class WadBuiltin(Unarchiver):
         except (OSError, ValueError) as exc:
             return Outcome(OutcomeKind.FAILED, error=str(exc))
         pal, raw, written = palette(archive, ctx.game_root), bool(ctx.options.get("raw_lumps")), 0
-        for lump, space, map_name in layout(entries):
+        items = layout(entries)
+        for index, (lump, space, map_name) in enumerate(items, 1):
             if ctx.cancel.cancelled:
                 break
+            if index % 500 == 0:
+                ctx.log(f"{archive.name}: {index}/{len(items)} lumps", stage="unpack")
             data, name = read(archive, lump), UNSAFE.sub("_", lump.name) or "UNNAMED"
             if map_name:
                 folder, suffix = "maps", ".txt" if lump.name == "TEXTMAP" else ".lmp"

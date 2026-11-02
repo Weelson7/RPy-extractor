@@ -246,8 +246,10 @@ def survey_library(app: App, d: dict) -> dict:
         return {"success": False, "error": f"Folder not found: {folder}", "code": "not_found"}
 
     def run(jid, sink, cancel) -> dict:
-        def note(game: Path) -> None:
-            sink(ProgressEvent(f"Surveying {game.name}", "info", "core", "survey"))
+        def note(game: Path, index: int, total: int) -> None:
+            sink(
+                ProgressEvent(f"Surveying {game.name} ({index}/{total})", "info", "core", "survey")
+            )
 
         return {"success": True, "games": survey(app.rt, folder, bool(d.get("deep")), note)}
 

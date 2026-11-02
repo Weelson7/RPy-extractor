@@ -129,13 +129,12 @@ def _stages(run: Run, workspace: Path) -> ExtractionResult:
     chosen = _select(run)
     skip = {d.lower() for pid in chosen for d in rt.plugins[pid].skip_dirs()}
     game_files = files_under(run.game, "game", skip)
+    run.log(f"Scanning {len(game_files)} game file(s) for containers", "unpack")
     unpacked = unpack_all(rt, game_files, run.work / "unpack", run.ctx)
     runs = [_export(run, pid) for pid in chosen]
     carved, unpacked = _carve(run, runs, game_files, unpacked)
     sources = sources_for(run, chosen, {**unpacked.origins, **carved.origins}, runs)
-    collected = _decode(
-        run, workspace, collect(sources, workspace, run.request.selected_exts, skip, run.cancel)
-    )
+    collected = _collect(run, workspace, sources, skip)
     if run.cancel.cancelled:
         raise ViwoError("cancelled", "extraction cancelled")
     warnings = _verify(unpacked, collected) + [w for r in runs for w in r.warnings]
@@ -161,6 +160,16 @@ def _stages(run: Run, workspace: Path) -> ExtractionResult:
         carved_files=carved.files,
     )
     return _report(run, workspace, result, collected.provenance)
+
+
+def _collect(run: Run, workspace: Path, sources, skip: set[str]):
+    run.log(f"Collecting from {len(sources)} source folder(s) into the workspace", "collect")
+    collected = collect(sources, workspace, run.request.selected_exts, skip, run.cancel)
+    groups = len(collected.by_ext)
+    run.log(f"Collected {collected.collected} file(s) into {groups} group(s)", "collect")
+    collected = _decode(run, workspace, collected)
+    run.log("Verifying: game folder, archives, plugin checks", "verify")
+    return collected
 
 
 def _decode(run: Run, workspace: Path, collected):
@@ -199,6 +208,7 @@ def _export(run: Run, plugin_id: str) -> PluginRun:
         return PluginRun(plugin_id, detection)
     ctx = run.ctx(plugin_id)
     ctx.staging.mkdir(parents=True, exist_ok=True)
+    run.log(f"Exporting {plugin.manifest.name} assets ({slot_id})", "export")
     outcome, used = run_with_failover(
         run.rt.bindings[slot_id], run.rt.backends, lambda backend: backend.export(ctx)
     )

@@ -133,7 +133,9 @@ def _run(args) -> Envelope:
 
         if not args.folder.is_dir():
             raise ViwoError("not_found", f"folder not found: {args.folder}")
-        note = None if args.json else (lambda g: print(f"[SURVEY] {g}", file=sys.stderr))
+        note = (
+            None if args.json else (lambda g, i, n: print(f"[SURVEY] {i}/{n} {g}", file=sys.stderr))
+        )
         return Envelope.success({"games": survey(rt, args.folder, args.deep, note)})
     sink = None if args.json else (lambda e: print(e.legacy_line(), file=sys.stderr))
     if args.command == "unpack":

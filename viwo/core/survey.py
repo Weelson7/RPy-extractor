@@ -126,9 +126,9 @@ def games_in(root: Path, rt) -> list[Path]:
 
 
 def survey(rt, root: Path, deep: bool = False, progress=None) -> list[dict]:
-    results = []
-    for game in games_in(root, rt):
+    results, games = [], games_in(root, rt)
+    for index, game in enumerate(games, 1):
         if progress:
-            progress(game)
+            progress(game, index, len(games))
         results.append(survey_game(rt, game, deep).to_dict())
     return results
