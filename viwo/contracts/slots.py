@@ -94,6 +94,14 @@ class Carver(Backend):
         """Write every complete file embedded in path into dest (never decrypts)."""
 
 
+class Decoder(Backend):
+    families = frozenset({"decode"})
+
+    @abstractmethod
+    def decode(self, path: Path, dest: Path, ctx: "ExtractionContext") -> Outcome:
+        """Write viewable/playable versions of path (WAV, PNG, MP4) into the empty dest."""
+
+
 @dataclass(frozen=True)
 class SlotBinding:
     slot_id: str

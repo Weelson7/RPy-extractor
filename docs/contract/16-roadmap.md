@@ -25,7 +25,7 @@ the rungs above it missed, and every rung reports what it could not handle, so g
 | 2. Container unpackers | zip, tar, 7z, rar, WAD, PCK, RPA..., recursive to depth 10 | done |
 | 3. Signature carver | complete standard files embedded in unknown blobs (PNG, JPEG, GIF, WAV/WEM, Ogg, MIDI, MP4, Bink, FSB5, BNK, DDS, glTF, zip, 7z) | done |
 | 4. Compressed-stream scan | zlib and gzip streams inside unknown blobs are inflated (bounded) and carved; zstd / LZ4 when their modules are present | zlib + gzip done |
-| 5. Decoders | game media to viewable files: vgmstream (WEM, FSB, BNK...), DDS to PNG, Bink via ffmpeg | planned |
+| 5. Decoders | game media to viewable files: vgmstream (WEM, FSB, BNK...), DDS to PNG, Bink via ffmpeg (opt-in) | done |
 | 6. Script-driven unpackers | QuickBMS (GPL, subprocess) with a script per format; GARbro-style catalogs | planned |
 | 7. Runtime capture | RenderDoc / audio capture for encrypted or procedural content (M11, policy-gated) | planned |
 | Survey | `viwo survey <library>`: per game, the engine, which files each rung covers, and unknown blobs with a density estimate (dense = encrypted/compressed) | done |

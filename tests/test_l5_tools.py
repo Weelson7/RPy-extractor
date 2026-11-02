@@ -207,5 +207,28 @@ class RealUnrealToolsTest(unittest.TestCase):
             self.assertTrue((root / "ws" / "uasset" / "Logo.uasset").is_file())
 
 
+@unittest.skipUnless(os.environ.get("VIWO_L5"), "L5 real-tool test (set VIWO_L5=1)")
+class RealVgmstreamTest(unittest.TestCase):
+    def test_wwise_pcm_wem_becomes_wav(self) -> None:
+        tool = _tool("VIWO_VGMSTREAM")
+        if tool is None:
+            self.skipTest("vgmstream-cli not installed (set VIWO_VGMSTREAM)")
+        import wave
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "game").mkdir()
+            with wave.open(str(root / "game" / "voice.wem"), "wb") as w:
+                w.setnchannels(1), w.setsampwidth(2), w.setframerate(22050)
+                w.writeframes(b"\x00\x10" * 22050)
+            rt = runtime(root, f"[tools]\nvgmstream = {tool}\n")
+            request = ExtractionRequest(str(root / "game"), str(root / "ws"))
+            extract(rt, request, "j", lambda e: None, CancelToken())
+            outputs = list((root / "ws" / "wav").glob("voice.wem*.wav"))
+            self.assertEqual(len(outputs), 1, list((root / "ws").rglob("*")))
+            with wave.open(str(outputs[0])) as w:
+                self.assertGreater(w.getnframes(), 20000)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -15,7 +15,16 @@ from .pipeline import (
     Stage,
 )
 from .plugin import EnginePlugin, ExtractionContext, GameProbe, PluginManifest, PluginOption
-from .slots import Backend, Carver, Exporter, Match, SlotBinding, SlotDefinition, Unarchiver
+from .slots import (
+    Backend,
+    Carver,
+    Decoder,
+    Exporter,
+    Match,
+    SlotBinding,
+    SlotDefinition,
+    Unarchiver,
+)
 from .types import (
     CancelToken,
     DependencySpec,

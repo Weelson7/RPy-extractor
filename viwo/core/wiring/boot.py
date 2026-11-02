@@ -72,7 +72,12 @@ def boot(
     config = load_ini(ini_path if ini_path is not None else DEFAULT_INI)
     layer = select_os(os_id or config.os_id, config.tools)
     plugins, problems = load_enabled(config.plugins)
-    slots, backends, clash = collect(CORE_SLOTS, core_backends(), plugins)
+    from viwo.core.decode import SLOTS as DECODE_SLOTS
+    from viwo.core.decode import decoders
+
+    slots, backends, clash = collect(
+        CORE_SLOTS + DECODE_SLOTS, core_backends() + decoders(), plugins
+    )
     bindings, bind_problems = bind_all(slots, backends, config.slots, layer)
     for binding in bindings.values():
         problems += list(binding.reasons)

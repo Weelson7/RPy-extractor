@@ -65,6 +65,7 @@ for machine-readable output.
 | Source engine | `.vpk` (v1/v2, multi-part) | built-in | — |
 | Bethesda | `.bsa` (103–105; LZ4 needs `lz4`), `.ba2` (files, textures rebuilt as DDS) | built-in | — |
 | anything else | files hidden inside unknown data, zlib/gzip streams | built-in carver | — |
+| decoders | Wwise / FMOD / CRI / XACT / console audio to WAV; DDS to PNG; Bink to MP4 (opt-in) | vgmstream / ffmpeg | ffmpeg |
 | media merger | video build | ffmpeg | — |
 
 From a checkout, `pip install -e ".[unity,sevenzip,renpy]"` installs the `viwo` command and the

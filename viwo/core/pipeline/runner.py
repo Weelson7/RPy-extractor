@@ -132,7 +132,9 @@ def _stages(run: Run, workspace: Path) -> ExtractionResult:
     runs = [_export(run, pid) for pid in chosen]
     carved, unpacked = _carve(run, runs, game_files, unpacked)
     sources = _sources(run, chosen, {**unpacked.origins, **carved.origins}, runs)
-    collected = collect(sources, workspace, run.request.selected_exts, skip, run.cancel)
+    collected = _decode(
+        run, workspace, collect(sources, workspace, run.request.selected_exts, skip, run.cancel)
+    )
     if run.cancel.cancelled:
         raise ViwoError("cancelled", "extraction cancelled")
     warnings = _verify(unpacked, collected) + [w for r in runs for w in r.warnings]
@@ -158,6 +160,17 @@ def _stages(run: Run, workspace: Path) -> ExtractionResult:
         carved_files=carved.files,
     )
     return _report(run, workspace, result, collected.provenance)
+
+
+def _decode(run: Run, workspace: Path, collected):
+    """Viewable copies of game media (WAV/PNG/MP4) join the collect report."""
+    from ..decode import decode_all
+
+    decoded = decode_all(run, workspace, collected.provenance)
+    if decoded is not None:
+        collected.by_ext.update(decoded.by_ext)
+        collected.provenance += decoded.provenance
+    return collected
 
 
 def _sources(run: Run, chosen, moved: dict[Path, str], runs) -> list[Source]:
