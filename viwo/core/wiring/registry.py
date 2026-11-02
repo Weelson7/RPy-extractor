@@ -13,6 +13,7 @@ BUILTIN_PLUGINS = {
     "renpy": "viwo.plugins.renpy:RenPyPlugin",
     "unity": "viwo.plugins.unity:UnityPlugin",
     "godot": "viwo.plugins.godot:GodotPlugin",
+    "doom": "viwo.plugins.doom:DoomPlugin",
 }
 
 
