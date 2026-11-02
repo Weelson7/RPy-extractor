@@ -26,6 +26,9 @@ are places where I'm unsure or where the choice is yours.
 | 12 | [12-core-cli-jobs.md](12-core-cli-jobs.md) | headless core, CLI, jobs; the web UI as one client |
 | 13 | [13-landscape.md](13-landscape.md) | existing tools and frameworks, where this fits, what to borrow |
 | 14 | [14-prototype.md](14-prototype.md) | the prototype: scope, slices, success criteria |
+| 15 | [15-loc-caps.md](15-loc-caps.md) | strict caps on non-blank, non-comment LoC: counting rules, v1 baseline, budgets |
+| 16 | [16-roadmap.md](16-roadmap.md) | milestones M0–M12, decision gates, exit criteria |
+| 17 | [17-testing-model.md](17-testing-model.md) | test levels L0–L7, safety catalogue, fixtures, CI, definition of done |
 
 ## Scope decisions taken (your answers)
 
