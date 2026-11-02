@@ -80,7 +80,7 @@ unchanged, results are deterministic.
 | # | Criterion | Result |
 |---|-----------|--------|
 | 1 | Ren'Py, Unity, Godot fixtures extract via CLI and HTTP on Linux and Windows CI; game folder unchanged | **Linux: yes. Windows: yes for generic/Ren'Py/Unity**; the Godot and mixed pipeline tests use POSIX fake tools and are skipped on Windows (identification/carving tests do run there) |
-| 2 | Failover cases with fakes; L5 with real tools | fakes: all four availability cases + outcome kinds; real tools verified locally: **unrpa, py7zr, UnityPy**. Not verified (not installable here): 7-Zip CLI, unrar, AssetStudioModCLI, GDRE Tools, GodotPckTool; the nightly CI job installs 7-Zip on Linux |
+| 2 | Failover cases with fakes; L5 with real tools | fakes: all four availability cases + outcome kinds. Real tools, **green on CI for Linux and Windows** (run 41409537968): unrpa, py7zr, UnityPy, and on Linux the real 7-Zip CLI (p7zip). Not verified against real binaries: unrar, AssetStudioModCLI, GDRE Tools, GodotPckTool |
 | 3 | v1 web UI works; intended differences listed | real-server Chromium check: extract, re-extract dialog, replace. Differences listed below |
 | 4 | Re-run gives an identical workspace | yes (names + hashes) for a re-run of the same request. A `viwo replay <run record>` command does not exist yet |
 | 5 | Product LoC <= 5,500; ini boots on the native runner | **2,339 LoC**; boots on Linux and Windows runners |
@@ -101,3 +101,9 @@ unchanged, results are deterministic.
 - `viwo replay`, `viwo unpack`, HTTP job routes (`/api/jobs/...`), `/api/plugins`, `/api/detect`.
 - Real-binary L5 checks for GDRE Tools, GodotPckTool, AssetStudioModCLI, 7-Zip, unrar (tool lock file).
 - Prototype B (doc 16): Unreal unpack, custom plugins, round trip, sanitizer phase 1, capture pilot.
+
+**CI evidence.** Run 41409537968 (`workflow_dispatch`, commit 627b0e2): Linux + Windows ×
+Python 3.11/3.13 (L0–L4, L6, legacy tests) and the real-tool jobs on both OSes, all green.
+The Windows real-tool job found a real bug before the fix: a failed UnityPy parse kept a file
+in the game folder locked until garbage collection; fixed by processing each container in its
+own scope followed by a collection.
