@@ -1,6 +1,6 @@
 # 6. Code analysis hook (Ghidra first)
 
-**Status: contract hook only.** No analyzer ships in contract v1.0. This doc
+**Status: contract hook only.** No analyzer ships in contract 1.0 or in the prototype (unrpyc included; it comes with the first analysis milestone). This doc
 fixes the shape now so Ghidra can be added later without breaking changes.
 
 ## 6.1 Split: what vs how
@@ -50,4 +50,4 @@ Which plugin proposes which targets:
 `GET /api/analysis/targets` → proposed targets with matching analyzers ·
 `POST /api/analysis/run {targetKey, analyzerId, options}` → job id ·
 `GET /api/analysis/jobs` → status, progress, artifacts · cancellation through
-`POST /api/cancel`.
+`POST /api/jobs/<id>/cancel` (doc 12.5).

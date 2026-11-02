@@ -5,6 +5,8 @@ a **sparsely checked-out git submodule**. This doc describes how that could
 work and, more importantly, where it **doesn't fit cleanly yet**. Several
 points need your decision before anything here can be locked.
 
+> **Sequencing (draft 3):** the direction stays sparse submodules, but it comes at **M11**. Until then a **tool lock file** (name, version, download URL, checksum) pins the tools for CI, which gets reproducibility without the vendoring problems below.
+
 ## 10.1 What it gives us
 
 - **Pinned versions:** every tool is fixed to a known commit. Output that differs because of tool versions becomes reproducible.
@@ -16,7 +18,7 @@ points need your decision before anything here can be locked.
 
 ```
 third_party/
-  manifest.ini              # one section per tool: repo, pinned commit, sparse paths, license, build
+  vendor.ini                # one section per tool: repo, pinned commit, sparse paths, license, build
   unitypy/                  # submodule (sparse)
   unrpa/
   py7zr/
@@ -25,7 +27,7 @@ third_party/
 ```
 
 ```ini
-; third_party/manifest.ini (sketch)
+; third_party/vendor.ini (sketch)
 [unitypy]
 repo     = https://github.com/K0lb3/UnityPy
 commit   = <sha>
@@ -73,7 +75,7 @@ need to be checked** one by one.
 2. **Licenses.** Shipping GPL source (AssetRipper, and possibly unrpa; to verify) inside the repository affects how the combined app can be distributed. The unrar license has its own restrictions. The project doesn't have a LICENSE file yet, so a license decision should come before vendoring. ❓
 3. **Repository size.** Ghidra and ffmpeg are very large repositories. Sparse checkout plus a blobless clone helps, but CI and first-time cloning still pay a real cost.
 4. **Updates.** Bumping a pinned commit should rerun the combination test matrix (doc 3.6) and the slot failover tests (doc 8). That gives us a reason to keep fixtures small and synthetic.
-5. **The ini overlap.** `third_party/manifest.ini` (what's vendored) and `startup.ini [tools]` (what's used) are two separate files. Is that the split you want, or should vendoring also be described in `startup.ini`? ❓
+5. **The ini overlap.** `third_party/vendor.ini` (what's vendored) and `startup.ini [tools]` (what's used) are two separate files. Is that the split you want, or should vendoring also be described in `startup.ini`? ❓
 
 ## 10.5 Effect on the other documents (once decided)
 

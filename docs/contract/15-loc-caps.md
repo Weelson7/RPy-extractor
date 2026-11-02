@@ -46,10 +46,10 @@ functions, not copy them.
 |---------|--------|-------|
 | `contracts/` | 900 | interfaces + value types only; the scratchpad draft was about 850 |
 | `kernels/_shared` | 300 | the common base of both kernels |
-| `kernels/linux` | 500 | |
-| `kernels/windows` | 500 | |
+| `kernels/linux` | 500 | prototype A: ≤ 300 (process, tools, fs only) |
+| `kernels/windows` | 500 | prototype A: ≤ 300 |
 | `core/pipeline` (stages, identify/carve, unpack loop, collect) | 900 | replaces v1 `extraction_core` (≈440) + orchestration |
-| `core/wiring` (ini, boot, registries, slot binder) | 700 | new |
+| `core/wiring` (ini, boot, registries, slot binder) | 700 | new; prototype A uses ≤ 500 (flat ini, failover only) |
 | `core/jobs` (runner, events, run records) | 350 | new |
 | `core/workspace` (layout, curation: sorting, groups, trash, undo) | 800 | replaces v1 `sorting.py` + sorting handler logic (≈600) |
 | `core/merger` | 650 | v1 ≈800 across service + handlers; must shrink |
@@ -60,9 +60,10 @@ functions, not copy them.
 | `backends/` (core-owned backends) | 1,200 | ≤ **150** per backend |
 | each built-in plugin (`renpy`, `godot`, `unreal`), including its backends | 500 | |
 | `plugins/unity`, including its backends | 700 | v1 Unity is ≈1,000. The placeholder "slices" and the meaningless completeness ratio get cut (doc 0.4) |
-| `plugins/overwatch` (custom showcase) | 300 | |
+| each custom plugin (`user_plugins/…`, e.g. the showcase or Overwatch) | 300 | |
 | **Total Python product, hard cap** | **10,000** | |
-| **Prototype target** (end of the roadmap's M9) | **≤ 8,000** | |
+| **Prototype A target** (end of M6) | **≤ 5,500** |
+| **Prototype B target** (end of M9) | **≤ 8,000** | |
 
 **Other languages:**
 

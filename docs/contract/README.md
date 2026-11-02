@@ -1,6 +1,6 @@
-# RPy Extractor: architecture contract (draft 1, for review)
+# RPy Extractor: architecture contract (draft 3, for review)
 
-**Status: proposal, draft 2 (after the research in doc 13).** Nothing here is implemented or decided. These documents
+**Status: proposal, draft 3** (draft 2 added the research in doc 13; draft 3 applies an independent review: new v1 data-loss and security findings, contradictions fixed, prototype split into A/B). Nothing here is implemented or decided. These documents
 lay out how I understand the target architecture after reading the v1 code
 (`extract.py`, `api/*`, `extraction_core/*`, `extraction_types/*`,
 `sorting.py`, `media_merger/*`, `startup.py`, `web/app.js`). The goal is to
@@ -91,15 +91,16 @@ tool overrides (doc 9). Two kernels times six profiles gives 12 distros. The
 
 These are the ideas the other documents build on. Each is up for debate.
 
-1. **One writer per folder.** Plugins and backends write to staging; only core's COLLECT stage writes the workspace, and only PREPARE clears anything. This rules out v1's F1, where the Unity export was wiped. It also needs a clear rule for *which* folders PREPARE may clear, because of F7, a possible data-loss path.
-2. **OS-specific code only in kernels.** That includes subprocess calls, tool lookup, installers, dialogs and filename rules.
-3. **Every engine behind an interface, bound through a slot** (doc 8). Stages never call tools directly.
-4. **Failures are isolated.** A failing plugin or backend is recorded against its owner; the other plugins keep running.
-5. **Destructive bulk actions plan first, apply second, and can be undone** (sanitizer, retain groups).
-6. **Top-level dot-folders in the workspace are reserved** (`.trash`, `.extraction_metadata`, `.sanitizer`, `.analysis`).
-7. **Determinism.** The same input and the same ini give the same output.
-8. **Honest metrics.** A number's name says what it counts (doc 0.4). Gaining confidence in output quality starts with this.
-9. **Versioning.** `MAJOR.MINOR`. Optional additions bump the minor; anything else bumps the major.
+1. **One writer per folder; the game folder is read-only.** Plugins and backends write to staging; only COLLECT writes the workspace, by **copying** from the game folder and moving only from staging. Only PREPARE clears, and only inside a folder holding the workspace marker. This rules out v1's H1 (files moved out of the game), H2 (user folder deleted) and F1 (Unity exports wiped).
+2. **The local HTTP API is authenticated** (a per-start token, JSON only, Host check, path containment; doc 4.1).
+3. **OS-specific code only in kernels.** That includes subprocess calls, tool lookup, installers, dialogs and filename rules.
+4. **Every engine behind an interface, bound through a slot** (doc 8). Stages never call tools directly.
+5. **Failures are isolated.** A failing plugin or backend is recorded against its owner; the other plugins keep running.
+6. **Destructive bulk actions plan first, apply second, and can be undone** (sanitizer, retain groups).
+7. **Top-level dot-folders in the workspace are reserved** (`.trash`, `.extraction_metadata`, `.sanitizer`, `.analysis`).
+8. **Determinism.** The same input and the same ini give the same output.
+9. **Honest metrics.** A number's name says what it counts (doc 0.4). Gaining confidence in output quality starts with this.
+10. **Versioning.** `MAJOR.MINOR`. Optional additions bump the minor; anything else bumps the major.
 
 ## Decisions needed from you
 
@@ -115,7 +116,7 @@ These are the ideas the other documents build on. Each is up for debate.
 | D7 | `export.unity`: v1 runs every available exporter and adds up their output. Keep that (`supplement`) or switch to main + spare (`failover`)? | ❓ depends on whether duplicate files are acceptable |
 | D8 | Vendored compiled tools: build from source, or pin the version and fetch the release binary? (doc 10.4) | pin + fetch for heavy native tools |
 | D9 | Project license, needed before vendoring GPL tools (doc 10.4) | — |
-| D10 | F7 (re-extraction could clear a user-chosen folder): confirm it in the app and fix it before the overhaul? | yes, if it reproduces |
+| D10 | **Hotfix v1 now** for H1 (moves files out of the game folder), H2 (deletes a user-chosen folder), H3 (cross-site POSTs) and F17 (zip-slip), before the overhaul? All are confirmed in the code (doc 7) | **yes, urgently** (roadmap M1) |
 | D11 | Ren'Py RPA: should our own safe reader (restricted unpickler) be main, with unrpa as a subprocess spare? | yes; RPA indexes are pickles (doc 13.3) |
 | D12 | Should CATALOG → SELECT be a separate stage for huge games (CASC, Unreal)? | yes, optional |
 | D13 | Runtime agents: journaled overlay on the game folder, or a copy of the game? | overlay + crash recovery |

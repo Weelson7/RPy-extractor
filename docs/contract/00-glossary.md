@@ -17,7 +17,9 @@ least sure about are marked ❓.
 | **phase / slice / step** | core `[PHASE 0-3]`, Unity `SLICE 1-6`, UI `step1-3` | pipeline → **stage**; UI accordion → **step** (UI only) |
 | **detect** | (a) engine detection; (b) `detect_extensions` / `/api/detected-extensions` (listing extensions) | (a) **detect**; (b) **scan** (extensions) |
 | **keep** | (a) Step 3 "keep selected" = trash every *other* extension folder; (b) sorting "keep" = a no-op that only records history for undo | (a) **retain groups**; (b) **mark kept** ❓ |
-| **trash** | (a) whole extension folder → `.trash/<ext>_N`; (b) single file from sorting → `.trash/<rel path>`. Same folder, two layouts, and `list_trash` counts both | **group trash** and **item trash**, as two explicit layouts under `.trash/` ❓ (or two separate folders) |
+| **trash** | (a) whole extension folder → `.trash/<ext>_N`; (b) single file from sorting → `.trash/<rel path>`; (c) merger inputs → `.trash/media-merger/`. One folder, **three** layouts that collide (F18) | **group trash**, **item trash**, **merger trash**: `.trash/groups/`, `.trash/items/`, `.trash/merger/` (doc 4.3) |
+| **v1** | the old application **and** "contract v1.0" | **v1** = the old app only; the contract version is written "contract 1.0" |
+| **manifest** | an extraction report, `PluginManifest`, the "distro manifest", `third_party/manifest.ini` (now `vendor.ini`) | **report** (files in `.extraction_metadata/`); **plugin manifest**; the distro is the **startup ini**; the vendoring file is the **tool lock / vendor list** |
 | **assets dir** | `assets_dir()`, `output_dir`, `assetPath`, `workingDir` (merger), `step2Path` (UI), `outputDir` (config, but only its *name* is used) | → **workspace** |
 | **session** | `SESSIONS` / `PersistentSessions` holds in-memory UI state, logs and undo history. Nothing is actually saved, despite the name | → **UI session** (memory only). Anything that has to survive a restart gets its own explicit store |
 | **generic** | (a) the fallback plugin id; (b) "no engine detected" | (a) plugin id `generic`; (b) detection outcome **undetected** |
@@ -36,7 +38,10 @@ least sure about are marked ❓.
 
 ### Processing
 
-- **Extraction run:** one request from a game folder to a filled workspace.
+- **Extraction run:** one request from a game folder to a filled workspace. It runs as a **job**.
+- **Job:** a long-running unit of work (extract, merge, sanitize, analyze, capture) with a state, an event stream and a result (doc 12).
+- **Run record:** the JSON file a finished job leaves in `.extraction_metadata/runs/`, with enough detail to replay it.
+- **Feature:** a switch in the startup ini that turns a whole capability on or off (extraction, sorting, merger, sanitizer, analysis, capture).
 - **Stage:** one step of the run (prepare, probe, detect, …). The order is fixed (doc 3).
 - **Interface:** the contract one kind of work must satisfy (Unarchiver, Exporter, MediaProbe, …).
 - **Slot:** a named job inside a stage, with one interface. For example, `unarchive.7z` means "unpack .7z files with the Unarchiver interface".
@@ -48,7 +53,8 @@ least sure about are marked ❓.
 
 ### Data
 
-- **Game folder:** the folder the user points at. It is never modified.
+- **Game folder:** the folder the user points at. It is **never modified** by extraction: COLLECT copies from it. v1 moves files out of it (H1). The only exception is runtime agents, which work through a journaled overlay or a copy (doc 11.4).
+- **Workspace marker:** `.rpyx-workspace`. Only folders that have one may be cleared by the framework (doc 4.3).
 - **Staging:** a private temporary folder for each plugin. Unpack and export results go here first.
 - **Scratch:** temporary files that are never collected into the workspace.
 - **Workspace:** the organized output folder that the user curates.

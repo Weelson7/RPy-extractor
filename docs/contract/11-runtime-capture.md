@@ -67,11 +67,11 @@ A capture is a **job** (doc 12) of kind `capture`, separate from extraction:
 | Step | Owner | What happens |
 |------|-------|--------------|
 | POLICY | core | the checks in 11.1 |
-| PREPARE | core + agent backend | for engine agents: install the agent with a **journal** (11.4), or work on a copy of the game |
+| SETUP | core + agent backend | for engine agents: install the agent with a **journal** (11.4), or work on a copy of the game |
 | LAUNCH | kernel + backend | the kernel starts the game under the capture backend. On Linux, Windows games go through Proton/Wine; whether injection tools work there is largely UNVERIFIED ❓ |
 | CAPTURE | user + backend | interactive: the user plays to the scene and triggers a capture from the UI, the CLI or a hotkey; or a scripted trigger where the backend supports it |
 | HARVEST | backend | turn capture files into plain files in staging (RenderDoc replay → png/obj, agent dumps → files) |
-| COLLECT | core | same as extraction COLLECT, with origin `capture:<job>` |
+| GATHER | core | moves harvested files from staging into the workspace (as extraction COLLECT does), with origin `capture:<job>` |
 | DIFF | core | compare with the latest static extraction by content hash, to show **what capture found that static extraction didn't**. Perceptual hashing for textures is an open question ❓ |
 | RESTORE | core | undo every journaled change to the game folder, and verify the files match again |
 | REPORT | core | run record, with which method produced each file |

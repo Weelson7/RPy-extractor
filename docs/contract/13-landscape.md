@@ -120,7 +120,7 @@ once ❓.
 
 | Item | Finding |
 |------|---------|
-| `.gitmodules` and sparse paths | **Confirmed: it can't store them.** Its keys are path, url, update, branch, fetchRecurseSubmodules, ignore and shallow. Sparse rules live in `.git/modules/<name>/info/` and aren't versioned. So a bootstrap script has to reapply them from our own manifest; `third_party/manifest.ini` fits the ini direction |
+| `.gitmodules` and sparse paths | **Confirmed: it can't store them.** Its keys are path, url, update, branch, fetchRecurseSubmodules, ignore and shallow. Sparse rules live in `.git/modules/<name>/info/` and aren't versioned. So a bootstrap script has to reapply them from our own manifest; `third_party/vendor.ini` fits the ini direction |
 | 7-Zip | `github.com/ip7z/7zip` looks official (commits by the author), but the link from 7-zip.org couldn't be confirmed. LGPL-2.1+, **except** the RAR code, which carries the unRAR restriction |
 | unrar | **No official git repository** (RARLAB ships tarballs). Freeware license, not open source. Can't be a plain submodule |
 | FFmpeg | canonical repo `git.ffmpeg.org/ffmpeg.git` (the GitHub one is a mirror). LGPL-2.1+, or GPL with `--enable-gpl` |

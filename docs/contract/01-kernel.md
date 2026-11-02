@@ -45,7 +45,7 @@ ToolLocation { dep_id, path, argv_prefix, source: path|known_dir|env|python|conf
 
 Search order (proposed):
 
-1. user config override (`config.json` → `tools.<dep_id>`)
+1. startup ini override (`[tools]`, keyed by backend id; doc 9)
 2. `spec.env_var` (for example `GHIDRA_INSTALL_DIR`)
 3. `PATH`, trying each name from `spec.executable_candidates(kernel_id)`, with the kernel adding `.exe`, `.bat` and `.cmd` itself on Windows
 4. `known_install_dirs`
@@ -60,7 +60,9 @@ Search order (proposed):
 > `PATH`, so `.7z` extraction then fails. With this contract, one locator is
 > used for both the status check and actual tool calls.
 
-## 1.3 PackageInstaller
+## 1.3 PackageInstaller (deferred after the prototype)
+
+> Prototype scope: v1's install behavior stays behind a thin adapter. The full installer abstraction below comes after M9, and auto-install defaults to **off** (unpinned installs: F19).
 
 ```text
 available_installers() -> [installer_id]      # preference order
@@ -73,7 +75,9 @@ install_hint(spec) -> str
 - The installer never asks for elevated privileges (no sudo, no UAC prompt). When that would be needed, it returns `attempted=false` with a hint.
 - It only runs when the distro has `auto_install=true`.
 
-## 1.4 DesktopShell
+## 1.4 DesktopShell (prototype: v1 behavior only)
+
+> Prototype scope: `open_folder` plus the v1 tkinter dialogs moved behind this interface. The zenity/kdialog/PowerShell fallbacks come later.
 
 ```text
 open_folder(path) -> (ok, error)

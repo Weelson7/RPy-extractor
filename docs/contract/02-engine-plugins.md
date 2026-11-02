@@ -57,6 +57,8 @@ GameProbe            # built once per request, shared by all plugins
   find(pattern, limit)          case-insensitive glob ("**/*.pak", "*_Data")
   with_suffix(*suffixes)
   head(path, size=64)           cached first bytes, for magic checks
+  tail(path, size=64)           cached last bytes (exe trailers: embedded Godot PCK, appended zips)
+  # all reads are bounded; detect may read head/tail of a handful of files, never walk the tree
 
 ExtractionContext    # per request and per plugin
   request_id, game_root, staging, scratch
@@ -128,6 +130,8 @@ into these declarations, so the tool-name lists that v1 duplicates between
 
 ## 2.7 Built-in plugin specs (detection markers)
 
+> Backend choices (main/spare) for every plugin live in **one place only: doc 8.4**. The "tools" column below is informational and defers to it.
+
 | Plugin | Strong markers | Probable markers | Export tools | Notes |
 |--------|----------------|------------------|--------------|-------|
 | generic | — | always 0.4 (v1) | — | fallback; collects loose files and plain archives |
@@ -139,7 +143,7 @@ into these declarations, so the tool-name lists that v1 duplicates between
 ## 2.8 Custom plugins
 
 ```text
-<custom_plugin_dir>/<name>/plugin.json
+<custom_dir>/<name>/plugin.json        # custom_dirs from the startup ini, e.g. user_plugins/ (not plugins/, which is the built-in layer)
 {
   "id": "mygame", "name": "My Game Engine", "version": "0.1.0",
   "contract": "1.0", "entry": "mygame_plugin:MyGamePlugin"
@@ -149,7 +153,7 @@ into these declarations, so the tool-name lists that v1 duplicates between
 - The `id` must not be one of `generic renpy unity unreal godot mixed auto`.
 - `entry` has the form `module:ClassName`. The module is imported from the plugin's own folder, and the class's `manifest.plugin_id` must equal `id`.
 - At load time, core validates the manifest, checks the contract version, runs the conformance checks (2.9) against an empty probe, and only then registers the plugin. If any step fails, the UI shows a load error for that plugin and the rest of the app carries on.
-- **Trust model:** custom plugins run inside the app with the user's own permissions. They are loaded only from local folders listed in the distro manifest, never downloaded, and shown in the UI as non-builtin.
+- **Trust model:** custom plugins run inside the app with the user's own permissions. They are loaded only from local folders listed in the startup ini (`custom_dirs`), never downloaded, and shown in the UI as non-builtin.
 
 ## 2.9 Plugin conformance checks
 

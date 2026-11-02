@@ -8,6 +8,8 @@ or spare in each slot, tool paths, lifecycle hooks) is declared in an
 `config.json` keeps the v1 server settings (host, port, paths) without change
 (doc 4.5). The ini only controls **what gets wired in**.
 
+> **Prototype scope (after review):** one flat `startup.ini` with `[startup]`, `[plugins]`, `[slots]`, `[tools]`. Deferred until after the prototype: `base =` layering, the 12 shipped distro files, CLI `--slot/--plugin` overrides and lifecycle `[hooks]`. Kernel and profile stay selectable with `--kernel/--profile`. The full model below is the target.
+
 ## 9.1 Files and precedence
 
 ```
@@ -27,7 +29,7 @@ Precedence, lowest to highest (proposed):
 
 1. built-in defaults (slot defaults from doc 8.4, plugin defaults)
 2. the `base =` file named in `[startup]` (for example `distros/windows-unity.ini`)
-3. `startup.ini`, or the file given with `Start.py --ini <path>`
+3. `startup.ini`, or the file given with `rpyx --ini <path>` (`Start.py` passes its flags to `rpyx serve`)
 4. command-line flags: `--kernel`, `--profile`, `--plugin <id>=on|off`, `--slot <slot>=<main>[,<spare>]`
 
 Only one level of `base =` is allowed, to avoid include chains. The
@@ -47,7 +49,7 @@ base             = distros/windows-mixed.ini
 kernel           = auto          ; auto | linux | windows
 profile          = mixed         ; renpy | unity | unreal | godot | custom | mixed
 features         = extraction, sorting, merger, sanitizer   ; + analysis
-auto_install     = on            ; v1 behavior (pip/winget at boot)
+auto_install     = off           ; v1 did unpinned installs at boot (F19); off is the new default
 strict_preflight = off           ; on = refuse to start if an enabled plugin lacks a REQUIRED dep
 
 [plugins]
@@ -63,18 +65,18 @@ custom.mygame = on               ; custom plugins are opt-in by id
 ; <slot_id> = <main> [, <spare>]      "none" leaves a position empty
 unarchive.7z   = sevenzip-cli, py7zr
 unarchive.rar  = unrar-cli, sevenzip-cli
-unarchive.rpa  = unrpa, rpa-builtin
-export.unity   = unitypy, assetripper
+unarchive.rpa  = rpa-safe, unrpa
+export.unity   = unitypy, assetstudiomod-cli
 media.encode   = ffmpeg
 
 [slot_policy]
 default        = failover        ; failover | main_only | supplement
-export.unity   = supplement
+; export.unity = supplement   ; post-prototype (D7)
 
 [tools]
 ; explicit tool locations (ToolLocator step 1, doc 1.2)
 sevenzip-cli    = C:\Program Files\7-Zip\7z.exe
-ghidra-headless = /opt/ghidra_11.2/support/analyzeHeadless
+ghidra-headless = /opt/ghidra_12.2/support/analyzeHeadless
 
 [options.unreal]
 engine_version = UE5.3           ; plugin options; secrets are NOT allowed here
@@ -89,7 +91,7 @@ before_server =
 
 | # | Step | Reads | Failure behavior |
 |---|------|-------|------------------|
-| 1 | `Start.py` parses `--ini/--kernel/--profile/...` and launches `extract.py` | argv | usage error → exit 2 |
+| 1 | `rpyx` (or `Start.py` → `rpyx serve`) parses `--ini/--kernel/--profile/...` | argv | usage error → exit 2 |
 | 2 | Load ini layers (9.1), validate, build `StartupConfig` | ini files | syntax error → exit 2 with file:line |
 | 3 | Load `config.json`, set up logging | config.json | v1 behavior (defaults) |
 | 4 | Select kernel (`auto` = host), check `is_supported_host()` | `[startup] kernel` | unsupported → exit 3 |
@@ -129,4 +131,4 @@ hook points: after_kernel, after_plugins, before_server, on_shutdown
 ## 9.6 Relationship to the UI
 
 - `GET /api/distro` returns the effective ini (with the source of every value), the bindings (main, spare, promoted, unbound) and any problems.
-- Editing the wiring from the UI is planned for later. When it comes, the UI will write `startup.ini`, and the change takes effect after a restart. Nothing is re-wired while the app is running in v1.0.
+- Editing the wiring from the UI is planned for later. When it comes, the UI will write `startup.ini`, and the change takes effect after a restart. Nothing is re-wired while the app is running in contract 1.0.

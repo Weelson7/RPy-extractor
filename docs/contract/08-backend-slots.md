@@ -1,4 +1,6 @@
-# 8. Engine interfaces and backend slots (main + spare)
+# 8. Pipeline backends and slots (main + spare)
+
+(Your term "pipeline engine" = **backend** here, per the glossary.)
 
 **Proposed rule:** every engine the pipeline uses (each unarchiver, exporter,
 media tool, image codec and decompiler) is reached through an **interface**
@@ -48,6 +50,8 @@ SlotBinding     (result of startup resolution)
 | `failover` (default) | Run main. If the outcome is *retryable* (below), run spare on **the same item**. |
 | `main_only` | Never run the spare automatically. It is shown in the UI as available. |
 | `supplement` | Run main **and** spare, and collect both outputs. Used where extra coverage matters more than duplicates (for example `export.unity`, if decision D7 keeps v1 behavior). |
+
+**Prototype scope:** only `failover` is implemented. `supplement` and `main_only` are kept in the contract for later. Outcome kinds are collapsed to **ok · unavailable · failed · needs_key** (cancellation is handled by the job, not by outcomes); the finer kinds below come back when the sanitizer and capture need them.
 
 Every backend outcome carries an error kind:
 

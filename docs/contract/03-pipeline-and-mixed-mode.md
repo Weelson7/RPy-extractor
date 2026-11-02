@@ -4,13 +4,13 @@
 
 | Stage | Owner | What happens | v1 equivalent |
 |-------|-------|--------------|---------------|
-| PREPARE | core | clear and create the output dir, create `staging/<plugin_id>/` and `scratch/` | `pipeline.extract_assets` PHASE 0 |
+| PREPARE | core | resolve the target workspace by the **ownership rule** (doc 4.3): never clear a folder without the workspace marker; create `staging/<plugin_id>/` and `scratch/` | PHASE 0 (v1 `rmtree`s whatever the session points at: H2) |
 | PROBE | core | build one GameProbe | — (was an rglob per marker set) |
 | DETECT | core + plugins | call `detect()` on every enabled plugin, then `select_plugins()` | `detector.detect_engine` + `orchestrator` |
 | INVENTORY / CATALOG | plugins | `inventory()` for the selected plugins. Draft 2: optionally a browsable **catalog** the user or CLI selects from, for huge games (CASC, big Unreal) ❓ D12 | Unity discovery phase |
 | UNPACK | core + `unarchive.*` slots | identify (head + tail, carving embedded containers), then recursive unpack. After an outer *wrapper* (Electron/NW.js) is unpacked, detection runs once more; each file goes to the matching slot's main, then spare (doc 8) | PHASE 1 `extract_archives` |
 | EXPORT | plugins | `export()` for each selected plugin, into its own staging folder | Unity export phase |
-| COLLECT | core | move files from the source roots and staging folders into the `<ext>/` layout, filtered by `selected_exts`, with the v1 dedupe and collision rules | PHASE 2 scan + `move_one` |
+| COLLECT | core | **copy** from game-folder source roots and **move** only from staging, into the `<ext>/` layout, filtered by `selected_exts`, with v1 collision naming. Dedupe: same size **and** same content hash → skip (fixes F6) | PHASE 2 (v1 *moves* out of the game folder: H1) |
 | VERIFY | core + plugins | `logic_check_summary` warnings, then `verify()` | PHASE 3 + Unity verification phase |
 | SANITIZE | core + rules | optional recipe; only plans, unless the request asks to apply automatically | — (doc 5) |
 | REPORT | core | write manifests to `.extraction_metadata/` and build the result | Unity manifest phase |
@@ -83,28 +83,27 @@ new:          contractVersion mode manifestsPath
                           inventoryCount verifyPassed warnings error }
 ```
 
-## 3.6 Combination test matrix ("testing every combination")
+## 3.6 Combination testing ("testing every combination"), right-sized
 
-The conformance suite runs:
+Draft 2 proposed 2,268 full pipeline runs. The review pointed out that plugin
+**selection is a pure function**, so every combination can be covered far
+more cheaply:
 
-```
-kernels   (linux, windows fakes)                                   2
-x fixtures (renpy, unity, unreal, godot, empty, + mixed-folder)    6
-x plugin subsets: every non-empty subset of
-  {generic, renpy, unity, unreal, godot, sample-custom}            63
-x mixed policies (selected, detected, all)                         3
-                                                         = 2268 cases
-```
+| What | How | Size |
+|------|-----|------|
+| **Selection: every combination** | exhaustive over every non-empty subset of the enabled plugins × the 3 mixed policies × synthetic detection results. Pure function, no I/O; there are also property tests (with random confidences, the rules in 3.3 always hold) | 63 subsets × 3 policies × fixtures: milliseconds |
+| **Pipeline: pairwise** | real pipeline runs (fake backends, temporary folders) for every **pair** of plugins plus each single plugin, on the mixed fixture and on each plugin's own fixture | about 21 runs per kernel |
+| **Kernels** | every selection and pipeline test runs on the Linux and Windows CI runners (real kernels), plus a fake-kernel run of the fast tests on each runner | 2 runners |
 
-Checked for every case:
+Invariants checked in every pipeline run:
 
-1. The selection is not empty, has no duplicates, and only contains plugins from the subset.
-2. With `selected` and `all`, the selection equals the whole subset.
-3. Run order doesn't change when detections arrive in a different order.
-4. Slot and backend ids never clash within the selected set.
-5. The pipeline, run with fake backends on a temporary folder, only writes to `staging/<id>/` and the output dir. This is checked with a before/after record of the files.
-6. `result` contains every v1 key (3.5), and `plugins[]` has one entry per selected plugin.
-7. Running the same request twice gives the same output tree (names and sizes).
+1. The selection is not empty, has no duplicates, and stays inside the subset. With `selected`/`all` it equals the subset.
+2. Run order doesn't depend on the order detections arrive in.
+3. Slot and backend ids never clash within the selection.
+4. Writes happen only under `staging/<id>/` and the workspace. **The game folder's file hashes are unchanged** (H1).
+5. `result` contains every v1 key (3.5), and `plugins[]` has one entry per selected plugin.
+6. A re-run gives an identical workspace (names, sizes, hashes).
 
-Fixtures are small synthetic folders that contain only the marker files and
-tiny archives. No real game data goes into the repository.
+The `sample-custom` plugin in these tests is a minimal test plugin loaded
+through the custom-plugin loader. The real showcase plugin (doc 14) has its
+own tests.

@@ -14,9 +14,9 @@
 |-------|------|------|------|
 | **L0 static** | formatter check; **LoC caps** (doc 15); import-direction lint (layer rule: contracts ← kernels ← plugins/backends ← core ← api/cli); every GPL/AGPL backend declares `isolation=subprocess`; every backend declares its network use; ini schema validation of `distros/*.ini` and `loc_caps.ini` | every push | blocking |
 | **L1 contract / unit** | conformance kit (kernels, plugins, slots, backends) with fakes; plugin routing (`select_plugins`); ini precedence; identify/carve rules; value types; journal | every push, Linux + Windows | blocking |
-| **L2 characterization** | v1 behavior recorded as golden files: `/api/*` payload shapes and workspace tree snapshots (names, sizes, hashes) for synthetic games. Captured from **v1 first**, before any refactor | every push | blocking. Golden updates need a reason in the commit |
+| **L2 characterization** | golden files of `/api/*` payload shapes and workspace snapshots (names, sizes, hashes) for synthetic games. Captured **after the M1 hotfix**, against the *intended* behavior, with a written **intended-differences list** for each known v1 bug (H1–H3, F1, F3, F11…) | every push | blocking. Golden updates need a reason in the commit |
 | **L3 component** | each plugin against its synthetic fixtures, with fake tools and stdlib backends (zip/tar, our safe RPA reader, a carved PCK) | every push | blocking |
-| **L4 matrix** | (a) kernels × fixtures × plugin subsets × mixed policies (doc 3.6); (b) **slot failover**: for every slot, {main up, down} × {spare up, down} × outcome kinds (ok, unsupported, failed, needs_key, cancelled) | every push (fast fakes), Linux + Windows | blocking |
+| **L4 matrix** | (a) selection exhaustive over every plugin subset × policy (pure), plus pairwise pipeline runs (doc 3.6); (b) **slot failover**: for every slot, {main up, down} × {spare up, down} × outcome kinds (ok, unsupported, failed, needs_key, cancelled) | every push (fast fakes), Linux + Windows | blocking |
 | **L5 real-tool smoke** | each real backend on its fixture: 7z, unrar, unrpa, UnityPy, AssetStudioModCLI, GDRE, GodotPckTool, repak, retoc, DataTool (CLI help/list only), ffmpeg | nightly, on CI images with the tools installed; locally when present (otherwise skipped, with a visible reason) | blocking nightly; reported per push |
 | **L6 end-to-end** | CLI: `info` / `detect` / `extract` → run record → **re-run gives an identical workspace**; HTTP: v1 routes through the job adapter; **web UI smoke** with Playwright (load, extract a fixture, sort, undo, trash, merger list) | per push (CLI/HTTP), nightly (UI) | blocking |
 | **L7 manual acceptance** | real games owned by the tester, run locally only, from a checklist. Results are recorded as numbers and run records, **never the assets** | at each milestone exit | sign-off |
@@ -32,7 +32,10 @@
 | nesting depth bomb (archive in archive in archive…) | stops at the depth limit (10), reported |
 | decompression bomb (huge expansion ratio) | stops at a size/ratio limit, reported ❓ limits to be defined |
 | a plugin hook writes outside its staging folder | sandbox test fails (before/after file record) |
-| PREPARE pointed at a folder the app didn't create (F7) | refused |
+| PREPARE pointed at a folder without the workspace marker (H2) | refused, nothing deleted |
+| any extraction | **game folder file hashes unchanged** before vs after (H1) |
+| cross-origin `text/plain` POST, missing token, non-JSON body, foreign Host header (H3) | 403 / 415, no side effect |
+| tar member with `..`, absolute path, device file, or link outside (F17) | rejected by the extraction filter |
 | a capture session killed midway | the next startup finishes RESTORE; game folder hashes identical |
 | a game folder with anti-cheat markers | capture refused, no launch |
 | `/preview/` and `/api/*` path traversal | 404 / error, as v1 |
