@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>ViWo // Vidya Wormhole</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 2h12v9l-3 3H2z' fill='%230a0607' stroke='%23ff3b3b'/%3E%3Cpath d='M5 5l3 6 3-6' fill='none' stroke='%23ff3b3b' stroke-width='1.5'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="viwo.css">
+  <script type="module" src="js/main.js"></script>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand" aria-label="ViWo, Vidya Wormhole">
+        <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+          <path d="M3 3h26v18l-8 8H3z" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <path d="M9 9l7 13 7-13" fill="none" stroke="currentColor" stroke-width="2.5"/>
+          <path d="M3 27h6" stroke="currentColor" stroke-width="1.5"/>
+        </svg>
+        <span class="word">VIWO</span><span class="sub">// VIDYA WORMHOLE</span>
+      </div>
+      <div class="chips" id="status-chips" aria-live="polite"></div>
+      <div class="ws-path" title="Active workspace">
+        <span class="lbl">WORKSPACE</span><span class="mono" id="ws-path">—</span>
+      </div>
+    </header>
+
+    <nav class="rail" aria-label="Modules">
+      <ol class="mods">
+        <li><a href="#extract" data-view="extract"><b>01</b><span>EXTRACT<small>pull assets from a game</small></span></a></li>
+        <li><a href="#workspace" data-view="workspace"><b>02</b><span>WORKSPACE<small>extension groups</small></span></a></li>
+        <li><a href="#sort" data-view="sort"><b>03</b><span>SORT<small>fast triage</small></span></a></li>
+        <li><a href="#jobs" data-view="jobs"><b>04</b><span>JOBS<small>runs + event streams</small></span></a></li>
+        <li><a href="#system" data-view="system"><b>05</b><span>SYSTEM<small>slots, plugins, deps</small></span></a></li>
+      </ol>
+      <div class="rail-foot">
+        <a class="legacy" href="/legacy/">MEDIA MERGER <small>legacy console ↗</small></a>
+        <p class="ver mono" id="ver">LOCAL-FIRST // 127.0.0.1</p>
+      </div>
+    </nav>
+
+    <main id="main" tabindex="-1">
+      <section class="view" id="view-extract" hidden></section>
+      <section class="view" id="view-workspace" hidden></section>
+      <section class="view" id="view-sort" hidden></section>
+      <section class="view" id="view-jobs" hidden></section>
+      <section class="view" id="view-system" hidden></section>
+    </main>
+
+    <aside class="dock" id="dock" aria-label="Activity console">
+      <div class="dock-h">
+        <button class="dock-toggle" id="dock-toggle" aria-expanded="false" aria-controls="dock-body">
+          <span class="idx">//</span> ACTIVITY CONSOLE <span class="mono dim" id="dock-count"></span>
+        </button>
+        <button class="btn sm ghost" id="dock-clear">CLEAR</button>
+      </div>
+      <pre class="log" id="dock-body" hidden></pre>
+    </aside>
+  </div>
+  <div class="toasts" id="toasts" role="status" aria-live="polite"></div>
+</body>
+</html>
