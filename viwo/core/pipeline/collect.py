@@ -20,6 +20,9 @@ class Source:
     move: bool  # False: copy (game folder is read-only); True: move (staging)
     origin: str  # label prefix for provenance
     exclude: frozenset[str] = frozenset()  # suffixes / names already decoded by an exporter
+    kind: str = "derived"  # loose | member | export | derived (round trip, doc 18)
+    container: str = ""  # game-relative container of "member" files
+    prefix: str = ""  # game-relative root of "loose" files
 
 
 @dataclass
@@ -99,5 +102,8 @@ def _collect_one(src: Path, folder: Path, source: Source, report: CollectReport)
             "origin": f"{source.origin}:{rel}",
             "sha256": digest,
             "size": target.stat().st_size,
+            "kind": source.kind,
+            "container": source.container,
+            "member": f"{source.prefix}/{rel}".lstrip("/") if source.kind == "loose" else rel,
         }
     )

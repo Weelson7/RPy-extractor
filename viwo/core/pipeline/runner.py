@@ -18,11 +18,12 @@ from viwo.contracts.types import CancelToken, DetectionResult, ProgressEvent, Pr
 
 from ..workspace import precheck, resolve_target, workspace_lock
 from .carving import carve_all
-from .collect import Source, collect
+from .collect import collect
 from .failover import run_with_failover
 from .guard import changes, refuse_writes_inside, snapshot
 from .probe import FolderProbe
 from .select import select_plugins
+from .sources import claimed, sources_for
 from .unpack import files_under, unpack_all
 
 SECRET = "<secret>"
@@ -131,7 +132,7 @@ def _stages(run: Run, workspace: Path) -> ExtractionResult:
     unpacked = unpack_all(rt, game_files, run.work / "unpack", run.ctx)
     runs = [_export(run, pid) for pid in chosen]
     carved, unpacked = _carve(run, runs, game_files, unpacked)
-    sources = _sources(run, chosen, {**unpacked.origins, **carved.origins}, runs)
+    sources = sources_for(run, chosen, {**unpacked.origins, **carved.origins}, runs)
     collected = _decode(
         run, workspace, collect(sources, workspace, run.request.selected_exts, skip, run.cancel)
     )
@@ -173,21 +174,11 @@ def _decode(run: Run, workspace: Path, collected):
     return collected
 
 
-def _sources(run: Run, chosen, moved: dict[Path, str], runs) -> list[Source]:
-    """Game roots are copied; unpack, carve and export outputs are moved."""
-    sources = _game_sources(run, chosen, _claimed(run, runs))
-    sources += [Source(d, True, o) for d, o in moved.items()]
-    staging = run.work / "staging"
-    return sources + [
-        Source(staging / r.plugin_id, True, f"export:{r.backend}") for r in runs if r.backend
-    ]
-
-
 def _carve(run: Run, runs, game_files, unpacked):
     """Carve unknown blobs (game and unpacked), then unpack any archives found inside them.
     Files an exporter decoded are left alone, unless that exporter failed or is missing."""
     items = game_files + [i for d, o in unpacked.origins.items() for i in files_under(d, o, set())]
-    carved = carve_all(run, _claimed(run, runs), items)
+    carved = carve_all(run, claimed(run, runs), items)
     nested = [i for d, o in carved.origins.items() for i in files_under(d, o, set())]
     if nested:
         more = unpack_all(run.rt, nested, run.work / "unpack-carved", run.ctx)
@@ -199,27 +190,6 @@ def _carve(run: Run, runs, game_files, unpacked):
         unpacked.by_backend.update(more.by_backend)
         unpacked.failures += more.failures
     return carved, unpacked
-
-
-def _claimed(run: Run, runs) -> frozenset[str]:
-    """Suffixes/names a plugin handles (its exporter succeeded, or it has none and they are
-    container parts): not carved, not copied raw."""
-    plugins = run.rt.plugins
-    decoded = [r for r in runs if r.backend or not plugins[r.plugin_id].export_slot()]
-    return frozenset(s.lower() for r in decoded for s in plugins[r.plugin_id].claimed_suffixes())
-
-
-def _game_sources(run: Run, chosen: tuple[str, ...], exclude: frozenset[str]) -> list[Source]:
-    probe = FolderProbe(run.game, limit=1)
-    roots = {
-        r.resolve() for pid in chosen for r in run.rt.plugins[pid].source_roots(run.game, probe)
-    }
-    outer = [r for r in roots if not any(o != r and o in r.parents for o in roots)]
-    labels = {r: r.relative_to(run.game.resolve()).as_posix() for r in outer}
-    return [
-        Source(r, False, "game" if labels[r] == "." else f"game:{labels[r]}", exclude)
-        for r in sorted(outer)
-    ]
 
 
 def _export(run: Run, plugin_id: str) -> PluginRun:
