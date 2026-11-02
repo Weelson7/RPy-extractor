@@ -45,7 +45,7 @@ export async function v2(method, url, body) {
 export async function v1(method, url, body) {
   const json = await request(method, url, body);
   if (json.success === false || (json.error && json.success === undefined)) {
-    throw new ApiError(json.error, { code: json.code, details: json.details, payload: json });
+    throw new ApiError(json.error, { code: json.code, hint: json.hint, details: json.details, payload: json });
   }
   return json;
 }
@@ -80,4 +80,7 @@ export const api = {
   logs: () => v1("GET", "/api/logs"),
   clearLogs: () => v1("POST", "/api/logs/clear", {}),
   deps: () => v1("GET", "/api/dependencies"),
+  recipes: () => v1("GET", "/api/sanitizer/recipes"),
+  sanitize: (op, body = {}) => v1("POST", `/api/sanitizer/${op}`, body),
+  repack: (body) => v1("POST", "/api/repack", body),
 };

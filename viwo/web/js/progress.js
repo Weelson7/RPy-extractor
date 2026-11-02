@@ -40,6 +40,15 @@ const KINDS = {
     stageOf: (e) => (e.stage === "survey" ? e.message.replace(/^Surveying /, "") : ""),
     counters: [["GAMES", /^Surveying /, add()]],
   },
+  repack: {
+    verb: "PATCHING",
+    first: "plan", // the server plans (hashes the edit set) before its first event
+    stages: ["plan", "copy", "pack", "verify", "report"],
+    // Packers report nothing per container: the final event closes PACK + VERIFY + REPORT together.
+    stageOf: (e) => (/^Copying the game/.test(e.message) ? "copy" : /^Patched copy ready/.test(e.message) ? ["pack", "verify", "report"]
+      : e.stage === "repack" ? "" : /verif|unpack|extract/i.test(`${e.stage} ${e.message}`) ? "verify" : "pack"),
+    counters: [["VERIFIED", /^Patched copy ready \((\w+)/, (m) => (m[1] === "verified" ? "YES" : "NO"), "—"]],
+  },
 };
 
 /** Build a progress block for one job kind. start() before the blocking POST, finish() after it. */
@@ -147,7 +156,7 @@ export function jobProgress(kind, { logClass = "feed", onStatus = null } = {}) {
         const m = re.exec(e.message);
         if (m) t.counts[label] = next(m, t.counts[label]);
       }
-      enter((K.stageOf || ((x) => x.stage))(e));
+      [].concat((K.stageOf || ((x) => x.stage))(e)).forEach(enter);
     }
     const last = events.slice(-3);
     t.lines = [...t.lines, ...last].slice(-3);
@@ -199,6 +208,7 @@ export function jobProgress(kind, { logClass = "feed", onStatus = null } = {}) {
     fill(el.warns);
     fill(el.log);
     fill(el.tick, h("span", { class: "jp-line now", style: "--n:24" }, "waiting for the job to start"));
+    enter(K.first);
     paintRail();
     paintCounts();
     paintClock();

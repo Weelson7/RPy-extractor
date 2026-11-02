@@ -8,9 +8,11 @@ import jobs from "./views/jobs.js";
 import system from "./views/system.js";
 import merger from "./views/merger.js";
 import survey from "./views/survey.js";
+import cleanup from "./views/cleanup.js";
+import repack from "./views/repack.js";
 import { openWorkspaceDialog } from "./workspace-dialog.js";
 
-const VIEWS = { extract, workspace, sort, jobs, system, merger, survey };
+const VIEWS = { extract, workspace, sort, jobs, system, merger, survey, cleanup, repack };
 const scroll = {};
 const state = { current: "", distro: null, dockOpen: pref("dock") === "1", logCount: -1, lastLog: "" };
 

@@ -173,3 +173,6 @@ export function viewHead(idx, title, sub, ...tools) {
     h("div", {}, h("span", { class: "idx" }, `// ${idx}`), h("h2", {}, title), h("p", { class: "sub" }, sub)),
     h("div", { class: "row" }, tools));
 }
+
+/** Safety strip: [[headline, detail], ...] — what a tool will never do. */
+export const assure = (points) => h("ul", { class: "assure" }, points.map(([b, t]) => h("li", {}, h("b", {}, b), h("span", {}, t))));
