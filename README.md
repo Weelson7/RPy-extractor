@@ -111,6 +111,7 @@ Real-tool tests run with `VIWO_L5=1`; CI runs everything on Linux and Windows. C
 
 - Architecture contract: [docs/contract/](docs/contract/README.md)
 - Prototype A status and decisions log: [docs/prototype-a/STATUS.md](docs/prototype-a/STATUS.md)
+- Prototype B status, evidence and open items: [docs/prototype-b/STATUS.md](docs/prototype-b/STATUS.md)
 
 ## Legal
 

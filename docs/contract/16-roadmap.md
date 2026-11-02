@@ -14,6 +14,8 @@ folder), and the prototype is split into **A (viable core)** and
 
 Prototype B = M7 Unreal unpack (+ AES key finder spare) · M8 custom plugins (Doom WAD/Freedoom in CI, Overwatch tos-sensitive) · M9 round trip for all four engines · M10 mixed mode + sanitizer phase 1 · **M11 capture pilot moved inside B**. Prototype A was extended first: legacy app removed, everything ported to ViWo, new UI.
 
+**State:** all of the above delivered, plus the D21 coverage ladder; see `docs/prototype-b/STATUS.md` for evidence and the list of items not yet verified on real data.
+
 ## 16.0b Coverage ladder (D21)
 
 Goal: any asset stored on the local disk comes out, whatever the engine. Each rung catches what
@@ -27,7 +29,7 @@ the rungs above it missed, and every rung reports what it could not handle, so g
 | 4. Compressed-stream scan | zlib and gzip streams inside unknown blobs are inflated (bounded) and carved; zstd / LZ4 when their modules are present | zlib + gzip done |
 | 5. Decoders | game media to viewable files: vgmstream (WEM, FSB, BNK...), DDS to PNG, Bink via ffmpeg (opt-in) | done |
 | 6. Script-driven unpackers | QuickBMS (GPL, subprocess): `[options.quickbms] scripts = <folder>`, one `<ext>.bms` per format, in every game | done (flags not yet verified on a binary) |
-| 7. Runtime capture | RenderDoc / audio capture for encrypted or procedural content (M11, policy-gated) | planned |
+| 7. Runtime capture | RenderDoc / audio capture for encrypted or procedural content (M11, policy-gated) | pilot done (RenderDoc) |
 | Survey | `viwo survey <library>`: per game, the engine, which files each rung covers, and unknown blobs with a density estimate (dense = encrypted/compressed) | done |
 
 Out of scope by design: DRM or anti-cheat circumvention, guessing passwords or keys, content that
