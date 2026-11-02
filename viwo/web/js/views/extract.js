@@ -260,6 +260,7 @@ function tracker(known) {
       }
     } catch { /* keep polling; the run call reports failures */ } finally { t.busy = false; }
     const secs = Math.round((Date.now() - t.start) / 1000);
+    if (S.running) el.sum.textContent = `EXTRACTING · ${(t.stage || "start").toUpperCase()} · ${t.count} events · ${secs}s`;
     fill(el.progress, h("span", { class: S.running ? "lbl live" : "lbl" }, S.running ? "RUNNING" : "FINISHED"),
       h("span", { class: "mono" }, `STAGE ${(t.stage || "start").toUpperCase()} · ${t.count} EVENTS · ${secs}s`),
       S.running ? h("div", { class: "scan-bar" }, h("i", {})) : null);

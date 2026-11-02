@@ -100,6 +100,7 @@ function tick(t0, known) {
       const page = t.id ? await api.events(t.id, t.from) : null;
       if (page?.events.length) { t.from = page.next; t.msg = page.events[page.events.length - 1].message; }
     } catch { /* the build call reports failures */ } finally { t.busy = false; }
+    el.sum.textContent = `RENDERING · ${t.msg} · ${Math.round((Date.now() - t0) / 1000)}s`;
     fill(el.status, h("span", { class: "lbl live" }, "RENDERING"),
       h("span", { class: "mono" }, `${t.msg} · ${Math.round((Date.now() - t0) / 1000)}s`), h("div", { class: "scan-bar" }, h("i", {})));
   }, 700);
