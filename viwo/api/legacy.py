@@ -66,8 +66,21 @@ def dependencies_for_v1() -> dict:
     """v1 /api/dependencies: backend dependencies plus ffmpeg for the legacy merger."""
     items = runtime().dependency_report()
     media = shutil.which("ffmpeg") is not None and shutil.which("ffprobe") is not None
-    items.append({"id": "ffmpeg", "label": "ffmpeg + ffprobe", "available": media,
-                  "required": False, "category": "merger", "requirement": "optional",
-                  "location": shutil.which("ffmpeg") or "", "hint": "needed by the media merger"})
-    return {"success": True, "requiredOk": True, "dependencies": items,
-            "problems": list(runtime().problems)}
+    items.append(
+        {
+            "id": "ffmpeg",
+            "label": "ffmpeg + ffprobe",
+            "available": media,
+            "required": False,
+            "category": "merger",
+            "requirement": "optional",
+            "location": shutil.which("ffmpeg") or "",
+            "hint": "needed by the media merger",
+        }
+    )
+    return {
+        "success": True,
+        "requiredOk": True,
+        "dependencies": items,
+        "problems": list(runtime().problems),
+    }

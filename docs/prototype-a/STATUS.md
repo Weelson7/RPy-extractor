@@ -39,7 +39,6 @@ RPy-extractor/            the v1 app ("legacy"), still serving the web UI
 | X1 | The v1 web server (`RPy-extractor/extract.py`) stays the HTTP front end. Only extraction (and dependency status) is delegated to the ViWo core; sorting, trash and the merger stay legacy code | Porting curation and merger (~1,400 legacy LoC) is not needed to prove the contract, and keeping them keeps the UI working | port to `viwo/core/workspace` + `viwo/core/merger` after Prototype A |
 | X2 | LoC caps apply to `viwo/` (product) and `tests/`; `RPy-extractor/` is legacy under a **ratchet** (may only shrink) | the legacy code predates the caps | shrinks as code is ported |
 | X3 | Three trash layouts (doc 4.3) not yet applied | curation is still legacy (X1) | with the curation port |
-
 | X4 | No separate `unpack` CLI command yet | `extract` covers it; the unpack loop takes explicit files so the command is a thin addition | next CLI pass |
 | X5 | `[tools]` in the ini is keyed by **dependency id** (e.g. `sevenzip`), not backend id as doc 9 said | one tool can serve several backends (7-Zip serves zip/tar/7z/rar spares) | doc 9 updated at the end of the run |
 | X6 | Legacy extraction code (`extraction_types/`, `extraction_core/archive.py`, `pipeline.py`) deleted; Unity games use the `generic` plugin until M5 lands | the v1 route now runs the ViWo core; keeping two pipelines would double the surface | M5 |
