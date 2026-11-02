@@ -1,0 +1,178 @@
+{
+ "_comment": "Pinned third-party tools installed automatically into third_party/<id>/ (doc 10). Every download is checked against sha256 before use. Change a pin only together with its checksum. Not available as pinned GitHub releases (left out): unrar (7-Zip covers RAR), QuickBMS, DataTool, RenderDoc.",
+ "python": {
+  "unitypy": "UnityPy==1.25.4",
+  "py7zr": "py7zr==1.1.4",
+  "unrpa": "unrpa==2.3.0"
+ },
+ "tools": {
+  "repak": {
+   "version": "0.2.3",
+   "license": "MIT OR Apache-2.0",
+   "windows": {
+    "url": "https://github.com/trumank/repak/releases/download/v0.2.3/repak_cli-x86_64-pc-windows-msvc.zip",
+    "sha256": "6720d602144d75df477a99d5bedb6ea780997546afc335901d4937cafeaa73fa",
+    "size": 2022374,
+    "kind": "zip",
+    "find": "repak.exe"
+   },
+   "linux": {
+    "url": "https://github.com/trumank/repak/releases/download/v0.2.3/repak_cli-x86_64-unknown-linux-gnu.tar.xz",
+    "sha256": "933bdb8e26f34e8fd70ea50201efca39df041de58aa83b1cd6eb83da124a2046",
+    "size": 1838060,
+    "kind": "tar",
+    "find": "repak"
+   }
+  },
+  "retoc": {
+   "version": "0.1.5",
+   "license": "MIT",
+   "windows": {
+    "url": "https://github.com/trumank/retoc/releases/download/v0.1.5/retoc_cli-x86_64-pc-windows-msvc.zip",
+    "sha256": "cc036b06ad3bdcf7003690b00d82719980c374e48a95bf0654f9959148d263aa",
+    "size": 2854438,
+    "kind": "zip",
+    "find": "retoc.exe"
+   },
+   "linux": {
+    "url": "https://github.com/trumank/retoc/releases/download/v0.1.5/retoc_cli-x86_64-unknown-linux-gnu.tar.xz",
+    "sha256": "3c309a4aea0c6d0a5c6ee31b1d1b32768eb86ac67e3a1890d677eabe6ce26b36",
+    "size": 16457584,
+    "kind": "tar",
+    "find": "retoc"
+   }
+  },
+  "vgmstream": {
+   "version": "r2168",
+   "license": "ISC",
+   "windows": {
+    "url": "https://github.com/vgmstream/vgmstream/releases/download/r2168/vgmstream-win64.zip",
+    "sha256": "692d45070852a35c1fa42726aa3c9de528e44eec925d37d99b1074256b99a229",
+    "size": 4574355,
+    "kind": "zip",
+    "find": "vgmstream-cli.exe"
+   },
+   "linux": {
+    "url": "https://github.com/vgmstream/vgmstream/releases/download/r2168/vgmstream-linux.zip",
+    "sha256": "2dfdfddda68e0e36e62f20dc050a4e45f4bc3318c7efeadf8a063df646d57c84",
+    "size": 3545186,
+    "kind": "zip",
+    "find": "vgmstream-cli"
+   }
+  },
+  "gdre": {
+   "version": "2.7.4",
+   "license": "MIT",
+   "windows": {
+    "url": "https://github.com/GDRETools/gdsdecomp/releases/download/v2.7.4/GDRE_tools-v2.7.4-windows.zip",
+    "sha256": "af24c563eee501effb194d83595de64696c32547b2246034dbfb891a24bfa0ad",
+    "size": 42626001,
+    "kind": "zip",
+    "find": "gdre_tools.exe"
+   },
+   "linux": {
+    "url": "https://github.com/GDRETools/gdsdecomp/releases/download/v2.7.4/GDRE_tools-v2.7.4-linux.zip",
+    "sha256": "3dc4f1244dda62e41e0c952ac00a69e60e07f3b0d5a211164806bf9d41a54758",
+    "size": 35295754,
+    "kind": "zip",
+    "find": "gdre_tools.x86_64"
+   }
+  },
+  "godotpcktool": {
+   "version": "2.3",
+   "license": "MIT",
+   "windows": {
+    "url": "https://github.com/hhyyrylainen/GodotPckTool/releases/download/v2.3/godotpcktool.exe",
+    "sha256": "0485a588b8a1ee224fb2c30a29c89ea6c3bbd57e8b5d82974470f5fd89db3453",
+    "size": 1792512,
+    "kind": "raw",
+    "find": "godotpcktool.exe",
+    "save_as": "godotpcktool.exe"
+   },
+   "linux": {
+    "url": "https://github.com/hhyyrylainen/GodotPckTool/releases/download/v2.3/godotpcktool",
+    "sha256": "1add2c22aeacdd7a8372288c885ed0ff4d2f673787aed924c54522a0f000d655",
+    "size": 1683784,
+    "kind": "raw",
+    "find": "godotpcktool",
+    "save_as": "godotpcktool"
+   }
+  },
+  "assetstudiomod": {
+   "version": "0.20.0",
+   "license": "MIT",
+   "windows": {
+    "url": "https://github.com/aelurum/AssetStudio/releases/download/v0.20.0/AssetStudioModCLI_net10_win64.zip",
+    "sha256": "0caff1e9d381083324f65241f55171768cd08effe626b0125b63497cd2510cc7",
+    "size": 6357294,
+    "kind": "zip",
+    "find": "AssetStudioModCLI.exe"
+   },
+   "linux": {
+    "url": "https://github.com/aelurum/AssetStudio/releases/download/v0.20.0/AssetStudioModCLI_net10_linux64.zip",
+    "sha256": "76aa84569b3040ec9c5b736bfb2eaa968c9722527ad978acef3d765fae92a7d2",
+    "size": 7028949,
+    "kind": "zip",
+    "find": "AssetStudioModCLI"
+   }
+  },
+  "sevenzip": {
+   "version": "26.05",
+   "license": "LGPL-2.1 with unRAR restriction",
+   "windows": {
+    "url": "https://github.com/ip7z/7zip/releases/download/26.05/7z2605-x64.msi",
+    "sha256": "3fe4ab99fa15629c652944309a2b2bc6e41fc933fc6b63f5df1ebcf3aea68263",
+    "size": 2008576,
+    "kind": "msi",
+    "find": "7z.exe"
+   },
+   "linux": {
+    "url": "https://github.com/ip7z/7zip/releases/download/26.05/7z2605-linux-x64.tar.xz",
+    "sha256": "22cf82fcc6eb7474f1d5bb4f02c0f8ebd573a718089d6833dc30f8350a3b232e",
+    "size": 1579976,
+    "kind": "tar",
+    "find": "7zz"
+   }
+  },
+  "ffmpeg": {
+   "version": "6.1.1",
+   "license": "GPL-3.0 (static build)",
+   "windows": {
+    "url": "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-win32-x64.gz",
+    "sha256": "8883a3dffbd0a16cf4ef95206ea05283f78908dbfb118f73c83f4951dcc06d77",
+    "size": 29581307,
+    "kind": "gz",
+    "find": "ffmpeg.exe",
+    "save_as": "ffmpeg.exe"
+   },
+   "linux": {
+    "url": "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffmpeg-linux-x64.gz",
+    "sha256": "bfe8a8fc511530457b528c48d77b5737527b504a3797a9bc4866aeca69c2dffa",
+    "size": 29354986,
+    "kind": "gz",
+    "find": "ffmpeg",
+    "save_as": "ffmpeg"
+   }
+  },
+  "ffprobe": {
+   "version": "6.1.1",
+   "license": "GPL-3.0 (static build)",
+   "windows": {
+    "url": "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffprobe-win32-x64.gz",
+    "sha256": "f309e6223ad89d2fe54bccd420a7709b66fd27540674e92309578ed491a43c8d",
+    "size": 29521644,
+    "kind": "gz",
+    "find": "ffprobe.exe",
+    "save_as": "ffprobe.exe"
+   },
+   "linux": {
+    "url": "https://github.com/eugeneware/ffmpeg-static/releases/download/b6.1.1/ffprobe-linux-x64.gz",
+    "sha256": "25d9b6ccb05e3d9de9e04e31e2506d8dd7f9f0418981965ac6df12e8d3afd067",
+    "size": 29276839,
+    "kind": "gz",
+    "find": "ffprobe",
+    "save_as": "ffprobe"
+   }
+  }
+ }
+}

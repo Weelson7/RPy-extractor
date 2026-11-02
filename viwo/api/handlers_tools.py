@@ -7,6 +7,7 @@ from typing import Any, Callable
 
 from viwo.contracts.types import ProgressEvent
 from viwo.core import sanitizer
+from viwo.core.preflight import install, preflight
 from viwo.core.roundtrip import repack
 from viwo.core.survey import survey
 
@@ -83,10 +84,50 @@ def repack_workspace(app: App, d: dict) -> dict:
     return app.locked_job("repack", app.workspace, run)
 
 
+def run_preflight(app: App, d: dict) -> dict:
+    """Startup check (job "preflight"): one event per dependency, for the landing screen."""
+
+    def run(jid, sink, cancel) -> dict:
+        report = preflight(app.rt, sink, cancel)
+        if report["installed"]:
+            app.reload()  # newly installed tools bind now
+        return {"success": True, **report}
+
+    return _job(app, "preflight", run)
+
+
+def install_dependency(app: App, d: dict) -> dict:
+    """Install one dependency as a visible job, then reload the tool bindings."""
+
+    def run(jid, sink, cancel) -> dict:
+        done = install(app.rt, str(d.get("id", "")), sink, cancel)
+        app.reload()
+        return {"success": True, **done}
+
+    return _job(app, "install", run)
+
+
+def _job(app: App, kind: str, run) -> dict:
+    job = app.jobs.submit_with_listener(
+        lambda e: app.log(e.legacy_line()), kind, run, background=False
+    )
+    if job.error:
+        return {
+            "success": False,
+            "error": job.error["message"],
+            "code": job.error["code"],
+            "hint": job.error["hint"],
+            "jobId": job.job_id,
+        }
+    return {**job.result, "jobId": job.job_id}
+
+
 TOOL_GET: dict[str, Callable[[App, dict], Any]] = {
     "/api/sanitizer/recipes": lambda app, q: {"success": True, "recipes": RECIPES},
 }
 TOOL_POST: dict[str, Callable[[App, dict], Any]] = {
+    "/api/preflight": run_preflight,
+    "/api/preflight/install": install_dependency,
     "/api/survey": survey_library,
     "/api/repack": repack_workspace,
     "/api/sanitizer/plan": _sanitize("plan"),

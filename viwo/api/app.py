@@ -18,8 +18,8 @@ from viwo.core.workspace import precheck, workspace_lock
 
 
 class App:
-    def __init__(self, rt: Runtime) -> None:
-        self.rt = rt
+    def __init__(self, rt: Runtime, ini: Path | None = None) -> None:
+        self.rt, self.ini = rt, ini
         self.server = rt.config.server
         self.jobs = JobRunner()
         self.workspace = self.server.workspace
@@ -33,6 +33,12 @@ class App:
             self.server.merged,
         ):
             folder.mkdir(parents=True, exist_ok=True)  # a fresh install works out of the box
+
+    def reload(self) -> None:
+        """Boot again (after installing a tool) so new tools bind; jobs and workspace stay."""
+        rt = boot(self.ini)
+        rt.temp_root = rt.config.server.temp
+        self.rt = rt
 
     def log(self, line: str) -> None:
         stamped = f"[{time.strftime('%H:%M:%S')}] {line}"
@@ -142,7 +148,7 @@ def get_app(ini: Path | None = None) -> App:
         if "app" not in _STATE:
             rt = boot(ini)
             rt.temp_root = rt.config.server.temp
-            _STATE["app"] = App(rt)
+            _STATE["app"] = App(rt, ini)
         return _STATE["app"]
 
 

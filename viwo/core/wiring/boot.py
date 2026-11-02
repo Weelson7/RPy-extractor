@@ -50,6 +50,7 @@ class Runtime:
                     {
                         "id": spec.dep_id,
                         "label": spec.label,
+                        "kind": spec.kind,
                         "available": found is not None,
                         "required": False,
                         "category": backend.owner,
@@ -77,7 +78,12 @@ def boot(
     temp_root: Path | None = None,
 ) -> Runtime:
     config = load_ini(ini_path if ini_path is not None else DEFAULT_INI)
-    layer = select_os(os_id or config.os_id, config.tools)
+    from viwo.core import thirdparty
+
+    home = thirdparty.home_of(config)
+    thirdparty.activate(home)  # pinned Python packages installed under third_party/python
+    tools = {**thirdparty.found_tools(home), **config.tools}  # the ini wins over third_party/
+    layer = select_os(os_id or config.os_id, tools)
     plugins, problems = load_enabled(config.plugins)
     for plugin_id, plugin in plugins.items():
         try:

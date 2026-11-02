@@ -12,14 +12,14 @@ FFMPEG = DependencySpec(
     "ffmpeg",
     "ffmpeg",
     executables=("ffmpeg",),
-    install_dirs=("ffmpeg", "ffmpeg/bin"),
+    install_dirs=("ffmpeg", "ffmpeg/bin", "Microsoft/WinGet/Links"),  # winget portable links
     hint="install ffmpeg (with ffprobe)",
 )
 FFPROBE = DependencySpec(
     "ffprobe",
     "ffprobe",
     executables=("ffprobe",),
-    install_dirs=("ffmpeg", "ffmpeg/bin"),
+    install_dirs=("ffmpeg", "ffmpeg/bin", "Microsoft/WinGet/Links"),  # winget portable links
     hint="install ffmpeg (with ffprobe)",
 )
 VIDEO_CHAIN = (

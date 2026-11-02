@@ -12,7 +12,7 @@ from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 SEVENZIP = DependencySpec(
     "sevenzip",
     "7-Zip (7z/7za/7zr)",
-    executables=("7z", "7za", "7zr"),
+    executables=("7z", "7zz", "7za", "7zr"),
     install_dirs=("7-Zip",),
     hint="install 7-Zip (Windows) or p7zip-full (Linux)",
 )

@@ -19,7 +19,7 @@ class StartupConfig:
     os_id: str = "auto"
     profile: str = "mixed"
     features: tuple[str, ...] = ("extraction", "sorting", "merger")
-    auto_install: bool = False
+    auto_install: bool = True  # install missing pinned tools into third_party/ at startup
     strict_preflight: bool = False
     plugins: dict[str, bool] = field(default_factory=dict)
     custom_dirs: tuple[Path, ...] = ()
