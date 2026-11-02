@@ -55,7 +55,7 @@ work into an urgent hotfix plus two prototypes:
 2. Each slot used by A passes the failover cases (main up/down × spare up/down) with fakes. L5 smoke tests pass with the real tools.
 3. The v1 web UI works (characterization tests, compared against the *intended* behavior after S-1, with a written list of intended differences).
 4. Re-running from a run record gives an identical workspace (names, sizes, hashes).
-5. Product LoC ≤ **5,500** (doc 15). The startup ini with each single profile boots on its native runner. Ini files for the other kernel are validated but not booted.
+5. Product LoC ≤ **5,500** (doc 15). The startup ini with each single profile boots on its native runner. Ini files for the other OS layer are validated but not booted.
 
 **Prototype B is done when:** the doc 14.4 draft-2 criteria hold for all
 five engines, round-trip tests pass for Ren'Py, Godot, Unreal and Unity, product LoC ≤ 9,000, and the capture pilot's refusal and restore
@@ -74,7 +74,7 @@ vendoring beyond what S0–S3 need (doc 10's open problems come first).
 | Risk | Mitigation |
 |------|-----------|
 | Building on v1 semantics that are wrong (counts, layouts) | glossary first (doc 0); characterization tests before migrating; honest metrics |
-| Third-party tools change or break (DataTool after every game patch, Cpp2IL pre-release) | pin versions; spares; slot self-tests (`rpyx slots --check`) |
+| Third-party tools change or break (DataTool after every game patch, Cpp2IL pre-release) | pin versions; spares; slot self-tests (`viwo slots --check`) |
 | Legal and terms-of-service exposure | static first; capture refusal policy; offline defaults; clear user responsibility; no evasion features |
 | Scope creep (it's a framework) | slices with exit criteria; each new engine is a plugin with fixtures, not a core change |
 | Linux parity for Windows-only tools | prefer tools with native Linux builds (repak, retoc, GDRE, AssetStudioMod, DataTool CI); Wine is out of scope for now |

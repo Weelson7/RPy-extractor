@@ -45,9 +45,9 @@ functions, not copy them.
 | Package | Budget | Notes |
 |---------|--------|-------|
 | `contracts/` | 900 | interfaces + value types only; the scratchpad draft was about 850 |
-| `kernels/_shared` | 300 | the common base of both kernels |
-| `kernels/linux` | 500 | prototype A: ≤ 300 (process, tools, fs only) |
-| `kernels/windows` | 500 | prototype A: ≤ 300 |
+| `os/_shared` | 300 | the common base of both OS layers |
+| `os/linux` | 500 | prototype A: ≤ 300 (process, tools, fs only) |
+| `os/windows` | 500 | prototype A: ≤ 300 |
 | `core/pipeline` (stages, identify/carve, unpack loop, collect) | 900 | replaces v1 `extraction_core` (≈440) + orchestration |
 | `core/wiring` (ini, boot, registries, slot binder) | 700 | new; prototype A uses ≤ 500 (flat ini, failover only) |
 | `core/jobs` (runner, events, run records) | 350 | new |
@@ -84,7 +84,7 @@ functions, not copy them.
 | Test file | 400 |
 | Test function | 60 |
 | Fixture builder (makes a synthetic RPA, PCK, pak…) | 150 each |
-| Fake backend or fake kernel | 120 each |
+| Fake backend or fake OS layer | 120 each |
 
 Tests have no total budget. Instead, a **floor**: test LoC should be at least
 0.6 × product LoC for `contracts/` + `core/`.
@@ -114,5 +114,5 @@ Tests have no total budget. Instead, a **floor**: test LoC should be at least
 ## 15.6 Why these numbers
 
 - **40 per function and 250 per file** are tight but workable for glue code. Orchestration code that doesn't fit is usually doing two jobs.
-- The **total cap (10k)** is about 2.3× v1, for: two kernels, a core that's an actual framework, five plugins, a CLI, jobs, sanitizer and capture. The prototype target of 8k keeps pressure on "wrap, don't reimplement".
+- The **total cap (10k)** is about 2.3× v1, for: two OS layers, a core that's an actual framework, five plugins, a CLI, jobs, sanitizer and capture. The prototype target of 8k keeps pressure on "wrap, don't reimplement".
 - **Plugin budgets of 500** force plugins to stay glue. If a plugin needs more, the work probably belongs in an external tool or a shared core helper.

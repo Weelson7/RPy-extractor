@@ -125,11 +125,11 @@ once ❓.
 | unrar | **No official git repository** (RARLAB ships tarballs). Freeware license, not open source. Can't be a plain submodule |
 | FFmpeg | canonical repo `git.ffmpeg.org/ffmpeg.git` (the GitHub one is a mirror). LGPL-2.1+, or GPL with `--enable-gpl` |
 | Licenses overall | GPL tools (QuickBMS, Game Extractor, AssetRipper, FModel, UndertaleModTool, unrpa…) are fine **as subprocesses**. They must not be imported or linked into a core with a different license. **Proposed rule: a GPL backend is always a subprocess backend.** This is one more reason to settle the project license (D9) |
-| Heavy runtimes | JDK 25 (Ghidra), .NET 10 (ilspycmd, FModel, AssetStudioMod), Java 8 (Game Extractor). The kernel's ToolLocator would need a `runtime` dependency kind (already in doc 2.6) and clear hints |
+| Heavy runtimes | JDK 25 (Ghidra), .NET 10 (ilspycmd, FModel, AssetStudioMod), Java 8 (Game Extractor). The OS layer's ToolLocator would need a `runtime` dependency kind (already in doc 2.6) and clear hints |
 
 ## 13.6 Risks
 
-- **Windows-only tools** (GARbro, UAssetGUI, Wolf tools, FModel, Noesis) need Wine on the Linux kernel. That would be a kernel concern (`kernel.process` running `.exe` through Wine) ❓. Out of scope for the prototype.
+- **Windows-only tools** (GARbro, UAssetGUI, Wolf tools, FModel, Noesis) need Wine on the Linux OS layer. That would be a OS layer concern (`os.process` running `.exe` through Wine) ❓. Out of scope for the prototype.
 - **Stale upstreams:** unrpa (2019), umodel (UE4 only), the original GARbro, Il2CppDumper (2022.2), UniExtract2. Prefer active forks or alternatives.
 - **Untrusted-input safety:** pickle in Ren'Py, plus the general rule that game files are untrusted. Backends that parse in-process (UnityPy, our readers) are attack surface; risky formats can be isolated in a subprocess.
 - **Legal and terms-of-service exposure** grows with each engine and with runtime capture (doc 11).

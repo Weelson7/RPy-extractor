@@ -30,7 +30,7 @@ returns 404.
 
 | Route | Purpose |
 |-------|---------|
-| `GET /api/distro` | effective startup configuration (ini + sources), kernel, contract version, features |
+| `GET /api/distro` | effective startup configuration (ini + sources), OS layer, contract version, features |
 | `GET /api/plugins` | plugins with manifest, options schema, capabilities, load errors, dependency status |
 | `POST /api/detect` | dry run: `{gamePath}` → every plugin's detection plus the selection for each mode |
 | `POST /api/sanitizer/plan`, `/apply`, `/undo`; `GET /api/sanitizer/recipes` | doc 5 |
@@ -43,7 +43,7 @@ in v1 but never sent), `plugins`, `mixedPolicy`, `pluginOptions`,
 
 **Security model (overrides v1; H3 in doc 7).** Keeping v1's routes doesn't mean keeping their holes:
 
-1. **Per-start API token.** The server generates a random token at startup and injects it into the served `index.html`. Every `/api/*` call must send it in an `X-RPYX-Token` header. A cross-site page can't read the token, and a custom header forces a CORS preflight, which the server refuses.
+1. **Per-start API token.** The server generates a random token at startup and injects it into the served `index.html`. Every `/api/*` call must send it in an `X-VIWO-Token` header. A cross-site page can't read the token, and a custom header forces a CORS preflight, which the server refuses.
 2. **Only JSON is accepted:** POSTs without `Content-Type: application/json` get 415.
 3. **Host header check** (`127.0.0.1`, `localhost`, the configured host) to stop DNS rebinding.
 4. **Path containment** for static files and `/preview/`: resolve, then require the path to stay inside its root (`/preview/` is relative to the *active* workspace, which also fixes F20).
@@ -59,7 +59,7 @@ in v1 but never sent), `plugins`, `mixedPolicy`, `pluginOptions`,
 | `/api/logs` | the last N lines of the server log ring buffer (events from every job plus server messages) | same `{logs: [...]}` shape |
 | `/api/logs/clear` | clears the ring buffer view, not the job histories | |
 | `/api/state`, `/api/status`, `/api/session`, `/api/extensions`, `/api/detected-extensions`, `/api/dependencies` | read-only core queries | |
-| `/api/browse-folder`, `/api/media-merger/browse-overlay`, `/api/open-folder`, `/api/open-log-dir` | kernel shell | |
+| `/api/browse-folder`, `/api/media-merger/browse-overlay`, `/api/open-folder`, `/api/open-log-dir` | OS layer shell | |
 
 ## 4.2 `/api/dependencies` item shape
 
@@ -73,7 +73,7 @@ change is safe.
 
 ```
 <workspace>/
-  .rpyx-workspace            ownership marker (JSON: workspace id, created by, contract version)
+  .viwo-workspace            ownership marker (JSON: workspace id, created by, contract version)
   <ext>/...                  files grouped by lowercased extension, no dot
   noext/...                  files without an extension
   .trash/groups/<ext>[_N]/   trashed extension groups ("group trash")
@@ -84,7 +84,7 @@ change is safe.
   .analysis/<analyzer>/<target>/
 ```
 
-- **Ownership (fixes H2):** the framework only ever **clears or replaces** content inside a folder that holds a `.rpyx-workspace` marker it wrote. Pointing Step 2 at an arbitrary folder makes it a *read/curate* target only; extracting into it is refused unless it's empty, in which case the marker is created.
+- **Ownership (fixes H2):** the framework only ever **clears or replaces** content inside a folder that holds a `.viwo-workspace` marker it wrote. Pointing Step 2 at an arbitrary folder makes it a *read/curate* target only; extracting into it is refused unless it's empty, in which case the marker is created.
 - **Re-extraction policy (decided: ask every time).** When the target workspace is owned and not empty, the user chooses: **new** (a new workspace folder `<name>-<n>`), **replace** (replace the extension groups, keep `.extraction_metadata/runs/`, `.sanitizer/journal/` and `.trash/`), or **cancel**. HTTP: `/api/extract` takes an optional `onExisting: new|replace|cancel`. Without it, the response is `{success:false, needsDecision:true, options:[...]}` and the UI shows a dialog (a small v1 UI addition in M3). CLI: `--on-existing` is required in that situation; without it the command exits with code 2 and an explanation.
 - **Three trash layouts, made explicit** (fixes F18): `groups/`, `items/`, `merger/`. v1 trees with the old layout are migrated once, on first open.
 - **All top-level folders starting with `.` are reserved:** never listed, counted, sorted, merged, or trashed by "keep selected" (fixes F3).
@@ -104,7 +104,7 @@ change is safe.
 | File | Holds | Changes |
 |------|-------|---------|
 | `config.json` | server and paths **only**: `host`, `port`, `tempPath`, `outputDir`, `mergerDir`, `webDir`, `logDir` | **unchanged from v1**; no new keys |
-| startup ini (doc 9) | everything that wires the framework: kernel, plugins, slot bindings, tool locations (`[tools]`, keyed by **backend id**), plugin options, features | new |
+| startup ini (doc 9) | everything that wires the framework: OS layer, plugins, slot bindings, tool locations (`[tools]`, keyed by **backend id**), plugin options, features | new |
 
 Secrets (AES keys, encryption keys) are never stored in either file. They're
 passed per request or CLI call. Run records store only a **fingerprint** of

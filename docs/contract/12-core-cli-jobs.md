@@ -18,7 +18,7 @@ sketches what that implies. All names are provisional.
 ```text
 boot(ini_path, overrides) -> Runtime        # doc 9 boot sequence, steps 2-10
 Runtime
-  info() -> DistroInfo                       # effective ini, kernel, plugins, slots, problems
+  info() -> DistroInfo                       # effective ini, OS layer, plugins, slots, problems
   detect(game_path) -> [DetectionResult] + selection per mode
   submit(spec: JobSpec) -> JobHandle
   jobs.get(id) / jobs.list() / jobs.cancel(id)
@@ -43,7 +43,7 @@ result    kind-specific (ExtractionResult, SanitizePlan, ...)
 
 ## 12.3b One result envelope
 
-Used by the new HTTP routes, `rpyx --json` and job results. v1 routes keep
+Used by the new HTTP routes, `viwo --json` and job results. v1 routes keep
 their own shapes (doc 4.1).
 
 ```text
@@ -59,26 +59,26 @@ code     invalid_request | not_found | busy | unavailable | needs_key | failed |
 
 ## 12.4 CLI sketch
 
-The command name is a placeholder (`rpyx`). The name "RPy Extractor"
-undersells a multi-engine framework; renaming is your call ❓.
+The command name is `viwo` (product: Vidya Wormhole). The old name "RPy Extractor"
+undersold a multi-engine framework; renamed to ViWo (D15).
 
 ```
-rpyx info                         distro, kernel, plugins, slot bindings, dependency status
-rpyx detect <game>                detections + chosen plugin(s) per mode
-rpyx extract <game> [--plugin ID | --mixed ID,ID | --policy selected|detected|all]
+viwo info                         distro, OS layer, plugins, slot bindings, dependency status
+viwo detect <game>                detections + chosen plugin(s) per mode
+viwo extract <game> [--plugin ID | --mixed ID,ID | --policy selected|detected|all]
                     [--exts .png,.ogg] [--workspace DIR] [--option plugin.key=value]
-rpyx unpack <archive> [--slot unarchive.7z] [--backend main|spare|ID]
-rpyx slots [--check]              bindings; --check runs each backend's self-test
-rpyx sanitize plan|apply|undo ...
-rpyx merge ...                    media merger, same options as the UI
-rpyx analyze <target> ...         (feature flag)
-rpyx capture ...                  (doc 11, feature flag)
-rpyx serve [--host --port]        starts the HTTP API + web UI (what Start.py does today)
-global: --ini PATH --kernel K --profile P --json --quiet --verbose
-exit codes: 0 ok, 1 job failed, 2 bad config/usage, 3 unsupported kernel, 4 preflight, 130 cancelled
+viwo unpack <archive> [--slot unarchive.7z] [--backend main|spare|ID]
+viwo slots [--check]              bindings; --check runs each backend's self-test
+viwo sanitize plan|apply|undo ...
+viwo merge ...                    media merger, same options as the UI
+viwo analyze <target> ...         (feature flag)
+viwo capture ...                  (doc 11, feature flag)
+viwo serve [--host --port]        starts the HTTP API + web UI (what Start.py does today)
+global: --ini PATH --os K --profile P --json --quiet --verbose
+exit codes: 0 ok, 1 job failed, 2 bad config/usage, 3 unsupported OS layer, 4 preflight, 130 cancelled
 ```
 
-`Start.py` keeps working, as `rpyx serve` with the default ini.
+`Start.py` keeps working, as `viwo serve` with the default ini.
 
 ## 12.5 HTTP as a client of the core
 
@@ -88,8 +88,8 @@ exit codes: 0 ok, 1 job failed, 2 bad config/usage, 3 unsupported kernel, 4 pref
 
 ## 12.5b Packaging (prototype)
 
-- Python **3.11+** (doc 17.5); a `pyproject.toml` with a `rpyx` console entry point. Runtime dependencies are pinned in a lock file. `pytest` is a dev-only dependency.
-- External tools are found by the kernel (PATH, `[tools]`) and pinned through a **tool lock file** (name, version, download URL, checksum) used by CI. Sparse-submodule vendoring follows at M11 (doc 10).
+- Python **3.11+** (doc 17.5); a `pyproject.toml` with a `viwo` console entry point. Runtime dependencies are pinned in a lock file. `pytest` is a dev-only dependency.
+- External tools are found by the OS layer (PATH, `[tools]`) and pinned through a **tool lock file** (name, version, download URL, checksum) used by CI. Sparse-submodule vendoring follows at M11 (doc 10).
 - No installer or packaged desktop app in the prototype.
 
 ## 12.6 Open questions

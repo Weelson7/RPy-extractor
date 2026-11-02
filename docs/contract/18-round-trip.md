@@ -35,7 +35,7 @@ A new job kind, `repack` (doc 12):
 | POLICY | core | same hard refusals as runtime capture (doc 11.1): online/anti-cheat games are refused. Terms-of-service-sensitive plugins are tested only by the independent operator (doc 17.4b) |
 | RESOLVE | core | build the edit set from workspace hashes vs the provenance map; reject edits whose format differs from the original member (same-format rule) unless the plugin declares a converter |
 | PLAN | plugin | `repack_plan(edit_set, provenance) -> RepackPlan`: per container, override or rebuild; the plan is shown to the user before anything is written |
-| COPY | core + kernel | copy the game folder to the target. Copy-on-write clones (reflinks) are used where the filesystem supports them, otherwise a full copy. **Never hardlinks**: a later in-place write would change the original ❓ |
+| COPY | core + OS layer | copy the game folder to the target. Copy-on-write clones (reflinks) are used where the filesystem supports them, otherwise a full copy. **Never hardlinks**: a later in-place write would change the original ❓ |
 | PACK | `pack.*` slots | write override files, or rebuild containers, inside the copy only |
 | VERIFY | core | re-extract each packed container with the matching `unarchive.*` slot and check that every edited member has the edited hash and every untouched member keeps its original hash |
 | REPORT | core | a run record with the plan, the edits, the backends used, and the verification result |

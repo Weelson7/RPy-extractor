@@ -43,12 +43,12 @@ right away (roadmap M1), before any refactor.**
 
 | v1 | Target |
 |----|--------|
-| `Start.py` | thin wrapper for `rpyx serve`, passing its flags through (doc 12.4) |
+| `Start.py` | thin wrapper for `viwo serve`, passing its flags through (doc 12.4) |
 | `extract.py` (config, Handler, routes) | `api/server.py` + `api/routes.py`; config loading → `core/wiring/` (config.json for server/paths + the startup ini) |
 | `models.py` | value types → `contracts/`; state → `core/state.py`; extension sets → `core/media_types.py` |
-| `startup.py` | tool location → `kernels/*`; dependency registry and boot → `core/wiring/` |
+| `startup.py` | tool location → `os/*`; dependency registry and boot → `core/wiring/` |
 | `logging_utils.py` | `core/logging.py` |
-| `extraction_core/runtime.py` | `kernels/*/process.py` |
+| `extraction_core/runtime.py` | `os/*/process.py` |
 | `extraction_core/archive.py` | unpack loop → `core/pipeline/unpack.py`; zip/tar/7z/rar → `backends/`; rpa → `plugins/renpy`; unitypackage → `plugins/unity` |
 | `extraction_core/file_ops.py` | `core/pipeline/collect.py` (copy from game, move from staging) + `core/workspace/` |
 | `extraction_core/pipeline.py`, `extraction_types/{base,registry,orchestrator,detector}.py` | `contracts/` + `core/pipeline/` + `core/wiring/registry.py`; markers move into plugins |
@@ -56,7 +56,7 @@ right away (roadmap M1), before any refactor.**
 | `extraction_types/unity*` | `plugins/unity/` |
 | `sorting.py`, `api/sorting_handlers.py` | `core/workspace/curation/` + thin API |
 | `media_merger/*` | `core/merger/` + thin API; ffmpeg via `media.*` slots; merger build becomes a job |
-| `api/common.py` | `core/workspace/`; explorer → kernel shell |
+| `api/common.py` | `core/workspace/`; explorer → OS layer shell |
 | — (new) | `cli/`, `core/jobs/`, later `core/sanitizer/`, `core/capture/` |
 | `web/*` | unchanged, except the security token (doc 4.1) |
 

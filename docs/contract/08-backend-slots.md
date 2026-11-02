@@ -34,7 +34,7 @@ Backend
   owner          "core" or plugin id
   families       slot families it can serve
   dependencies() -> [DependencySpec]
-  available(kernel) -> Availability { ok, reason, location }
+  available(OS layer) -> Availability { ok, reason, location }
   ...the interface methods of its family (8.3)
 
 SlotBinding     (result of startup resolution)
@@ -91,7 +91,7 @@ MediaProbe                     (family: media.probe)
 
 MediaEncoder                   (family: media.encode)
   build(timeline, out_path, ctx) -> Outcome     # media merger
-  max_inline_args: honors kernel.process.max_command_length
+  max_inline_args: honors os.process.max_command_length
 
 ImageCodec                     (family: image)
   decode(path) -> ok/kind ; convert(src, dst_format, ctx) -> Outcome
@@ -171,7 +171,7 @@ PCKs embedded in executables, AGS, Love2D and NW.js need this.
 - `network: none | optional | required`, together with the offline flags used by default.
 - `parses_untrusted_in_process: bool`, so risky in-process parsers can be isolated.
 
-**Kernel-internal fallbacks** are not slots, but they follow the same main and
+**OS-layer-internal fallbacks** are not slots, but they follow the same main and
 spare idea (doc 1): on Linux the folder dialog tries tkinter and then
 zenity/kdialog; on Windows it tries tkinter and then a PowerShell dialog.
 

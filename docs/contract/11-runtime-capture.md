@@ -18,7 +18,7 @@ What the framework would do:
 
 What the framework would **not** do, with no override flag:
 - **Bypass, hide from, or work around anti-cheat** in any way. When anti-cheat markers or drivers are detected, or the game is listed as online or competitive, capture is **refused**.
-- Use global hooks (for example RenderDoc's global hook, which needs Secure Boot turned off), attach to processes it didn't start, or install kernel drivers.
+- Use global hooks (for example RenderDoc's global hook, which needs Secure Boot turned off), attach to processes it didn't start, or install OS layer drivers.
 - Modify the game folder without an exact, reversible journal (11.4).
 
 Comparable tools set similar expectations. RenderDoc's README says it is
@@ -33,7 +33,7 @@ Proposed preconditions, checked by a `capture.policy` step before any launch:
 | The `capture` feature flag is enabled in the ini | refuse |
 | The user confirmed once per game: "local, offline, single-player; I'm responsible for EULA compliance" | ask |
 | Anti-cheat markers are found in the game folder | **refuse** |
-| An anti-cheat service is running (best effort, through the kernel) | **refuse** |
+| An anti-cheat service is running (best effort, through the OS layer) | **refuse** |
 | The game is on a built-in list of online/competitive titles (data file, not code) | **refuse** |
 | The network is reachable | warn and suggest going offline (best effort) |
 
@@ -68,7 +68,7 @@ A capture is a **job** (doc 12) of kind `capture`, separate from extraction:
 |------|-------|--------------|
 | POLICY | core | the checks in 11.1 |
 | SETUP | core + agent backend | for engine agents: install the agent with a **journal** (11.4), or work on a copy of the game |
-| LAUNCH | kernel + backend | the kernel starts the game under the capture backend. On Linux, Windows games go through Proton/Wine; whether injection tools work there is largely UNVERIFIED ❓ |
+| LAUNCH | OS layer + backend | the OS layer starts the game under the capture backend. On Linux, Windows games go through Proton/Wine; whether injection tools work there is largely UNVERIFIED ❓ |
 | CAPTURE | user + backend | interactive: the user plays to the scene and triggers a capture from the UI, the CLI or a hotkey; or a scripted trigger where the backend supports it |
 | HARVEST | backend | turn capture files into plain files in staging (RenderDoc replay → png/obj, agent dumps → files) |
 | GATHER | core | moves harvested files from staging into the workspace (as extraction COLLECT does), with origin `capture:<job>` |
@@ -93,7 +93,7 @@ RuntimeAgent            (family runtime.<engine>)
 LaunchSpec { executable, args, env, working_dir, via: native|proton|wine, offline_flags }
 ```
 
-The kernel would gain one part, `kernel.launch`, covering how to start a game
+The OS layer would gain one part, `os.launch`, covering how to start a game
 (native, Proton or Wine), how to watch its process tree, and how to set up
 audio loopback, since all of that differs between Windows and Linux.
 
@@ -120,7 +120,7 @@ unfinished restore, and copy mode as an ini option ❓.
 | `runtime.renpy` | `.rpy` hook / developer console | Frida | |
 | `runtime.godot` | `override.cfg` (UNVERIFIED for this use) | Frida | |
 | `capture.memory` | Frida | — | |
-| `capture.audio` | kernel loopback (WASAPI / PipeWire) | OBS | lossy, flagged |
+| `capture.audio` | OS layer loopback (WASAPI / PipeWire) | OBS | lossy, flagged |
 
 Ninja Ripper is proprietary, Windows-only and gated behind a paid tier, so it
 isn't proposed as a backend.

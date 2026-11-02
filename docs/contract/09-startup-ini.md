@@ -1,6 +1,6 @@
 # 9. Startup wiring from an `.ini` file
 
-What the app loads at startup (kernel, profile, plugins, which backend is main
+What the app loads at startup (OS layer, profile, plugins, which backend is main
 or spare in each slot, tool paths, lifecycle hooks) is declared in an
 **`.ini` file**. A distro *is* an ini file. Parsing uses Python's stdlib
 `configparser`, so no new dependency is needed.
@@ -8,7 +8,7 @@ or spare in each slot, tool paths, lifecycle hooks) is declared in an
 `config.json` keeps the v1 server settings (host, port, paths) without change
 (doc 4.5). The ini only controls **what gets wired in**.
 
-> **Prototype scope (after review):** one flat `startup.ini` with `[startup]`, `[plugins]`, `[slots]`, `[tools]`. Deferred until after the prototype: `base =` layering, the 12 shipped distro files, CLI `--slot/--plugin` overrides and lifecycle `[hooks]`. Kernel and profile stay selectable with `--kernel/--profile`. The full model below is the target.
+> **Prototype scope (after review):** one flat `startup.ini` with `[startup]`, `[plugins]`, `[slots]`, `[tools]`. Deferred until after the prototype: `base =` layering, the 12 shipped distro files, CLI `--slot/--plugin` overrides and lifecycle `[hooks]`. OS and profile stay selectable with `--os/--profile`. The full model below is the target.
 
 ## 9.1 Files and precedence
 
@@ -29,8 +29,8 @@ Precedence, lowest to highest (proposed):
 
 1. built-in defaults (slot defaults from doc 8.4, plugin defaults)
 2. the `base =` file named in `[startup]` (for example `distros/windows-unity.ini`)
-3. `startup.ini`, or the file given with `rpyx --ini <path>` (`Start.py` passes its flags to `rpyx serve`)
-4. command-line flags: `--kernel`, `--profile`, `--plugin <id>=on|off`, `--slot <slot>=<main>[,<spare>]`
+3. `startup.ini`, or the file given with `viwo --ini <path>` (`Start.py` passes its flags to `viwo serve`)
+4. command-line flags: `--os`, `--profile`, `--plugin <id>=on|off`, `--slot <slot>=<main>[,<spare>]`
 
 Only one level of `base =` is allowed, to avoid include chains. The
 **effective** configuration, with the source of every value (default, base,
@@ -39,14 +39,14 @@ ini or cli), is logged at boot and returned by `GET /api/distro`.
 ## 9.2 Format
 
 ```ini
-; startup.ini: startup wiring for RPy Extractor
+; startup.ini: startup wiring for ViWo
 ; Encoding UTF-8 (a BOM is tolerated). Comments start with ; or #.
 ; Booleans: on/off, true/false, yes/no, 1/0. Keys are case-insensitive.
 
 [startup]
 contract         = 1.0
 base             = distros/windows-mixed.ini
-kernel           = auto          ; auto | linux | windows
+OS layer           = auto          ; auto | linux | windows
 profile          = mixed         ; renpy | unity | unreal | godot | custom | mixed
 features         = extraction, sorting, merger, sanitizer   ; + analysis
 auto_install     = off           ; v1 did unpinned installs at boot (F19); off is the new default
@@ -91,20 +91,20 @@ before_server =
 
 | # | Step | Reads | Failure behavior |
 |---|------|-------|------------------|
-| 1 | `rpyx` (or `Start.py` → `rpyx serve`) parses `--ini/--kernel/--profile/...` | argv | usage error → exit 2 |
+| 1 | `viwo` (or `Start.py` → `viwo serve`) parses `--ini/--os/--profile/...` | argv | usage error → exit 2 |
 | 2 | Load ini layers (9.1), validate, build `StartupConfig` | ini files | syntax error → exit 2 with file:line |
 | 3 | Load `config.json`, set up logging | config.json | v1 behavior (defaults) |
-| 4 | Select kernel (`auto` = host), check `is_supported_host()` | `[startup] kernel` | unsupported → exit 3 |
-| 5 | Hook `after_kernel` | `[hooks]` | hook error → warning |
+| 4 | Select OS layer (`auto` = host), check `is_supported_host()` | `[startup] OS layer` | unsupported → exit 3 |
+| 5 | Hook `after_os` | `[hooks]` | hook error → warning |
 | 6 | Register enabled built-in plugins; discover, validate and register custom plugins | `[plugins]` | bad plugin → disabled, shown in `/api/plugins` |
 | 7 | Hook `after_plugins` | | warning |
-| 8 | Bind slots: defaults + `[slots]` + `[slot_policy]` + `[tools]`; resolve with `kernel.tools`; optionally auto-install; promote spares | | unbound slot → warning |
+| 8 | Bind slots: defaults + `[slots]` + `[slot_policy]` + `[tools]`; resolve with `os.tools`; optionally auto-install; promote spares | | unbound slot → warning |
 | 9 | Preflight report (dependency statuses, bindings) | | `strict_preflight=on` and a REQUIRED dep missing → exit 4 |
 | 10 | Hook `before_server` | | warning |
 | 11 | Start the HTTP server | config.json | v1 behavior |
 | 12 | Hook `on_shutdown` on Ctrl+C or exit | | ignored |
 
-Exit codes: 0 ok, 2 bad configuration, 3 unsupported kernel, 4 strict
+Exit codes: 0 ok, 2 bad configuration, 3 unsupported OS layer, 4 strict
 preflight failed. In v1, a missing unrpa always exits with 1.
 
 ## 9.4 Validation rules
@@ -120,8 +120,8 @@ preflight failed. In v1, a missing unrpa always exits with 1.
 
 ```text
 hook(ctx: StartupContext) -> None
-StartupContext (read-only views): config, kernel, plugins, bindings, log(message)
-hook points: after_kernel, after_plugins, before_server, on_shutdown
+StartupContext (read-only views): config, OS layer, plugins, bindings, log(message)
+hook points: after_os, after_plugins, before_server, on_shutdown
 ```
 
 - Hooks are resolved only from modules inside `custom_dirs`. That's the same trust boundary as custom plugins (doc 2.8).

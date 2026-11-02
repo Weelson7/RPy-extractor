@@ -12,8 +12,8 @@
 
 | Level | What | Runs | Gate |
 |-------|------|------|------|
-| **L0 static** | formatter check; **LoC caps** (doc 15); import-direction lint (layer rule: contracts ← kernels ← plugins/backends ← core ← api/cli); every GPL/AGPL backend declares `isolation=subprocess`; every backend declares its network use; ini schema validation of `distros/*.ini` and `loc_caps.ini` | every push | blocking |
-| **L1 contract / unit** | conformance kit (kernels, plugins, slots, backends) with fakes; plugin routing (`select_plugins`); ini precedence; identify/carve rules; value types; journal | every push, Linux + Windows | blocking |
+| **L0 static** | formatter check; **LoC caps** (doc 15); import-direction lint (layer rule: contracts ← OS layers ← plugins/backends ← core ← api/cli); every GPL/AGPL backend declares `isolation=subprocess`; every backend declares its network use; ini schema validation of `distros/*.ini` and `loc_caps.ini` | every push | blocking |
+| **L1 contract / unit** | conformance kit (OS layers, plugins, slots, backends) with fakes; plugin routing (`select_plugins`); ini precedence; identify/carve rules; value types; journal | every push, Linux + Windows | blocking |
 | **L2 characterization** | golden files of `/api/*` payload shapes and workspace snapshots (names, sizes, hashes) for synthetic games. Captured **after the M1 hotfix**, against the *intended* behavior, with a written **intended-differences list** for each known v1 bug (H1–H3, F1, F3, F11…) | every push | blocking. Golden updates need a reason in the commit |
 | **L3 component** | each plugin against its synthetic fixtures, with fake tools and stdlib backends (zip/tar, our safe RPA reader, a carved PCK) | every push | blocking |
 | **L4 matrix** | (a) selection exhaustive over every plugin subset × policy (pure), plus pairwise pipeline runs (doc 3.6); (b) **slot failover**: for every slot, {main up, down} × {spare up, down} × outcome kinds (ok, unsupported, failed, needs_key, cancelled) | every push (fast fakes), Linux + Windows | blocking |
@@ -77,7 +77,7 @@ operator**, never by the project's CI or maintainers.
 - **Python:** v1 uses 3.10+ syntax. Proposal: **3.11 as the minimum** (`tomllib`, better errors and `ExceptionGroup`, useful for job errors) and test **3.11 and 3.13** ❓.
 - **Runner:** `pytest` as a dev-only dependency (none is installed today), with markers `l0`…`l6` and `needs_tool(<backend_id>)`. The production code stays stdlib + the declared backends.
 - **CI:** GitHub Actions, `ubuntu-latest` + `windows-latest` × Python 3.11/3.13 for L0–L4 and L6-CLI. A nightly job on an image with the tools installed (pinned versions, from the vendoring decisions in doc 10) for L5 and the L6 UI.
-- **Coverage floors:** `contracts/` + `core/` ≥ 90 % lines, plugins ≥ 80 %, kernels ≥ 75 % per OS (the rest is OS-specific). Floors, not targets.
+- **Coverage floors:** `contracts/` + `core/` ≥ 90 % lines, plugins ≥ 80 %, OS layers ≥ 75 % per OS (the rest is OS-specific). Floors, not targets.
 - **Speed budget:** L0–L4 under 3 minutes per OS, so they stay per-push.
 
 ## 17.6 Definition of done (every milestone, doc 16)

@@ -1,4 +1,4 @@
-# RPy Extractor: architecture contract (draft 3, for review)
+# Vidya Wormhole (ViWo): architecture contract (draft 3, decisions closed)
 
 **Status: proposal, draft 3** (draft 2 added the research in doc 13; draft 3 applies an independent review: new v1 data-loss and security findings, contradictions fixed, prototype split into A/B). Nothing here is implemented or decided. These documents
 lay out how I understand the target architecture after reading the v1 code
@@ -12,7 +12,7 @@ are places where I'm unsure or where the choice is yours.
 | # | Document | Scope |
 |---|----------|-------|
 | 0 | [00-glossary.md](00-glossary.md) | **Start here.** One meaning per term; v1 words that carry several meanings; metrics that don't count what their names say |
-| 1 | [01-kernel.md](01-kernel.md) | Linux / Windows kernels: where OS-specific code would live |
+| 1 | [01-os-layer.md](01-os-layer.md) | Linux / Windows OS layers: where OS-specific code would live |
 | 2 | [02-engine-plugins.md](02-engine-plugins.md) | Ren'Py, Unity, Unreal, Godot, custom plugins; detection; dependencies |
 | 3 | [03-pipeline-and-mixed-mode.md](03-pipeline-and-mixed-mode.md) | stages, plugin routing, mixed mode, the combination test matrix |
 | 4 | [04-v1-locks.md](04-v1-locks.md) | what the v1 UI depends on (API, payloads, workspace layout, logs) and should be kept |
@@ -45,11 +45,11 @@ are places where I'm unsure or where the choice is yours.
 | Re-extraction | **ask every time** (new workspace / replace / cancel) |
 | Terms-of-service-sensitive testing | run by an **independent operator** (doc 17.4b) |
 | v1 hotfix | **done** on branch `hotfix/v1-data-safety` (H1, H2, H3, F17 + 11 regression tests), not merged yet |
-| Naming | **rename the product** (name to be chosen) |
+| Naming | product **Vidya Wormhole (ViWo)**, CLI `viwo`; OS adapter layer called **OS** |
 
 ## Goals (as I understood them)
 
-1. Split the product into **distros**: one *kernel* (host OS) plus one *profile* (which game engines are supported).
+1. Split the product into **distros**: one *OS layer* (host OS) plus one *profile* (which game engines are supported).
 2. Each game engine is an **engine plugin**. Adding an engine should not require changes to core, API or UI code.
 3. **Mixed mode**: any combination of plugins can run on one game folder, and the test suite covers every combination.
 4. Every processing engine of the pipeline sits behind an **interface**, filled by a **main** backend and, where it makes sense, a **spare** (unarchiving first).
@@ -67,22 +67,22 @@ are places where I'm unsure or where the choice is yours.
               sanitizer runner, analysis jobs, registries, boot (ini), logging
   plugins/    engine plugins: generic, renpy, unity, unreal, godot, <custom>
   backends/   implementations behind slots: unarchivers, exporters, media, analyzers
-  kernels/    linux | windows: process, tool location, installer, shell, filesystem rules
+  os/    linux | windows: process, tool location, installer, shell, filesystem rules
   contracts/  interfaces + value types only (stdlib, no app imports)
   third_party/  vendored tools (sparse submodules)
 ```
 
 Proposed dependency direction: every layer may use the layers listed below it,
 never the ones above. `contracts` imports nothing from the app. Plugins never
-import each other. Core reaches plugins, backends and kernels through
+import each other. Core reaches plugins, backends and OS layers through
 registries that the boot step fills from the ini. In v1 this direction is
 broken in several places: `extraction_core` lazily imports `startup`, core
 knows about `.rpa`, and OS checks appear in five modules (doc 7, F12/F13).
 
 ## Distro model (proposed)
 
-A distro is an ini file: one kernel plus one profile, with optional slot and
-tool overrides (doc 9). Two kernels times six profiles gives 12 distros. The
+A distro is an ini file: one OS layer plus one profile, with optional slot and
+tool overrides (doc 9). Two OS layers times six profiles gives 12 distros. The
 `generic` plugin is in all of them.
 
 | Profile | Engine plugins | Mixed mode | Custom plugins |
@@ -100,7 +100,7 @@ These are the ideas the other documents build on. Each is up for debate.
 
 1. **One writer per folder; the game folder is read-only.** Plugins and backends write to staging; only COLLECT writes the workspace, by **copying** from the game folder and moving only from staging. Only PREPARE clears, and only inside a folder holding the workspace marker. This rules out v1's H1 (files moved out of the game), H2 (user folder deleted) and F1 (Unity exports wiped).
 2. **The local HTTP API is authenticated** (a per-start token, JSON only, Host check, path containment; doc 4.1).
-3. **OS-specific code only in kernels.** That includes subprocess calls, tool lookup, installers, dialogs and filename rules.
+3. **OS-specific code only in OS layers.** That includes subprocess calls, tool lookup, installers, dialogs and filename rules.
 4. **Every engine behind an interface, bound through a slot** (doc 8). Stages never call tools directly.
 5. **Failures are isolated.** A failing plugin or backend is recorded against its owner; the other plugins keep running.
 6. **Destructive bulk actions plan first, apply second, and can be undone** (sanitizer, retain groups).
@@ -109,28 +109,30 @@ These are the ideas the other documents build on. Each is up for debate.
 9. **Honest metrics.** A number's name says what it counts (doc 0.4). Gaining confidence in output quality starts with this.
 10. **Versioning.** `MAJOR.MINOR`. Optional additions bump the minor; anything else bumps the major.
 
-## Decisions needed from you
+## Decisions (all closed)
 
-| # | Question | My suggestion |
-|---|----------|---------------|
-| D0 | Terminology (doc 0.5): "kernel" or "host"? "backend / main / spare"? two trash layouts or one? | — |
-| D1 | Mixed mode: does it mean (a) choosing any plugin set at runtime, (b) a test matrix over every set, or both? | both |
-| D2 | When an enabled plugin's required dependency is missing: refuse to start (v1, for unrpa) or disable that plugin? | disable the plugin; `strict_preflight` as an opt-in |
-| D3 | Unity output in the per-extension layout (`png/`) instead of `images/`? | yes |
-| D4 | Sanitizer scope at first | health and identity rules only; nothing lossy by default |
-| D5 | Custom plugins: Python only, or also declarative JSON/ini? | Python first |
-| D6 | macOS kernel | later |
-| D7 | `export.unity`: v1 runs every available exporter and adds up their output. Keep that (`supplement`) or switch to main + spare (`failover`)? | ❓ depends on whether duplicate files are acceptable |
-| D8 | Vendored compiled tools: build from source, or pin the version and fetch the release binary? (doc 10.4) | pin + fetch for heavy native tools |
-| D9 | Project license | **decided:** MIT core; dependencies keep their own licenses |
-| D10 | Hotfix v1 for H1, H2, H3, F17 | **decided and done:** branch `hotfix/v1-data-safety`, awaiting your review/merge |
-| D11 | Ren'Py RPA: should our own safe reader (restricted unpickler) be main, with unrpa as a subprocess spare? | yes; RPA indexes are pickles (doc 13.3) |
-| D12 | Should CATALOG → SELECT be a separate stage for huge games (CASC, Unreal)? | yes, optional |
-| D13 | Runtime agents: journaled overlay on the game folder, or a copy of the game? | overlay + crash recovery |
-| D14 | Custom plugin showcase | **decided:** an open-source custom-engine game in CI; Overwatch allowed as a `tos_sensitive` plugin whose real-data tests are run by an **independent operator** (doc 17.4b) |
-| D15 | Product and CLI name | **decided to rename**; the name itself is still open (`rpyx` is a placeholder) |
+You accepted every recommendation on 2026-11-02, so this table is now the record.
+
+| # | Topic | Decision |
+|---|-------|----------|
+| D0 | Terminology | the OS adapter layer is called **OS** (`viwo/os/`, `LinuxOS`, `WindowsOS`); **backend / main / spare**; three explicit trash layouts (groups, items, merger) |
+| D1 | Mixed mode | both: any plugin set at runtime, plus combination tests |
+| D2 | Missing required dependency | **disable that plugin** and show why; `strict_preflight` is an opt-in |
+| D3 | Unity output layout | per-extension layout (`png/`, `wav/`), like everything else |
+| D4 | Sanitizer first scope | health and identity rules, report-only; nothing lossy by default |
+| D5 | Custom plugins | Python first; declarative form later |
+| D6 | macOS | later |
+| D7 | `export.unity` | `failover`: **UnityPy main** (v1 parity), **AssetStudioModCLI spare**; `supplement` later if needed |
+| D8 | Vendored compiled tools | pin the version + fetch release binaries for heavy native tools |
+| D9 | License | MIT core; dependencies keep their own licenses |
+| D10 | v1 hotfix | done (`hotfix/v1-data-safety`, merged into `makeover`) |
+| D11 | Ren'Py RPA | our safe reader is main; unrpa (subprocess) is spare |
+| D12 | CATALOG → SELECT | yes, an optional stage (Prototype B) |
+| D13 | Runtime agents | journaled overlay + crash recovery |
+| D14 | Custom plugin showcase | open-source custom-engine game in CI; Overwatch as a `tos_sensitive` plugin tested by an independent operator |
+| D15 | Name | **Vidya Wormhole (ViWo)**; CLI `viwo` |
 
 ## Not in this draft
 
-- The Python interface code. A draft exists in the session scratchpad and has been held back as you asked. It predates draft 2: it still has archive handlers instead of slots and no ini boot, so it will be rewritten once these documents are agreed.
+- Implementation status of Prototype A: see [docs/prototype-a/STATUS.md](../prototype-a/STATUS.md).
 - Facts still UNVERIFIED after research: anti-cheat marker names, Godot `override.cfg` autoload injection, Ninja Ripper licensing, AESDumpster and UnrealLocres licenses, some Windows-only tools on Linux, and Blizzard's current EULA text (see docs 11 and 13).

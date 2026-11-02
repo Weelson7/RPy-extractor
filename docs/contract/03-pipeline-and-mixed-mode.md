@@ -64,7 +64,7 @@ matches, generic runs.
 
 - **Unpack:** the `unarchive.*` slots of all chosen plugins are combined. If two plugins claim the same suffix, the ini decides; if the ini says nothing, it's reported as a configuration problem at boot ❓ (open: should magic-byte sniffing break the tie instead?).
 - **Export:** each plugin exports into its own `staging/<id>/`, so plugins can't overwrite each other's output.
-- **Collect:** core collects once from all source roots and all staging folders, de-duplicating source roots that overlap (using `kernel.fs.path_key`). Duplicate files are resolved with the v1 rule (same size and mtime means skip; otherwise `name__N.ext`).
+- **Collect:** core collects once from all source roots and all staging folders, de-duplicating source roots that overlap (using `os.fs.path_key`). Duplicate files are resolved with the v1 rule (same size and mtime means skip; otherwise `name__N.ext`).
 - **Failure isolation:** if one plugin fails during export or verify, it's recorded in `plugins[i].error` and the other plugins still run. The run counts as successful if COLLECT completes.
 - **Result:** `extractorType: "mixed"`, `detection` comes from the first plugin in run order, and each plugin gets its own entry in `plugins[]`. Plugin-specific top-level keys (such as Unity's `qualityGatePass`) are **only** merged into the top level in single or auto mode.
 
@@ -92,8 +92,8 @@ more cheaply:
 | What | How | Size |
 |------|-----|------|
 | **Selection: every combination** | exhaustive over every non-empty subset of the enabled plugins × the 3 mixed policies × synthetic detection results. Pure function, no I/O; there are also property tests (with random confidences, the rules in 3.3 always hold) | 63 subsets × 3 policies × fixtures: milliseconds |
-| **Pipeline: pairwise** | real pipeline runs (fake backends, temporary folders) for every **pair** of plugins plus each single plugin, on the mixed fixture and on each plugin's own fixture | about 21 runs per kernel |
-| **Kernels** | every selection and pipeline test runs on the Linux and Windows CI runners (real kernels), plus a fake-kernel run of the fast tests on each runner | 2 runners |
+| **Pipeline: pairwise** | real pipeline runs (fake backends, temporary folders) for every **pair** of plugins plus each single plugin, on the mixed fixture and on each plugin's own fixture | about 21 runs per OS layer |
+| **OS layers** | every selection and pipeline test runs on the Linux and Windows CI runners (real OS layers), plus a fake-OS run of the fast tests on each runner | 2 runners |
 
 Invariants checked in every pipeline run:
 

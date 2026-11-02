@@ -17,7 +17,7 @@ PluginManifest
   priority       tie-breaker when detection confidence is equal
   dependencies   [DependencySpec]
   options        [PluginOption]     # the UI renders a form from these
-  kernels        {"*"} or a subset of {"linux","windows"}
+  OS layers        {"*"} or a subset of {"linux","windows"}
   builtin        false for custom plugins
 
 PluginOption { key, label, type: string|secret|bool|int|float|choice|path, default, choices, help }
@@ -63,7 +63,7 @@ GameProbe            # built once per request, shared by all plugins
 ExtractionContext    # per request and per plugin
   request_id, game_root, staging, scratch
   selected_exts (frozenset | None), options, detection
-  probe, kernel, progress, cancel
+  probe, OS layer, progress, cancel
   log(message, level)
 ```
 
@@ -117,7 +117,7 @@ DependencySpec
   kind          python_module | executable | runtime
   requirement   required | recommended | optional
   import_name                       (python_module)
-  executables   { kernel_id | "*": (names...) }
+  executables   { os_id | "*": (names...) }
   packages      { "pip"|"winget"|"choco"|"scoop"|"apt"|...: package id }
   env_var, hint
 ```

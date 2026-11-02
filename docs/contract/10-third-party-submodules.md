@@ -12,7 +12,7 @@ points need your decision before anything here can be locked.
 - **Pinned versions:** every tool is fixed to a known commit. Output that differs because of tool versions becomes reproducible.
 - **Provenance:** we know exactly which code we run, and licenses sit next to the code.
 - **Fewer install surprises:** less depends on `pip install` at startup, or winget/choco (v1 `startup.py`).
-- **The kernel can find tools in a known place:** the ToolLocator (doc 1.2) gets a "vendored" step.
+- **The OS layer can find tools in a known place:** the ToolLocator (doc 1.2) gets a "vendored" step.
 
 ## 10.2 Proposed layout
 
@@ -23,7 +23,7 @@ third_party/
   unrpa/
   py7zr/
   ...
-  _build/<kernel>/<tool>/   # build outputs for compiled tools (gitignored)
+  _build/<OS layer>/<tool>/   # build outputs for compiled tools (gitignored)
 ```
 
 ```ini
@@ -48,7 +48,7 @@ build    = gradle (heavy)   ; see 10.4
 Notes on mechanics:
 
 - `.gitmodules` can record `shallow = true`, but **it cannot record sparse-checkout paths.** The sparse paths have to live in our own file (`manifest.ini` above). A sync script would then run `git submodule update --init --filter=blob:none` followed by `git -C third_party/<x> sparse-checkout set <paths>`. In other words, sparse checkout needs tooling of our own; plain git won't do it.
-- The ToolLocator search order (doc 1.2) would become: config override → env var → **vendored (`third_party/`, `_build/<kernel>/`)** → PATH → known install dirs. Should vendored come before or after a system install? I lean towards vendored first (reproducibility), but there's a case for system first (the user's own newer tool). ❓
+- The ToolLocator search order (doc 1.2) would become: config override → env var → **vendored (`third_party/`, `_build/<OS layer>/`)** → PATH → known install dirs. Should vendored come before or after a system install? I lean towards vendored first (reproducibility), but there's a case for system first (the user's own newer tool). ❓
 
 ## 10.3 The tools, sorted by how well they fit
 
@@ -62,13 +62,13 @@ need to be checked** one by one.
 |-----|-------|-----|
 | **Good:** pure Python, usable straight from source | unrpa, unrpyc, py7zr (?) | can be added to `sys.path` from the submodule |
 | **Partial:** Python with compiled dependencies | UnityPy | its texture/audio decoders are native extensions (wheels). The submodule pins UnityPy itself, but pip or prebuilt wheels are still needed for those dependencies ❓ |
-| **Source only:** needs a build toolchain for each kernel | repak (Rust), GodotPckTool (C++), umodel (C++), Il2CppDumper / Cpp2IL / AssetRipper / ILSpy (.NET), Ghidra (Java/Gradle), ffmpeg (C) | a submodule gives us **source, not a runnable tool**. Each would need a build step for each kernel, and some builds are heavy (Ghidra, ffmpeg) |
+| **Source only:** needs a build toolchain for each OS layer | repak (Rust), GodotPckTool (C++), umodel (C++), Il2CppDumper / Cpp2IL / AssetRipper / ILSpy (.NET), Ghidra (Java/Gradle), ffmpeg (C) | a submodule gives us **source, not a runnable tool**. Each would need a build step for each OS layer, and some builds are heavy (Ghidra, ffmpeg) |
 | **Doesn't fit plain git** | unrar (source is shipped as a tarball from RARLAB, not git, as far as I know), 7-Zip (official git hosting to verify) | would need a mirror repository we maintain |
 
 ## 10.4 Open problems
 
 1. **Source vs. runnable.** For compiled tools, what does the submodule really give us? The options:
-   - (a) build from source per kernel (correct, but slow, and needs Rust/.NET/JDK/C toolchains on every dev machine and in CI);
+   - (a) build from source per OS layer (correct, but slow, and needs Rust/.NET/JDK/C toolchains on every dev machine and in CI);
    - (b) the submodule pins the version and license, and a script downloads the matching **release binary**, verified by checksum;
    - (c) a separate binaries repository (with git LFS) as the submodule.
    My suggestion is (b) for heavy native tools and plain source for pure-Python ones. I'd like your call. ❓

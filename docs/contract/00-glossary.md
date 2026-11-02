@@ -30,10 +30,10 @@ least sure about are marked ❓.
 
 ### Structure
 
-- **Kernel** ❓: the adapter for the host operating system (Linux or Windows). It is the only place for OS-specific behavior. *Naming concern:* "kernel" already means the OS kernel, so "host" or "platform" might be clearer. I've kept your word for now.
+- **OS (layer):** the adapter for the host operating system (Linux or Windows): process running, tool location, filesystem rules, desktop shell. It is the only place for OS-specific behavior. Python package `viwo.os` (absolute imports keep the stdlib `os` module unaffected).
 - **Engine plugin:** code that knows one game engine. It detects the engine, declares slots and backends, and can export, verify, and propose sanitizer rules and analysis targets.
 - **Profile:** a named set of engine plugins plus features (renpy, unity, unreal, godot, custom, mixed).
-- **Distro:** one kernel plus one profile, declared in an `.ini` file (doc 9).
+- **Distro:** one OS layer plus one profile, declared in an `.ini` file (doc 9).
 - **Core:** the services that don't depend on any game engine or OS: the pipeline runner, workspace, sorting, merger, sanitizer runner, registries and logging.
 
 ### Processing
@@ -54,7 +54,7 @@ least sure about are marked ❓.
 ### Data
 
 - **Game folder:** the folder the user points at. It is **never modified** by extraction: COLLECT copies from it. v1 moves files out of it (H1). The only exception is runtime agents, which work through a journaled overlay or a copy (doc 11.4).
-- **Workspace marker:** `.rpyx-workspace`. Only folders that have one may be cleared by the framework (doc 4.3).
+- **Workspace marker:** `.viwo-workspace`. Only folders that have one may be cleared by the framework (doc 4.3).
 - **Staging:** a private temporary folder for each plugin. Unpack and export results go here first.
 - **Scratch:** temporary files that are never collected into the workspace.
 - **Workspace:** the organized output folder that the user curates.
@@ -87,9 +87,9 @@ least sure about are marked ❓.
 ## 0.3 How the terms relate
 
 ```
-Distro ──= Kernel + Profile ──▶ Profile enables Engine plugins
+Distro ──= OS + Profile ──▶ Profile enables Engine plugins
 Engine plugin ──declares──▶ Slots ──bound to──▶ main Backend [+ spare Backend]
-Backend ──wraps──▶ Tool ──located by──▶ Kernel (or vendored submodule)
+Backend ──wraps──▶ Tool ──located by──▶ OS (or vendored submodule)
 Extraction run ──= ordered Stages ──each uses──▶ Interfaces via Slots
 Stages: game folder ─unpack/export─▶ Staging ─collect─▶ Workspace (Groups of Assets)
 Workspace ──curated by──▶ Sorting · Retain groups · Sanitizer · Merger
@@ -120,7 +120,7 @@ than any interface.
 
 ## 0.5 Questions for you
 
-1. Is "kernel" the word you want, or would "host" or "platform" read better to contributors?
+1. ~~Kernel or host?~~ Decided: **OS**.
 2. "Backend / main / spare": does that match what you meant by "a main engine and a spare one"?
 3. Should the two trash mechanisms stay in one `.trash/` folder (as in v1), or be split into separate folders?
 4. Which v1 metric names can we rename in the UI now, and which must stay frozen?

@@ -1,12 +1,12 @@
-# 1. Kernel contract (Linux / Windows)
+# 1. OS contract (Linux / Windows)
 
-The kernel is the **only** layer that may contain OS-specific code. It is
+The OS layer is the **only** layer that may contain OS-specific code. It is
 split into five small parts so each one can be faked in tests and replaced on
 its own.
 
 ```text
-Kernel
-  kernel_id        "linux" | "windows"
+OS
+  os_id        "linux" | "windows"
   display_name
   is_supported_host() -> bool
   process : ProcessRunner
@@ -47,10 +47,10 @@ Search order (proposed):
 
 1. startup ini override (`[tools]`, keyed by backend id; doc 9)
 2. `spec.env_var` (for example `GHIDRA_INSTALL_DIR`)
-3. `PATH`, trying each name from `spec.executable_candidates(kernel_id)`, with the kernel adding `.exe`, `.bat` and `.cmd` itself on Windows
+3. `PATH`, trying each name from `spec.executable_candidates(os_id)`, with the OS layer adding `.exe`, `.bat` and `.cmd` itself on Windows
 4. `known_install_dirs`
 
-| | Windows kernel | Linux kernel |
+| | Windows OS layer | Linux OS layer |
 |--|--|--|
 | known dirs | `%ProgramFiles%`, `%ProgramFiles(x86)%`, scoop `apps/*/current`, chocolatey `lib/*/tools`, `%LOCALAPPDATA%\Programs` | `/usr/bin`, `/usr/local/bin`, `/opt/*`, `~/.local/bin`, flatpak exports |
 | python module | `python -m <module>` / import check | same |
@@ -107,9 +107,9 @@ This replaces three different v1 rules: Unity `exporters._safe_name`, the
 sorting rename check (`"/" in name or "\\" in name or ":" in name`), and the
 merger's `_safe_output_name`.
 
-## 1.6 What changes between the kernels
+## 1.6 What changes between the OS layers
 
-| Concern | Windows kernel | Linux kernel |
+| Concern | Windows OS layer | Linux OS layer |
 |--|--|--|
 | Game layouts seen | `.exe`, `*_Data`, `UnityPlayer.dll`, `*-Win64-Shipping.exe` | `.x86_64`, `.sh`, `UnityPlayer.so`, Proton prefixes (`steamapps/compatdata`) holding Windows builds |
 | Case sensitivity | insensitive | **sensitive**, so engine markers must be matched case-insensitively through the GameProbe (v1 F2) |
@@ -118,7 +118,7 @@ merger's `_safe_output_name`.
 | Open folder | `os.startfile` | `xdg-open` |
 | Installers | pip, winget, choco, scoop | pip; others hint-only |
 
-## 1.7 Conformance checks (every kernel must pass)
+## 1.7 Conformance checks (every OS layer must pass)
 
 - `max_command_length > 0`.
 - `sanitize_filename` returns a name that passes `is_valid_filename` for a fixed set of bad inputs: empty, `.`, `..`, `CON`, `nul.txt`, `a/b`, `a\b`, `x:y`, trailing dots or spaces, control characters, NUL, Unicode, and 300-character names.
