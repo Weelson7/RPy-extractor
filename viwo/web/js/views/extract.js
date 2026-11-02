@@ -1,7 +1,8 @@
 // 01 EXTRACT: target, detection, mode, plugin options, filter, run + live feed.
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, meter, viewHead, toast, toastErr, busy, pref, logLine, emit, modal, errorBox, pad, fmtNum } from "../ui.js";
+import { h, fill, btn, panel, badge, meter, viewHead, toast, toastErr, busy, pref, logLine, emit, modal, errorBox, pad, fmtNum, bus } from "../ui.js";
 import { renderResult, renderFailure } from "./extract-result.js";
+import { openWorkspaceDialog } from "../workspace-dialog.js";
 
 const PRESETS = {
   IMAGES: ".png .jpg .jpeg .webp .gif .bmp",
@@ -28,6 +29,7 @@ function mount(root) {
   el.progress = h("div", { class: "progress" });
   el.result = h("div", { class: "result-host" });
   el.run = btn("RUN EXTRACTION", () => run(), "primary lg");
+  el.target = h("code", { class: "mono path" }, "—");
   el.cancel = btn("CANCEL JOB", cancelJob, "ghost", { hidden: true });
   root.append(
     viewHead("01", "EXTRACT", "Pull assets from a game folder into a ViWo workspace. The game folder is opened read-only and never modified."),
@@ -36,6 +38,8 @@ function mount(root) {
       h("div", { class: "col" }, feedPanel(), el.result)));
   renderIdleFeed();
   loadPlugins();
+  el.target.textContent = bus.ws?.path || "—";
+  bus.addEventListener("wspath", (e) => { el.target.textContent = e.detail.path || "—"; });
 }
 
 function targetPanel() {
@@ -163,6 +167,8 @@ function runPanel() {
     h("label", { class: "lbl", for: "ext-filter" }, "EXTENSION FILTER (OPTIONAL)"),
     h("div", { class: "row" }, el.exts, btn("CLEAR", () => { el.exts.value = ""; }, "sm ghost")),
     h("div", { class: "row presets" }, h("span", { class: "dim" }, "ADD"), presets),
+    h("div", { class: "kv target" }, h("span", { class: "lbl" }, "OUTPUT →"), el.target,
+      h("div", { class: "row" }, h("span", { class: "dim small" }, "Extraction always writes into the active workspace."), btn("SWITCH", openWorkspaceDialog, "sm ghost"))),
     h("div", { class: "row run-row" }, el.run, el.cancel));
 }
 

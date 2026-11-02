@@ -1,13 +1,15 @@
 // App shell: hash router, top-bar status chips, workspace path, activity console dock.
 import { api, hasToken } from "./api.js";
-import { h, $, pref, logLine, bus, toastErr } from "./ui.js";
+import { h, $, pref, logLine, bus, emit, toastErr } from "./ui.js";
 import extract from "./views/extract.js";
 import workspace from "./views/workspace.js";
 import sort from "./views/sort.js";
 import jobs from "./views/jobs.js";
 import system from "./views/system.js";
+import merger from "./views/merger.js";
+import { openWorkspaceDialog } from "./workspace-dialog.js";
 
-const VIEWS = { extract, workspace, sort, jobs, system };
+const VIEWS = { extract, workspace, sort, jobs, system, merger };
 const scroll = {};
 const state = { current: "", distro: null, dockOpen: pref("dock") === "1", logCount: -1, lastLog: "" };
 
@@ -66,9 +68,11 @@ async function pollStatus() {
 
 async function refreshWorkspacePath() {
   try {
-    const res = await api.assets(0, 1);
-    $("#ws-path").textContent = res.assetPath ? `\u200e${res.assetPath}\u200e` : "—";
-    $("#ws-path").title = res.assetPath || "";
+    const res = await api.workspace();
+    $("#ws-path").textContent = res.path ? `\u200e${res.path}\u200e` : "—";
+    $("#ws-path").title = res.path || "";
+    bus.ws = res;
+    emit("wspath", res);
   } catch { /* chip shows link state */ }
 }
 
@@ -101,9 +105,10 @@ async function pollLogs() {
 function boot() {
   if (!hasToken()) {
     $("#main").prepend(h("div", { class: "alert err" }, h("b", {}, "NO API TOKEN"),
-      h("p", {}, "This page was not served by the ViWo server, so API calls will be rejected. Open http://127.0.0.1:8081/ instead.")));
+      h("p", {}, "This page was not served by the ViWo server, so API calls will be rejected. Open the address printed by: python3 -m viwo.cli serve")));
   }
   $("#dock-toggle").addEventListener("click", () => setDock(!state.dockOpen));
+  $("#ws-btn").addEventListener("click", openWorkspaceDialog);
   $("#dock-clear").addEventListener("click", () => api.clearLogs().then(() => { state.logCount = -1; pollLogs(); }, toastErr));
   window.addEventListener("hashchange", route);
   bus.addEventListener("workspace", refreshWorkspacePath);

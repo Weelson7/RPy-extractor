@@ -71,16 +71,27 @@ function trapTab(e, root) {
   else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
 }
 
+/** BROWSE button that asks the server's native picker and fills `field` (silent when cancelled). */
+function browseBtn(field, pick) {
+  return btn("BROWSE", (e) => busy(e.currentTarget, async () => {
+    try { field.value = (await pick(field.value)) || field.value; } catch (err) {
+      if (!err.payload?.cancelled) toast("Picker unavailable on this host — type the path.", "warn", err.message);
+    }
+    field.focus();
+  }), "ghost");
+}
+
 /** Styled modal. actions: [{label, value, kind, primary}]. Resolves {value, text}. */
 export function modal({ title, body, actions, input, tag = "// SYS" }) {
   return new Promise((resolve) => {
     const prev = document.activeElement;
-    const field = input ? h("input", { class: "input mono", value: input.value || "", "aria-label": input.label || title, spellcheck: "false" }) : null;
+    const field = input ? h("input", { class: "input mono grow", value: input.value || "", placeholder: input.placeholder || null, "aria-label": input.label || title, spellcheck: "false" }) : null;
     const buttons = actions.map((a) => btn(a.label, () => close(a.value), a.kind || ""));
     const primary = actions.findIndex((a) => a.primary);
     const dlg = h("div", { class: "modal panel", role: "dialog", "aria-modal": "true", "aria-labelledby": "modal-t" },
       h("header", { class: "panel-h" }, h("span", { class: "idx" }, tag), h("h3", { id: "modal-t" }, title)),
-      h("div", { class: "panel-b" }, body, input?.label ? h("label", { class: "lbl" }, input.label) : null, field),
+      h("div", { class: "panel-b" }, body, input?.label ? h("label", { class: "lbl" }, input.label) : null,
+        input?.browse ? h("div", { class: "row" }, field, browseBtn(field, input.browse)) : field),
       h("footer", { class: "modal-f" }, buttons));
     const back = h("div", { class: "backdrop", onmousedown: (e) => e.target === back && close(null) }, dlg);
     const onKey = (e) => {

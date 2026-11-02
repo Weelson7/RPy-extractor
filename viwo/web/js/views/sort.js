@@ -1,6 +1,6 @@
 // 03 SORT: keyboard-first triage of workspace assets with a large preview stage.
 import { api } from "../api.js";
-import { h, btn, panel, viewHead, empty, errorBox, toast, toastErr, promptBox, fmtBytes, fmtNum, pad, bus, emit } from "../ui.js";
+import { h, btn, panel, viewHead, empty, errorBox, toast, toastErr, promptBox, modal, fmtBytes, fmtNum, pad, bus, emit } from "../ui.js";
 
 const LIMIT = 100;
 const TAG = { image: "IMG", audio: "AUD", video: "VID", text: "TXT", binary: "BIN" };
@@ -166,19 +166,24 @@ async function rename() {
   if (!name || name === a.name) return;
   return act(async () => {
     const res = await api.sort("rename", { path: a.path, newName: name });
-    Object.assign(a, { path: res.newPath, name: res.name });
-    renderList();
-    preview();
+    await load(true);  // re-list so the type tag follows the new extension
+    const at = S.items.findIndex((x) => x.path === res.newPath);
+    if (at >= 0) select(at);
   });
 }
 
 async function saveRemaining() {
-  if (!S.items.length) return toast("No remaining assets on this page.", "warn");
-  const dest = await promptBox("SAVE REMAINING ASSETS",
-    `Move the ${S.items.length} asset(s) listed on this page out of the workspace into an existing folder (sub-folders are kept).`, "", "MOVE", "DESTINATION FOLDER");
-  if (!dest?.trim()) return;
+  if (!S.items.length) return toast("No remaining assets to save.", "warn");
+  const res0 = await modal({ title: "SAVE REMAINING ASSETS", tag: "// MOVE OUT",
+    body: h("p", {}, "Move remaining assets out of the workspace into an existing folder (sub-folders are kept). Trashed files stay in the trash."),
+    input: { value: "", label: "DESTINATION FOLDER", placeholder: "/path/to/keep", browse: (p) => api.browse(p).then((r) => r.path) },
+    actions: [{ label: "CANCEL", value: null, kind: "ghost" }, { label: `THIS PAGE (${S.items.length})`, value: "page" },
+      { label: `ALL REMAINING (${fmtNum(S.total)})`, value: "all", kind: "primary", primary: true }] });
+  const dest = res0.text.trim();
+  if (!res0.value) return;
+  if (!dest) return toast("Choose a destination folder.", "warn");
   return act(async () => {
-    const res = await api.saveRemaining(S.items.map((x) => x.path), dest.trim());
+    const res = res0.value === "all" ? await api.saveAll(dest) : await api.saveRemaining(S.items.map((x) => x.path), dest);
     toast(`Moved ${res.moved} file(s) to ${res.destinationPath}.`, "ok", res.skipped ? `${res.skipped} skipped` : "");
     await load();
     emit("workspace");

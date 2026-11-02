@@ -22,9 +22,9 @@
         <span class="word">VIWO</span><span class="sub">// VIDYA WORMHOLE</span>
       </div>
       <div class="chips" id="status-chips" aria-live="polite"></div>
-      <div class="ws-path" title="Active workspace">
-        <span class="lbl">WORKSPACE</span><span class="mono" id="ws-path">—</span>
-      </div>
+      <button type="button" class="ws-path" id="ws-btn" aria-label="Active workspace (click to switch)">
+        <span class="lbl">WORKSPACE</span><span class="mono" id="ws-path">—</span><span class="ws-edit">SWITCH</span>
+      </button>
     </header>
 
     <nav class="rail" aria-label="Modules">
@@ -34,9 +34,9 @@
         <li><a href="#sort" data-view="sort"><b>03</b><span>SORT<small>fast triage</small></span></a></li>
         <li><a href="#jobs" data-view="jobs"><b>04</b><span>JOBS<small>runs + event streams</small></span></a></li>
         <li><a href="#system" data-view="system"><b>05</b><span>SYSTEM<small>slots, plugins, deps</small></span></a></li>
+        <li><a href="#merger" data-view="merger"><b>06</b><span>MERGER<small>frames → video</small></span></a></li>
       </ol>
       <div class="rail-foot">
-        <a class="legacy" href="/legacy/">MEDIA MERGER <small>legacy console ↗</small></a>
         <p class="ver mono" id="ver">LOCAL-FIRST // 127.0.0.1</p>
       </div>
     </nav>
@@ -47,6 +47,7 @@
       <section class="view" id="view-sort" hidden></section>
       <section class="view" id="view-jobs" hidden></section>
       <section class="view" id="view-system" hidden></section>
+      <section class="view" id="view-merger" hidden></section>
     </main>
 
     <aside class="dock" id="dock" aria-label="Activity console">
