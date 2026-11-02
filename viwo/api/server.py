@@ -132,9 +132,18 @@ def make_server(app: App, host: str | None = None, port: int | None = None) -> T
     )
 
 
-def serve(ini: Path | None = None) -> int:
+def serve(ini: Path | None = None, host: str | None = None, port: int | None = None) -> int:
     app = get_app(ini)
-    httpd = make_server(app)
+    try:
+        httpd = make_server(app, host, port)
+    except OSError as exc:
+        where = f"{host or app.server.host}:{app.server.port if port is None else port}"
+        print(
+            f"viwo: cannot listen on {where}: {exc.strerror or exc}. "
+            "Use --port or change [server] port in startup.ini.",
+            flush=True,
+        )
+        return 2
     url = f"http://{app.server.host}:{httpd.server_address[1]}/"
     app.log(f"[SERVER] ViWo listening on {url} (workspace {app.workspace})")
     for problem in app.rt.problems:

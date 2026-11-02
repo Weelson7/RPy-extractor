@@ -1,4 +1,10 @@
-# 4. v1 locks: what the v1 UI depends on (and the fixes that override them)
+# 4. HTTP API, workspace layout and configuration
+
+> **Update (Prototype A):** the v1 application was removed. Its routes that the new UI
+> and the media merger need were re-implemented in `viwo/api/` with the same JSON shapes;
+> the rest (`/api/state`, `/api/session`, `/api/resume`, `/api/scan`, `/api/extensions`,
+> `/api/detected-extensions`, `/api/assets-preview`, `/api/open-log-dir`, `/api/logs/load`)
+> were dropped. The "v1" names below describe where each shape came from.
 
 These are the parts the current UI (`web/app.js`) and saved workspaces
 depend on. They stay as they are; any change here bumps the contract's
@@ -99,18 +105,20 @@ change is safe.
 - Lines are still added to the session log (`/api/logs`, which the UI polls) and to the daily log file `rpy-extractor-YYYY-MM-DD.log`.
 - `secret` option values are masked before anything is sent.
 
-## 4.5 Configuration: one source of truth for each concern
+## 4.5 Configuration: one file
 
-| File | Holds | Changes |
-|------|-------|---------|
-| `config.json` | server and paths **only**: `host`, `port`, `tempPath`, `outputDir`, `mergerDir`, `webDir`, `logDir` | **unchanged from v1**; no new keys |
-| startup ini (doc 9) | everything that wires the framework: OS layer, plugins, slot bindings, tool locations (`[tools]`, keyed by **backend id**), plugin options, features | new |
+Everything lives in the startup ini (doc 9); v1's `config.json` is gone.
 
-Secrets (AES keys, encryption keys) are never stored in either file. They're
-passed per request or CLI call. Run records store only a **fingerprint** of
-which key was used (a salted hash), so a replay asks for the key again.
+| Section | Holds |
+|---------|-------|
+| `[server]` | `host`, `port`, `workspace` (default extraction workspace), `merged` (merger outputs), `logs`, `temp`; paths relative to the ini |
+| `[startup]`, `[plugins]`, `[slots]`, `[tools]`, `[options.*]` | wiring (doc 9) |
 
-## 4.6 Sessions
+Secrets (AES keys, encryption keys) are never stored in the ini or anywhere on disk.
+They are passed per request or CLI call; run records store `<secret>` in their place,
+so a replay asks for them again.
+
+## 4.6 Session state
 
 The `SESSIONS` store keeps its `__current__` session with `assetPath`,
 `sortingHistory` (actions `keep`, `trash`, `rename` with v1 fields) and

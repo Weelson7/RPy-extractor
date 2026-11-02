@@ -45,7 +45,9 @@ def _parser() -> argparse.ArgumentParser:
     up.add_argument("archive", type=Path)
     up.add_argument("--out", type=Path, required=True)
     up.add_argument("--option", action="append", default=[], help="plugin.key=value")
-    sub.add_parser("serve", help="start the web UI (host/port from [server] in the ini)")
+    sv = sub.add_parser("serve", help="start the web UI (host/port from [server] in the ini)")
+    sv.add_argument("--host", help="override [server] host")
+    sv.add_argument("--port", type=int, help="override [server] port")
     return ap
 
 
@@ -111,7 +113,7 @@ def main(argv: list[str] | None = None) -> int:
     if args.command == "serve":
         from viwo.api.server import serve
 
-        return serve(args.ini)
+        return serve(args.ini, args.host, args.port)
     try:
         envelope = _run(args)
     except ViwoError as exc:

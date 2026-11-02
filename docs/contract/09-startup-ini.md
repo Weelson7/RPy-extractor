@@ -5,8 +5,8 @@ or spare in each slot, tool paths, lifecycle hooks) is declared in an
 **`.ini` file**. A distro *is* an ini file. Parsing uses Python's stdlib
 `configparser`, so no new dependency is needed.
 
-`config.json` keeps the v1 server settings (host, port, paths) without change
-(doc 4.5). The ini only controls **what gets wired in**.
+Since the v1 app was removed, the ini also holds the server settings in a `[server]`
+section (host, port, workspace/merged/logs/temp folders; doc 4.5).
 
 > **Prototype scope (after review):** one flat `startup.ini` with `[startup]`, `[plugins]`, `[slots]`, `[tools]`. Deferred until after the prototype: `base =` layering, the 12 shipped distro files, CLI `--slot/--plugin` overrides and lifecycle `[hooks]`. OS and profile stay selectable with `--os/--profile`. The full model below is the target.
 
@@ -14,7 +14,6 @@ or spare in each slot, tool paths, lifecycle hooks) is declared in an
 
 ```
 RPy-extractor/
-  config.json                server + paths (v1, unchanged)
   startup.ini                the active startup file (user-editable)
   distros/
     linux-renpy.ini   windows-renpy.ini
@@ -94,7 +93,7 @@ before_server =
 |---|------|-------|------------------|
 | 1 | `viwo` (or `Start.py` → `viwo serve`) parses `--ini/--os/--profile/...` | argv | usage error → exit 2 |
 | 2 | Load ini layers (9.1), validate, build `StartupConfig` | ini files | syntax error → exit 2 with file:line |
-| 3 | Load `config.json`, set up logging | config.json | v1 behavior (defaults) |
+| 3 | Read `[server]`, set up logging | `[server]` | defaults under `viwo-data/` |
 | 4 | Select OS layer (`auto` = host), check `is_supported_host()` | `[startup] OS layer` | unsupported → exit 3 |
 | 5 | Hook `after_os` | `[hooks]` | hook error → warning |
 | 6 | Register enabled built-in plugins; discover, validate and register custom plugins | `[plugins]` | bad plugin → disabled, shown in `/api/plugins` |
@@ -102,7 +101,7 @@ before_server =
 | 8 | Bind slots: defaults + `[slots]` + `[slot_policy]` + `[tools]`; resolve with `os.tools`; optionally auto-install; promote spares | | unbound slot → warning |
 | 9 | Preflight report (dependency statuses, bindings) | | `strict_preflight=on` and a REQUIRED dep missing → exit 4 |
 | 10 | Hook `before_server` | | warning |
-| 11 | Start the HTTP server | config.json | v1 behavior |
+| 11 | Start the HTTP server (`viwo serve`) | `[server]` | port in use → exit with a clear error |
 | 12 | Hook `on_shutdown` on Ctrl+C or exit | | ignored |
 
 Exit codes: 0 ok, 2 bad configuration, 3 unsupported OS layer, 4 strict

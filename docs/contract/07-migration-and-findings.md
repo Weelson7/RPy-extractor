@@ -44,7 +44,7 @@ right away (roadmap M1), before any refactor.**
 | v1 | Target |
 |----|--------|
 | `Start.py` | thin wrapper for `viwo serve`, passing its flags through (doc 12.4) |
-| `extract.py` (config, Handler, routes) | `api/server.py` + `api/routes.py`; config loading → `core/wiring/` (config.json for server/paths + the startup ini) |
+| `extract.py` (config, Handler, routes) | **done:** `viwo/api/server.py`, `handlers.py`, `routes.py`, `app.py`; config → `[server]` in the startup ini |
 | `models.py` | value types → `contracts/`; state → `core/state.py`; extension sets → `core/media_types.py` |
 | `startup.py` | tool location → `os/*`; dependency registry and boot → `core/wiring/` |
 | `logging_utils.py` | `core/logging.py` |

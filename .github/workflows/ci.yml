@@ -29,28 +29,58 @@ jobs:
           python tools/loc_count.py --report
       - name: L1-L4, L6 (fakes and synthetic fixtures)
         run: python -m unittest discover -s tests -t . -v
-      - name: Legacy v1 regression tests
-        working-directory: RPy-extractor
-        run: python -m unittest discover -s tests -v
 
   real-tools:
-    # L5: real third-party tools, nightly and on demand.
+    # L5: real third-party tools at pinned versions, nightly and on demand.
     if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
+    env:
+      GH_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      - name: Install pinned tools
+      - name: Python tools
         run: python -m pip install UnityPy==1.25.4 py7zr==1.1.4 unrpa==2.3.0
-      - name: Install 7-Zip (Linux)
+      - name: System tools (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get install -y p7zip-full
+        run: sudo apt-get update && sudo apt-get install -y p7zip-full unrar ffmpeg ninja-build
+      - name: GodotPckTool (built from pinned commit f8efd1f)
+        if: runner.os == 'Linux'
+        continue-on-error: true
+        run: |
+          git init -q gpt && cd gpt
+          git remote add origin https://github.com/hhyyrylainen/GodotPckTool
+          git fetch -q --depth 1 origin f8efd1f047990f7d5740dff5651220403dff1aa4
+          git checkout -q FETCH_HEAD && git submodule update -q --init --depth 1
+          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release >/dev/null && cmake --build build
+          echo "VIWO_GODOTPCKTOOL=$(find "$PWD/build" -name godotpcktool -type f | head -1)" >> "$GITHUB_ENV"
+      - name: GDRE Tools v2.7.4 (release binary)
+        if: runner.os == 'Linux'
+        continue-on-error: true
+        run: |
+          gh release download v2.7.4 -R GDRETools/gdsdecomp -p "*linux*" -D gdre
+          cd gdre && for f in *.zip; do unzip -q -o "$f"; done
+          tool=$(find "$PWD" -type f -name "gdre_tools*" ! -name "*.zip" ! -name "*.pck" | head -1)
+          chmod +x "$tool" && echo "VIWO_GDRE=$tool" >> "$GITHUB_ENV"
+      - uses: actions/setup-dotnet@v4
+        if: runner.os == 'Linux'
+        continue-on-error: true
+        with:
+          dotnet-version: "10.0.x"
+      - name: AssetStudioModCLI v0.20.0 (release binary)
+        if: runner.os == 'Linux'
+        continue-on-error: true
+        run: |
+          gh release download v0.20.0 -R aelurum/AssetStudio -p "*CLI*linux*" -D asm
+          cd asm && for f in *.zip; do unzip -q -o "$f"; done
+          tool=$(find "$PWD" -type f -name "AssetStudioModCLI" | head -1)
+          chmod +x "$tool" && echo "VIWO_ASSETSTUDIOMOD=$tool" >> "$GITHUB_ENV"
       - name: L5 real-tool smoke tests
         env:
           VIWO_L5: "1"
