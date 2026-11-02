@@ -25,6 +25,8 @@ class Job:
     error: dict | None = None
     cancel: CancelToken = field(default_factory=CancelToken)
     done: threading.Event = field(default_factory=threading.Event)
+    started: float = field(default_factory=time.time)
+    finished: float = 0.0
 
     def emit(self, event: ProgressEvent) -> None:
         self.events.append(event)
@@ -36,6 +38,8 @@ class Job:
             "state": self.state,
             "events": len(self.events),
             "error": self.error,
+            "started": self.started,
+            "elapsed": round((self.finished or time.time()) - self.started, 2),
         }
 
 
@@ -82,6 +86,7 @@ class JobRunner:
             job.state = "failed"
             job.error = ViwoError("internal", f"{type(exc).__name__}: {exc}").to_dict()
         finally:
+            job.finished = time.time()
             job.done.set()
 
     def get(self, job_id: str) -> Job:
