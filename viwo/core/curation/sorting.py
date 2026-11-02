@@ -194,7 +194,7 @@ def preview(workspace: Path, encoded: str, max_lines: int = 50) -> dict:
         }
     try:
         with path.open("r", encoding="utf-8", errors="replace") as fh:
-            lines = [line.rstrip("\n") for _, line in zip(range(max_lines), fh)]
+            lines = [line.rstrip("\n") for _, line in zip(range(max_lines + 1), fh)]
     except OSError:
         return {
             "success": True,
@@ -202,12 +202,13 @@ def preview(workspace: Path, encoded: str, max_lines: int = 50) -> dict:
             "name": name,
             "message": "Binary file preview is not supported for this extension.",
         }
-    content = "\n".join(lines)
+    truncated = len(lines) > max_lines
+    lines = lines[:max_lines]
     return {
         "success": True,
         "type": "text",
         "name": name,
         "lineCount": len(lines),
-        "content": content,
-        "truncated": path.stat().st_size > len(content.encode("utf-8")),
+        "content": "\n".join(lines),
+        "truncated": truncated,
     }

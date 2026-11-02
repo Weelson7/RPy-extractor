@@ -1,5 +1,5 @@
 // ViWo API client: token header, JSON bodies, envelope + legacy response handling.
-const TOKEN = document.querySelector('meta[name="rpyx-token"]')?.content || "";
+const TOKEN = document.querySelector('meta[name="viwo-token"]')?.content || "";
 
 export const hasToken = () => Boolean(TOKEN);
 
@@ -14,7 +14,7 @@ export class ApiError extends Error {
 }
 
 async function request(method, url, body) {
-  const opts = { method, headers: { "X-RPYX-Token": TOKEN } };
+  const opts = { method, headers: { "X-VIWO-Token": TOKEN } };
   if (body !== undefined) {
     opts.headers["Content-Type"] = "application/json";
     opts.body = JSON.stringify(body);

@@ -88,8 +88,8 @@ class Handler(BaseHTTPRequestHandler):
             if not self._token_ok():
                 return self._reject(403, "Missing or invalid API token")
             return self._api(GET, routes.handle_get, path, parse_qs(url.query))
-        if path.startswith("/preview/"):
-            return self._preview(path[len("/preview/") :])
+        if path.startswith("/preview/"):  # resolve() decodes once: pass the raw path
+            return self._preview(url.path[len("/preview/") :])
         self._static(path)
 
     def do_POST(self) -> None:

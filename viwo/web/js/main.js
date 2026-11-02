@@ -8,6 +8,7 @@ import jobs from "./views/jobs.js";
 import system from "./views/system.js";
 
 const VIEWS = { extract, workspace, sort, jobs, system };
+const scroll = {};
 const state = { current: "", distro: null, dockOpen: pref("dock") === "1", logCount: -1, lastLog: "" };
 
 function route() {
@@ -15,6 +16,7 @@ function route() {
   const id = want in VIEWS ? want : "extract";
   if (state.current === id) return;
   if (state.current) {
+    scroll[state.current] = $("#main").scrollTop;
     VIEWS[state.current].hide?.();
     $(`#view-${state.current}`).hidden = true;
   }
@@ -25,6 +27,7 @@ function route() {
     el.dataset.mounted = "1";
   }
   el.hidden = false;
+  $("#main").scrollTop = scroll[id] || 0;
   VIEWS[id].show?.();
   document.querySelectorAll(".mods a").forEach((a) => {
     if (a.dataset.view === id) a.setAttribute("aria-current", "page");
@@ -47,7 +50,7 @@ function renderChips(jobList) {
     chip("PLUGINS", d ? String(d.plugins.length) : "…", d ? "ok" : ""),
     chip("SLOTS", d ? `${bound}/${slots.length} BOUND` : "…", d && bound < slots.length ? "warn" : "ok", "#system"),
     running.length
-      ? chip("JOB", `${running[0].kind.toUpperCase()} ${running[0].state.toUpperCase()}`, "live", "#jobs")
+      ? chip("RUNNING", `${running[0].kind.toUpperCase()}${running.length > 1 ? ` +${running.length - 1}` : ""}`, "live", "#jobs")
       : chip("JOB", jobList ? "IDLE" : "…", "", "#jobs"),
   );
 }

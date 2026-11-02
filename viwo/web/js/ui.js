@@ -47,7 +47,7 @@ export function empty(title, text, ...actions) {
 /** Error block that surfaces the server message, code and hint. */
 export function errorBox(err, title = "ERROR") {
   return h("div", { class: "alert err", role: "alert" },
-    h("b", {}, title, err.code ? ` // ${String(err.code).toUpperCase()}` : ""),
+    h("b", {}, title, err.code && !title.includes(String(err.code).toUpperCase()) ? ` // ${String(err.code).toUpperCase()}` : ""),
     h("p", {}, err.message || String(err)),
     err.hint ? h("p", { class: "hint" }, "HINT: ", err.hint) : null);
 }

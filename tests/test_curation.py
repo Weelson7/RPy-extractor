@@ -110,3 +110,17 @@ class LockTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class StatusCountsTests(unittest.TestCase):
+    def test_item_trash_is_counted_and_preview_truncation_is_exact(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = make_workspace(Path(tmp))
+            sorting.trash_item(ws, "png/a.png", [])
+            self.assertEqual(trash.trashed(ws), {"png": 1})
+            (ws / "txt" / "fifty.txt").write_text("\n".join(str(i) for i in range(50)) + "\n")
+            self.assertFalse(sorting.preview(ws, "txt/fifty.txt")["truncated"])
+            (ws / "txt" / "more.txt").write_text("\n".join(str(i) for i in range(51)))
+            self.assertTrue(sorting.preview(ws, "txt/more.txt")["truncated"])
+            (ws / "txt" / "100%.txt").write_text("percent")
+            self.assertEqual(sorting.preview(ws, "txt/100%25.txt")["content"], "percent")

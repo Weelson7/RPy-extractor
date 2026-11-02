@@ -1,6 +1,6 @@
 // 01 EXTRACT: target, detection, mode, plugin options, filter, run + live feed.
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, meter, viewHead, toast, toastErr, busy, pref, logLine, emit, modal, errorBox, pad } from "../ui.js";
+import { h, fill, btn, panel, badge, meter, viewHead, toast, toastErr, busy, pref, logLine, emit, modal, errorBox, pad, fmtNum } from "../ui.js";
 import { renderResult, renderFailure } from "./extract-result.js";
 
 const PRESETS = {
@@ -98,7 +98,7 @@ function modePanel() {
   el.seg = h("div", { class: "seg", role: "group", "aria-label": "Extraction mode" },
     ["auto", "single", "mixed"].map((m) => h("button", { type: "button", "data-mode": m, onclick: () => { S.mode = m; renderMode(); } }, m.toUpperCase())));
   renderMode();
-  return panel("01.C", "MODE + PLUGINS", el.seg, el.mode, el.options);
+  return panel("01.C", "MODE", el.seg, el.mode, el.options);
 }
 
 function chips(ids, isOn, onPick, role) {
@@ -214,7 +214,10 @@ function tracker(known) {
     if (t.busy) return;
     t.busy = true;
     try {
-      if (!t.id) t.id = (await api.jobs()).filter((j) => j.kind === "extract" && !known.has(j.id)).pop()?.id || null;
+      if (!t.id) {
+        t.id = (await api.jobs()).filter((j) => j.kind === "extract" && !known.has(j.id)).pop()?.id || null;
+        if (t.id) emit("jobs");
+      }
       if (t.id) {
         const page = await api.events(t.id, t.from);
         t.from = page.next;
@@ -253,6 +256,7 @@ async function run(onExisting) {
   try { known = new Set((await api.jobs()).map((j) => j.id)); } catch { /* tracking is best-effort */ }
   setRunning(true);
   el.feed.replaceChildren(logLine(`// RUN ${payload.extractionType.toUpperCase()} :: ${payload.gamePath}`));
+  el.feed.closest(".panel").scrollIntoView({ block: "nearest" });
   const t = tracker(known);
   emit("jobs");
   try {
@@ -260,12 +264,13 @@ async function run(onExisting) {
     setRunning(false);
     await t.flush();
     renderResult(el.result, res);
-    toast(`Extraction complete: ${res.result.copiedFiles} files copied.`, "ok");
+    el.result.scrollIntoView({ block: "nearest" });
+    toast(`Extraction complete: ${fmtNum(res.result.copiedFiles)} files copied.`, "ok");
   } catch (err) {
     setRunning(false);
     await t.flush();
     if (err.payload?.needsDecision) next = await askDecision(err);
-    else { renderFailure(el.result, err); toastErr(err, "Extraction failed: "); }
+    else { renderFailure(el.result, err); el.result.scrollIntoView({ block: "nearest" }); err.code === "cancelled" ? toast("Extraction cancelled.", "warn") : toastErr(err, "Extraction failed: "); }
   } finally {
     setRunning(false);
     emit("jobs");

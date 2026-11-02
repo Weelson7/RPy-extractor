@@ -72,22 +72,27 @@ def check_python(path: Path, caps: dict[str, int], test: bool) -> tuple[int, lis
     return len(lines), problems
 
 
-def _ratchet_count(target: Path) -> int:
-    if target.is_file():
-        lines = [s.strip() for s in target.read_text(encoding="utf-8").splitlines()]
-        return len([s for s in lines if s and not s.startswith(("//", "/*", "*"))])
-    files = [p for p in target.rglob("*.py") if "tests" not in p.parts]
-    return sum(len(counted_lines(p.read_text(encoding="utf-8-sig"))[0]) for p in files)
+def _web_lines(path: Path) -> int:
+    lines = [s.strip() for s in path.read_text(encoding="utf-8").splitlines()]
+    return len([s for s in lines if s and not s.startswith(("//", "/*", "*", "<!--"))])
 
 
-def check_ratchets(cfg: configparser.ConfigParser, report: bool) -> list[str]:
-    problems: list[str] = []
-    for rel, limit in cfg["ratchet"].items():
-        count = _ratchet_count(ROOT / rel)
+def check_web(cfg: configparser.ConfigParser, report: bool) -> list[str]:
+    """Web UI: per-file cap for JS and a total budget for js/css/html."""
+    problems, total = [], 0
+    for rel, budget in cfg["web"].items():
+        if rel == "js_file":
+            continue
+        for path in sorted((ROOT / rel).rglob("*")):
+            if path.suffix in {".js", ".css", ".html"}:
+                count = _web_lines(path)
+                total += count
+                if path.suffix == ".js" and count > int(cfg["web"]["js_file"]):
+                    problems.append(f"{path.relative_to(ROOT).as_posix()}: {count} LoC > JS cap")
         if report:
-            print(f"{count:6d} / {int(limit):6d}  {rel} (ratchet)")
-        if count > int(limit):
-            problems.append(f"ratchet {rel}: {count} LoC > {limit} (legacy may only shrink)")
+            print(f"{total:6d} / {int(budget):6d}  {rel} (web)")
+        if total > int(budget):
+            problems.append(f"web budget {rel}: {total} LoC > {budget}")
     return problems
 
 
@@ -113,7 +118,7 @@ def run(report: bool) -> int:
     if report:
         for prefix, total in sorted(totals.items()):
             print(f"{total:6d} / {budgets[prefix]:6d}  {prefix}")
-    problems += check_ratchets(cfg, report)
+    problems += check_web(cfg, report)
     for problem in problems:
         print(f"CAP: {problem}")
     return 1 if problems else 0

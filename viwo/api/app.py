@@ -14,7 +14,7 @@ from viwo.core.curation.trash import migrate
 from viwo.core.jobs import JobRunner
 from viwo.core.pipeline.runner import extract
 from viwo.core.wiring.boot import Runtime, boot
-from viwo.core.workspace import workspace_lock
+from viwo.core.workspace import precheck, workspace_lock
 
 
 class App:
@@ -56,6 +56,17 @@ class App:
     def extract(self, payload: dict) -> dict:
         """One extraction as a job; returns the /api/extract response shape (doc 3.5)."""
         request = ExtractionRequest.from_payload(payload, str(self.workspace))
+        try:  # questions and refusals are answered before any job starts
+            precheck(self.workspace, request.on_existing, self.server.workspace)
+        except ViwoError as exc:
+            return {
+                "success": False,
+                "error": exc.message,
+                "details": exc.hint,
+                "code": exc.code,
+                "needsDecision": exc.code == "needs_decision",
+                "options": ["new", "replace", "cancel"],
+            }
         job = self.jobs.submit_with_listener(
             lambda e: self.log(e.legacy_line()),
             "extract",

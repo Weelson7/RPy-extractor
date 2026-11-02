@@ -75,8 +75,8 @@ const EXPLAIN = {
 };
 
 export function renderFailure(host, err) {
-  const title = err.code === "refused" ? "REFUSED // TARGET NOT OWNED BY VIWO" : "EXTRACTION FAILED";
-  host.replaceChildren(panel("01.F", "RESULT", badge(String(err.code || "error").toUpperCase(), "err"),
+  const title = { refused: "TARGET NOT OWNED BY VIWO", cancelled: "EXTRACTION CANCELLED" }[err.code] || "EXTRACTION FAILED";
+  host.replaceChildren(panel("01.F", "RESULT", badge(String(err.code || "error").toUpperCase(), err.code === "cancelled" ? "warn" : "err"),
     errorBox(err, title),
     EXPLAIN[err.code] ? h("p", { class: "note" }, EXPLAIN[err.code]) : null));
 }

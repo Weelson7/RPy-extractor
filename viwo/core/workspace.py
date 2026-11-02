@@ -42,12 +42,12 @@ def _replace_groups(folder: Path) -> Path:
     return claim(folder)
 
 
-def resolve_target(folder: Path, policy: OnExisting, default: Path | None = None) -> Path:
-    """Apply the ownership rule and the re-extraction policy; never deletes user data."""
+def precheck(folder: Path, policy: OnExisting, default: Path | None = None) -> None:
+    """Raise the errors resolve_target would raise, without creating or deleting anything."""
     if folder.exists() and not folder.is_dir():
         raise ViwoError("invalid_request", f"not a folder: {folder}")
     if not folder.exists() or not _has_content(folder):
-        return claim(folder)
+        return
     is_default = default is not None and folder.resolve() == default.resolve()
     if not ws.has_marker(folder) and not is_default:
         raise ViwoError(
@@ -61,6 +61,13 @@ def resolve_target(folder: Path, policy: OnExisting, default: Path | None = None
         )
     if policy is OnExisting.CANCEL:
         raise ViwoError("cancelled", "extraction cancelled by the re-extraction choice")
+
+
+def resolve_target(folder: Path, policy: OnExisting, default: Path | None = None) -> Path:
+    """Apply the ownership rule and the re-extraction policy; never deletes user data."""
+    precheck(folder, policy, default)
+    if not folder.exists() or not _has_content(folder):
+        return claim(folder)
     return _new_sibling(folder) if policy is OnExisting.NEW else _replace_groups(folder)
 
 

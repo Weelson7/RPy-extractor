@@ -1,8 +1,8 @@
 // 02 WORKSPACE: extension groups (kept / trashed), group actions, retain-selected, clear trash.
 import { api } from "../api.js";
-import { h, btn, panel, badge, viewHead, empty, errorBox, toast, toastErr, confirmBox, busy, fmtNum, bus, emit } from "../ui.js";
+import { h, $, btn, panel, badge, viewHead, empty, errorBox, toast, toastErr, confirmBox, busy, fmtNum, bus, emit } from "../ui.js";
 
-const S = { status: null, selected: new Set(), path: "" };
+const S = { status: null, selected: new Set() };
 const el = {};
 
 function mount(root) {
@@ -21,9 +21,8 @@ function mount(root) {
 
 async function load() {
   try {
-    const [status, win] = await Promise.all([api.status(), api.assets(0, 1)]);
+    const status = await api.status();
     S.status = status;
-    S.path = win.assetPath || "";
     const exts = new Set(status.allExtensions || []);
     S.selected = new Set([...S.selected].filter((e) => exts.has(e)));
     render();
@@ -112,8 +111,9 @@ async function clearTrash() {
 }
 
 function openFolder() {
-  if (!S.path) return toast("No workspace yet.", "warn");
-  api.openFolder(S.path).then(() => toast("Opened in file manager.", "ok"), toastErr);
+  const path = $("#ws-path").title;
+  if (!path) return toast("No workspace yet.", "warn");
+  api.openFolder(path).then(() => toast("Opened in file manager.", "ok"), toastErr);
 }
 
 export default { mount, show: load };

@@ -32,6 +32,7 @@ def status(app: App, q: dict) -> dict:
     return {
         "success": True,
         **trash.summary(app.workspace),
+        "assetPath": str(app.workspace),
         "allExtensions": trash.all_extensions(app.workspace),
     }
 
@@ -133,6 +134,8 @@ def _sorting(op, *keys: str) -> Callable[[App, dict], dict]:
 def save_remaining(app: App, d: dict) -> dict:
     target = Path(str(d.get("destinationPath", "")).strip() or ".").expanduser().resolve()
     paths = [str(p) for p in d.get("paths") or []]
+    if d.get("all"):  # every remaining asset, not only the visible page
+        paths = [sorting.encode(app.workspace, p) for p in sorting.asset_files(app.workspace)]
     return app.locked(lambda: safe(lambda: sorting.save_remaining(app.workspace, paths, target)))
 
 

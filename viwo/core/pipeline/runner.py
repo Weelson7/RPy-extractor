@@ -92,6 +92,14 @@ def extract(
         raise ViwoError("invalid_request", "no workspace given")
     refuse_writes_inside(game, workspace=target, temp_folder=rt.temp_root)
     with workspace_lock(target):
+        sink(
+            ProgressEvent(
+                f"Preparing workspace {target} ({request.on_existing.value})",
+                "info",
+                "core",
+                "prepare",
+            )
+        )
         workspace = resolve_target(target, request.on_existing, default_workspace)
         rt.temp_root.mkdir(parents=True, exist_ok=True)
         work = Path(tempfile.mkdtemp(prefix=f"viwo-{job_id}-", dir=rt.temp_root))

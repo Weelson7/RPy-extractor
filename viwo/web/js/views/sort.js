@@ -15,25 +15,25 @@ function mount(root) {
   el.meta = h("div", { class: "pmeta" });
   el.stage = h("div", { class: "stage" });
   el.acts = h("div", { class: "acts" },
-    btn("← TRASH", trash, "danger"), btn("KEEP →", keep, "primary"), btn("UNDO", undo, "ghost"),
-    btn("RENAME", rename, "ghost"), btn("SAVE REMAINING…", saveRemaining, "ghost"));
+    h("div", { class: "acts-main" }, btn("← TRASH", trash, "danger"), btn("KEEP →", keep, "primary")),
+    h("div", { class: "acts-sub" }, btn("UNDO", undo, "ghost undo"), btn("RENAME", rename, "ghost"), btn("SAVE REMAINING…", saveRemaining, "ghost")));
   root.append(
     viewHead("03", "SORT", "Triage one asset at a time. KEEP marks it reviewed; TRASH moves it to the workspace trash (undo-able).",
       h("ul", { class: "legend", "aria-label": "Keyboard shortcuts" }, KEYS.map(([k, v]) => h("li", {}, h("kbd", {}, k), v)))),
     h("div", { class: "sort-grid" },
-      panel("03.A", "ASSET QUEUE", el.pager, el.list),
+      panel("03.A", "QUEUE", el.pager, el.list),
       panel("03.B", "PREVIEW", el.meta, el.stage, el.acts)));
   document.addEventListener("keydown", onKey);
   bus.addEventListener("workspace", () => { S.loaded = false; });
 }
 
-async function load(keepIdx = false) {
+async function load(keepIdx = false, last = false) {
   try {
     const res = await api.assets(S.offset, LIMIT);
     S.items = res.assets || [];
     S.total = res.totalCount || 0;
     if (!S.items.length && S.offset > 0) { S.offset = Math.max(0, S.offset - LIMIT); return load(); }
-    S.idx = keepIdx ? Math.min(S.idx, Math.max(0, S.items.length - 1)) : 0;
+    S.idx = last ? S.items.length - 1 : keepIdx ? Math.min(S.idx, Math.max(0, S.items.length - 1)) : 0;
     S.loaded = true;
     renderList();
     preview();
@@ -52,9 +52,9 @@ function renderPager() {
     btn("›", () => page(1), "sm ghost", { disabled: to >= S.total, "aria-label": "Next page" }));
 }
 
-function page(dir) {
+function page(dir, last = false) {
   S.offset = Math.max(0, S.offset + dir * LIMIT);
-  load();
+  load(false, last);
 }
 
 function renderList() {
@@ -78,13 +78,14 @@ function select(i) {
 function move(dir) {
   const next = S.idx + dir;
   if (next >= S.items.length && S.offset + S.items.length < S.total) return page(1);
-  if (next < 0 && S.offset > 0) return page(-1);
+  if (next < 0 && S.offset > 0) return page(-1, true);
   select(next);
 }
 
 async function preview() {
   const a = S.items[S.idx];
   const seq = ++S.seq;
+  el.acts.querySelectorAll("button:not(.undo)").forEach((b) => { b.disabled = !a; });
   if (!a) {
     el.meta.replaceChildren();
     el.stage.replaceChildren(empty("QUEUE EMPTY", S.total ? "Nothing on this page." : "No assets in the workspace. Extract a game first.",
