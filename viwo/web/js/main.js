@@ -50,7 +50,8 @@ function renderChips(jobList) {
   $("#status-chips").replaceChildren(
     chip("OS", d ? String(d.os).toUpperCase() : "…", d ? "ok" : ""),
     chip("PLUGINS", d ? String(d.plugins.length) : "…", d ? "ok" : ""),
-    chip("SLOTS", d ? `${bound}/${slots.length} BOUND` : "…", d && bound < slots.length ? "warn" : "ok", "#system"),
+    Object.assign(chip("SLOTS", d ? `${bound}/${slots.length} BOUND` : "…", d && bound < slots.length ? "warn" : "ok", "#system"), {
+      title: "Backend slots bound to an installed tool. Unbound slots are optional: ViWo just skips those archive/export formats until the tool is installed. Click for 05 SYSTEM." }),
     running.length
       ? chip("RUNNING", `${running[0].kind.toUpperCase()}${running.length > 1 ? ` +${running.length - 1}` : ""}`, "live", "#jobs")
       : chip("JOB", jobList ? "IDLE" : "…", "", "#jobs"),

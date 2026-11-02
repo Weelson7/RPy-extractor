@@ -133,7 +133,7 @@ You accepted every recommendation on 2026-11-02, so this table is now the record
 | D15 | Name | **Vidya Wormhole (ViWo)**; CLI `viwo` |
 | D16 | Custom-engine showcase (Prototype B) | **Doom WAD with Freedoom data** (BSD) as the CI-tested custom plugin, plus an **Overwatch (CASC/DataTool) plugin** marked `tos_sensitive` and tested only by the independent operator |
 | D17 | Round trip scope in B | **all four engines**: Ren'Py (override + safe RPA writer), Godot (PCK rebuild), Unreal (`_P.pak` via repak), Unity (UnityPy same-format replacement) |
-| D18 | Unreal AES keys | **user-supplied** (secret option, never stored) **plus an automated key-finder spare**; the finder runs as a subprocess and only on the user's own game files |
+| D18 | Unreal AES keys | an offline-playable game must carry its pak key locally, so the key is always reachable: **a user-supplied key wins; otherwise the key finder runs automatically**; every candidate is **verified against the pak's encrypted index** before use; keys are never stored |
 | D19 | Runtime capture pilot | **inside Prototype B** (refusal policy, journaled overlay, RenderDoc harvest, diff against the static extraction) |
 | D20 | Real-game check | after Prototype B (you / the independent operator) |
 

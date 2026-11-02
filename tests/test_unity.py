@@ -48,7 +48,7 @@ def fake_unitypy() -> types.ModuleType:
         _broken(),
     ]
     module = types.ModuleType("UnityPy")
-    module.load = lambda path: types.SimpleNamespace(objects=objects)
+    module.load = lambda *paths: types.SimpleNamespace(objects=objects)
     return module
 
 
@@ -112,6 +112,38 @@ class UnityTests(unittest.TestCase):
             )
             self.assertTrue(result.success)
             self.assertTrue(any("export.unity" in w for w in result.warnings))
+
+
+class UnitySourceCoverageTests(unittest.TestCase):
+    def test_signatures_cache_roots_and_group_fallback(self) -> None:
+        from viwo.plugins.unity import exporters
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            game = make_unity_game(root)
+            assets = game / "MyGame_Data" / "StreamingAssets" / "aa"
+            assets.mkdir(parents=True)
+            (assets / "chars").write_bytes(b"XORHEADER" * 10 + b"UnityFS\0\0\0\x08rest")
+            (assets / "notes.txt").write_text("plain")
+            found = {p.name for p in exporters.unity_containers(game)}
+            self.assertEqual(found, {"globalgamemanagers", "chars"})
+            (game / "MyGame_Data" / "app.info").write_text("Acme Studio\nMy Game\n")
+            cache = root / "home" / ".config" / "unity3d" / "Acme Studio" / "My Game"
+            cache.mkdir(parents=True)
+            with mock.patch("pathlib.Path.home", return_value=root / "home"):
+                self.assertEqual(exporters.cache_roots(game), [cache])
+
+            calls = []
+
+            def load(*paths):
+                calls.append(len(paths))
+                if len(paths) > 1:
+                    raise ValueError("one file is corrupt")
+                return types.SimpleNamespace(objects=[])
+
+            files = [assets / "chars", assets / "notes.txt"]
+            exporters._export_group(None, types.SimpleNamespace(load=load), files)
+            self.assertEqual(calls, [2, 1, 1])
 
 
 if __name__ == "__main__":

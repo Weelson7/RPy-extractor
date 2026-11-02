@@ -245,4 +245,4 @@ function onKey(e) {
   fn();
 }
 
-export default { mount, show: () => { if (!S.loaded) load(true); } };
+export default { mount, show: () => load(S.loaded) };

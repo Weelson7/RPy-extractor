@@ -2,13 +2,27 @@
 
 from __future__ import annotations
 
-from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest
+from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest, PluginOption
 from viwo.contracts.slots import SlotDefinition
 from viwo.contracts.types import DetectionResult
 
 from .exporters import AssetStudioModCli, UnityPyExporter
 
-MANIFEST = PluginManifest("unity", "Unity", "0.1.0", engine_type="unity", priority=20)
+MANIFEST = PluginManifest(
+    "unity",
+    "Unity",
+    "0.1.0",
+    engine_type="unity",
+    priority=20,
+    options=(
+        PluginOption(
+            "include_cache",
+            "Also read the game's cache / persistent data (outside the game folder, read-only)",
+            "bool",
+            False,
+        ),
+    ),
+)
 SLOTS = (
     SlotDefinition(
         "unarchive.unitypackage",

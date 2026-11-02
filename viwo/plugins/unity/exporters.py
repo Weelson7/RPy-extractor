@@ -28,18 +28,52 @@ CONTAINER_NAME = re.compile(
 )
 
 
+SIGNATURES = (b"UnityFS", b"UnityWeb", b"UnityRaw", b"UnityWebData")
+
+
 def unity_containers(root: Path) -> list[Path]:
+    """Every file Unity can load from disk: known names, or a Unity signature anywhere in
+    the first 4 KB (bundles with a custom header, WebGL data, Addressables bundles)."""
     found = []
-    for path in sorted(root.rglob("*")):
+    for path in sorted(root.rglob("*")) if root.is_dir() else ():
         if not path.is_file():
             continue
         if CONTAINER_NAME.match(path.name):
             found.append(path)
             continue
         with open(path, "rb") as fh:
-            if fh.read(7) == b"UnityFS":
-                found.append(path)
+            head = fh.read(4096)
+        if any(sig in head for sig in SIGNATURES):
+            found.append(path)
     return found
+
+
+def cache_roots(game_root: Path) -> list[Path]:
+    """The game's own persistent-data/cache folders (outside the game folder), found from
+    `<Game>_Data/app.info` (company, product). Read-only; opt-in via a plugin option."""
+    info = next(iter(sorted(game_root.glob("*_Data/app.info"))), None)
+    if info is None:
+        return []
+    lines = info.read_text(encoding="utf-8", errors="replace").splitlines() + ["", ""]
+    company, product = lines[0].strip(), lines[1].strip()
+    if not company or not product:
+        return []
+    home = Path.home()
+    candidates = [
+        home / "AppData" / "LocalLow" / company / product,
+        home / "AppData" / "LocalLow" / "Unity" / f"{company}_{product}",
+        home / ".config" / "unity3d" / company / product,
+    ]
+    return [c for c in candidates if c.is_dir()]
+
+
+def groups(containers: list[Path]) -> dict[Path, list[Path]]:
+    """Containers loaded together so cross-file references (.resS streams, sprites ->
+    textures in other files) resolve: grouped by their folder."""
+    out: dict[Path, list[Path]] = {}
+    for path in containers:
+        out.setdefault(path.parent, []).append(path)
+    return out
 
 
 def _name(data, fallback: str) -> str:
@@ -88,18 +122,29 @@ def _export_object(ctx, obj, fallback: str) -> int:
     return 0
 
 
-def _export_container(ctx, unitypy, container: Path) -> tuple[int, list[str]]:
-    try:
-        env = unitypy.load(str(container))
-    except Exception as exc:  # unreadable container: note it and continue
-        return 0, [f"{container.name}: {exc}"[:200]]
+def _export_env(ctx, env, label: str) -> tuple[int, list[str]]:
     exported, notes = 0, []
     for obj in env.objects:
         try:
-            exported += _export_object(ctx, obj, f"{container.stem}_{obj.path_id}")
+            exported += _export_object(ctx, obj, f"{label}_{obj.path_id}")
         except Exception as exc:  # one broken object must not stop the export
-            notes.append(f"{container.name}#{obj.path_id}: {exc}"[:200])
+            notes.append(f"{label}#{obj.path_id}: {exc}"[:200])
     return exported, notes
+
+
+def _export_group(ctx, unitypy, files: list[Path]) -> tuple[int, list[str]]:
+    """Load a folder's containers together; fall back to one file at a time."""
+    try:
+        return _export_env(ctx, unitypy.load(*[str(f) for f in files]), files[0].parent.name)
+    except Exception:  # a broken file poisons a group load: retry files one by one
+        exported, notes = 0, []
+        for path in files:
+            try:
+                count, problems = _export_env(ctx, unitypy.load(str(path)), path.stem)
+            except Exception as exc:  # unreadable container: note it and continue
+                count, problems = 0, [f"{path.name}: {exc}"[:200]]
+            exported, notes = exported + count, notes + problems
+        return exported, notes
 
 
 class UnityPyExporter(Exporter):
@@ -113,14 +158,17 @@ class UnityPyExporter(Exporter):
             import UnityPy
         except ImportError:
             return Outcome(OutcomeKind.UNAVAILABLE, error=UNITYPY.hint)
+        roots = [ctx.game_root]
+        if str(ctx.options.get("include_cache", "")).lower() in ("1", "true", "yes", "on"):
+            roots += cache_roots(ctx.game_root)
         exported, notes = 0, []
-        for container in unity_containers(ctx.game_root):
-            if ctx.cancel.cancelled:
-                break
-            count, problems = _export_container(ctx, UnityPy, container)
-            exported += count
-            notes += problems
-            gc.collect()  # UnityPy keeps file handles until collected; Windows locks them
+        for root in roots:
+            for files in groups(unity_containers(root)).values():
+                if ctx.cancel.cancelled:
+                    break
+                count, problems = _export_group(ctx, UnityPy, files)
+                exported, notes = exported + count, notes + problems
+                gc.collect()  # UnityPy keeps file handles until collected; Windows locks them
         ctx.log(f"UnityPy exported {exported} asset(s), {len(notes)} problem(s)", stage="export")
         return Outcome(OutcomeKind.OK, exported, notes=tuple(notes[:50]))
 

@@ -167,4 +167,4 @@ function conflictList(spec, index, focusAt = -1) {
   return ol;
 }
 
-export default { mount, show: () => { if (!S.st) load(); } };
+export default { mount, show: load };

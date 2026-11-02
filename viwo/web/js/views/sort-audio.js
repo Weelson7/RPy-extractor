@@ -5,7 +5,7 @@ const BARS = 64;
 const MAX_BYTES = 20 * 1024 * 1024; // larger files keep the flat line instead of being decoded
 let decoder = null;
 
-const clock = (s) => `${Math.floor((s || 0) / 60)}:${String(Math.floor((s || 0) % 60)).padStart(2, "0")}`;
+const clock = (s) => `${Math.floor((s || 0) / 60)}:${((s || 0) % 60).toFixed(1).padStart(4, "0")}`;
 
 /** Peak amplitude per bar, normalised to 0..1. Throws when the file is too large or undecodable. */
 async function peaks(url) {
