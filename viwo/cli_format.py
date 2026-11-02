@@ -77,6 +77,26 @@ def unpack(data: dict) -> str:
     return "\n".join(lines + [f"FAILED  : {f}" for f in data["failures"]])
 
 
+def _mb(size: int) -> str:
+    return f"{size / 1e6:,.1f} MB"
+
+
+def survey(data: dict) -> str:
+    lines = []
+    for g in data["games"]:
+        lines.append(f"\n{g['path']}")
+        cover = f"{_bar(g['coverage'])} {g['coverage']:.0%}"
+        lines.append(f"  engine   {g['engine']} ({g['confidence']:.2f})  coverage {cover}")
+        for cat, c in g["categories"].items():
+            lines.append(f"  {cat:<18} {c['files']:>7} files  {_mb(c['bytes']):>12}")
+        for u in g["unknown"]:
+            kind = "dense: encrypted/compressed" if u["dense"] else "structured: try --deep"
+            lines.append(f"  ? {u['file']}  {_mb(u['bytes'])}  ({kind})")
+        lines += [f"  missing: {m}" for m in g["missingTools"]]
+    covered = sum(1 for g in data["games"] if g["coverage"] >= 0.99)
+    return "\n".join(lines + [f"\n{covered}/{len(data['games'])} game(s) fully covered"])
+
+
 def error(err: dict) -> str:
     if err["code"] == "needs_decision":
         err = {**err, "hint": "re-run with --on-existing new | replace | cancel"}
@@ -86,6 +106,7 @@ def error(err: dict) -> str:
 
 FORMATTERS: dict[str, Any] = {
     "detect": detect,
+    "survey": survey,
     "slots": slots,
     "info": info,
     "extract": extraction,

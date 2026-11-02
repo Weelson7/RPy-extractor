@@ -30,11 +30,36 @@ def _parser() -> argparse.ArgumentParser:
     ap.add_argument("--ini", type=Path, help="startup ini (default: startup.ini)")
     ap.add_argument("--os", dest="os_id", help="auto | linux | windows")
     ap.add_argument("--json", action="store_true", help="print a JSON envelope")
+    common = argparse.ArgumentParser(add_help=False)  # --json also after the command
+    common.add_argument("--json", action="store_true", default=argparse.SUPPRESS)
     sub = ap.add_subparsers(dest="command", required=True)
-    sub.add_parser("info", help="OS layer, plugins, slot bindings, problems")
-    sub.add_parser("slots", help="slot bindings and dependency status")
-    sub.add_parser("detect", help="engine detection").add_argument("game", type=Path)
-    ex = sub.add_parser("extract", help="extract a game folder into a workspace")
+
+    def command(name: str, text: str) -> argparse.ArgumentParser:
+        return sub.add_parser(name, parents=[common], help=text)
+
+    command("info", "OS layer, plugins, slot bindings, problems")
+    command("slots", "slot bindings and dependency status")
+    command("detect", "engine detection").add_argument("game", type=Path)
+    _extract_args(command("extract", "extract a game folder into a workspace"))
+    rp = command("replay", "re-run the extraction stored in a run record")
+    rp.add_argument("record", type=Path)
+    rp.add_argument("--workspace", type=Path, required=True)
+    rp.add_argument("--on-existing", choices=["new", "replace", "cancel"], default="ask")
+    rp.add_argument("--option", action="append", default=[], help="secret: plugin.key=value")
+    up = command("unpack", "unpack one archive (nested archives too)")
+    up.add_argument("archive", type=Path)
+    up.add_argument("--out", type=Path, required=True)
+    up.add_argument("--option", action="append", default=[], help="plugin.key=value")
+    su = command("survey", "read-only coverage report for a game or a whole library")
+    su.add_argument("folder", type=Path)
+    su.add_argument("--deep", action="store_true", help="also run the carver on unknown blobs")
+    sv = command("serve", "start the web UI (host/port from [server] in the ini)")
+    sv.add_argument("--host", help="override [server] host")
+    sv.add_argument("--port", type=int, help="override [server] port")
+    return ap
+
+
+def _extract_args(ex: argparse.ArgumentParser) -> None:
     ex.add_argument("game", type=Path)
     ex.add_argument("--workspace", type=Path, required=True)
     ex.add_argument("--plugin", help="force one plugin")
@@ -49,19 +74,6 @@ def _parser() -> argparse.ArgumentParser:
         default="unknown",
         help="find embedded files in blobs: unrecognized files (default), all files, or off",
     )
-    rp = sub.add_parser("replay", help="re-run the extraction stored in a run record")
-    rp.add_argument("record", type=Path)
-    rp.add_argument("--workspace", type=Path, required=True)
-    rp.add_argument("--on-existing", choices=["new", "replace", "cancel"], default="ask")
-    rp.add_argument("--option", action="append", default=[], help="secret: plugin.key=value")
-    up = sub.add_parser("unpack", help="unpack one archive (nested archives too)")
-    up.add_argument("archive", type=Path)
-    up.add_argument("--out", type=Path, required=True)
-    up.add_argument("--option", action="append", default=[], help="plugin.key=value")
-    sv = sub.add_parser("serve", help="start the web UI (host/port from [server] in the ini)")
-    sv.add_argument("--host", help="override [server] host")
-    sv.add_argument("--port", type=int, help="override [server] port")
-    return ap
 
 
 def _options(items: list[str]) -> dict[str, dict[str, str]]:
@@ -105,6 +117,13 @@ def _run(args) -> Envelope:
     if args.command == "detect":
         found = detect_all(rt, FolderProbe(args.game))
         return Envelope.success({k: v.to_legacy_dict() for k, v in found.items()})
+    if args.command == "survey":
+        from viwo.core.survey import survey
+
+        if not args.folder.is_dir():
+            raise ViwoError("not_found", f"folder not found: {args.folder}")
+        note = None if args.json else (lambda g: print(f"[SURVEY] {g}", file=sys.stderr))
+        return Envelope.success({"games": survey(rt, args.folder, args.deep, note)})
     sink = None if args.json else (lambda e: print(e.legacy_line(), file=sys.stderr))
     if args.command == "unpack":
         return Envelope.success(unpack_one(rt, args.archive, args.out, _options(args.option), sink))

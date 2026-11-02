@@ -7,9 +7,11 @@ from typing import Any, Callable
 
 from viwo.contracts import workspace as ws
 from viwo.contracts.errors import ViwoError
+from viwo.contracts.types import ProgressEvent
 from viwo.core.curation import sorting, trash
 from viwo.core.merger import media
 from viwo.core.merger.build import build
+from viwo.core.survey import survey
 
 from .app import App
 
@@ -235,7 +237,30 @@ GET: dict[str, Callable[[App, dict], Any]] = {
     "/api/media-merger/state": merger_state,
     "/api/logs": lambda app, q: {"logs": app.logs()},
 }
+
+
+def survey_library(app: App, d: dict) -> dict:
+    """Read-only coverage survey of a game folder or library, as a job (events per game)."""
+    folder = Path(str(d.get("folder", "")).strip())
+    if not str(folder) or not folder.is_dir():
+        return {"success": False, "error": f"Folder not found: {folder}", "code": "not_found"}
+
+    def run(jid, sink, cancel) -> dict:
+        def note(game: Path) -> None:
+            sink(ProgressEvent(f"Surveying {game.name}", "info", "core", "survey"))
+
+        return {"success": True, "games": survey(app.rt, folder, bool(d.get("deep")), note)}
+
+    job = app.jobs.submit_with_listener(
+        lambda e: app.log(e.legacy_line()), "survey", run, background=False
+    )
+    if job.error:
+        return {"success": False, "error": job.error["message"], "code": job.error["code"]}
+    return {**job.result, "jobId": job.job_id}
+
+
 POST: dict[str, Callable[[App, dict], Any]] = {
+    "/api/survey": survey_library,
     "/api/extract": lambda app, d: app.extract(d),
     "/api/workspace": open_workspace,
     "/api/trash": _group("move_to_trash", trash.trash_group),

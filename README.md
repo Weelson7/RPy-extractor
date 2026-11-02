@@ -41,7 +41,9 @@ python -m viwo.cli extract "/path/to/game" --workspace ./ws
 python -m viwo.cli replay ./ws/.extraction_metadata/runs/<job>.json --workspace ./ws-again
 ```
 
-`viwo info`, `viwo slots` and `viwo unpack <archive> --out DIR` are also available; add `--json`
+`viwo survey <library or game folder>` reports, per game, what ViWo can extract and what it cannot
+(add `--deep` to try the carver on unknown files). `viwo info`, `viwo slots` and
+`viwo unpack <archive> --out DIR` are also available; add `--json`
 for machine-readable output.
 
 ## Supported engines and tools
