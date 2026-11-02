@@ -19,7 +19,8 @@ export async function openWorkspaceDialog() {
   const chip = document.getElementById("ws-btn"), label = document.getElementById("ws-path"), was = label.textContent;
   chip.classList.add("loading");
   chip.setAttribute("aria-busy", "true");
-  label.textContent = `OPENING ${path}…`;
+  chip.querySelector(".ws-edit").textContent = "OPENING…";
+  label.textContent = `\u200e${path}\u200e`;
   try {
     const next = await api.setWorkspace(path);
     toast(`Workspace: ${next.path}`, "ok", next.owned ? "" : "Not created by ViWo: extraction will refuse it unless it is empty.");
@@ -29,6 +30,7 @@ export async function openWorkspaceDialog() {
     toastErr(err);
   } finally {
     chip.classList.remove("loading");
+    chip.querySelector(".ws-edit").textContent = "SWITCH";
     chip.removeAttribute("aria-busy");
   }
 }

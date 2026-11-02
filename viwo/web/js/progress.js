@@ -81,7 +81,8 @@ export function jobProgress(kind, { logClass = "feed", onStatus = null } = {}) {
     el.clock.textContent = clock(secs);
     const idle = (Date.now() - t.lastEv) / 1000;
     el.quiet.textContent = !t.ended && t.cur && idle >= 5 ? `no new events for ${Math.floor(idle)} s — still working` : "";
-    onStatus?.(t.ended ? "" : `${K.verb} · ${stageText()} · ${t.n} events · ${Math.round(secs)}s`);
+    onStatus?.(t.ended ? `${el.verb.textContent} · ${el.stage.textContent} · ${t.n} events · ${secs.toFixed(1)}s`
+      : `${K.verb} · ${stageText()} · ${t.n} events · ${Math.round(secs)}s`);
   }
 
   function railState(s, i) {

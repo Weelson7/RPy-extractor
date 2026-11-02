@@ -84,6 +84,9 @@ class EnginePlugin(ABC):
     @abstractmethod
     def detect(self, probe: GameProbe) -> DetectionResult: ...
 
+    def configure(self, options: Mapping[str, Any]) -> None:
+        """Startup options from [options.<plugin id>] in the ini (before slots are read)."""
+
     def slot_definitions(self) -> Sequence[SlotDefinition]:
         return ()
 

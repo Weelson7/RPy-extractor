@@ -85,7 +85,7 @@ async function run() {
     S.ranDeep = S.deep;
     render();
   } catch (err) {
-    await el.prog.finish("fail", String(err.code || "error").toUpperCase());
+    await el.prog.finish("fail", err.message);
     fill(el.cards, errorBox(err, "SURVEY FAILED"));
     toastErr(err, "Survey failed: ");
   } finally {

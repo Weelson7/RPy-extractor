@@ -72,6 +72,11 @@ def boot(
     config = load_ini(ini_path if ini_path is not None else DEFAULT_INI)
     layer = select_os(os_id or config.os_id, config.tools)
     plugins, problems = load_enabled(config.plugins)
+    for plugin_id, plugin in plugins.items():
+        try:
+            plugin.configure(config.options.get(plugin_id, {}))
+        except Exception as exc:  # a bad option disables only that plugin's extras
+            problems.append(f"plugin {plugin_id}: options rejected: {exc}")
     from viwo.core.decode import SLOTS as DECODE_SLOTS
     from viwo.core.decode import decoders
 

@@ -277,7 +277,7 @@ async function run(onExisting) {
       setRunning(false);
       next = await askDecision(err);
     } else {
-      await el.prog.finish(err.code === "cancelled" ? "cancel" : "fail", String(err.code || "error").toUpperCase());
+      await el.prog.finish(err.code === "cancelled" ? "cancel" : "fail", err.message);
       renderFailure(el.result, err);
       reveal();
       err.code === "cancelled" ? toast("Extraction cancelled.", "warn") : toastErr(err, "Extraction failed: ");

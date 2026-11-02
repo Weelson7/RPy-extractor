@@ -20,6 +20,7 @@ BUILTIN_PLUGINS = {
     "electron": "viwo.plugins.electron:ElectronPlugin",
     "source": "viwo.plugins.source:SourcePlugin",
     "bethesda": "viwo.plugins.bethesda:BethesdaPlugin",
+    "quickbms": "viwo.plugins.quickbms:QuickBmsPlugin",
 }
 
 

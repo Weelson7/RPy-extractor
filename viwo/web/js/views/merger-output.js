@@ -111,7 +111,7 @@ async function build() {
     toast(`Built ${res.builtCount ?? 1} video(s).`, res.partial ? "warn" : "ok", res.partial ? "Some candidates failed." : "");
     if (O.trashAfterBuild) emit("workspace");
   } catch (err) {
-    await el.prog.finish("fail", String(err.code || "error").toUpperCase());
+    await el.prog.finish("fail", err.message);
     fill(el.results, errorBox(err, "BUILD FAILED"), failures(err.payload?.failures));
     toastErr(err, "Build failed: ");
   } finally {
