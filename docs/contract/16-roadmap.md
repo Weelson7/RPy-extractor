@@ -14,6 +14,25 @@ folder), and the prototype is split into **A (viable core)** and
 
 Prototype B = M7 Unreal unpack (+ AES key finder spare) · M8 custom plugins (Doom WAD/Freedoom in CI, Overwatch tos-sensitive) · M9 round trip for all four engines · M10 mixed mode + sanitizer phase 1 · **M11 capture pilot moved inside B**. Prototype A was extended first: legacy app removed, everything ported to ViWo, new UI.
 
+## 16.0b Coverage ladder (D21)
+
+Goal: any asset stored on the local disk comes out, whatever the engine. Each rung catches what
+the rungs above it missed, and every rung reports what it could not handle, so gaps are visible.
+
+| Rung | What it does | State |
+|------|--------------|-------|
+| 1. Engine plugins | native decoding with real names (Ren'Py, Unity, Godot, Doom; Unreal M7; then RPG Maker, KiriKiri XP3, Electron asar, Source VPK, Bethesda BSA/BA2, GameMaker) | partly done |
+| 2. Container unpackers | zip, tar, 7z, rar, WAD, PCK, RPA..., recursive to depth 10 | done |
+| 3. Signature carver | complete standard files embedded in unknown blobs (PNG, JPEG, GIF, WAV/WEM, Ogg, MIDI, MP4, Bink, FSB5, BNK, DDS, glTF, zip, 7z) | done |
+| 4. Compressed-stream scan | zlib / zstd / LZ4 streams inside unknown blobs are inflated (bounded) and carved | next |
+| 5. Decoders | game media to viewable files: vgmstream (WEM, FSB, BNK...), DDS to PNG, Bink via ffmpeg | planned |
+| 6. Script-driven unpackers | QuickBMS (GPL, subprocess) with a script per format; GARbro-style catalogs | planned |
+| 7. Runtime capture | RenderDoc / audio capture for encrypted or procedural content (M11, policy-gated) | planned |
+| Survey | `viwo survey <library>`: per game, the engine, which files each rung covers, and unknown blobs with an entropy estimate (high entropy = encrypted/compressed) | next |
+
+Out of scope by design: DRM or anti-cheat circumvention, guessing passwords or keys, content that
+only exists on a server.
+
 ## 16.1 Overview
 
 ```

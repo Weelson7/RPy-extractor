@@ -136,6 +136,7 @@ You accepted every recommendation on 2026-11-02, so this table is now the record
 | D18 | Unreal AES keys | an offline-playable game must carry its pak key locally, so the key is always reachable: **a user-supplied key wins; otherwise the key finder runs automatically**; every candidate is **verified against the pak's encrypted index** before use; keys are never stored |
 | D19 | Runtime capture pilot | **inside Prototype B** (refusal policy, journaled overlay, RenderDoc harvest, diff against the static extraction) |
 | D20 | Real-game check | after Prototype B (you / the independent operator) |
+| D21 | Coverage goal | **whatever is stored locally can be extracted**, through a ladder of fallbacks (doc 16.0b): engine plugin, container unpackers, signature carver, compressed-stream scan, decoders, script-driven unpackers (QuickBMS), runtime capture. `viwo survey` measures coverage per game. Limits that stay: no DRM or anti-cheat circumvention, no key guessing (keys come from the user or from the game's own local files and are verified, D18) |
 
 ## Not in this draft
 
