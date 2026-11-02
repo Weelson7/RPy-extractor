@@ -95,46 +95,77 @@ ImageCodec                     (family: image)
 CodeAnalyzer                   (family: analysis)  — doc 6
 ```
 
-## 8.4 Default slot table
+## 8.4 Default slot table (revised with research, doc 13)
 
-**Unarchive** (the main reason for spares):
+The tool facts behind this table are in doc 13 (checked 2026-11-02). Items
+marked ❓ are decisions still open.
+
+**Identify, then extract.** Following unblob, a slot's `matches` is an
+**Identifier**. It sees the file's head *and* tail and can report an embedded
+chunk (offset, size, format), which core carves out before unpacking. Godot
+PCKs embedded in executables, AGS, Love2D and NW.js need this.
+
+**Unarchive:**
 
 | Slot | Owner | Matches | Main | Spare | Notes |
 |------|-------|---------|------|-------|-------|
-| `unarchive.zip` | core | .zip | `py-zipfile` (stdlib) | `sevenzip-cli` | spare also handles odd compression methods (deflate64, …) |
-| `unarchive.tar` | core | .tar .tar.gz .tgz .tar.bz2 .tbz .tbz2 .tar.xz .txz | `py-tarfile` (stdlib) | `sevenzip-cli` | |
-| `unarchive.7z` | core | .7z | `sevenzip-cli` | `py7zr` (pip) | the pip spare means .7z works with no system install |
-| `unarchive.rar` | core | .rar | `unrar-cli` | `sevenzip-cli` | same chain as v1 |
-| `unarchive.rpa` | renpy | .rpa .rpi | `unrpa` (pip) | `rpa-builtin` | the RPA index is a pickled table, so the built-in reader **must** use a restricted unpickler that allows no globals |
-| `unarchive.unitypackage` | unity | .unitypackage | `py-tarfile` (gz) | `sevenzip-cli` | |
-| `unarchive.pck` | godot | .pck, plus a PCK embedded in the executable (magic `GDPC`) | `pck-builtin` | `godotpcktool` / `gdre-tools` | key option for encrypted PCKs |
-| `unarchive.pak` | unreal | .pak | `repak` | `unrealpak` | AES key option |
-| `unarchive.iostore` | unreal | .utoc + .ucas | `retoc` *(to confirm)* | — | needs research before locking |
+| `unarchive.zip` | core | .zip, zip appended to exe | `py-zipfile` | `sevenzip-cli` | |
+| `unarchive.tar` | core | .tar* | `py-tarfile` | `sevenzip-cli` | |
+| `unarchive.7z` | core | .7z | `sevenzip-cli` | `py7zr` (LGPL-2.1) | |
+| `unarchive.rar` | core | .rar | `unrar-cli` (freeware, non-OSS) | `sevenzip-cli` | |
+| `unarchive.rpa` | renpy | .rpa .rpi, `RPA-` header | `rpa-safe` (ours: restricted unpickler) ❓ D11 | `unrpa` (GPL-3.0, subprocess, dormant) | RPA indexes are pickles; never unpickled in-process |
+| `unarchive.unitypackage` | unity | .unitypackage | `py-tarfile` | `sevenzip-cli` | |
+| `unarchive.unity-bundle` | unity | UnityFS magic | `unitypy` (MIT) | `uabea-cli` (`batchexportbundle`) | |
+| `unarchive.unity-webgl` | unity | `.data`, `.unityweb` | `unitypy` | `assetripper` | |
+| `unarchive.pck` | godot | `GDPC` at the head, or in the exe trailer | `gdre-tools` (MIT, `--extract`, keys) | `godotpcktool` (unencrypted, carved PCK) | |
+| `unarchive.pak` | unreal | .pak | `repak` (MIT/Apache) | `quickbms` (GPL-2.0, subprocess) | never vendor UnrealPak (Epic EULA) |
+| `unarchive.iostore` | unreal | .utoc + .ucas | `retoc` (MIT) | our CUE4Parse wrapper | |
+| `unarchive.casc` | overwatch (custom) | `.build.info` + `data/casc/` | `datatool` (MIT, .NET 10) | `casclib` (raw files only) | doc 14, S5 |
 
 **Export:**
 
 | Slot | Owner | Main | Spare | Notes |
 |------|-------|------|-------|-------|
-| `export.unity` | unity | `unitypy` | `assetripper` | v1 also tries **UABEA**, but UABEA has no real command line (v1 guesses three argument formats). Proposal: drop it as a backend (F8). |
-| `export.unreal` | unreal | `umodel` | *(to research)* | |
-| `export.godot` | godot | `godot-builtin` (resource converters) | `gdre-tools` (`--headless --recover`) | |
+| `export.unity` | unity | `unitypy` (v1 parity) or `assetstudiomod-cli` ❓ D7 | the other one | AssetStudioModCLI has a real CLI and native Linux build |
+| `export.unity-project` | unity | `assetripper` (GPL-3.0, driven over its local HTTP API) | `assetstudiomod-cli` | full project rebuild; optional |
+| `export.unreal` | unreal | our CUE4Parse .NET wrapper (Apache-2.0 lib) | `umodel` (UE4 only, dormant) | deferred after the prototype |
+| `export.godot` | godot | `gdre-tools --recover` | `godotdec` (Godot 3 only) | |
+| `export.overwatch` | overwatch | `datatool extract-*` | — | catalog → select first |
+
+**Keys:**
+
+| Slot | Main | Spare |
+|------|------|-------|
+| `keys.unreal-aes` | user-supplied | `aesdumpster` (Windows, license unverified) ❓ |
+| `keys.godot` | user-supplied | — |
+| `keys.tact` (Overwatch) | pinned bundled keyring, offline | CascLib built-in table |
 
 **Media and images:**
 
-| Slot | Owner | Main | Spare |
-|------|-------|------|-------|
-| `media.probe` | core | `ffprobe` | `pillow` (images only) |
-| `media.encode` | core | `ffmpeg` | — |
-| `image.convert` | core | `pillow` | `imagemagick` |
+| Slot | Main | Spare |
+|------|------|-------|
+| `media.probe` | `ffprobe` | `pillow` (images only) |
+| `media.encode` | `ffmpeg` | — |
+| `image.convert` | `pillow` | `imagemagick` |
+| `audio.decode` (game codecs) | `vgmstream` | — |
 
 **Analysis** (doc 6):
 
 | Slot | Main | Spare |
 |------|------|-------|
-| `analysis.native` | `ghidra-headless` | — (rizin later) |
+| `analysis.native` | `ghidra-headless` (JDK 25 for 12.2) | — |
 | `analysis.dotnet` | `ilspycmd` | — |
-| `analysis.il2cpp` | `il2cppdumper` | `cpp2il` |
-| `analysis.python` (.rpyc/.pyc) | `unrpyc` | — |
+| `analysis.il2cpp` | `cpp2il` | `il2cppdumper` (≤ Unity 2022.2) |
+| `analysis.python` (.rpyc) | `unrpyc` v2 | `rpycdec` (isolated environment) |
+| `analysis.gdscript` | `gdre-tools --decompile` | — |
+
+**Capture and runtime** (doc 11): `capture.gpu`, `capture.memory`,
+`capture.audio`, `runtime.<engine>`.
+
+**Backend declarations, added after the research:**
+- `license` (SPDX). A GPL or AGPL backend must use `isolation: subprocess`.
+- `network: none | optional | required`, together with the offline flags used by default.
+- `parses_untrusted_in_process: bool`, so risky in-process parsers can be isolated.
 
 **Kernel-internal fallbacks** are not slots, but they follow the same main and
 spare idea (doc 1): on Linux the folder dialog tries tkinter and then

@@ -50,6 +50,9 @@ Notes on mechanics:
 
 ## 10.3 The tools, sorted by how well they fit
 
+> Research update: the verified repository and license facts are in doc 13.5. Confirmed so far: `.gitmodules` can't hold sparse paths; unrar has **no official git**; 7-Zip's GitHub repository looks official but has RAR-restricted parts; FFmpeg's canonical repository is git.ffmpeg.org. GPL tools must run as subprocesses.
+
+
 The repository locations and licenses below come from memory and **still
 need to be checked** one by one.
 

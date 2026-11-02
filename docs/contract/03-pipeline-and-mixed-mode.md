@@ -7,8 +7,8 @@
 | PREPARE | core | clear and create the output dir, create `staging/<plugin_id>/` and `scratch/` | `pipeline.extract_assets` PHASE 0 |
 | PROBE | core | build one GameProbe | — (was an rglob per marker set) |
 | DETECT | core + plugins | call `detect()` on every enabled plugin, then `select_plugins()` | `detector.detect_engine` + `orchestrator` |
-| INVENTORY | plugins | `inventory()` for the selected plugins | Unity discovery phase |
-| UNPACK | core + `unarchive.*` slots | recursive unpack; each file goes to the matching slot's main, then spare (doc 8) | PHASE 1 `extract_archives` |
+| INVENTORY / CATALOG | plugins | `inventory()` for the selected plugins. Draft 2: optionally a browsable **catalog** the user or CLI selects from, for huge games (CASC, big Unreal) ❓ D12 | Unity discovery phase |
+| UNPACK | core + `unarchive.*` slots | identify (head + tail, carving embedded containers), then recursive unpack. After an outer *wrapper* (Electron/NW.js) is unpacked, detection runs once more; each file goes to the matching slot's main, then spare (doc 8) | PHASE 1 `extract_archives` |
 | EXPORT | plugins | `export()` for each selected plugin, into its own staging folder | Unity export phase |
 | COLLECT | core | move files from the source roots and staging folders into the `<ext>/` layout, filtered by `selected_exts`, with the v1 dedupe and collision rules | PHASE 2 scan + `move_one` |
 | VERIFY | core + plugins | `logic_check_summary` warnings, then `verify()` | PHASE 3 + Unity verification phase |

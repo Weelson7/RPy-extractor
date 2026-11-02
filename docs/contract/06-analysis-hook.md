@@ -35,7 +35,7 @@ Which plugin proposes which targets:
 
 - **Invocation:** `analyzeHeadless <projectDir> <projectName> -import <bin> -postScript <ExportScript> <out> -scriptPath <dir> -deleteProject`.
 - **Kernel differences:** on Windows the tool is `analyzeHeadless.bat`, run through `cmd /c` (the ToolLocation's `argv_prefix`); on Linux it's a shell script. Install directory comes from `GHIDRA_INSTALL_DIR` or the ini `[tools]` section.
-- **Dependencies:** Ghidra itself (`executable`) and Java 17+ (`runtime`).
+- **Dependencies:** Ghidra itself (`executable`) and a JDK (`runtime`). The JDK version follows the pinned Ghidra release: Ghidra 12.2 needs **JDK 25** (doc 13.4).
 - **Runtime:** analysis takes minutes to hours. It always runs as a background job with a timeout (`timeout_s`, set in the ini), with cancellation that kills the whole process tree (doc 1.1), and with `scratch` (the Ghidra project folder) deleted when the job ends.
 - **IL2CPP chain:** `analysis.il2cpp` (Il2CppDumper or Cpp2IL) produces symbol scripts, which are then passed as an extra input to `analysis.native` (Ghidra). This is modeled as one job with two steps.
 

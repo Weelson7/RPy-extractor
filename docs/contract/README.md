@@ -1,6 +1,6 @@
 # RPy Extractor: architecture contract (draft 1, for review)
 
-**Status: proposal.** Nothing here is implemented or decided. These documents
+**Status: proposal, draft 2 (after the research in doc 13).** Nothing here is implemented or decided. These documents
 lay out how I understand the target architecture after reading the v1 code
 (`extract.py`, `api/*`, `extraction_core/*`, `extraction_types/*`,
 `sorting.py`, `media_merger/*`, `startup.py`, `web/app.js`). The goal is to
@@ -113,8 +113,13 @@ These are the ideas the other documents build on. Each is up for debate.
 | D8 | Vendored compiled tools: build from source, or pin the version and fetch the release binary? (doc 10.4) | pin + fetch for heavy native tools |
 | D9 | Project license, needed before vendoring GPL tools (doc 10.4) | — |
 | D10 | F7 (re-extraction could clear a user-chosen folder): confirm it in the app and fix it before the overhaul? | yes, if it reproduces |
+| D11 | Ren'Py RPA: should our own safe reader (restricted unpickler) be main, with unrpa as a subprocess spare? | yes; RPA indexes are pickles (doc 13.3) |
+| D12 | Should CATALOG → SELECT be a separate stage for huge games (CASC, Unreal)? | yes, optional |
+| D13 | Runtime agents: journaled overlay on the game folder, or a copy of the game? | overlay + crash recovery |
+| D14 | Custom plugin showcase: Overwatch (terms-of-service exposure, no real CI data) or an open-source custom-engine game? | — |
+| D15 | Product and CLI name ("RPy Extractor" undersells a multi-engine framework) | — |
 
 ## Not in this draft
 
-- The Python interface code. A draft exists in the session scratchpad and has been held back as you asked. It will be updated once these documents are agreed.
-- Research still missing on Unreal IoStore unpacking, an Unreal export spare, and the license and repository location of each third-party tool.
+- The Python interface code. A draft exists in the session scratchpad and has been held back as you asked. It predates draft 2: it still has archive handlers instead of slots and no ini boot, so it will be rewritten once these documents are agreed.
+- Facts still UNVERIFIED after research: anti-cheat marker names, Godot `override.cfg` autoload injection, Ninja Ripper licensing, AESDumpster and UnrealLocres licenses, some Windows-only tools on Linux, and Blizzard's current EULA text (see docs 11 and 13).
