@@ -57,7 +57,9 @@ def precheck(folder: Path, policy: OnExisting, default: Path | None = None) -> N
         )
     if policy is OnExisting.ASK:
         raise ViwoError(
-            "needs_decision", f"{folder} already holds an extraction", hint="new | replace | cancel"
+            "needs_decision",
+            f"{folder} already holds an extraction",
+            hint="new: a fresh folder next to it; replace: clear this workspace; or cancel",
         )
     if policy is OnExisting.CANCEL:
         raise ViwoError("cancelled", "extraction cancelled by the re-extraction choice")

@@ -7,6 +7,12 @@ const RM = window.matchMedia("(prefers-reduced-motion: reduce)");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const clock = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${(s % 60).toFixed(1).padStart(4, "0")}`;
 const add = (n = 1) => (m, v) => v + (typeof n === "function" ? n(m) : n);
+const num = (s) => Number(String(s).replace(/,/g, ""));
+const fmt = (n) => n.toLocaleString("en-US");
+/** Real progress inside a message: "Decoded files: 300 / 4,100", "x.wad: 1000/3109 lumps". */
+const FRAC = /(?<![\w./])(\d[\d,]*)\s*\/\s*(\d[\d,]*)(?![\w./])/;
+/** Throttled running counts with no total: "Scanned files: 12,400 (9,812 collected)". */
+const COUNT = /^[A-Z][\w -]*files: [\d,]+/;
 
 /**
  * Per job kind: the stages in execution order (none = one rail node per new stage key),
@@ -16,9 +22,11 @@ const add = (n = 1) => (m, v) => v + (typeof n === "function" ? n(m) : n);
 const KINDS = {
   extract: {
     verb: "EXTRACTING",
-    stages: ["prepare", "detect", "unpack", "export", "carve", "collect", "verify", "report"],
+    stages: ["prepare", "detect", "unpack", "export", "carve", "collect", "decode", "verify", "report"],
     counters: [
       ["PLUGINS", /^Selected plugin\(s\): (.+)/, (m) => m[1], "—"],
+      ["FILES SCANNED", /^Scanned files: ([\d,]+)/, (m) => num(m[1])],
+      ["FILES DECODED", /^Decoded files: ([\d,]+)/, (m) => num(m[1])],
       ["ARCHIVES OK", /^OK [^:]+: \d+ file/, add()],
       ["ARCHIVES FAILED", /^FAILED /, add()],
       ["FILES UNPACKED", /^OK [^:]+: (\d+) file/, add((m) => Number(m[1]))],
@@ -39,6 +47,7 @@ const KINDS = {
     verb: "SURVEYING",
     stageOf: (e) => (e.stage === "survey" ? e.message.replace(/^Surveying /, "") : ""),
     counters: [["GAMES", /^Surveying /, add()]],
+    ongoing: true, // "(3/9)" = game 3 is being surveyed, so 2 of 9 are done
   },
   repack: {
     verb: "PATCHING",
@@ -47,7 +56,8 @@ const KINDS = {
     // Packers report nothing per container: the final event closes PACK + VERIFY + REPORT together.
     stageOf: (e) => (/^Copying the game/.test(e.message) ? "copy" : /^Patched copy ready/.test(e.message) ? ["pack", "verify", "report"]
       : e.stage === "repack" ? "" : /verif|unpack|extract/i.test(`${e.stage} ${e.message}`) ? "verify" : "pack"),
-    counters: [["VERIFIED", /^Patched copy ready \((\w+)/, (m) => (m[1] === "verified" ? "YES" : "NO"), "—"]],
+    counters: [["GAME FILES COPIED", /^Copied game files: ([\d,]+)/, (m) => num(m[1])],
+      ["VERIFIED", /^Patched copy ready \((\w+)/, (m) => (m[1] === "verified" ? "YES" : "NO"), "—"]],
   },
 };
 
@@ -57,6 +67,7 @@ export function jobProgress(kind, { logClass = "feed", onStatus = null } = {}) {
   const el = {
     verb: h("span", { class: "lbl live" }, K.verb),
     stage: h("b", { class: "jp-stage" }),
+    frac: h("span", { class: "jp-frac mono" }),
     quiet: h("span", { class: "jp-quiet" }),
     clock: h("span", { class: "jp-clock mono", title: "elapsed (job clock)" }, "00:00.0"),
     rail: h("ol", { class: "jp-rail", "aria-label": "Stages" }),
@@ -68,7 +79,7 @@ export function jobProgress(kind, { logClass = "feed", onStatus = null } = {}) {
     log: h("pre", { class: `log ${logClass}` }),
   };
   const root = h("div", { class: "jp", "data-state": "idle" },
-    h("div", { class: "jp-head" }, el.verb, el.stage, el.quiet, el.clock),
+    h("div", { class: "jp-head" }, el.verb, el.stage, el.frac, el.quiet, el.clock),
     el.rail, el.bar, el.tick, el.counts, el.warns, el.sr, el.log);
   let t = null;
 
@@ -89,7 +100,7 @@ export function jobProgress(kind, { logClass = "feed", onStatus = null } = {}) {
     const secs = elapsed();
     el.clock.textContent = clock(secs);
     const idle = (Date.now() - t.lastEv) / 1000;
-    el.quiet.textContent = !t.ended && t.cur && idle >= 5 ? `no new events for ${Math.floor(idle)} s — still working` : "";
+    el.quiet.textContent = !t.ended && t.cur && idle >= 5 ? `still working · last update ${Math.floor(idle)} s ago` : "";
     onStatus?.(t.ended ? `${el.verb.textContent} · ${el.stage.textContent} · ${t.n} events · ${secs.toFixed(1)}s`
       : `${K.verb} · ${stageText()} · ${t.n} events · ${Math.round(secs)}s`);
   }
@@ -126,10 +137,19 @@ export function jobProgress(kind, { logClass = "feed", onStatus = null } = {}) {
     say(`${K.verb.toLowerCase()}: ${s}`, true);
   }
 
+  /** Determinate bar only while the current stage reports real counts; the scan bar everywhere else. */
+  function paintBar() {
+    const p = !t.ended && t.prog?.stage === t.cur ? t.prog : null;
+    const pct = p?.total ? Math.min(100, Math.floor(((p.done - (K.ongoing ? 1 : 0)) / p.total) * 100)) : null;
+    el.bar.classList.toggle("det", pct !== null);
+    el.bar.style.setProperty("--p", `${pct ?? 0}%`);
+    el.frac.textContent = !p ? "" : pct !== null ? `${fmt(p.done)} / ${fmt(p.total)} · ${pct}%` : p.text;
+  }
+
   function paintCounts() {
     const rows = [...K.counters.map(([label]) => [label, t.counts[label]]), ["EVENTS", t.n], ["WARNINGS", t.warns.length]];
     for (const [label, value] of rows) {
-      const text = typeof value === "number" && !Number.isInteger(value) ? value.toFixed(1) : String(value);
+      const text = typeof value !== "number" ? String(value) : Number.isInteger(value) ? fmt(value) : value.toFixed(1);
       let box = t.boxes[label];
       if (!box) {
         box = t.boxes[label] = h("div", { class: "jc" }, h("b", { class: "mono" }, text), h("span", {}, label));
@@ -157,6 +177,9 @@ export function jobProgress(kind, { logClass = "feed", onStatus = null } = {}) {
         if (m) t.counts[label] = next(m, t.counts[label]);
       }
       [].concat((K.stageOf || ((x) => x.stage))(e)).forEach(enter);
+      const f = FRAC.exec(e.message);
+      if (f && num(f[2]) >= num(f[1]) && num(f[2]) > 0) t.prog = { stage: t.cur, done: num(f[1]), total: num(f[2]) };
+      else if (COUNT.test(e.message)) t.prog = { stage: t.cur, text: e.message.replace(/ \(.*$/, "") };
     }
     const last = events.slice(-3);
     t.lines = [...t.lines, ...last].slice(-3);
@@ -168,6 +191,7 @@ export function jobProgress(kind, { logClass = "feed", onStatus = null } = {}) {
     if (stick) el.log.scrollTop = el.log.scrollHeight;
     say(last[last.length - 1].message);
     paintRail();
+    paintBar();
     paintCounts();
   }
 
@@ -200,7 +224,7 @@ export function jobProgress(kind, { logClass = "feed", onStatus = null } = {}) {
     const known = new Set((await api.jobs().catch(() => [])).map((j) => j.id));
     t = { known, total, id: null, from: 0, n: 0, polls: 0, round: 1, cur: "", seen: new Set(), order: [...(K.stages || [])],
       counts: Object.fromEntries(K.counters.map((c) => [c[0], c[3] ?? 0])), boxes: {}, warns: [], lines: [],
-      t0: Date.now(), lastEv: Date.now(), said: 0, ended: false, busy: false };
+      t0: Date.now(), lastEv: Date.now(), said: 0, ended: false, busy: false, prog: null };
     root.dataset.state = "running";
     el.verb.className = "lbl live";
     el.verb.textContent = K.verb;
@@ -230,6 +254,7 @@ export function jobProgress(kind, { logClass = "feed", onStatus = null } = {}) {
     el.verb.className = `lbl ${outcome === "ok" ? "done" : "bad"}`;
     el.verb.textContent = { ok: "COMPLETE", fail: "FAILED", cancel: "CANCELLED" }[outcome] || "STOPPED";
     paintRail();
+    paintBar();
     if (note) el.stage.textContent = note;
     paintClock();
     say(`${el.verb.textContent.toLowerCase()}${note ? `: ${note}` : ""}`, true);

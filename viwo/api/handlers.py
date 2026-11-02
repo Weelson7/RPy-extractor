@@ -69,7 +69,12 @@ def pick_folder(app: App, q: dict) -> dict:
     start = Path((q.get("initialPath") or [""])[0] or Path.home()).expanduser()
     chosen = app.rt.os.shell.pick_folder("Select folder", start if start.exists() else None)
     if chosen is None:
-        return {"success": False, "cancelled": True, "error": "No folder selected"}
+        return {
+            "success": False,
+            "cancelled": True,
+            "error": "No folder selected",
+            "code": "cancelled",
+        }
     return {"success": True, "path": str(chosen)}
 
 
@@ -152,7 +157,9 @@ def asset_preview(app: App, q: dict) -> dict:
 def open_folder(app: App, d: dict) -> dict:
     path = Path(str(d.get("path", ""))).expanduser()
     ok, error = app.rt.os.shell.open_folder(path)
-    return {"success": ok, "path": str(path)} if ok else {"success": False, "error": error}
+    if ok:
+        return {"success": True, "path": str(path)}
+    return {"success": False, "error": error, "code": "failed", "hint": "open the folder by hand"}
 
 
 def merger_state(app: App, q: dict) -> dict:
@@ -219,9 +226,19 @@ def merger_overlay(app: App, d: dict) -> dict:
     patterns = [f"*{e}" for e in sorted(media.AUDIO)]
     chosen = app.rt.os.shell.pick_file("Select overlay sound", start, patterns)
     if chosen is None:
-        return {"success": False, "cancelled": True, "error": "No file selected"}
+        return {
+            "success": False,
+            "cancelled": True,
+            "error": "No file selected",
+            "code": "cancelled",
+        }
     if chosen.suffix.lower() not in media.AUDIO:
-        return {"success": False, "error": "Selected file is not a supported audio format"}
+        return {
+            "success": False,
+            "error": "Selected file is not a supported audio format",
+            "code": "invalid_request",
+            "hint": "pick an .ogg, .mp3, .wav, .flac, .m4a or .opus file",
+        }
     return {"success": True, "path": str(chosen.resolve())}
 
 

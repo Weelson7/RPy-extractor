@@ -36,6 +36,9 @@ TEXT = {
 }
 
 
+TEXT_BYTES = frozenset(range(32, 127)) | {9, 10, 13} | frozenset(range(128, 256))  # UTF-8
+
+
 def media_type(ext: str) -> str:
     for kind, exts in (("image", IMAGE), ("audio", AUDIO), ("video", VIDEO), ("text", TEXT)):
         if ext in exts:
@@ -193,6 +196,11 @@ def preview(workspace: Path, encoded: str, max_lines: int = 50) -> dict:
             "url": f"/preview/{encode(workspace.resolve(), path)}",
         }
     try:
+        with path.open("rb") as fh:
+            head = fh.read(4096)
+        printable = sum(b in TEXT_BYTES for b in head) if head else 1
+        if head and (b"\0" in head or printable < 0.9 * len(head)):
+            raise OSError("binary")  # game data (.lmp, .bin...) is not text
         with path.open("r", encoding="utf-8", errors="replace") as fh:
             lines = [line.rstrip("\n") for _, line in zip(range(max_lines + 1), fh)]
     except OSError:
@@ -200,7 +208,7 @@ def preview(workspace: Path, encoded: str, max_lines: int = 50) -> dict:
             "success": True,
             "type": "binary",
             "name": name,
-            "message": "Binary file preview is not supported for this extension.",
+            "message": "Binary data: no preview. Open the folder to use another tool.",
         }
     truncated = len(lines) > max_lines
     lines = lines[:max_lines]
