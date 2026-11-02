@@ -1,0 +1,57 @@
+name: ci
+
+on:
+  push:
+    branches: [main, makeover]
+  pull_request:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python: ["3.11", "3.13"]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: L0 format, lint, LoC caps
+        run: |
+          python -m pip install ruff==0.17.3
+          ruff format --check viwo tests tools
+          ruff check viwo tests tools
+          python tools/loc_count.py --report
+      - name: L1-L4, L6 (fakes and synthetic fixtures)
+        run: python -m unittest discover -s tests -t . -v
+      - name: Legacy v1 regression tests
+        working-directory: RPy-extractor
+        run: python -m unittest discover -s tests -v
+
+  real-tools:
+    # L5: real third-party tools, nightly and on demand.
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - name: Install pinned tools
+        run: python -m pip install UnityPy==1.25.4 py7zr==1.1.4 unrpa==2.3.0
+      - name: Install 7-Zip (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get install -y p7zip-full
+      - name: L5 real-tool smoke tests
+        env:
+          VIWO_L5: "1"
+        run: python -m unittest discover -s tests -t . -v

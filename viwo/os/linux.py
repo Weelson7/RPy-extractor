@@ -1,0 +1,81 @@
+"""Linux OS layer."""
+
+from __future__ import annotations
+
+import os
+import signal
+import subprocess
+import sys
+from pathlib import Path
+from typing import Mapping
+
+from viwo.contracts.os import OS, DesktopShell, FileSystemPolicy
+
+from ._shared import Locator, SubprocessRunner, open_with, tk_pick_folder
+
+
+def _kill_group(proc: subprocess.Popen) -> None:
+    try:
+        os.killpg(proc.pid, signal.SIGKILL)
+    except (ProcessLookupError, PermissionError):
+        proc.kill()
+
+
+class PosixFs(FileSystemPolicy):
+    @property
+    def case_sensitive(self) -> bool:
+        return True
+
+    def path_key(self, path: Path) -> str:
+        return path.as_posix()
+
+    def sanitize_filename(self, raw: str, fallback: str) -> str:
+        name = raw.replace("/", "_").replace("\x00", "").strip()[:255]
+        return name if self.is_valid_filename(name) else fallback
+
+    def is_valid_filename(self, name: str) -> bool:
+        bad = name in {"", ".", ".."} or "/" in name or "\x00" in name
+        return not bad and len(name.encode("utf-8")) <= 255
+
+
+class LinuxShell(DesktopShell):
+    def open_folder(self, path: Path) -> tuple[bool, str]:
+        if not path.is_dir():
+            return False, f"Folder not found: {path}"
+        return open_with(["xdg-open", str(path)])
+
+    def pick_folder(self, title: str, initial: Path | None = None) -> Path | None:
+        return tk_pick_folder(title, initial)
+
+
+class LinuxOS(OS):
+    os_id = "linux"
+
+    def __init__(self, tool_overrides: Mapping[str, str] | None = None) -> None:
+        arg_max = os.sysconf("SC_ARG_MAX") if hasattr(os, "sysconf") else 131072
+        self._process = SubprocessRunner(
+            max(4096, arg_max // 2), {"start_new_session": True}, _kill_group
+        )
+        roots = [Path("/usr/local/bin"), Path("/usr/bin"), Path.home() / ".local/bin", Path("/opt")]
+        self._tools = Locator(tool_overrides or {}, roots, [""], lambda p: (str(p),))
+        self._fs = PosixFs()
+        self._shell = LinuxShell()
+
+    def is_supported_host(self) -> bool:
+        return sys.platform.startswith("linux")
+
+    @property
+    def process(self) -> SubprocessRunner:
+        return self._process
+
+    @property
+    def tools(self) -> Locator:
+        return self._tools
+
+    @property
+    def fs(self) -> PosixFs:
+        return self._fs
+
+    @property
+    def shell(self) -> LinuxShell:
+        return self._shell
