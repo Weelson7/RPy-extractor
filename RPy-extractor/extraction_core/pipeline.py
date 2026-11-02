@@ -4,7 +4,7 @@ import tempfile
 from pathlib import Path
 from typing import Callable
 
-from models import RPA_TEMP_PREFIX, SKIP_DIRS
+from models import RPA_TEMP_PREFIX, SKIP_DIRS, WORKSPACE_MARKER
 
 from .archive import list_rpa_files, extract_archives
 from .file_ops import safe_suffix, ext_folder_name, move_one, walk_files, collect_source_roots
@@ -41,6 +41,26 @@ def logic_check_summary(
     return warnings
 
 
+def prepare_workspace(output_dir: Path) -> None:
+    """Clear and recreate the output folder, but only if this app owns it.
+
+    A folder is owned when it carries the workspace marker. Non-empty folders
+    without the marker are never deleted (they may be user data).
+    """
+    if output_dir.exists():
+        if not output_dir.is_dir():
+            raise ValueError(f"Output path is not a folder: {output_dir}")
+        has_content = any(output_dir.iterdir())
+        if has_content and not (output_dir / WORKSPACE_MARKER).exists():
+            raise ValueError(
+                f"Refusing to clear {output_dir}: it was not created by RPy Extractor. "
+                "Choose an empty folder or the default assets folder."
+            )
+        shutil.rmtree(output_dir)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / WORKSPACE_MARKER).write_text('{"app": "rpy-extractor"}\n', encoding="utf-8")
+
+
 def extract_assets(
     game_root: Path,
     output_dir: Path,
@@ -54,9 +74,7 @@ def extract_assets(
 
     if progress:
         progress(f"[PHASE 0] Preparing output folder: {output_dir}")
-    if output_dir.exists():
-        shutil.rmtree(output_dir, ignore_errors=True)
-    output_dir.mkdir(parents=True, exist_ok=True)
+    prepare_workspace(output_dir)
 
     has_rpa_archives = len(list_rpa_files(game_root)) > 0
     if has_rpa_archives:
@@ -97,7 +115,8 @@ def extract_assets(
                     skipped_by_ext[folder] = skipped_by_ext.get(folder, 0) + 1
                     continue
 
-                move_one(src, output_dir, moved_by_ext, selected_exts)
+                # Files from the game folder are copied; only staging files are moved.
+                move_one(src, output_dir, moved_by_ext, selected_exts, copy=source_root != staging)
 
         log_append(logs, "FILE DISCOVERY", progress)
         log_append(logs, f"Total files scanned: {total_scanned}", progress)

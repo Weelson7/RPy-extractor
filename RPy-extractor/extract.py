@@ -1,5 +1,7 @@
 """Main entry point for RPy Extractor web server."""
+import hmac
 import json
+import secrets
 import mimetypes
 import os
 import sys
@@ -134,6 +136,28 @@ class Handler(BaseHTTPRequestHandler):
     """HTTP request handler."""
 
     app_config: Any = None
+    # Random per-start token; the UI receives it inside index.html and sends it
+    # back in TOKEN_HEADER. Cross-site pages cannot read it.
+    api_token: str = ""
+    TOKEN_HEADER = "X-RPYX-Token"
+
+    def _is_host_allowed(self) -> bool:
+        """Reject requests addressed to foreign host names (DNS rebinding)."""
+        host = str(self.headers.get("Host", "")).strip().lower()
+        if host.startswith("["):
+            name = host.split("]", 1)[0] + "]"
+        else:
+            name = host.rsplit(":", 1)[0] if ":" in host else host
+        allowed = {"127.0.0.1", "localhost", "[::1]", str(self.app_config.host).lower()}
+        return name in allowed
+
+    def _has_valid_token(self) -> bool:
+        sent = str(self.headers.get(self.TOKEN_HEADER, ""))
+        return bool(self.api_token) and hmac.compare_digest(sent, self.api_token)
+
+    def _reject(self, status: int, message: str) -> None:
+        tlog(f"[SECURITY] {self.command} {self.path} rejected ({status}): {message}")
+        self.send_json_response({"success": False, "error": message}, status)
 
     @staticmethod
     def _safe_int(raw: str, default: int) -> int:
@@ -258,6 +282,13 @@ class Handler(BaseHTTPRequestHandler):
         if path != "/api/logs":
             tlog(f"[GET] Route: {path}")
 
+        if not self._is_host_allowed():
+            self._reject(403, "Host not allowed")
+            return
+        if path.startswith("/api/") and not self._has_valid_token():
+            self._reject(403, "Missing or invalid API token")
+            return
+
         try:
             if path.startswith("/preview/"):
                 rel_path = path[len("/preview/"):]
@@ -291,18 +322,52 @@ class Handler(BaseHTTPRequestHandler):
         if path.startswith("/"):
             path = path[1:]
 
-        file_path = Path(self.app_config.web_dir_name) / path
+        web_root = Path(self.app_config.web_dir_name).resolve()
+        file_path = (web_root / path).resolve()
+        try:
+            file_path.relative_to(web_root)
+        except ValueError:
+            tlog(f"[404] Static path outside web root: {path}")
+            self.send_error(404, "Not Found")
+            return
         if not file_path.exists() or not file_path.is_file():
             tlog(f"[404] Static file not found: {file_path}")
             self.send_error(404, "Not Found")
             return
 
+        if file_path.name == "index.html":
+            self._serve_index_with_token(file_path)
+            return
         self.serve_file(file_path)
+
+    def _serve_index_with_token(self, file_path: Path) -> None:
+        """Serve index.html with the per-start API token injected as a meta tag."""
+        html = file_path.read_text(encoding="utf-8")
+        meta = f'<meta name="rpyx-token" content="{self.api_token}">'
+        html = html.replace("</head>", f"  {meta}\n</head>", 1)
+        body = html.encode("utf-8")
+        self.send_response(200)
+        self.send_header("Content-Type", "text/html; charset=utf-8")
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "no-store")
+        self.end_headers()
+        self.wfile.write(body)
 
     def do_POST(self) -> None:
         """Handle POST requests."""
         parsed = urlparse(self.path)
         path = unquote(parsed.path)
+
+        if not self._is_host_allowed():
+            self._reject(403, "Host not allowed")
+            return
+        if not self._has_valid_token():
+            self._reject(403, "Missing or invalid API token")
+            return
+        content_type = str(self.headers.get("Content-Type", "")).split(";", 1)[0].strip().lower()
+        if content_type != "application/json":
+            self._reject(415, "Content-Type must be application/json")
+            return
 
         # Read request body
         content_length = int(self.headers.get("Content-Length", 0))
@@ -434,6 +499,7 @@ class Handler(BaseHTTPRequestHandler):
 def run_server(app_config: AppConfig) -> None:
     """Run the HTTP server with detailed logging."""
     Handler.app_config = app_config
+    Handler.api_token = secrets.token_urlsafe(32)
 
     server_address = (app_config.host, app_config.port)
     server = ThreadingHTTPServer(server_address, Handler)
