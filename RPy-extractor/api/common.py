@@ -1,11 +1,9 @@
 """Shared helpers for API handler modules."""
 import os
-import shutil
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any, Callable
-from urllib.parse import unquote
+from typing import Any
 
 from models import AppConfig, SESSIONS
 

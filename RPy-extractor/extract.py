@@ -3,7 +3,6 @@ import hmac
 import json
 import secrets
 import mimetypes
-import os
 import sys
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -254,6 +253,14 @@ class Handler(BaseHTTPRequestHandler):
             "/api/media-merger/browse-overlay": lambda: browse_overlay_sound(str(data.get("initialPath", ""))),
         }
 
+    def _viwo_route(self, handler: str, path: str, arg: Any) -> bool:
+        """New ViWo routes (/api/distro, /api/plugins, /api/detect, /api/jobs...)."""
+        from viwo.api import routes
+        bridged = getattr(routes, handler)(path, arg)
+        if bridged is not None:
+            self.send_json_response(*bridged)
+        return bridged is not None
+
     def log_message(self, format: str, *args: Any) -> None:
         """Override logging to use tlog with verbose routing info."""
         if str(self.path).startswith("/api/logs"):
@@ -299,6 +306,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.serve_asset_preview(rel_path)
                 return
 
+            if self._viwo_route("handle_get", path, query):
+                return
             route_handler = self._build_get_routes(query).get(path)
             if route_handler:
                 payload = route_handler()
@@ -391,6 +400,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json_response({"success": False, "error": "Request origin not allowed"}, 403)
                 return
 
+            if self._viwo_route("handle_post", path, data):
+                return
             route_handler = self._build_post_routes(data).get(path)
             if route_handler:
                 self.send_json_response(route_handler())
@@ -424,66 +435,37 @@ class Handler(BaseHTTPRequestHandler):
             tlog(f"[MIME] {file_path.suffix} -> {mime_type}")
         return mime_type
 
-    def serve_file(self, file_path: Path) -> None:
-        """Serve static file with detailed logging."""
-        if not file_path.exists():
+    def serve_file(self, file_path: Path, cache_control: str = "") -> None:
+        """Serve one file with detailed logging."""
+        if not file_path.is_file():
             tlog(f"[FILE] Not found: {file_path}")
             self.send_error(404)
             return
-
         try:
             mime_type = self._resolve_mime_type(file_path)
-            
-            with open(file_path, "rb") as f:
-                body = f.read()
-            
+            body = file_path.read_bytes()
             self.send_response(200)
             self.send_header("Content-Type", mime_type)
             self.send_header("Content-Length", str(len(body)))
+            if cache_control:
+                self.send_header("Cache-Control", cache_control)
             self.end_headers()
             self.wfile.write(body)
-            
             tlog(f"[FILE] Served {file_path.name}: {len(body)} bytes ({mime_type})")
         except Exception as exc:
             tlog(f"[ERROR] Failed to serve {file_path}: {exc}")
             self.send_error(500)
 
     def serve_asset_preview(self, rel_path: str) -> None:
-        """Serve asset preview file with logging."""
+        """Serve an asset of the active workspace (contained, reserved folders hidden)."""
+        from api.common import assets_dir
+        from viwo.contracts.errors import ViwoError
+        from viwo.core.curation.sorting import resolve
         try:
-            from api.common import assets_dir as active_assets_dir
-
-            assets_dir = active_assets_dir(self.app_config).resolve()
-            asset_path = (assets_dir / unquote(rel_path)).resolve()
-
-            try:
-                asset_path.relative_to(assets_dir)
-            except Exception:
-                tlog(f"[PREVIEW] Blocked invalid path: {rel_path}")
-                self.send_error(404)
-                return
-
-            if not asset_path.exists() or not asset_path.is_file():
-                tlog(f"[PREVIEW] Not found: {asset_path}")
-                self.send_error(404)
-                return
-
-            mime_type = self._resolve_mime_type(asset_path)
-
-            with open(asset_path, "rb") as f:
-                body = f.read()
-
-            self.send_response(200)
-            self.send_header("Content-Type", mime_type)
-            self.send_header("Content-Length", str(len(body)))
-            self.send_header("Cache-Control", "no-cache")
-            self.end_headers()
-            self.wfile.write(body)
-            
-            tlog(f"[PREVIEW] Served {asset_path.name}: {len(body)} bytes ({mime_type})")
-        except Exception as exc:
-            tlog(f"[ERROR] Failed to serve asset preview: {exc}")
-            self.send_error(500)
+            self.serve_file(resolve(assets_dir(self.app_config), rel_path), "no-cache")
+        except ViwoError as exc:
+            tlog(f"[PREVIEW] Blocked {rel_path}: {exc.message}")
+            self.send_error(404)
 
     def progress_callback(self, message: str) -> None:
         """Progress callback for long-running operations with enhanced logging."""
