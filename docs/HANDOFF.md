@@ -21,10 +21,18 @@ Read `CLAUDE.md` first: rules, commands, caps, CI policy.
    1024 px layout, a11y) and recording/reviewing animations. If its changes are not committed,
    check `git status`: run caps + tests; the web budget in `loc_caps.ini` may need raising to
    at most 3600 with a reason. If the tree is clean, it landed.
-2. **First Windows release.** Ask the owner before running it. Actions -> release -> Run
-   workflow. Risks to watch in the log: PyInstaller collecting UnityPy's native libs (fmod,
-   texture decoders), tkinter in the bundle (folder pickers), and the smoke test's
-   `viwo.exe -m unrpa`. Fix in `packaging/build_portable.py`, re-run only when asked.
+2. **Ship the release packages, built on Windows (locally, not on CI).**
+   ```powershell
+   pip install pyinstaller==6.22.3 build==1.3.0
+   python packaging/build_portable.py --out dist     # builds dist\viwo\ and smoke-tests viwo.exe
+   python -m build --outdir release                  # wheel + sdist
+   Compress-Archive dist\viwo release\ViWo-0.2.0-windows-x64.zip
+   ```
+   Then publish with `gh release create v0.2.0 release\* --target makeover --title "ViWo 0.2.0"
+   --notes-file docs/release-notes.md` (needs `gh auth login`). The same steps exist as the
+   manual `release.yml` workflow; use it only if the owner asks. Watch for: PyInstaller
+   collecting UnityPy's native libs (fmod, texture decoders), tkinter in the bundle (folder
+   pickers), and the smoke test's `viwo.exe -m unrpa`. The bundle was verified on Linux only.
 3. **Remaining code-review findings** (the rest are fixed in 38b4a14):
    - `core/capture/journal.py`: write `journal.json` atomically (temp + `os.replace`); tolerate a
      corrupt journal with a clear error instead of blocking every capture; remove directories
