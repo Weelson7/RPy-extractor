@@ -127,4 +127,11 @@ def workspace_command(rt, args) -> Envelope:
             None if args.json else (lambda g, i, n: print(f"[SURVEY] {i}/{n} {g}", file=sys.stderr))
         )
         return Envelope.success({"games": survey(rt, args.folder, args.deep, note)})
+    if args.command == "capture":
+        from viwo.core.capture import capture
+
+        note = None if args.json else (lambda e: print(e.legacy_line(), file=sys.stderr))
+        return Envelope.success(
+            capture(rt, args.game, args.exe, args.workspace, args.confirm, note)
+        )
     raise ViwoError("invalid_request", f"unknown command {args.command}")

@@ -77,11 +77,15 @@ def boot(
             plugin.configure(config.options.get(plugin_id, {}))
         except Exception as exc:  # a bad option disables only that plugin's extras
             problems.append(f"plugin {plugin_id}: options rejected: {exc}")
+    from viwo.core.capture import SLOTS as CAPTURE_SLOTS
+    from viwo.core.capture import backends as capture_backends
     from viwo.core.decode import SLOTS as DECODE_SLOTS
     from viwo.core.decode import decoders
 
     slots, backends, clash = collect(
-        CORE_SLOTS + DECODE_SLOTS, core_backends() + decoders(), plugins
+        CORE_SLOTS + DECODE_SLOTS + CAPTURE_SLOTS,
+        core_backends() + decoders() + capture_backends(),
+        plugins,
     )
     bindings, bind_problems = bind_all(slots, backends, config.slots, layer)
     for binding in bindings.values():

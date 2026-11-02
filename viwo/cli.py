@@ -17,6 +17,7 @@ from viwo.contracts.pipeline import (
     MixedPolicy,
     OnExisting,
 )
+from viwo.core.capture.policy import CONFIRMATION
 from viwo.core.jobs import JobRunner
 from viwo.core.pipeline.probe import FolderProbe
 from viwo.core.pipeline.runner import detect_all, extract
@@ -50,6 +51,15 @@ def _parser() -> argparse.ArgumentParser:
     up.add_argument("archive", type=Path)
     up.add_argument("--out", type=Path, required=True)
     up.add_argument("--option", action="append", default=[], help="plugin.key=value")
+    _tool_commands(command)
+    sv = command("serve", "start the web UI (host/port from [server] in the ini)")
+    sv.add_argument("--host", help="override [server] host")
+    sv.add_argument("--port", type=int, help="override [server] port")
+    return ap
+
+
+def _tool_commands(command) -> None:
+    """survey, repack, capture, sanitize."""
     su = command("survey", "read-only coverage report for a game or a whole library")
     su.add_argument("folder", type=Path)
     su.add_argument("--deep", action="store_true", help="also run the carver on unknown blobs")
@@ -57,14 +67,15 @@ def _parser() -> argparse.ArgumentParser:
     rk.add_argument("workspace", type=Path)
     rk.add_argument("--out", type=Path, help="target folder for the patched copy")
     rk.add_argument("--plan", action="store_true", help="only show what would be written")
+    cp = command("capture", "runtime capture with RenderDoc (pilot; policy-checked)")
+    cp.add_argument("game", type=Path)
+    cp.add_argument("--exe", type=Path, required=True, help="the game executable to launch")
+    cp.add_argument("--workspace", type=Path, required=True)
+    cp.add_argument("--confirm", action="store_true", help=f"I confirm: {CONFIRMATION}")
     sz = command("sanitize", "find empty, junk, duplicate, mislabeled or broken files")
     sz.add_argument("workspace", type=Path)
     sz.add_argument("--apply", action="store_true", help="apply every safe action of the plan")
     sz.add_argument("--undo", metavar="TOKEN", help="undo an earlier --apply")
-    sv = command("serve", "start the web UI (host/port from [server] in the ini)")
-    sv.add_argument("--host", help="override [server] host")
-    sv.add_argument("--port", type=int, help="override [server] port")
-    return ap
 
 
 def _extract_args(ex: argparse.ArgumentParser) -> None:
@@ -125,7 +136,7 @@ def _run(args) -> Envelope:
     if args.command == "detect":
         found = detect_all(rt, FolderProbe(args.game))
         return Envelope.success({k: v.to_legacy_dict() for k, v in found.items()})
-    if args.command in ("repack", "sanitize", "survey"):
+    if args.command in ("repack", "sanitize", "survey", "capture"):
         return workspace_command(rt, args)
     sink = None if args.json else (lambda e: print(e.legacy_line(), file=sys.stderr))
     if args.command == "unpack":

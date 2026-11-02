@@ -140,6 +140,10 @@ FORMATTERS: dict[str, Any] = {
     "survey": survey,
     "repack": repack,
     "sanitize": sanitize,
+    "capture": lambda d: (
+        f"Captured {d['gathered']} file(s) with {d['backend']}; "
+        f"{d['newVsStatic']} not found by static extraction"
+    ),
     "slots": slots,
     "info": info,
     "extract": extraction,

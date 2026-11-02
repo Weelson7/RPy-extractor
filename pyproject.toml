@@ -25,7 +25,7 @@ viwo = "viwo.cli:main"
 include = ["viwo*"]
 
 [tool.setuptools.package-data]
-viwo = ["web/**/*"]
+viwo = ["web/**/*", "data/*.json"]
 
 [tool.ruff]
 line-length = 100

@@ -1,0 +1,28 @@
+{
+  "_comment": "Runtime capture refusal list (doc 11.1). Data, not code: extend by pull request. Names are matched case-insensitively against file and folder names anywhere in the game folder. 'verified' marks names confirmed from a source; the rest are common names still to confirm.",
+  "anti_cheat_markers": {
+    "neacloader.exe": "NetEase anti-cheat (verified: DataTool checks for it)",
+    "easyanticheat": "Easy Anti-Cheat",
+    "easyanticheat_eos": "Easy Anti-Cheat (Epic Online Services)",
+    "start_protected_game.exe": "Easy Anti-Cheat launcher",
+    "battleye": "BattlEye",
+    "beservice.exe": "BattlEye service",
+    "vgc.exe": "Riot Vanguard",
+    "xigncode": "XIGNCODE3",
+    "nprotect": "nProtect GameGuard",
+    "gameguard": "nProtect GameGuard",
+    "eac_launcher.exe": "Easy Anti-Cheat launcher"
+  },
+  "online_titles": {
+    "overwatch": "Overwatch (online only)",
+    "valorant": "VALORANT (online, competitive)",
+    "fortnite": "Fortnite (online)",
+    "apex legends": "Apex Legends (online)",
+    "counter-strike global offensive": "CS:GO (online, competitive)",
+    "counter-strike 2": "Counter-Strike 2 (online, competitive)",
+    "destiny 2": "Destiny 2 (online)",
+    "pubg": "PUBG (online)",
+    "rainbow six siege": "Rainbow Six Siege (online)",
+    "league of legends": "League of Legends (online)"
+  }
+}
