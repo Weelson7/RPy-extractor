@@ -143,7 +143,7 @@ export function jobProgress(kind, { logClass = "feed", onStatus = null } = {}) {
     const pct = p?.total ? Math.min(100, Math.floor(((p.done - (K.ongoing ? 1 : 0)) / p.total) * 100)) : null;
     el.bar.classList.toggle("det", pct !== null);
     el.bar.style.setProperty("--p", `${pct ?? 0}%`);
-    el.frac.textContent = !p ? "" : pct !== null ? `${fmt(p.done)} / ${fmt(p.total)} · ${pct}%` : p.text;
+    el.frac.textContent = !p || K.ongoing ? "" : pct !== null ? `${p.what ? `${p.what} · ` : ""}${fmt(p.done)} / ${fmt(p.total)} · ${pct}%` : p.text;
   }
 
   function paintCounts() {
@@ -178,7 +178,9 @@ export function jobProgress(kind, { logClass = "feed", onStatus = null } = {}) {
       }
       [].concat((K.stageOf || ((x) => x.stage))(e)).forEach(enter);
       const f = FRAC.exec(e.message);
-      if (f && num(f[2]) >= num(f[1]) && num(f[2]) > 0) t.prog = { stage: t.cur, done: num(f[1]), total: num(f[2]) };
+      if (f && num(f[2]) >= num(f[1]) && num(f[2]) > 0) {
+        t.prog = { stage: t.cur, done: num(f[1]), total: num(f[2]), what: e.message.slice(0, f.index).replace(/[\s:(]+$/, "") };
+      }
       else if (COUNT.test(e.message)) t.prog = { stage: t.cur, text: e.message.replace(/ \(.*$/, "") };
     }
     const last = events.slice(-3);
