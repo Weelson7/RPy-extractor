@@ -5,6 +5,7 @@ from __future__ import annotations
 import hmac
 import json
 import mimetypes
+import re
 import secrets
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -19,6 +20,20 @@ from .handlers import GET, POST
 
 WEB_ROOT = Path(__file__).resolve().parent.parent / "web"
 TOKEN_HEADER = "X-VIWO-Token"
+RANGE = re.compile(r"bytes=(\d*)-(\d*)")
+
+
+def byte_range(header: str, size: int) -> tuple[int, int] | None:
+    """Parse a single "bytes=a-b" range; None means "send everything", (-1, -1) unsatisfiable."""
+    match = RANGE.fullmatch(header.strip())
+    if not match or not any(match.groups()):
+        return None
+    first, last = match.groups()
+    if not first:  # suffix range: the last N bytes
+        start, end = max(0, size - int(last)), size - 1
+    else:
+        start, end = int(first), min(size - 1, int(last)) if last else size - 1
+    return (start, end) if start <= end and start < size else (-1, -1)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -108,11 +123,39 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_json({"success": False, "error": "Invalid JSON"}, 400)
         self._api(POST, routes.handle_post, path, data if isinstance(data, dict) else {})
 
-    def _preview(self, rel: str) -> None:
+    def do_HEAD(self) -> None:
+        url = urlparse(self.path)
+        if not self._host_ok() or not url.path.startswith("/preview/"):
+            return self.send_error(404)
+        self._preview(url.path[len("/preview/") :], head=True)
+
+    def _preview(self, rel: str, head: bool = False) -> None:
+        """Workspace files, streamed, with single byte ranges so media can seek."""
         try:
-            self.send_file(resolve(self.app.workspace, rel))
+            path = resolve(self.app.workspace, rel)
         except ViwoError:
-            self.send_error(404)
+            return self.send_error(404)
+        size = path.stat().st_size
+        span = byte_range(str(self.headers.get("Range", "")), size)
+        if span == (-1, -1):
+            self.send_response(416)
+            self.send_header("Content-Range", f"bytes */{size}")
+            return self.end_headers()
+        start, end = span or (0, size - 1)
+        self.send_response(206 if span else 200)
+        self.send_header(
+            "Content-Type", mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+        )
+        self.send_header("Content-Length", str(max(0, end - start + 1)))
+        self.send_header("Accept-Ranges", "bytes")
+        self.send_header("Cache-Control", "no-cache")
+        if span:
+            self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
+        self.end_headers()
+        if not head and size:
+            with path.open("rb") as handle:
+                handle.seek(start)
+                _copy(handle, self.wfile, end - start + 1)
 
     def _static(self, path: str) -> None:
         rel = (path.lstrip("/") or "index.html") + (
@@ -122,6 +165,18 @@ class Handler(BaseHTTPRequestHandler):
         if WEB_ROOT.resolve() not in target.parents or not target.is_file():
             return self.send_error(404)
         self.send_file(target, html_token=target.name == "index.html")
+
+
+def _copy(src, dst, remaining: int) -> None:
+    try:
+        while remaining > 0:
+            chunk = src.read(min(1 << 16, remaining))
+            if not chunk:
+                return
+            dst.write(chunk)
+            remaining -= len(chunk)
+    except (BrokenPipeError, ConnectionResetError):  # the player seeked away; that is normal
+        pass
 
 
 def make_server(app: App, host: str | None = None, port: int | None = None) -> ThreadingHTTPServer:

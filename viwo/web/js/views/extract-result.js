@@ -87,7 +87,7 @@ const STEPS = [["01", "TARGET", "pick the game folder — opened read-only, neve
 
 function lastRun(job) {
   const r = job.result || {};
-  const ws = String(r.runRecord || "").split(/[\\/]\.extraction_metadata/)[0];
+  const ws = String(r.workspace || String(r.runRecord || "").split(/[\\/]\.extraction_metadata/)[0]);
   return h("div", { class: "lastrun" },
     h("div", { class: "row" }, h("span", { class: "lbl" }, "// LAST RUN"), stateBadge(job.state), h("code", { class: "mono dim small" }, job.id)),
     job.error ? errorBox(job.error, "RUN FAILED") : h("div", { class: "stats" },

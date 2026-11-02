@@ -91,9 +91,16 @@ def _group_versions(workspace: Path, ext: str) -> list[Path]:
     return sorted(found, key=lambda p: p.stat().st_mtime, reverse=True)
 
 
+def group_name(ext: str) -> bool:
+    """A group is one plain top-level folder name: no separators, drives or dot names."""
+    return bool(ext) and not ws.is_reserved(ext) and Path(ext).name == ext and "\\" not in ext
+
+
 def trash_group(workspace: Path, ext: str) -> tuple[bool, str]:
+    if not group_name(ext):
+        return False, f"Invalid group name: {ext!r}"
     source = workspace / ext
-    if ws.is_reserved(ext) or not source.is_dir():
+    if not source.is_dir():
         return False, f"Folder does not exist: {source}"
     dest = area(workspace, "groups")
     dest.mkdir(parents=True, exist_ok=True)
@@ -107,6 +114,8 @@ def trash_group(workspace: Path, ext: str) -> tuple[bool, str]:
 
 
 def restore_group(workspace: Path, ext: str) -> tuple[bool, str]:
+    if not group_name(ext):
+        return False, f"Invalid group name: {ext!r}"
     versions = _group_versions(workspace, ext)
     if not versions:
         return False, f"No trashed folder for {ext}"
@@ -119,6 +128,8 @@ def restore_group(workspace: Path, ext: str) -> tuple[bool, str]:
 
 
 def delete_group(workspace: Path, ext: str) -> tuple[bool, str]:
+    if not group_name(ext):
+        return False, f"Invalid group name: {ext!r}"
     versions = _group_versions(workspace, ext)
     if not versions:
         return False, f"No trashed folder for {ext}"

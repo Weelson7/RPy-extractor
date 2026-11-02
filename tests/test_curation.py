@@ -45,6 +45,17 @@ class GroupTrashTests(unittest.TestCase):
             self.assertIn("(1 files)", message)  # counted before deletion (v1 F9)
             self.assertFalse(trash.trash_group(ws, ".extraction_metadata")[0])
 
+    def test_group_names_cannot_leave_the_workspace(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = make_workspace(Path(tmp))
+            outside = Path(tmp) / "victim"
+            (outside / "sub").mkdir(parents=True)
+            for name in (str(outside), "png/../../victim", "..", "png\\..\\..\\victim", ""):
+                for op in (trash.trash_group, trash.restore_group, trash.delete_group):
+                    self.assertFalse(op(ws, name)[0], (op.__name__, name))
+            self.assertTrue((outside / "sub").is_dir())
+            self.assertEqual(trash.kept(ws), {"png": 2, "pngx": 1, "txt": 1})
+
     def test_migrate_and_clear(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             ws = make_workspace(Path(tmp))

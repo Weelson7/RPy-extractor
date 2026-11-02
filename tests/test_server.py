@@ -11,7 +11,7 @@ from pathlib import Path
 
 from tests.helpers import make_game, write_ini
 from viwo.api import app as app_module
-from viwo.api.server import Handler, make_server
+from viwo.api.server import Handler, byte_range, make_server
 from viwo.core.wiring.boot import boot
 
 
@@ -88,6 +88,31 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(
             self.call("GET", f"/api/jobs/{body['jobId']}")[1]["data"]["state"], "succeeded"
         )
+        job = self.call("GET", f"/api/jobs/{body['jobId']}")[1]["data"]
+        self.assertEqual(Path(job["result"]["workspace"]), Path(self.app.workspace))
+
+    def test_preview_streams_byte_ranges(self) -> None:
+        target = Path(self.app.workspace) / "bin" / "r.bin"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(bytes(range(256)) * 4)
+        self.assertEqual(self.call("GET", "/preview/bin/r.bin")[0], 200)
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=30)
+        host = {"Host": f"127.0.0.1:{self.port}"}
+        for rng, status, body in (
+            ("bytes=10-13", 206, bytes([10, 11, 12, 13])),
+            ("bytes=-2", 206, bytes([254, 255])),
+            ("bytes=1020-", 206, bytes([252, 253, 254, 255])),
+            ("bytes=5000-", 416, b""),
+        ):
+            conn.request("GET", "/preview/bin/r.bin", headers={**host, "Range": rng})
+            resp = conn.getresponse()
+            self.assertEqual((resp.status, resp.read()), (status, body), rng)
+        conn.request("HEAD", "/preview/bin/r.bin", headers=host)
+        resp = conn.getresponse()
+        self.assertEqual((resp.status, resp.getheader("Content-Length")), (200, "1024"))
+        resp.read()
+        conn.close()
+        self.assertEqual(byte_range("bytes=0-0, 5-6", 10), None)  # multi-range: whole file
 
     def test_game_folder_and_unknown_routes(self) -> None:
         status, body = self.call("POST", "/api/workspace", {"path": str(self.root / "missing")})

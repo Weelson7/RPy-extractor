@@ -129,6 +129,7 @@ class ExtractionResult:
             "mode": self.mode.value,
             "byBackend": dict(sorted(self.by_backend.items())),
             "runRecord": self.run_record,
+            "workspace": self.workspace,
             "plugins": [
                 {
                     "id": r.plugin_id,
