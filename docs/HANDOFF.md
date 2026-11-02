@@ -17,6 +17,19 @@ Read `CLAUDE.md` first: rules, commands, caps, CI policy.
   `packaging/build_portable.py` (verified building and smoke-testing on Linux only).
 
 ## Open work, in priority order
+0. **Dependency preflight and installer (owner asked; not built yet).** Today: the boot binds every
+   slot and checks which tools exist (about 0.15 s, so no loading screen is needed for the check
+   itself); results show in 05 SYSTEM and `viwo slots`. Nothing is installed, tool versions are
+   not probed, and `[startup] auto_install` / `strict_preflight` are parsed but do nothing.
+   Proposed design (needs the owner's go-ahead on what may be installed automatically):
+   - a `preflight` job (events per dependency: "checking repak... found v0.2.3 at C:/...") that
+     the UI shows as a boot overlay with the existing progress rail, plus a version probe per tool;
+   - "INSTALL" in 05 SYSTEM: Python extras with the pinned versions from `pyproject.toml`
+     (`python -m pip install`, disabled in the frozen build, which bundles them); external tools
+     via `winget` on Windows where a package id exists (7zip.7zip, Gyan.FFmpeg), otherwise the
+     download page; never silently, always as a visible job with progress;
+   - `auto_install = on` runs the Python part at boot; `strict_preflight = on` refuses to start
+     (exit 4, doc 9) when an enabled plugin has no bound main backend.
 1. **UI polish round.** An agent was polishing all views (consistency, wording, error states,
    1024 px layout, a11y) and recording/reviewing animations. If its changes are not committed,
    check `git status`: run caps + tests; the web budget in `loc_caps.ini` may need raising to

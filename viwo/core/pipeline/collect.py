@@ -11,6 +11,8 @@ from pathlib import Path
 
 from viwo.contracts import workspace as ws
 
+from .ticker import Ticker
+
 SKIP_DIRS = {".git", ".venv", "__pycache__"}
 
 
@@ -70,15 +72,23 @@ def _place(src: Path, folder: Path, digest: str) -> tuple[Path, bool]:
 
 
 def collect(
-    sources: list[Source], workspace: Path, selected: frozenset[str] | None, skip: set[str], cancel
+    sources: list[Source],
+    workspace: Path,
+    selected: frozenset[str] | None,
+    skip: set[str],
+    cancel,
+    say=None,
 ) -> CollectReport:
+    """say(message), when given, receives a throttled 'Collected N files' progress line."""
     report = CollectReport()
     avoid = workspace.resolve()
+    ticker = Ticker(say, "Scanned files:")
     for source in sources:
         for src in _walk(source.root, SKIP_DIRS | skip, avoid):
             if cancel.cancelled:
                 return report
             report.scanned += 1
+            ticker.tick(note=f"{report.collected:,} collected")
             if src.suffix.lower() in source.exclude or src.name.lower() in source.exclude:
                 continue
             ext = ws.ext_of(src)

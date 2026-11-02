@@ -23,6 +23,7 @@ from .pipeline.collect import sha256
 from .pipeline.failover import run_with_failover
 from .pipeline.guard import changes, refuse_writes_inside, snapshot
 from .pipeline.identify import identify
+from .pipeline.ticker import Ticker
 
 MARKER = ".viwo-patched"
 CORE_PACK = {"unarchive.zip": "pack.zip"}
@@ -126,13 +127,19 @@ def _policy(rt, items: list[PlanItem]) -> None:
         raise ViwoError("refused", f"repacking is refused for {', '.join(sensitive)} (policy)")
 
 
-def _prepare(game: Path, target: Path, temp: Path) -> None:
+def _prepare(game: Path, target: Path, temp: Path, say=None) -> None:
     refuse_writes_inside(game, workspace=target, temp_folder=temp)
+    ticker = Ticker(say, "Copied game files:")
+
+    def copy(src, dst):  # copies (never links), with a throttled count for the progress rail
+        shutil.copy2(src, dst)
+        ticker.tick()
+
     if target.exists() and any(target.iterdir()):
         if not (target / MARKER).is_dir():
             raise ViwoError("refused", f"{target} is not empty and is not a ViWo patched copy")
         shutil.rmtree(target)
-    shutil.copytree(game, target, symlinks=True, dirs_exist_ok=True)  # copies, never links
+    shutil.copytree(game, target, symlinks=True, dirs_exist_ok=True, copy_function=copy)
     (target / MARKER).mkdir(exist_ok=True)
 
 
@@ -254,7 +261,9 @@ def _build(rt, game: Path, target: Path, items: list[PlanItem], report: dict, co
     work = Path(tempfile.mkdtemp(prefix="viwo-repack-", dir=rt.temp_root))
     try:
         say(ProgressEvent(f"Copying the game to {target}", "info", "core", "repack"))
-        _prepare(game, target, rt.temp_root)
+        _prepare(
+            game, target, rt.temp_root, lambda m: say(ProgressEvent(m, "info", "core", "repack"))
+        )
         ctx = _ctx(rt, target, work, sink, cancel)
         (work / "scratch").mkdir(parents=True, exist_ok=True)
         report["results"] = []

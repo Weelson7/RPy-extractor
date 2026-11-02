@@ -170,7 +170,8 @@ def _stages(run: Run, workspace: Path) -> ExtractionResult:
 
 def _collect(run: Run, workspace: Path, sources, skip: set[str]):
     run.log(f"Collecting from {len(sources)} source folder(s) into the workspace", "collect")
-    collected = collect(sources, workspace, run.request.selected_exts, skip, run.cancel)
+    say = lambda message: run.log(message, "collect")  # noqa: E731
+    collected = collect(sources, workspace, run.request.selected_exts, skip, run.cancel, say)
     groups = len(collected.by_ext)
     run.log(f"Collected {collected.collected} file(s) into {groups} group(s)", "collect")
     collected = _decode(run, workspace, collected)

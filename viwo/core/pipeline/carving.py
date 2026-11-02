@@ -10,6 +10,7 @@ from viwo.contracts.pipeline import CarveMode
 
 from .failover import run_with_failover
 from .identify import identify
+from .ticker import Ticker
 
 KNOWN = frozenset(
     ".png .jpg .jpeg .gif .bmp .tga .webp .dds .ktx .ktx2 .ogg .opus .wav .wem .mp3 .flac .m4a "
@@ -52,9 +53,11 @@ def carve_all(run, claimed: frozenset[str], items: list[tuple[Path, str]]) -> Ca
         return report
     ctx = run.ctx("core")
     run.log(f"Carving {len(todo)} unrecognized file(s) for embedded assets", "carve")
+    ticker = Ticker(lambda m: run.log(m, "carve"), "Carve-scanned files:", len(todo))
     for path, origin in todo:
         if run.cancel.cancelled:
             break
+        ticker.tick(note=f"{report.files:,} embedded file(s) found")
         if path.stat().st_size > BIG:
             run.log(f"Scanning {path.name} ({path.stat().st_size >> 20} MB)", "carve")
         dest = run.work / "carve" / f"{report.scanned:05d}_{uuid.uuid4().hex[:6]}"

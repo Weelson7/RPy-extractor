@@ -19,6 +19,7 @@ from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 from .merger.ffmpeg import FFMPEG
 from .pipeline.collect import Source, collect
 from .pipeline.failover import run_with_failover
+from .pipeline.ticker import Ticker
 
 AUDIO = (".wem", ".fsb", ".bnk", ".xwm", ".xma", ".at3", ".at9", ".adx", ".hca", ".vag", ".awb")
 AUDIO += (".acb", ".bfstm", ".bcstm", ".brstm", ".bfwav", ".lopus", ".xwb", ".sab", ".msf")
@@ -126,6 +127,11 @@ def decode_all(run, workspace: Path, provenance: list[dict]):
         shutil.rmtree(dest, ignore_errors=True)
         return None
 
+    ticker = Ticker(lambda m: run.log(m, "decode"), "Decoded files:", len(todo))
+    sources = []
     with ThreadPoolExecutor(max_workers=min(8, os.cpu_count() or 2)) as pool:
-        sources = [s for s in pool.map(one, todo) if s is not None]
+        for source in pool.map(one, todo):  # in order; a tick per finished file
+            ticker.tick()
+            if source is not None:
+                sources.append(source)
     return collect(sources, workspace, None, set(), run.cancel) if sources else None
