@@ -56,6 +56,10 @@ class SanitizerTests(unittest.TestCase):
             self.assertTrue((ws / "jpg" / "other.png").is_file())
             self.assertTrue((ws / "png" / "cut.png").is_file())  # health is report-only
             self.assertFalse((ws / "txt" / "empty.txt").exists())
+            self.assertTrue(
+                (ws / ".trash" / "items" / "txt" / "empty.txt").is_file()
+            )  # SORT layout
+            self.assertIn({"from": "jpg/other.jpg", "to": "jpg/other.png"}, done["moved"])
             sanitizer.undo(ws, done["undoToken"])
             self.assertEqual(tree_hashes(ws, skip_reserved=True), before)
 

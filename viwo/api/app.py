@@ -111,9 +111,14 @@ class App:
             return {"success": False, "error": exc.message, "code": exc.code, "hint": exc.hint}
 
     def locked_job(self, kind: str, folder: Path, fn: Callable[..., dict]) -> dict:
+        """fn(sink, cancel) runs as a job under the workspace lock."""
+
         def run() -> dict:
             job = self.jobs.submit_with_listener(
-                lambda e: self.log(e.legacy_line()), kind, lambda jid, s, c: fn(s), background=False
+                lambda e: self.log(e.legacy_line()),
+                kind,
+                lambda jid, s, c: fn(s, c),
+                background=False,
             )
             if job.error:
                 return {

@@ -158,6 +158,9 @@ def _apply(rt, item: PlanItem, target: Path, ctx) -> dict:
         ]
         return {"container": "", "slot": "override", "members": len(item.members), "failed": bad}
     container = target / item.container
+    ctx.log(
+        f"Packing {item.container} ({item.slot}, {len(item.members)} member(s))", stage="repack"
+    )
     outcome, used = run_with_failover(
         rt.bindings[item.slot], rt.backends, lambda b: b.pack(container, item.members, ctx)
     )
@@ -172,6 +175,8 @@ def _apply(rt, item: PlanItem, target: Path, ctx) -> dict:
     out = rt.backends[used].output_for(container)
     bad = rt.backends[used].verify(out, item.members, ctx)
     bad = _verify(rt, out, item.members, ctx) if bad is None else bad
+    state = "verified" if not bad else f"{len(bad)} member(s) FAILED"
+    ctx.log(f"Verify {out.name}: {state}", "info" if not bad else "warn", "repack")
     return {
         **result,
         "output": out.relative_to(target).as_posix(),
@@ -217,7 +222,11 @@ def _build(rt, game: Path, target: Path, items: list[PlanItem], report: dict, co
         _prepare(game, target, rt.temp_root)
         ctx = _ctx(rt, target, work, sink, cancel)
         (work / "scratch").mkdir(parents=True, exist_ok=True)
-        report["results"] = [_apply(rt, item, target, ctx) for item in items]
+        report["results"] = []
+        for item in items:
+            if ctx.cancel.cancelled:
+                raise ViwoError("cancelled", "repack cancelled; the patched copy is incomplete")
+            report["results"].append(_apply(rt, item, target, ctx))
     finally:
         shutil.rmtree(work, ignore_errors=True)
     report["verified"] = all(not r["failed"] for r in report["results"])

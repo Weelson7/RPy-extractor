@@ -77,8 +77,8 @@ def repack_workspace(app: App, d: dict) -> dict:
             "code": "invalid_request",
         }
 
-    def run(sink) -> dict:
-        return {"success": True, **repack(app.rt, app.workspace, Path(out), sink)}
+    def run(sink, cancel) -> dict:
+        return {"success": True, **repack(app.rt, app.workspace, Path(out), sink, cancel)}
 
     return app.locked_job("repack", app.workspace, run)
 

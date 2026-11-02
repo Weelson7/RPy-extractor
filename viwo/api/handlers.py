@@ -210,7 +210,7 @@ def merger_list(app: App, d: dict) -> dict:
 def merger_build(app: App, d: dict) -> dict:
     folder = _workdir(app, d)
     return app.locked_job(
-        "merge", folder, lambda sink: build(app.rt, folder, app.server.merged, d, sink)
+        "merge", folder, lambda sink, cancel: build(app.rt, folder, app.server.merged, d, sink)
     )
 
 

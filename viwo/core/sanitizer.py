@@ -10,6 +10,7 @@ import mmap
 import shutil
 import struct
 import time
+import uuid
 from pathlib import Path
 
 from viwo.contracts import workspace as ws
@@ -116,7 +117,7 @@ def plan(workspace: Path) -> dict:
     dupes = [f for f in _duplicates(files, workspace, renames) if f["path"] not in flagged]
     gone = {f["path"] for f in dupes}
     findings = [f for f in findings if f["path"] not in gone] + dupes
-    plan_id = time.strftime("%Y%m%d-%H%M%S")
+    plan_id = f"{time.strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
     result = {"planId": plan_id, "scanned": len(files), "findings": findings}
     folder = workspace / ROOT / "plans"
     folder.mkdir(parents=True, exist_ok=True)
@@ -148,7 +149,7 @@ def apply(workspace: Path, plan_id: str, accept: list[int] | str = "all-safe") -
             continue
         try:
             dest = (
-                trash.area(workspace, "items") / src.name
+                trash.area(workspace, "items") / finding["path"]  # same layout as SORT
                 if finding["action"] == "trash"
                 else src.with_name(finding["to"])
             )
@@ -160,7 +161,14 @@ def apply(workspace: Path, plan_id: str, accept: list[int] | str = "all-safe") -
     record = folder / f"{plan_id}.json"  # several applies of one plan add up
     earlier = json.loads(record.read_text(encoding="utf-8")) if record.is_file() else []
     record.write_text(json.dumps(earlier + journal), encoding="utf-8")
-    return {"planId": plan_id, "applied": len(journal), "failed": failed, "undoToken": plan_id}
+    moved = [{"from": before, "to": now} for now, before in journal]
+    return {
+        "planId": plan_id,
+        "applied": len(journal),
+        "moved": moved,
+        "failed": failed,
+        "undoToken": plan_id,
+    }
 
 
 def undo(workspace: Path, token: str) -> dict:

@@ -181,11 +181,12 @@ function bar() {
   const f = S.plan?.findings || [];
   const sel = [...S.sel].map((i) => f[i]).filter(Boolean);
   const n = (a) => sel.filter((x) => x.action === a).length;
-  el.sum.textContent = S.plan ? `${sel.length} SELECTED · ${n("trash")} → workspace trash · ${n("rename")} rename · ${f.length - sel.length} left as is`
+  el.sum.textContent = S.applied.size && !sel.length ? `${S.applied.size} APPLIED · undo in 08.C · ${f.length - S.applied.size} finding(s) left as is`
+    : S.plan ? `${sel.length} SELECTED · ${n("trash")} → workspace trash · ${n("rename")} rename · ${f.length - sel.length} left as is`
     : `${(S.ws || "").split(/[\\/]/).pop() || "workspace"} · scan to list findings`;
-  el.why.textContent = S.busy ? "working…" : !S.plan ? "scan first" : S.applied.size ? "scan again to apply more" : !sel.length ? "tick findings to apply" : "";
+  el.why.textContent = S.busy ? "working…" : !S.plan ? "scan first" : !sel.length ? "tick findings to apply" : "";
   el.apply.disabled = Boolean(el.why.textContent);
-  el.apply.textContent = sel.length && !S.applied.size ? `APPLY SELECTED (${sel.length})` : "APPLY SELECTED";
+  el.apply.textContent = sel.length ? `APPLY SELECTED (${sel.length})` : "APPLY SELECTED";
   el.scan.disabled = S.busy;
 }
 
@@ -197,11 +198,14 @@ async function apply() {
   try {
     const res = await api.sanitize("apply", { planId: S.plan.planId, accept: idx });
     const failed = new Set((res.failed || []).map((x) => x.split(": ")[0]));
-    const ok = idx.filter((i) => !failed.has(S.plan.findings[i].path));
+    const real = new Set((res.moved || []).map((m) => m.from)); // what the server actually moved
+    const ok = idx.filter((i) => (res.moved ? real.has(S.plan.findings[i].path) : !failed.has(S.plan.findings[i].path)));
     ok.forEach((i) => S.applied.add(i));
     S.sel.clear();
-    S.done = { token: res.undoToken, applied: res.applied, failed: res.failed || [], at: Date.now(),
-      moved: ok.slice(0, KEEP).map((i) => S.plan.findings[i]).map((x) => ({ a: x.action, p: x.path, to: x.to || "" })), more: Math.max(0, ok.length - KEEP) };
+    const prev = S.done?.token === res.undoToken ? S.done : { applied: 0, failed: [], moved: [], more: 0 }; // one plan = one undo journal
+    const moved = [...prev.moved, ...ok.map((i) => S.plan.findings[i]).map((x) => ({ a: x.action, p: x.path, to: x.to || "" }))];
+    S.done = { token: res.undoToken, applied: prev.applied + res.applied, failed: [...prev.failed, ...(res.failed || [])], at: Date.now(),
+      moved: moved.slice(0, KEEP), more: prev.more + Math.max(0, moved.length - KEEP) };
     store(S.done);
     toast(`Cleanup applied: ${fmtNum(res.applied)} file(s) moved or renamed.`, failed.size ? "warn" : "ok", failed.size ? `${failed.size} failed` : "UNDO is available.");
     emit("workspace");
