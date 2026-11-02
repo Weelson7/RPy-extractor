@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import json
 import shutil
+import sys
 import tempfile
 from pathlib import Path
 
-from viwo.contracts.errors import ViwoError
+from viwo.contracts.errors import Envelope, ViwoError
 from viwo.contracts.pipeline import (
     CarveMode,
     ExtractionMode,
@@ -97,3 +98,33 @@ def unpack_one(rt, archive: Path, out: Path, options: dict, sink) -> dict:
         "byBackend": dict(report.by_backend),
         "failures": report.failures,
     }
+
+
+def workspace_command(rt, args) -> Envelope:
+    """survey, repack and sanitize: commands that read or write a workspace / library."""
+    if args.command == "repack":
+        from viwo.core.roundtrip import repack
+
+        if not args.plan and args.out is None:
+            raise ViwoError("invalid_request", "give --out <folder> (or --plan)")
+        note = None if args.json else (lambda e: print(e.legacy_line(), file=sys.stderr))
+        return Envelope.success(repack(rt, args.workspace, args.out, note, apply=not args.plan))
+    if args.command == "sanitize":
+        from viwo.core import sanitizer
+
+        if args.undo:
+            return Envelope.success(sanitizer.undo(args.workspace, args.undo))
+        result = sanitizer.plan(args.workspace)
+        if args.apply:
+            result["applied"] = sanitizer.apply(args.workspace, result["planId"])
+        return Envelope.success(result)
+    if args.command == "survey":
+        from viwo.core.survey import survey
+
+        if not args.folder.is_dir():
+            raise ViwoError("not_found", f"folder not found: {args.folder}")
+        note = (
+            None if args.json else (lambda g, i, n: print(f"[SURVEY] {i}/{n} {g}", file=sys.stderr))
+        )
+        return Envelope.success({"games": survey(rt, args.folder, args.deep, note)})
+    raise ViwoError("invalid_request", f"unknown command {args.command}")

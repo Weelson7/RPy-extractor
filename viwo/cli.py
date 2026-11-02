@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 from viwo import cli_format
-from viwo.cli_extra import replay_request, unpack_one
+from viwo.cli_extra import replay_request, unpack_one, workspace_command
 from viwo.contracts.errors import Envelope, ViwoError
 from viwo.contracts.pipeline import (
     CarveMode,
@@ -57,6 +57,10 @@ def _parser() -> argparse.ArgumentParser:
     rk.add_argument("workspace", type=Path)
     rk.add_argument("--out", type=Path, help="target folder for the patched copy")
     rk.add_argument("--plan", action="store_true", help="only show what would be written")
+    sz = command("sanitize", "find empty, junk, duplicate, mislabeled or broken files")
+    sz.add_argument("workspace", type=Path)
+    sz.add_argument("--apply", action="store_true", help="apply every safe action of the plan")
+    sz.add_argument("--undo", metavar="TOKEN", help="undo an earlier --apply")
     sv = command("serve", "start the web UI (host/port from [server] in the ini)")
     sv.add_argument("--host", help="override [server] host")
     sv.add_argument("--port", type=int, help="override [server] port")
@@ -121,22 +125,8 @@ def _run(args) -> Envelope:
     if args.command == "detect":
         found = detect_all(rt, FolderProbe(args.game))
         return Envelope.success({k: v.to_legacy_dict() for k, v in found.items()})
-    if args.command == "repack":
-        from viwo.core.roundtrip import repack
-
-        if not args.plan and args.out is None:
-            raise ViwoError("invalid_request", "give --out <folder> (or --plan)")
-        note = None if args.json else (lambda e: print(e.legacy_line(), file=sys.stderr))
-        return Envelope.success(repack(rt, args.workspace, args.out, note, apply=not args.plan))
-    if args.command == "survey":
-        from viwo.core.survey import survey
-
-        if not args.folder.is_dir():
-            raise ViwoError("not_found", f"folder not found: {args.folder}")
-        note = (
-            None if args.json else (lambda g, i, n: print(f"[SURVEY] {i}/{n} {g}", file=sys.stderr))
-        )
-        return Envelope.success({"games": survey(rt, args.folder, args.deep, note)})
+    if args.command in ("repack", "sanitize", "survey"):
+        return workspace_command(rt, args)
     sink = None if args.json else (lambda e: print(e.legacy_line(), file=sys.stderr))
     if args.command == "unpack":
         return Envelope.success(unpack_one(rt, args.archive, args.out, _options(args.option), sink))

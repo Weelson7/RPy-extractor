@@ -8,6 +8,7 @@ from typing import Any, Callable
 from viwo.contracts import workspace as ws
 from viwo.contracts.errors import ViwoError
 from viwo.contracts.types import ProgressEvent
+from viwo.core import sanitizer
 from viwo.core.curation import sorting, trash
 from viwo.core.merger import media
 from viwo.core.merger.build import build
@@ -227,7 +228,36 @@ def merger_overlay(app: App, d: dict) -> dict:
     return {"success": True, "path": str(chosen.resolve())}
 
 
+RECIPES = [
+    {
+        "id": "phase1-safe",
+        "name": "Safe cleanup",
+        "lossy": False,
+        "rules": ["core.zero_byte", "core.junk", "core.extension", "core.duplicate", "core.health"],
+    }
+]
+
+
+def _sanitize(op: str) -> Callable[[App, dict], dict]:
+    def handler(app: App, d: dict) -> dict:
+        def run() -> dict:
+            if op == "plan":
+                return {"success": True, **sanitizer.plan(app.workspace)}
+            if op == "apply":
+                accept = d.get("accept") or "all-safe"
+                return {
+                    "success": True,
+                    **sanitizer.apply(app.workspace, str(d.get("planId", "")), accept),
+                }
+            return {"success": True, **sanitizer.undo(app.workspace, str(d.get("undoToken", "")))}
+
+        return app.locked(run)
+
+    return handler
+
+
 GET: dict[str, Callable[[App, dict], Any]] = {
+    "/api/sanitizer/recipes": lambda app, q: {"success": True, "recipes": RECIPES},
     "/api/status": status,
     "/api/workspace": workspace,
     "/api/dependencies": dependencies,
@@ -262,6 +292,9 @@ def survey_library(app: App, d: dict) -> dict:
 
 
 POST: dict[str, Callable[[App, dict], Any]] = {
+    "/api/sanitizer/plan": _sanitize("plan"),
+    "/api/sanitizer/apply": _sanitize("apply"),
+    "/api/sanitizer/undo": _sanitize("undo"),
     "/api/survey": survey_library,
     "/api/extract": lambda app, d: app.extract(d),
     "/api/workspace": open_workspace,

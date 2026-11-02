@@ -115,6 +115,19 @@ def repack(data: dict) -> str:
     return "\n".join(lines)
 
 
+def sanitize(data: dict) -> str:
+    if "restored" in data:
+        return f"Restored {data['restored']} file(s)"
+    lines = [f"{f['action']:<7} {f['path']}  ({f['message']})" for f in data["findings"]]
+    lines.append(
+        f"{len(data['findings'])} finding(s) in {data['scanned']} file(s), plan {data['planId']}"
+    )
+    if "applied" in data:
+        done = data["applied"]
+        lines.append(f"Applied {done['applied']} action(s); undo with --undo {done['undoToken']}")
+    return "\n".join(lines)
+
+
 def error(err: dict) -> str:
     if err["code"] == "needs_decision":
         err = {**err, "hint": "re-run with --on-existing new | replace | cancel"}
@@ -126,6 +139,7 @@ FORMATTERS: dict[str, Any] = {
     "detect": detect,
     "survey": survey,
     "repack": repack,
+    "sanitize": sanitize,
     "slots": slots,
     "info": info,
     "extract": extraction,
