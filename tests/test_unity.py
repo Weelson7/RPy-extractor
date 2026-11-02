@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import sys
 import tempfile
 import types
@@ -98,7 +99,12 @@ class UnityTests(unittest.TestCase):
             self.assertEqual((run.plugin_id, run.backend, run.exported), ("unity", "unitypy", 5))
 
     def test_missing_exporters_degrade_to_a_warning(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(sys.modules, {"UnityPy": None}):
+        no_tools = {"VIWO_ASSETSTUDIOMOD": "", "PATH": ""}  # independent of installed tools
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            mock.patch.dict(sys.modules, {"UnityPy": None}),
+            mock.patch.dict(os.environ, no_tools),
+        ):
             root = Path(tmp)
             game = make_unity_game(root)
             rt = runtime(root, "[plugins]\nunity = on\n")
