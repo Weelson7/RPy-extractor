@@ -6,6 +6,7 @@ ctx.staging / ctx.scratch; tools run through ctx.os; no print().
 
 from __future__ import annotations
 
+import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -74,6 +75,23 @@ class ExtractionContext:
     def log(self, message: str, level: str = "info", stage: str = "") -> None:
         if self.progress:
             self.progress(ProgressEvent(message, level, self.source, stage))
+
+    def tool_output(self, stage: str, every: float = 0.5, mask: str = ""):
+        """on_line callback for ProcessRunner.run: a tool's own output lines become events,
+        at most one per `every` seconds; `mask` (a secret) is never shown."""
+        last = [0.0]
+
+        def relay(line: str) -> None:
+            now = time.monotonic()
+            if now - last[0] < every or not line.strip():
+                return
+            last[0] = now
+            text = line.strip()[:200]
+            if mask:
+                text = text.replace(mask, "<secret>").replace(mask.upper(), "<secret>")
+            self.log(text, "info", stage)
+
+        return relay
 
 
 class EnginePlugin(ABC):

@@ -16,6 +16,7 @@ from viwo.contracts import CancelToken, ExtractionRequest
 from viwo.core.pipeline.probe import FolderProbe
 from viwo.core.pipeline.runner import extract
 from viwo.plugins.unity import UnityPlugin
+from viwo.plugins.unity.exporters import AssetStudioModCli
 
 
 class _Image:
@@ -98,6 +99,31 @@ class UnityTests(unittest.TestCase):
                 self.assertIn(expected, files)
             run = result.runs[0]
             self.assertEqual((run.plugin_id, run.backend, run.exported), ("unity", "unitypy", 5))
+
+    def test_meshes_option_off_skips_obj_everywhere(self) -> None:
+        with (
+            tempfile.TemporaryDirectory() as tmp,
+            mock.patch.dict(sys.modules, {"UnityPy": fake_unitypy()}),
+        ):
+            root = Path(tmp)
+            game = make_unity_game(root)
+            rt = runtime(root, "[plugins]\nunity = on\n")
+            request = ExtractionRequest(
+                str(game), str(root / "ws"), plugin_options={"unity": {"meshes": "off"}}
+            )
+            result = extract(rt, request, "j", lambda e: None, CancelToken())
+            files = tree_hashes(root / "ws", skip_reserved=True)
+            self.assertIn("png/hero.png", files)
+            self.assertFalse([f for f in files if f.endswith(".obj")])
+            self.assertEqual(result.runs[0].exported, 4)
+            tool = types.SimpleNamespace(argv_prefix=("dotnet", "AssetStudioModCLI.dll"))
+            on = types.SimpleNamespace(options={}, game_root=game, staging=root / "st")
+            off = types.SimpleNamespace(options={"meshes": "0"}, game_root=game, staging=root)
+            self.assertIn("tex2d,sprite,audio,textAsset,mesh", AssetStudioModCli.argv(on, tool))
+            self.assertIn("tex2d,sprite,audio,textAsset", AssetStudioModCli.argv(off, tool))
+            self.assertNotIn("tex2d,sprite,audio,textAsset,mesh", AssetStudioModCli.argv(off, tool))
+            head = ["dotnet", "AssetStudioModCLI.dll", str(game), "-m"]
+            self.assertEqual(AssetStudioModCli.argv(on, tool)[:4], head)
 
     def test_missing_exporters_degrade_to_a_warning(self) -> None:
         no_tools = {"VIWO_ASSETSTUDIOMOD": "", "PATH": ""}  # independent of installed tools

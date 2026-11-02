@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import sys
-from typing import Mapping
+from typing import Mapping, Sequence
 
 from viwo.contracts.errors import ViwoError
 from viwo.contracts.os import OS
@@ -18,7 +18,9 @@ def host_os_id() -> str:
     return "windows" if sys.platform == "win32" else "linux"
 
 
-def select_os(os_id: str = "auto", tool_overrides: Mapping[str, str] | None = None) -> OS:
+def select_os(
+    os_id: str = "auto", tool_overrides: Mapping[str, str | Sequence[str]] | None = None
+) -> OS:
     key = host_os_id() if os_id in ("", "auto") else os_id
     if key not in OS_LAYERS:
         raise ViwoError("invalid_request", f"unknown OS layer: {os_id}")

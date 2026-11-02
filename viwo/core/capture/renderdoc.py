@@ -63,7 +63,10 @@ class RenderDocCapture(Backend):
         for rdc in files:
             out = staging / rdc.stem
             done = ctx.os.process.run(
-                [*py.argv_prefix, str(HELPER), str(rdc), str(out)], timeout=3600, cancel=ctx.cancel
+                [*py.argv_prefix, str(HELPER), str(rdc), str(out)],
+                timeout=3600,
+                cancel=ctx.cancel,
+                env={"VIWO_RD_CAPTURE": str(rdc), "VIWO_RD_OUT": str(out)},
             )
             harvested += sum(1 for _ in out.glob("*.png")) if done.ok else 0
             ctx.log(f"Harvested {rdc.name}: {'ok' if done.ok else 'failed'}", stage="harvest")

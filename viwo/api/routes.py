@@ -16,7 +16,14 @@ from viwo.core.pipeline.select import select_plugins
 
 from .app import get_app
 
-STATUS = {"invalid_request": 400, "refused": 403, "not_found": 404, "busy": 409, "internal": 500}
+STATUS = {
+    "invalid_request": 400,
+    "refused": 403,
+    "not_found": 404,
+    "busy": 409,
+    "offline": 503,
+    "internal": 500,
+}
 
 
 def _distro() -> dict:

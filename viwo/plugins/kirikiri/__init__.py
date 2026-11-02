@@ -112,6 +112,9 @@ SLOT = SlotDefinition(
 )
 
 
+PLUGIN = "KiriKiriPlugin"  # discovered by viwo.core.wiring.registry
+
+
 class KiriKiriPlugin(EnginePlugin):
     @property
     def manifest(self) -> PluginManifest:

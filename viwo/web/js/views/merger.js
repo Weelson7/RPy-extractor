@@ -35,7 +35,7 @@ async function load() {
     fill(el.banner,
       S.st.encoder ? null : h("div", { class: "alert err", role: "alert" }, h("b", {}, "FFMPEG NOT INSTALLED // BUILD DISABLED"),
         h("p", {}, "The merger needs ffmpeg (with ffprobe) to make videos. You can still pick groups; BUILD unlocks once ffmpeg is found."),
-        h("p", { class: "next" }, h("b", {}, "NEXT"), "Install ffmpeg (Linux: apt install ffmpeg · Windows: winget install ffmpeg) or set its path in startup.ini [tools], then restart ViWo. ",
+        h("p", { class: "next" }, h("b", {}, "NEXT"), "Install ffmpeg with one click in 05 SYSTEM (pinned build, into third_party/), then press REFRESH here. ",
           h("a", { href: "#system" }, "Open 05 SYSTEM →"))),
       h("div", { class: "kv" }, h("span", { class: "lbl" }, "SOURCE"), h("code", { class: "mono path" }, S.st.workingDir)),
       h("div", { class: "kv" }, h("span", { class: "lbl" }, "OUTPUT"), h("code", { class: "mono path" }, S.st.mergerDir)));

@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "slug": "freedoom",
+  "game_version": "any",
+  "title": "Freedoom (Phase 1 and 2)",
+  "engine": "doom",
+  "detect": [
+    "freedoom*.wad"
+  ],
+  "plugins": [
+    "doom"
+  ],
+  "tools": [],
+  "notes": "Free IWADs (BSD license). Sprites, flats and patches come out as PNG, sounds as WAV, music as MUS/MIDI; maps are reported.",
+  "source": "https://freedoom.github.io/ ; ViWo CI fixture (docs/prototype-b/STATUS.md)",
+  "options": {},
+  "scripts": []
+}

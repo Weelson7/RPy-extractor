@@ -46,6 +46,9 @@ PORTS = (
 )
 
 
+PLUGIN = "DoomPlugin"  # discovered by viwo.core.wiring.registry
+
+
 class DoomPlugin(EnginePlugin):
     @property
     def manifest(self) -> PluginManifest:

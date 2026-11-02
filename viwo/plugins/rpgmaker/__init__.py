@@ -26,6 +26,9 @@ MARKERS = ("rpg_core.js", "rmmz_core.js", "rpg_managers.js", "rmmz_managers.js",
 MARKERS += ("game.rgss2a", "game.rgss3a", "rgss102e.dll", "rgss202e.dll", "rgss301.dll")
 
 
+PLUGIN = "RpgMakerPlugin"  # discovered by viwo.core.wiring.registry
+
+
 class RpgMakerPlugin(EnginePlugin):
     @property
     def manifest(self) -> PluginManifest:

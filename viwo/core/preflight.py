@@ -12,7 +12,8 @@ from viwo.contracts.types import ProgressEvent
 
 from . import thirdparty
 
-VERSION_ARGS = {"sevenzip": [], "ffmpeg": ["-version"], "ffprobe": ["-version"]}
+VERSION_ARGS = {"sevenzip": [], "ffmpeg": ["-version"], "ffprobe": ["-version"], "unrar": []}
+NO_RUN = {"rdpython", "datatool"}  # a GUI host or a slow start: never run just for a version
 
 
 def _version(rt, item: dict) -> str:
@@ -24,6 +25,9 @@ def _version(rt, item: dict) -> str:
             return importlib.metadata.version(name)
         except importlib.metadata.PackageNotFoundError:
             return ""
+    pinned = thirdparty.installed_version(item["id"], thirdparty.home_of(rt.config))
+    if pinned or item["id"] in NO_RUN:
+        return pinned
     result = rt.os.process.run(
         [item["location"], *VERSION_ARGS.get(item["id"], ["--version"])], timeout=4
     )
@@ -92,3 +96,14 @@ def preflight(rt, sink=None, cancel=None) -> dict:
     say(_event(f"Ready: {ready}/{len(items)} tools available", "ready"))
     result = {"dependencies": items, "installed": installed, "failed": failed, "ready": ready}
     return {**result, "total": len(items), "problems": list(rt.problems)}
+
+
+def strict_problems(rt) -> list[str]:
+    """strict_preflight = on (doc 9.3 step 9): every enabled plugin's slots need a main backend."""
+    problems = []
+    for plugin_id, plugin in sorted(rt.plugins.items()):
+        for slot in plugin.slot_definitions():
+            binding = rt.bindings.get(slot.slot_id)
+            if binding is not None and not binding.bound:
+                problems.append(f"plugin {plugin_id}: {slot.slot_id} has no backend (tool missing)")
+    return problems

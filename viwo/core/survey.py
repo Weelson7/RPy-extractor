@@ -13,6 +13,7 @@ import zlib
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from viwo.contracts.errors import ViwoError
 from viwo.contracts.types import CancelToken
 
 from .carve import count_embedded
@@ -72,7 +73,7 @@ def _engine(rt, game: Path) -> tuple[str, float, tuple[str, ...]]:
     return best.plugin_id, best.confidence, tuple(best.evidence)
 
 
-def _classify(rt, report: GameSurvey, path: Path, claimed: frozenset[str], deep: bool) -> None:
+def _classify(rt, report: GameSurvey, path: Path, claimed: frozenset[str], deep, cancel) -> None:
     size, ext = path.stat().st_size, path.suffix.lower()
     match = identify(path, rt.slots.values()) if size else None
     if match is not None:
@@ -89,14 +90,17 @@ def _classify(rt, report: GameSurvey, path: Path, claimed: frozenset[str], deep:
         return report.add("code", size)
     if size < MIN_SIZE:
         return report.add("small", size)
-    if deep and count_embedded(path, CancelToken()):
+    if deep and count_embedded(path, cancel):
         return report.add("carvable", size)
     kind = "unknown-dense" if dense(path, size) else "unknown"
     report.unknown.append({"file": path.name, "bytes": size, "dense": kind.endswith("dense")})
     report.add(kind, size)
 
 
-def survey_game(rt, game: Path, deep: bool = False) -> GameSurvey:
+def survey_game(
+    rt, game: Path, deep: bool = False, cancel: CancelToken | None = None
+) -> GameSurvey:
+    cancel = cancel or CancelToken()
     engine, confidence, evidence = _engine(rt, game)
     report = GameSurvey(str(game), engine, confidence, evidence)
     plugin = rt.plugins.get(engine)
@@ -110,8 +114,10 @@ def survey_game(rt, game: Path, deep: bool = False) -> GameSurvey:
     for dirpath, dirnames, filenames in os.walk(game):
         dirnames[:] = sorted(d for d in dirnames if not d.startswith("."))
         for name in sorted(filenames):
+            if cancel.cancelled:
+                raise ViwoError("cancelled", "survey cancelled")
             try:
-                _classify(rt, report, Path(dirpath) / name, claimed, deep)
+                _classify(rt, report, Path(dirpath) / name, claimed, deep, cancel)
             except OSError:
                 report.add("unreadable", 0)
     return report
@@ -125,10 +131,12 @@ def games_in(root: Path, rt) -> list[Path]:
     return subs if subs and all(p.is_dir() for p in entries) else [root]
 
 
-def survey(rt, root: Path, deep: bool = False, progress=None) -> list[dict]:
+def survey(rt, root: Path, deep: bool = False, progress=None, cancel=None) -> list[dict]:
     results, games = [], games_in(root, rt)
     for index, game in enumerate(games, 1):
+        if cancel is not None and cancel.cancelled:
+            raise ViwoError("cancelled", "survey cancelled")
         if progress:
             progress(game, index, len(games))
-        results.append(survey_game(rt, game, deep).to_dict())
+        results.append(survey_game(rt, game, deep, cancel).to_dict())
     return results

@@ -49,59 +49,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.13"
-      - name: Python tools
-        run: python -m pip install UnityPy==1.25.4 py7zr==1.1.4 unrpa==2.3.0
-      - name: System tools (Linux)
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y p7zip-full unrar ffmpeg ninja-build
-      - name: GodotPckTool (built from pinned commit f8efd1f)
-        if: runner.os == 'Linux'
-        continue-on-error: true
+      - name: ViWo and every pinned tool (viwo/data/tools.json, into third_party/)
         run: |
-          git init -q gpt && cd gpt
-          git remote add origin https://github.com/hhyyrylainen/GodotPckTool
-          git fetch -q --depth 1 origin f8efd1f047990f7d5740dff5651220403dff1aa4
-          git checkout -q FETCH_HEAD && git submodule update -q --init --depth 1
-          cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release >/dev/null && cmake --build build
-          echo "VIWO_GODOTPCKTOOL=$(find "$PWD/build" -name godotpcktool -type f | head -1)" >> "$GITHUB_ENV"
-      - name: GDRE Tools v2.7.4 (release binary)
-        if: runner.os == 'Linux'
-        continue-on-error: true
-        run: |
-          gh release download v2.7.4 -R GDRETools/gdsdecomp -p "*linux*" -D gdre
-          cd gdre && for f in *.zip; do unzip -q -o "$f"; done
-          tool=$(find "$PWD" -type f -name "gdre_tools*" ! -name "*.zip" ! -name "*.pck" | head -1)
-          chmod +x "$tool" && echo "VIWO_GDRE=$tool" >> "$GITHUB_ENV"
-      - uses: actions/setup-dotnet@v4
-        if: runner.os == 'Linux'
-        continue-on-error: true
-        with:
-          dotnet-version: "10.0.x"
-      - name: AssetStudioModCLI v0.20.0 (release binary)
-        if: runner.os == 'Linux'
-        continue-on-error: true
-        run: |
-          gh release download v0.20.0 -R aelurum/AssetStudio -p "*CLI*linux*" -D asm
-          cd asm && for f in *.zip; do unzip -q -o "$f"; done
-          tool=$(find "$PWD" -type f -name "AssetStudioModCLI" | head -1)
-          chmod +x "$tool" && echo "VIWO_ASSETSTUDIOMOD=$tool" >> "$GITHUB_ENV"
-      - name: repak v0.2.3 and retoc v0.1.5 (Unreal; release binaries)
-        if: runner.os == 'Linux'
-        continue-on-error: true
-        run: |
-          gh release download v0.2.3 -R trumank/repak -p "repak_cli-x86_64-unknown-linux-gnu.tar.xz" -D ue
-          gh release download v0.1.5 -R trumank/retoc -p "retoc_cli-x86_64-unknown-linux-gnu.tar.xz" -D ue
-          cd ue && for f in *.tar.xz; do tar -xJf "$f"; done
-          echo "VIWO_REPAK=$(find "$PWD" -type f -name repak | head -1)" >> "$GITHUB_ENV"
-          echo "VIWO_RETOC=$(find "$PWD" -type f -name retoc | head -1)" >> "$GITHUB_ENV"
-      - name: vgmstream r2168 (game audio decoder; release binary)
-        if: runner.os == 'Linux'
-        continue-on-error: true
-        run: |
-          gh release download r2168 -R vgmstream/vgmstream -p "vgmstream-linux.zip" -D vgm
-          cd vgm && unzip -q -o vgmstream-linux.zip
-          tool=$(find "$PWD" -type f -name "vgmstream-cli" | head -1)
-          chmod +x "$tool" && echo "VIWO_VGMSTREAM=$tool" >> "$GITHUB_ENV"
+          python -m pip install -e ".[unity,sevenzip,renpy,lz4]"
+          viwo install --all
+          viwo slots
       - name: Freedoom 0.13.0 (BSD game data for the Doom plugin)
         shell: bash
         continue-on-error: true

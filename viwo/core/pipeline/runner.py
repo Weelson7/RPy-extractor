@@ -16,7 +16,7 @@ from viwo.contracts.pipeline import ExtractionRequest, ExtractionResult, PluginR
 from viwo.contracts.plugin import ExtractionContext
 from viwo.contracts.types import CancelToken, DetectionResult, ProgressEvent, ProgressSink
 
-from ..workspace import precheck, resolve_target, workspace_lock
+from ..workspace import precheck, resolve_target, workspace_lock, write_atomic
 from .carving import carve_all
 from .collect import collect
 from .failover import run_with_failover
@@ -117,13 +117,7 @@ def _select(run: Run) -> tuple[str, ...]:
     rt = run.rt
     run.detections = detect_all(rt, FolderProbe(run.game))
     priorities = {pid: p.manifest.priority for pid, p in rt.plugins.items()}
-    named = set(run.request.plugins)  # terms-of-service-sensitive plugins only when named
-    allowed = [
-        d
-        for pid, d in run.detections.items()
-        if pid in named or not rt.plugins[pid].manifest.tos_sensitive
-    ]
-    chosen = select_plugins(run.request, allowed, priorities)
+    chosen = select_plugins(run.request, list(run.detections.values()), priorities)
     run.log(f"Selected plugin(s): {', '.join(chosen)}", "detect")
     return chosen
 
@@ -248,7 +242,7 @@ def _report(run: Run, workspace: Path, result: ExtractionResult, provenance: lis
     meta = workspace / ws.METADATA_DIR
     (workspace / ws.RUNS_DIR).mkdir(parents=True, exist_ok=True)
     lines = "".join(json.dumps(p, sort_keys=True) + "\n" for p in provenance)
-    (workspace / ws.PROVENANCE_FILE).write_text(lines, encoding="utf-8")
+    write_atomic(workspace / ws.PROVENANCE_FILE, lines)
     record_path = workspace / ws.RUNS_DIR / f"{run.job_id}.json"
     record = {
         "job": run.job_id,
@@ -268,7 +262,7 @@ def _report(run: Run, workspace: Path, result: ExtractionResult, provenance: lis
         "bindings": {sid: [b.main, b.spare] for sid, b in sorted(run.rt.bindings.items())},
         "result": {k: v for k, v in result.to_legacy_dict().items() if k != "logs"},
     }
-    record_path.write_text(json.dumps(record, indent=2, sort_keys=True), encoding="utf-8")
+    write_atomic(record_path, json.dumps(record, indent=2, sort_keys=True))
     run.log(f"Run record: {record_path.relative_to(workspace)} ({meta.name})", "report")
     return ExtractionResult(
         **{**result.__dict__, "run_record": str(record_path), "logs": tuple(run.logs)}

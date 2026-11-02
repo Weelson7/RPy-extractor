@@ -4,18 +4,28 @@ Local-first game reverse-engineering platform, asset-extraction oriented. Python
 first, plain-ES-module web UI (no build step). Start with `ARCHITECTURE.md`, then
 `docs/HANDOFF.md` (current state and open work), then `docs/contract/` when you need intent.
 
-## Rules that never bend
+## Philosophy (owner's decision, confirmed; README "Philosophy" is the reference)
+Community tool, MIT, forkable. It is for everyone who wants to look inside a game and judges
+neither the user nor the purpose. **No boundaries and no safeguards in the code**: ViWo refuses
+nothing because of what a game is, which plugin runs, or what the user intends; anti-cheat and
+online detection are warnings plus one opt-in, never a gate. A disclaimer replaces safeguards.
+Borderline code (DRM defeat, key brute force, anti-cheat evasion) is never first-party: ViWo does
+not author it; if it exists it is a pinned third-party tool or community script under the
+disclaimer. Engineering properties are not boundaries; any that blocks a wanted capability
+becomes an option.
+
+## Engineering rules
 - The game folder is read-only. Extraction copies; repack writes a separate, marked patched copy;
   only runtime-capture agents may touch a game folder, and only through `core/capture/journal.py`.
-- No DRM or anti-cheat circumvention. No password/key guessing: keys come from the user or from the
-  game's own local files and are verified before use (D18). Capture is refused when anti-cheat or an
-  online title is detected (`viwo/data/capture_policy.json`).
+- Keys come from the user or from the game's own local files and are verified before use (D18).
 - Secrets and found keys are never logged or written to disk (run records store `<secret>`).
 - GPL/AGPL tools run only as separate processes, never imported.
-- `tos_sensitive` plugins (Overwatch) are never auto-selected; real-game tests are the independent
-  operator's job, not yours.
+- `tos_sensitive` plugins (Overwatch) carry a reminder on every run; real-game tests are the
+  independent operator's job, not yours.
 - Every write into a folder built from untrusted names goes through `contracts.workspace.safe_member`
   and `contracts.workspace.inside` (traversal, drive letters, links).
+- Third-party tools are pinned (version, size, sha256) in `viwo/data/tools.json`, HTTPS only,
+  installed into `third_party/` and nowhere else.
 
 ## Commands (Windows, PowerShell)
 ```powershell

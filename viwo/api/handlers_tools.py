@@ -26,7 +26,8 @@ def survey_library(app: App, d: dict) -> dict:
                 ProgressEvent(f"Surveying {game.name} ({index}/{total})", "info", "core", "survey")
             )
 
-        return {"success": True, "games": survey(app.rt, folder, bool(d.get("deep")), note)}
+        games = survey(app.rt, folder, bool(d.get("deep")), note, cancel)
+        return {"success": True, "games": games}
 
     job = app.jobs.submit_with_listener(
         lambda e: app.log(e.legacy_line()), "survey", run, background=False
@@ -48,28 +49,30 @@ RECIPES = [
 
 def _sanitize(op: str) -> Callable[[App, dict], dict]:
     def handler(app: App, d: dict) -> dict:
+        folder = app.workspace  # read once: the workspace can be switched meanwhile
+
         def run() -> dict:
             if op == "plan":
-                return {"success": True, **sanitizer.plan(app.workspace)}
+                return {"success": True, **sanitizer.plan(folder)}
             if op == "apply":
                 accept = d.get("accept") or "all-safe"
                 return {
                     "success": True,
-                    **sanitizer.apply(app.workspace, str(d.get("planId", "")), accept),
+                    **sanitizer.apply(folder, str(d.get("planId", "")), accept),
                 }
-            return {"success": True, **sanitizer.undo(app.workspace, str(d.get("undoToken", "")))}
+            return {"success": True, **sanitizer.undo(folder, str(d.get("undoToken", "")))}
 
-        return app.locked(run)
+        return app.locked(run, folder)
 
     return handler
 
 
 def repack_workspace(app: App, d: dict) -> dict:
     """Round trip of the active workspace: plan (plan=true) or build a patched copy (job)."""
-    out = str(d.get("out", "")).strip()
+    out, folder = str(d.get("out", "")).strip(), app.workspace
     if d.get("plan"):
         return app.locked(
-            lambda: {"success": True, **repack(app.rt, app.workspace, None, apply=False)}
+            lambda: {"success": True, **repack(app.rt, folder, None, apply=False)}, folder
         )
     if not out:
         return {
@@ -79,9 +82,9 @@ def repack_workspace(app: App, d: dict) -> dict:
         }
 
     def run(sink, cancel) -> dict:
-        return {"success": True, **repack(app.rt, app.workspace, Path(out), sink, cancel)}
+        return {"success": True, **repack(app.rt, folder, Path(out), sink, cancel)}
 
-    return app.locked_job("repack", app.workspace, run)
+    return app.locked_job("repack", folder, run)
 
 
 def run_preflight(app: App, d: dict) -> dict:

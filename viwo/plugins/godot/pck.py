@@ -67,7 +67,10 @@ class _PckCli(Unarchiver):
             return Outcome(OutcomeKind.UNAVAILABLE, error=self.spec.hint)
         key = str(ctx.options.get("encryption_key", "") or "")
         result = ctx.os.process.run(
-            [*tool.argv_prefix, *self.argv(archive, dest, key)], timeout=3600, cancel=ctx.cancel
+            [*tool.argv_prefix, *self.argv(archive, dest, key)],
+            timeout=3600,
+            cancel=ctx.cancel,
+            on_line=ctx.tool_output("unpack", mask=key),
         )
         text = (result.stderr or result.stdout).strip()
         if not result.ok:
@@ -125,7 +128,9 @@ class GodotPckPacker(Packer):
         staged = stage_members(members, root)
         argv = [*tool.argv_prefix, "--pack", str(container), "--action", "add"]
         argv += ["--remove-prefix", str(root), *map(str, staged)]
-        result = ctx.os.process.run(argv, timeout=3600, cancel=ctx.cancel)
+        result = ctx.os.process.run(
+            argv, timeout=3600, cancel=ctx.cancel, on_line=ctx.tool_output("pack")
+        )
         if not result.ok:
             return Outcome(OutcomeKind.FAILED, error=(result.stderr or result.stdout)[-300:])
         return Outcome(OutcomeKind.OK, len(staged))

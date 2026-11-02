@@ -1,5 +1,5 @@
 {
-  "_comment": "Runtime capture refusal list (doc 11.1). Data, not code: extend by pull request. Names are matched case-insensitively against file and folder names anywhere in the game folder. 'verified' marks names confirmed from a source; the rest are common names still to confirm.",
+  "_comment": "Runtime capture warnings list (doc 11.1, revised: warnings, never refusals). Data, not code: extend by pull request. Names are matched case-insensitively against file and folder names anywhere in the game folder. 'verified' marks names confirmed from a source; the rest are common names still to confirm.",
   "anti_cheat_markers": {
     "neacloader.exe": "NetEase anti-cheat (verified: DataTool checks for it)",
     "easyanticheat": "Easy Anti-Cheat",

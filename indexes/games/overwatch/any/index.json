@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "slug": "overwatch",
+  "game_version": "any",
+  "title": "Overwatch",
+  "engine": "overwatch",
+  "detect": [
+    "Overwatch.exe",
+    "data/casc"
+  ],
+  "plugins": [
+    "overwatch"
+  ],
+  "tools": [
+    "datatool"
+  ],
+  "options": {
+    "overwatch": {
+      "modes": "extract-unlocks,extract-general,extract-maps"
+    }
+  },
+  "notes": "Windows only (DataTool). Terms-of-service-sensitive: ViWo refuses nothing and reminds you that this is for your own install, offline; respect Blizzard's terms. Real-game testing is the independent operator's job.",
+  "source": "overtools/OWLib",
+  "scripts": []
+}

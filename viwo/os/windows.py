@@ -7,7 +7,7 @@ import re
 import subprocess
 import sys
 from pathlib import Path
-from typing import Mapping
+from typing import Mapping, Sequence
 
 from viwo.contracts.os import OS, DesktopShell, FileSystemPolicy
 
@@ -80,7 +80,7 @@ def _install_roots() -> list[Path]:
 class WindowsOS(OS):
     os_id = "windows"
 
-    def __init__(self, tool_overrides: Mapping[str, str] | None = None) -> None:
+    def __init__(self, tool_overrides: Mapping[str, str | Sequence[str]] | None = None) -> None:
         flags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
         self._process = SubprocessRunner(32767, {"creationflags": flags}, _kill_tree)
         suffixes = [".exe", ".bat", ".cmd", ""]

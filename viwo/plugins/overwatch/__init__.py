@@ -1,11 +1,13 @@
 """Overwatch (D16): static extraction of the local install through DataTool (overtools).
 
-Marked terms-of-service sensitive: never picked by AUTO detection (choose it explicitly),
-every run carries a reminder, runtime capture and repacking are refused, and real-game
-testing is done by the independent operator (doc 17.4b).
+Marked terms-of-service sensitive: every run, capture and repack carries a reminder (nothing is
+refused; the user is responsible), and real-game testing is done by the independent operator
+(doc 17.4b).
 """
 
 from __future__ import annotations
+
+import re
 
 from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest, PluginOption
 from viwo.contracts.slots import Exporter, SlotDefinition
@@ -20,6 +22,23 @@ DATATOOL = DependencySpec(
     hint="install DataTool from overtools/OWLib (MIT)",
 )
 MODES = "extract-unlocks,extract-general,extract-maps"
+KNOWN_MODES = frozenset(
+    MODES.split(",")
+    + ["extract-hero-unlocks", "extract-npcs", "extract-lootbox", "extract-debug-vox"]
+    + ["list-heroes", "list-maps", "list-general-unlocks", "list-unlocks"]
+)
+MODE_NAME = re.compile(r"^[a-z][a-z0-9-]*$")
+
+
+def parse_modes(raw) -> tuple[list[str], str]:
+    """(modes, problem): every mode must be a known DataTool mode name."""
+    modes = [m.strip() for m in str(raw or MODES).split(",") if m.strip()]
+    bad = [m for m in modes if not MODE_NAME.match(m) or m not in KNOWN_MODES]
+    if bad or not modes:
+        return [], f"invalid_request: unknown DataTool mode(s): {', '.join(bad) or '(none)'}"
+    return modes, ""
+
+
 MANIFEST = PluginManifest(
     "overwatch",
     "Overwatch (DataTool)",
@@ -42,7 +61,9 @@ class DataToolExporter(Exporter):
         tool = ctx.os.tools.locate(DATATOOL)
         if tool is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=DATATOOL.hint)
-        modes = [m.strip() for m in str(ctx.options.get("modes") or MODES).split(",") if m.strip()]
+        modes, problem = parse_modes(ctx.options.get("modes"))
+        if problem:
+            return Outcome(OutcomeKind.FAILED, error=problem)
         failed = []
         for mode in modes:
             out = ctx.staging / mode
@@ -55,6 +76,9 @@ class DataToolExporter(Exporter):
             return Outcome(OutcomeKind.FAILED, error=f"DataTool failed: {', '.join(failed)}")
         notes = (REMINDER,) + ((f"failed modes: {', '.join(failed)}",) if failed else ())
         return Outcome(OutcomeKind.OK, files, notes=notes)
+
+
+PLUGIN = "OverwatchPlugin"  # discovered by viwo.core.wiring.registry
 
 
 class OverwatchPlugin(EnginePlugin):

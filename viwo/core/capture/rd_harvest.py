@@ -1,7 +1,9 @@
-"""Harvest helper, run by the Python that ships RenderDoc's `renderdoc` module (it is built
-for one exact Python version, so it runs as a separate process). Not imported by ViWo.
+"""Harvest helper, run by a Python that has RenderDoc's `renderdoc` module: the installed
+`qrenderdoc --py rd_harvest.py` (RenderDoc's embedded interpreter, headless) or any Python with
+the module. Runs as a separate process; not imported by ViWo.
 
 Usage: python rd_harvest.py <capture.rdc> <output folder>
+       (or VIWO_RD_CAPTURE / VIWO_RD_OUT in the environment, since qrenderdoc passes no argv)
 Writes every texture of the capture as tex_<resource id>.png.
 """
 
@@ -35,4 +37,7 @@ def main(capture: str, out: str) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main(sys.argv[1], sys.argv[2]))
+    args = sys.argv[1:3] if len(sys.argv) >= 3 else []
+    capture_file = os.environ.get("VIWO_RD_CAPTURE") or args[0]
+    out_dir = os.environ.get("VIWO_RD_OUT") or args[1]
+    sys.exit(main(capture_file, out_dir))

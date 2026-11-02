@@ -22,6 +22,7 @@ MANIFEST = PluginManifest(
             "bool",
             False,
         ),
+        PluginOption("meshes", "Export meshes as Wavefront .obj files", "bool", True),
     ),
 )
 SLOTS = (
@@ -46,6 +47,9 @@ STRONG = (
     "globalgamemanagers.assets",
     "unity default resources",
 )
+
+
+PLUGIN = "UnityPlugin"  # discovered by viwo.core.wiring.registry
 
 
 class UnityPlugin(EnginePlugin):

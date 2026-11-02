@@ -82,21 +82,28 @@ def collect(
     """say(message), when given, receives a throttled 'Collected N files' progress line."""
     report = CollectReport()
     avoid = workspace.resolve()
-    ticker = Ticker(say, "Scanned files:")
+    todo = []  # counted first, so the progress bar has a real total
     for source in sources:
         for src in _walk(source.root, SKIP_DIRS | skip, avoid):
             if cancel.cancelled:
                 return report
-            report.scanned += 1
-            ticker.tick(note=f"{report.collected:,} collected")
-            if src.suffix.lower() in source.exclude or src.name.lower() in source.exclude:
-                continue
-            ext = ws.ext_of(src)
-            group = ws.ext_folder(ext)
-            if selected is not None and ext not in selected:
-                report.skipped_by_ext[group] += 1
-                continue
-            _collect_one(src, workspace / group, source, report)
+            todo.append((source, src))
+    if say is not None:
+        say(f"Collecting {len(todo):,} files from {len(sources)} source folder(s)")
+    ticker = Ticker(say, "Scanned files:", total=len(todo))
+    for source, src in todo:
+        if cancel.cancelled:
+            return report
+        report.scanned += 1
+        ticker.tick(note=f"{report.collected:,} collected")
+        if src.suffix.lower() in source.exclude or src.name.lower() in source.exclude:
+            continue
+        ext = ws.ext_of(src)
+        group = ws.ext_folder(ext)
+        if selected is not None and ext not in selected:
+            report.skipped_by_ext[group] += 1
+            continue
+        _collect_one(src, workspace / group, source, report)
     return report
 
 

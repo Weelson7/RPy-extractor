@@ -17,10 +17,12 @@ from pathlib import Path
 from viwo.contracts import workspace as ws
 from viwo.contracts.errors import ViwoError
 
+from . import provenance
 from .carve import SIGNATURES
 from .carve import formats2 as g
 from .curation import trash
 from .pipeline.collect import sha256
+from .workspace import write_atomic
 
 ROOT = ".sanitizer"
 JUNK = {".import", ".meta", ".tmp", ".bak"}
@@ -127,7 +129,7 @@ def plan(workspace: Path) -> dict:
     result = {"planId": plan_id, "scanned": len(files), "findings": findings}
     folder = workspace / ROOT / "plans"
     folder.mkdir(parents=True, exist_ok=True)
-    (folder / f"{plan_id}.json").write_text(json.dumps(result, indent=1), encoding="utf-8")
+    write_atomic(folder / f"{plan_id}.json", json.dumps(result, indent=1))
     return result
 
 
@@ -191,7 +193,8 @@ def apply(workspace: Path, plan_id: str, accept: list[int] | str = "all-safe") -
     folder.mkdir(parents=True, exist_ok=True)
     record = folder / f"{plan_id}.json"  # several applies of one plan add up
     earlier = json.loads(record.read_text(encoding="utf-8")) if record.is_file() else []
-    record.write_text(json.dumps(earlier + journal), encoding="utf-8")
+    write_atomic(record, json.dumps(earlier + journal))
+    provenance.rewrite(workspace, {before: now for now, before in journal})
     moved = [{"from": before, "to": now} for now, before in journal]
     return {
         "planId": plan_id,
@@ -206,11 +209,12 @@ def undo(workspace: Path, token: str) -> dict:
     path = workspace / ROOT / "journal" / f"{_plan_id(token)}.json"
     if not path.is_file():
         raise ViwoError("not_found", f"nothing to undo for {token}")
-    restored = 0
+    restored, back = 0, {}
     for now, before in reversed(json.loads(path.read_text(encoding="utf-8"))):
         src, dest = _ws_file(workspace, now), _ws_file(workspace, before)
         if src is not None and dest is not None and src.is_file():
-            _move(src, dest)
+            back[now] = _move(src, dest).relative_to(workspace).as_posix()
             restored += 1
+    provenance.rewrite(workspace, back)
     path.unlink()
     return {"restored": restored}

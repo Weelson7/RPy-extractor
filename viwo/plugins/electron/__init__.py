@@ -72,6 +72,9 @@ SLOT = SlotDefinition(
 )
 
 
+PLUGIN = "ElectronPlugin"  # discovered by viwo.core.wiring.registry
+
+
 class ElectronPlugin(EnginePlugin):
     @property
     def manifest(self) -> PluginManifest:

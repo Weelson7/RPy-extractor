@@ -142,3 +142,10 @@ You accepted every recommendation on 2026-11-02, so this table is now the record
 
 - Implementation status of Prototype A: see [docs/prototype-a/STATUS.md](../prototype-a/STATUS.md).
 - Facts still UNVERIFIED after research: anti-cheat marker names, Godot `override.cfg` autoload injection, Ninja Ripper licensing, AESDumpster and UnrealLocres licenses, some Windows-only tools on Linux, and Blizzard's current EULA text (see docs 11 and 13).
+
+## D22 (1.0): no policy boundaries, a disclaimer instead
+
+Owner's decision, confirmed: ViWo is a community tool that refuses nothing because of what a game
+is, which plugin runs, or what the user intends. Refusal lists became warnings plus one opt-in.
+Borderline code is never first-party. The README "Philosophy" section is the reference; doc 11.1
+and doc 14 keep their original proposals with a revision note.

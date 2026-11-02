@@ -30,7 +30,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from tests.helpers import make_game, make_png, make_rar, make_tar, make_zip  # noqa: E402
-from tests.test_carve import blob, jpeg, ogg_page, wav  # noqa: E402
+from tests.test_carve import blob, jpeg, ogg_page  # noqa: E402
 from tests.test_doom import PALETTE, make_picture, make_sound, make_wad  # noqa: E402
 from tests.test_formats import asar, ba2, bsa, vpk, xp3  # noqa: E402
 from tests.test_godot import embed, make_pck  # noqa: E402
@@ -39,8 +39,8 @@ from tests.test_renpy import make_rpa  # noqa: E402
 from tests.test_rpgmaker import KEY as MV_KEY  # noqa: E402
 from tests.test_rpgmaker import encrypt_mv, rgssad_v1, rgssad_v3  # noqa: E402
 from tests.test_unreal import KEY as UE_KEY  # noqa: E402
-from tests.test_unreal import key_exe, make_pak  # noqa: E402
 from tests.test_unreal import fake_tools as unreal_tools  # noqa: E402
+from tests.test_unreal import key_exe, make_pak  # noqa: E402
 
 FIXTURES = {}
 
@@ -82,7 +82,7 @@ def ini(out: Path, name: str, body: str) -> Path:
 
 @fixture("zip-basic")
 def zip_basic(base: Path, out: Path) -> None:
-    """game\\ : title.png, music\\theme.ogg (loose) and data.zip with img\\a.png + text\\readme.txt."""
+    """game/ : title.png, music/theme.ogg (loose) and data.zip with img/a.png + text/readme.txt."""
     game = base / "game"
     png(game / "title.png")
     (game / "music").mkdir(parents=True)
@@ -181,8 +181,10 @@ def encrypted_zip(base: Path, out: Path) -> None:
     (base / "_src" / "secret.txt").write_text("top secret")
     (base / "MAKE-ME.txt").write_text(
         "Run from this folder (needs 7-Zip):\n"
-        '  & "C:\\Program Files\\7-Zip\\7z.exe" a -tzip -pSQC-PASS game\\locked.zip _src\\secret.txt\n'
-        '  & "C:\\Program Files\\7-Zip\\7z.exe" a -t7z -pSQC-PASS -mhe=on game\\locked.7z _src\\secret.txt\n'
+        '  & "C:\\Program Files\\7-Zip\\7z.exe"'
+        " a -tzip -pSQC-PASS game\\locked.zip _src\\secret.txt\n"
+        '  & "C:\\Program Files\\7-Zip\\7z.exe"'
+        " a -t7z -pSQC-PASS -mhe=on game\\locked.7z _src\\secret.txt\n"
     )
 
 
@@ -221,7 +223,7 @@ def renpy(base: Path, out: Path) -> None:
 @fixture("godot")
 def godot(base: Path, out: Path) -> None:
     """standalone\\game.pck, embedded\\Game.exe (PCK appended), encrypted\\data.pck (needs key),
-    broken\\data.pck (main tool fails, spare works). Fake GDRE + GodotPckTool: ini\\godot-fake.ini."""
+    broken/data.pck (main tool fails, spare works). Fake GDRE + GodotPckTool: ini/godot-fake.ini."""
     (base / "standalone").mkdir(parents=True)
     (base / "standalone" / "game.pck").write_bytes(make_pck())
     (base / "embedded").mkdir()
@@ -306,7 +308,9 @@ def rpgmaker(base: Path, out: Path) -> None:
     for sub in ("data", "img/faces", "audio/bgm", "js"):
         (www / sub).mkdir(parents=True)
     (www / "data" / "System.json").write_text(
-        json.dumps({"hasEncryptedImages": True, "hasEncryptedAudio": True, "encryptionKey": MV_KEY.hex()})
+        json.dumps(
+            {"hasEncryptedImages": True, "hasEncryptedAudio": True, "encryptionKey": MV_KEY.hex()}
+        )
     )
     (www / "img" / "faces" / "Actor2.rpgmvp").write_bytes(encrypt_mv(face))
     (www / "audio" / "bgm" / "Theme.rpgmvo").write_bytes(encrypt_mv(ogg_page()))
@@ -331,7 +335,7 @@ def kirikiri(base: Path, out: Path) -> None:
 
 @fixture("electron")
 def electron(base: Path, out: Path) -> None:
-    """game\\resources\\app.asar (index.html, img\\logo.png) + game\\Game.exe and electron.exe marker;
+    """game/resources/app.asar (index.html, img/logo.png) + game/Game.exe and electron.exe marker;
     nw\\package.nw (a zip) + nw\\nw.exe marker."""
     logo = png(base / "_src" / "logo.png").read_bytes()
     res = base / "game" / "resources"
@@ -348,7 +352,9 @@ def electron(base: Path, out: Path) -> None:
 def source_vpk(base: Path, out: Path) -> None:
     """game\\pak01_dir.vpk (one inline file) + game\\pak01_000.vpk (one file in part 000)."""
     sky = png(base / "_src" / "sky.png").read_bytes()
-    head, part = vpk({"materials/m.vmt": (b'"LightmappedGeneric" {}', 0), "materials/sky.png": (sky, 1)})
+    head, part = vpk(
+        {"materials/m.vmt": (b'"LightmappedGeneric" {}', 0), "materials/sky.png": (sky, 1)}
+    )
     (base / "game").mkdir(parents=True)
     (base / "game" / "pak01_dir.vpk").write_bytes(head)
     (base / "game" / "pak01_000.vpk").write_bytes(part)
@@ -393,7 +399,9 @@ def quickbms(base: Path, out: Path) -> None:
     (game / "data.foo").write_bytes(b"FOO1" + b"\0" * 60)
     scripts = base / "scripts"
     scripts.mkdir()
-    (scripts / "foo.bms").write_text("# dummy script for the SQC fixture\nget SIZE asize\nlog \"inside.bin\" 0 SIZE\n")
+    (scripts / "foo.bms").write_text(
+        '# dummy script for the SQC fixture\nget SIZE asize\nlog "inside.bin" 0 SIZE\n'
+    )
     tool = script_tool(
         base / "_tools",
         "quickbms",
@@ -403,7 +411,11 @@ def quickbms(base: Path, out: Path) -> None:
         "Path(out).mkdir(parents=True, exist_ok=True)\n"
         "shutil.copy(src, Path(out) / 'inside.bin')\n",
     )
-    ini(out, "quickbms-fake", f"[tools]\nquickbms = {tool}\n\n[options.quickbms]\nscripts = {scripts}\n")
+    ini(
+        out,
+        "quickbms-fake",
+        f"[tools]\nquickbms = {tool}\n\n[options.quickbms]\nscripts = {scripts}\n",
+    )
 
 
 @fixture("unity-markers")
@@ -473,7 +485,9 @@ def _tone(freq: int, seconds: float = 1.0, rate: int = 22050) -> bytes:
     import math
     import wave
 
-    frames = bytes(int(128 + 100 * math.sin(2 * math.pi * freq * i / rate)) for i in range(int(rate * seconds)))
+    frames = bytes(
+        int(128 + 100 * math.sin(2 * math.pi * freq * i / rate)) for i in range(int(rate * seconds))
+    )
     buf = io.BytesIO()
     with wave.open(buf, "wb") as w:
         w.setnchannels(1)
@@ -500,9 +514,24 @@ def merger(base: Path, out: Path) -> None:
         import subprocess
 
         subprocess.run(
-            [ffmpeg, "-y", "-loglevel", "error", "-f", "lavfi", "-i", "testsrc=duration=2:size=64x64:rate=25",
-             "-f", "lavfi", "-i", "sine=frequency=880:duration=2", "-shortest", "-pix_fmt", "yuv420p",
-             str(game / "03_walk.mp4")],
+            [
+                ffmpeg,
+                "-y",
+                "-loglevel",
+                "error",
+                "-f",
+                "lavfi",
+                "-i",
+                "testsrc=duration=2:size=64x64:rate=25",
+                "-f",
+                "lavfi",
+                "-i",
+                "sine=frequency=880:duration=2",
+                "-shortest",
+                "-pix_fmt",
+                "yuv420p",
+                str(game / "03_walk.mp4"),
+            ],
             check=True,
         )
     else:
@@ -520,7 +549,9 @@ def roundtrip(base: Path, out: Path) -> None:
     (base / "loose" / "readme.txt").write_text("original text\n")
     (base / "rpa" / "renpy").mkdir(parents=True)
     (base / "rpa" / "game").mkdir()
-    make_rpa(base / "rpa" / "game" / "images.rpa", {"images/bg.png": pic, "script.txt": b"original"})
+    make_rpa(
+        base / "rpa" / "game" / "images.rpa", {"images/bg.png": pic, "script.txt": b"original"}
+    )
     make_zip(base / "zip" / "data.zip", {"img/a.png": pic, "cfg/settings.txt": b"original"})
     www = base / "mv" / "www"
     for sub in ("data", "img/faces", "js"):
@@ -546,7 +577,9 @@ def capture(base: Path, out: Path) -> None:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap = argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
+    )
     ap.add_argument("--out", type=Path, help="folder that receives one sub-folder per fixture")
     ap.add_argument("--only", nargs="*", help="fixture names (default: all but zip-bomb)")
     ap.add_argument("--list", action="store_true", help="list the fixtures and exit")

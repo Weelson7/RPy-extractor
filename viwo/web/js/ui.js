@@ -47,12 +47,12 @@ export function empty(title, text, ...actions) {
 
 /** Error code -> [plain title, what to do next, optional [hash, view] link]. Every server code is covered. */
 export const ERRORS = {
-  offline: ["ViWo is not reachable", "Start ViWo again (python3 Start.py), then reload this page."],
+  offline: ["ViWo is not reachable", "Start ViWo again (viwo serve, or Start.py), then reload this page."],
   http: ["Unexpected server reply", "Reload the page. If it keeps happening, check the terminal ViWo runs in."],
   invalid_request: ["Check your input", "A path or option is not valid. Correct it and try again."],
   not_found: ["Not found", "The file or folder is gone, or the path has a typo. Check it, or refresh this view."],
   busy: ["Workspace busy", "Another job is using this workspace. Wait for it to finish, then try again.", ["#jobs", "04 JOBS"]],
-  unavailable: ["Tool not installed", "A tool this needs is missing. Install it, restart ViWo and try again.", ["#system", "05 SYSTEM"]],
+  unavailable: ["Tool not installed", "A tool this needs is missing. Install it with one click in 05 SYSTEM, then try again.", ["#system", "05 SYSTEM"]],
   needs_key: ["Encryption key needed", "These files are encrypted. Enter the key under ENGINE OPTIONS, then run again.", ["#extract", "01 EXTRACT"]],
   needs_decision: ["Your choice is needed", "Answer the question ViWo asked, then run again."],
   failed: ["It did not work", "The message above says why. The full log is in 04 JOBS.", ["#jobs", "04 JOBS"]],

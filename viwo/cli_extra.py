@@ -1,4 +1,4 @@
-"""`viwo replay` and `viwo unpack` (doc 12.4)."""
+"""`viwo replay`, `viwo unpack`, the tool commands and `viwo install` (doc 12.4)."""
 
 from __future__ import annotations
 
@@ -112,6 +112,8 @@ def workspace_command(rt, args) -> Envelope:
     if args.command == "sanitize":
         from viwo.core import sanitizer
 
+        if not args.workspace.is_dir():
+            raise ViwoError("not_found", f"workspace not found: {args.workspace}")
         if args.undo:
             return Envelope.success(sanitizer.undo(args.workspace, args.undo))
         result = sanitizer.plan(args.workspace)
@@ -128,14 +130,85 @@ def workspace_command(rt, args) -> Envelope:
         )
         return Envelope.success({"games": survey(rt, args.folder, args.deep, note)})
     if args.command == "capture":
-        from viwo.core.capture import CaptureRequest, capture
-
-        note = None if args.json else (lambda e: print(e.legacy_line(), file=sys.stderr))
-        req = CaptureRequest(args.game, args.exe, args.workspace, args.confirm)
-        return Envelope.success(capture(rt, req, note))
+        return _capture(rt, args)
     if args.command == "config":
         return _config(args)
+    if args.command == "install":
+        return _install(rt, args)
+    if args.command in ("diag", "indexes"):
+        return _system(rt, args)
     raise ViwoError("invalid_request", f"unknown command {args.command}")
+
+
+def _capture(rt, args) -> Envelope:
+    """viwo capture: the warnings are printed before anything launches (never refusals)."""
+    from viwo.core.capture import CaptureRequest, _sensitive, capture
+    from viwo.core.capture.policy import warnings_for
+
+    note = None if args.json else (lambda e: print(e.legacy_line(), file=sys.stderr))
+    if not args.game.is_dir():
+        raise ViwoError("not_found", f"game folder not found: {args.game}")
+    if note:
+        for warning in warnings_for(args.game, _sensitive(rt, args.game)):
+            print(f"[CAPTURE:WARN] {warning}", file=sys.stderr)
+    req = CaptureRequest(args.game, args.exe, args.workspace, args.confirm)
+    return Envelope.success(capture(rt, req, note))
+
+
+def _system(rt, args) -> Envelope:
+    """viwo diag [--out FILE] | viwo indexes update."""
+    if args.command == "diag":
+        from viwo.core.diag import bundle
+
+        return Envelope.success({"path": str(bundle(rt, rt.config.server.workspace, args.out))})
+    from viwo import __version__
+    from viwo.core.indexes import update_indexes
+    from viwo.core.thirdparty import home_of
+
+    note = None if args.json else (lambda e: print(e.legacy_line(), file=sys.stderr))
+    return Envelope.success(
+        update_indexes(home_of(rt.config), int(__version__.split(".")[0]), note)
+    )
+
+
+def _install(rt, args) -> Envelope:
+    """viwo install [--all | <id>... | --game <slug>]: pinned tools into third_party/ (doc 10)."""
+    from viwo.core.preflight import check, install
+
+    note = None if args.json else (lambda e: print(e.legacy_line(), file=sys.stderr))
+    if getattr(args, "game", None):
+        from viwo.core.indexes import DEFAULT_ROOT, install_game
+
+        done = install_game(rt, DEFAULT_ROOT, args.game, args.game_version, note)
+        return Envelope.success(
+            {"installed": done["tools"] + list(done["scripts"]), "failed": done["failed"], **done},
+            list(done["failed"].values()),
+        )
+    items = check(rt, note or (lambda e: None))
+    wanted = set(args.ids)
+    if args.all:
+        wanted |= {i["id"] for i in items if not i["available"] and i["installable"]}
+    unknown = wanted - {i["id"] for i in items}
+    if unknown or not wanted:
+        raise ViwoError(
+            "invalid_request",
+            f"unknown dependency id(s): {', '.join(sorted(unknown))}"
+            if unknown
+            else "nothing to install: give ids or --all",
+            hint="ids are listed by `viwo slots`",
+        )
+    done, failed = [], {}
+    for dep_id in sorted(wanted):
+        try:
+            done.append(install(rt, dep_id, note)["installed"])
+        except ViwoError as exc:
+            failed[dep_id] = exc.message + (f" ({exc.hint})" if exc.hint else "")
+    from viwo.core.thirdparty import home_of
+
+    where = str(home_of(rt.config) / "third_party")
+    return Envelope.success(
+        {"installed": done, "failed": failed, "where": where}, list(failed.values())
+    )
 
 
 def _config(args) -> Envelope:

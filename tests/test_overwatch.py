@@ -1,4 +1,4 @@
-"""L3: Overwatch plugin (tos-sensitive): never auto-picked, explicit run via a fake DataTool,
+"""L3: Overwatch plugin (tos-sensitive): auto-picked with a reminder, run via a fake DataTool,
 reminder in every result, repack and capture refused. Real-game tests: independent operator."""
 
 from __future__ import annotations
@@ -50,7 +50,7 @@ class OverwatchTests(unittest.TestCase):
                 lambda e: None,
                 CancelToken(),
             )
-            self.assertNotIn("overwatch", [r.plugin_id for r in auto.runs])
+            self.assertIn("overwatch", [r.plugin_id for r in auto.runs])
             single = ExtractionRequest(
                 str(game), str(root / "b"), mode=ExtractionMode.SINGLE, plugins=("overwatch",)
             )
@@ -59,12 +59,24 @@ class OverwatchTests(unittest.TestCase):
                 (root / "b" / "png" / "extract-maps.png").read_bytes(), b"png from extract-maps"
             )
             self.assertTrue(any("respect Blizzard" in w for w in result.warnings))
+            bad = ExtractionRequest(
+                str(game),
+                str(root / "d"),
+                mode=ExtractionMode.SINGLE,
+                plugins=("overwatch",),
+                plugin_options={"overwatch": {"modes": "extract-maps,rm -rf /"}},
+            )
+            rejected = extract(rt, bad, "j", lambda e: None, CancelToken())
+            self.assertFalse((root / "d" / "png").exists())
+            self.assertTrue(
+                any("unknown DataTool mode" in w for w in rejected.warnings), rejected.warnings
+            )
             self.assertEqual(tree_hashes(game), before)
-            with self.assertRaises(ViwoError) as err:
+            with self.assertRaises(ViwoError) as err:  # no capture backend here: not a refusal
                 capture(
                     rt, CaptureRequest(game, game / "Overwatch.exe", root / "c", confirmed=True)
                 )
-            self.assertEqual(err.exception.code, "refused")
+            self.assertEqual(err.exception.code, "unavailable")
 
 
 if __name__ == "__main__":

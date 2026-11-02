@@ -71,6 +71,8 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(self.call("GET", "/..%2f..%2fpyproject.toml")[0], 404)
         self.assertEqual(self.call("GET", "/preview/..%2f..%2fstartup.ini")[0], 404)
         self.assertEqual(self.call("POST", "/api/logs/clear", {})[0], 200)
+        huge = {"Content-Length": str(64 << 20)}  # bodies are capped before they are read
+        self.assertEqual(self.call("POST", "/api/logs/clear", {}, **huge)[0], 413)
 
     def test_extract_curate_and_jobs(self) -> None:
         status, body = self.call("POST", "/api/extract", {"gamePath": str(self.game)})

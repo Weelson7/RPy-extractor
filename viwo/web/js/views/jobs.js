@@ -5,7 +5,8 @@ import { h, fill, btn, panel, badge, viewHead, empty, errorBox, toast, toastErr,
 const STATE_KIND = { running: "live", queued: "warn", succeeded: "ok", failed: "err", cancelled: "mute" };
 /** Job kind -> [name shown to people, view that runs it]. */
 export const KIND = { extract: ["EXTRACTION", "#extract", "01"], survey: ["SURVEY", "#survey", "07"], merge: ["MERGER BUILD", "#merger", "06"],
-  repack: ["PATCHED COPY", "#repack", "09"] };
+  repack: ["PATCHED COPY", "#repack", "09"], preflight: ["STARTUP CHECK", "#system", "05"], install: ["TOOL INSTALL", "#system", "05"],
+  capture: ["CAPTURE", "#capture", "10"], indexes: ["INDEXES UPDATE", "#system", "05"] };
 const kindName = (k) => KIND[k]?.[0] || String(k).toUpperCase();
 const when = (j) => `${new Date(j.started * 1000).toLocaleTimeString()} · ${Number(j.elapsed || 0).toFixed(1)} s`;
 const human = (k) => k.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase();
@@ -21,7 +22,7 @@ function mount(root) {
   el.cancel = btn("CANCEL JOB", cancel, "danger", { hidden: true });
   el.count = h("span", { class: "mono dim" });
   root.append(
-    viewHead("04", "JOBS", "Every extraction, survey, merger build and patched copy runs as a job. Pick one to read its log and result.",
+    viewHead("04", "JOBS", "Every extraction, survey, merger build, patched copy and tool install runs as a job. Pick one to read its log and result.",
       btn("REFRESH", () => refresh(), "ghost")),
     h("div", { class: "jobs-grid" },
       panel("04.A", "JOB REGISTRY", el.count, el.list),

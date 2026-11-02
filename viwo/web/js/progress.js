@@ -49,6 +49,28 @@ const KINDS = {
     counters: [["GAMES", /^Surveying /, add()]],
     ongoing: true, // "(3/9)" = game 3 is being surveyed, so 2 of 9 are done
   },
+  preflight: {
+    verb: "CHECKING",
+    stages: ["boot", "check", "install", "ready"],
+    counters: [["FOUND", /^Checking .*: found/, add()], ["MISSING", /^Checking .*: missing$/, add()],
+      ["INSTALLED", /^Installed /, add()], ["FAILED", /^Could not install/, add()]],
+  },
+  install: {
+    verb: "INSTALLING",
+    counters: [["DOWNLOADED KB", /^Downloading .*KB: ([\d,]+)/, (m) => num(m[1])], ["INSTALLED", /^Installed /, add()]],
+  },
+  capture: {
+    verb: "CAPTURING",
+    first: "policy", // warnings and the confirmation are checked before the first event
+    stages: ["policy", "restore", "capture", "harvest", "gather", "diff", "report"],
+    stageOf: (e) => (e.stage === "collect" ? "gather" : e.stage === "report" ? ["diff", "report"] : e.stage),
+    counters: [["CAPTURES", /^Harvested /, add()], ["HARVESTED OK", /^Harvested .*: ok$/, add()],
+      ["GATHERED", /^Captured ([\d,]+) file/, (m) => num(m[1])], ["NEW VS STATIC", /, ([\d,]+) new vs static/, (m) => num(m[1])]],
+  },
+  indexes: {
+    verb: "UPDATING",
+    counters: [["DOWNLOADED KB", /^Downloading .*KB: ([\d,]+)/, (m) => num(m[1])], ["INSTALLED", /^Indexes .* installed/, add()]],
+  },
   repack: {
     verb: "PATCHING",
     first: "plan", // the server plans (hashes the edit set) before its first event

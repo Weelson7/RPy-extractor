@@ -20,6 +20,7 @@ function mount(root) {
   el.sum = h("div", { class: "ab-sum mono" });
   el.why = h("span", { class: "ab-why" });
   el.build = btn("BUILD PATCHED COPY", build, "primary lg");
+  el.cancel = btn("CANCEL", cancelJob, "ghost", { hidden: true });
   root.append(
     viewHead("09", "PATCHED COPY", "Put the files you edited in the workspace back into the game, as a separate patched copy. Each patched container is re-extracted to verify your edits."),
     assure([["ORIGINAL GAME NEVER MODIFIED", "it is only read; the copy goes to a folder you choose"],
@@ -28,7 +29,7 @@ function mount(root) {
     h("div", { class: "grid2" },
       h("div", { class: "col" }, panel("09.A", "EDIT SET + STRATEGY", el.planBtn, el.stats, el.plan)),
       h("div", { class: "col" }, targetPanel(), el.progPanel, el.result)),
-    h("div", { class: "actionbar" }, el.sum, el.why, el.build));
+    h("div", { class: "actionbar" }, el.sum, el.why, el.cancel, el.build));
   bus.addEventListener("wspath", (e) => switchTo(e.detail.path || ""));
   switchTo(bus.ws?.path || "");
 }
@@ -104,6 +105,13 @@ function bar() {
   el.build.disabled = Boolean(el.why.textContent);
   el.build.textContent = S.running ? "BUILDING…" : "BUILD PATCHED COPY";
   el.planBtn.disabled = S.running;
+  el.cancel.hidden = !S.running;
+}
+
+async function cancelJob() {
+  const id = el.prog.id;
+  if (!id) return toast("Job not registered yet — try again in a moment.", "warn");
+  try { await api.cancel(id); toast("Cancellation requested.", "warn"); } catch (err) { toastErr(err); }
 }
 
 async function build() {
@@ -129,7 +137,7 @@ async function build() {
       toast(res.verified ? "Patched copy ready and verified." : "Patched copy built, but some edits did not verify.", res.verified ? "ok" : "warn", res.target);
     }
   } catch (err) {
-    await el.prog.finish("fail", SHORT[err.code] || "BUILD FAILED");
+    await el.prog.finish(err.code === "cancelled" ? "cancel" : "fail", err.code === "cancelled" ? "BUILD CANCELLED" : SHORT[err.code] || "BUILD FAILED");
     fill(el.result, panel("09.D", "RESULT", badge(err.code === "cancelled" ? "CANCELLED" : "FAILED", err.code === "cancelled" ? "warn" : "err"), failure(err)));
     toastErr(err, "Patched copy failed: ");
   } finally {

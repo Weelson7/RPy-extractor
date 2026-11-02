@@ -1,0 +1,11 @@
+{
+  "id": "hello",
+  "name": "Hello (example drop-in plugin)",
+  "version": "0.1.0",
+  "contract": "1.0",
+  "module": "__init__",
+  "class": "HelloPlugin",
+  "requires": { "viwo": ">=0.2" },
+  "enabled": false,
+  "override": false
+}

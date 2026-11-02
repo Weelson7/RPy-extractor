@@ -29,20 +29,22 @@ def _int(query: dict, key: str, default: int) -> int:
 
 
 def status(app: App, q: dict) -> dict:
+    folder = app.workspace  # every handler reads it once: it can be switched concurrently
     return {
         "success": True,
-        **trash.summary(app.workspace),
-        "assetPath": str(app.workspace),
-        "allExtensions": trash.all_extensions(app.workspace),
+        **trash.summary(folder),
+        "assetPath": str(folder),
+        "allExtensions": trash.all_extensions(folder),
     }
 
 
 def workspace(app: App, q: dict) -> dict:
+    folder = app.workspace
     return {
         "success": True,
-        "path": str(app.workspace),
-        "isDefault": app.workspace.resolve() == app.server.workspace.resolve(),
-        "owned": app.workspace.is_dir() and ws.has_marker(app.workspace),
+        "path": str(folder),
+        "isDefault": folder.resolve() == app.server.workspace.resolve(),
+        "owned": folder.is_dir() and ws.has_marker(folder),
     }
 
 
@@ -80,10 +82,10 @@ def pick_folder(app: App, q: dict) -> dict:
 
 def _group(kind: str, op) -> Callable[[App, dict], dict]:
     def handler(app: App, d: dict) -> dict:
-        folder = str(d.get("folder", ""))
+        folder, work = str(d.get("folder", "")), app.workspace
 
         def run() -> dict:
-            ok, message = op(app.workspace, folder)
+            ok, message = op(work, folder)
             app.log(f"[WORKSPACE] {message}")
             result = {
                 "success": ok,
@@ -92,58 +94,61 @@ def _group(kind: str, op) -> Callable[[App, dict], dict]:
                 "folder": folder,
                 "logs": [message],
             }
-            return {**result, "summary": trash.summary(app.workspace)} if ok else result
+            return {**result, "summary": trash.summary(work)} if ok else result
 
-        return app.locked(run)
+        return app.locked(run, work)
 
     return handler
 
 
 def clear_trash(app: App, d: dict) -> dict:
+    folder = app.workspace
+
     def run() -> dict:
-        count, logs = trash.clear(app.workspace)
+        count, logs = trash.clear(folder)
         return {
             "success": True,
             "type": "clear_all_trash",
             "cleared": count,
             "logs": logs,
-            "summary": trash.summary(app.workspace),
+            "summary": trash.summary(folder),
         }
 
-    return app.locked(run)
+    return app.locked(run, folder)
 
 
 def keep_selected(app: App, d: dict) -> dict:
     keep = {str(e).lstrip(".") for e in d.get("selectedExts") or []}
+    folder = app.workspace
 
     def run() -> dict:
-        moved = [e for e in trash.kept(app.workspace) if e not in keep]
+        moved = [e for e in trash.kept(folder) if e not in keep]
         for ext in moved:
-            trash.trash_group(app.workspace, ext)
+            trash.trash_group(folder, ext)
         return {
             "success": True,
             "message": f"Kept {len(keep)} types, moved {len(moved)} to trash",
-            "summary": trash.summary(app.workspace),
+            "summary": trash.summary(folder),
         }
 
-    return app.locked(run)
+    return app.locked(run, folder)
 
 
 def _sorting(op, *keys: str) -> Callable[[App, dict], dict]:
     def handler(app: App, d: dict) -> dict:
-        args = [str(d.get(k, "")) for k in keys]
+        args, folder = [str(d.get(k, "")) for k in keys], app.workspace
         extra = (app.rt.os.fs,) if op is sorting.rename else ()
-        return app.locked(lambda: safe(lambda: op(app.workspace, *args, app.history, *extra)))
+        return app.locked(lambda: safe(lambda: op(folder, *args, app.history, *extra)), folder)
 
     return handler
 
 
 def save_remaining(app: App, d: dict) -> dict:
     target = Path(str(d.get("destinationPath", "")).strip() or ".").expanduser().resolve()
-    paths = [str(p) for p in d.get("paths") or []]
+    paths, folder = [str(p) for p in d.get("paths") or []], app.workspace
     if d.get("all"):  # every remaining asset, not only the visible page
-        paths = [sorting.encode(app.workspace, p) for p in sorting.asset_files(app.workspace)]
-    return app.locked(lambda: safe(lambda: sorting.save_remaining(app.workspace, paths, target)))
+        paths = [sorting.encode(folder, p) for p in sorting.asset_files(folder)]
+    return app.locked(lambda: safe(lambda: sorting.save_remaining(folder, paths, target)), folder)
 
 
 def assets_window(app: App, q: dict) -> dict:
@@ -165,7 +170,7 @@ def open_folder(app: App, d: dict) -> dict:
 def merger_state(app: App, q: dict) -> dict:
     return {
         "success": True,
-        "workingDir": str(app.workspace),
+        "workingDir": str(app.workspace),  # one read
         "mergerDir": str(app.server.merged),
         "defaultPattern": media.PATTERNS[0],
         "defaultTransition": "diapo",
@@ -275,7 +280,12 @@ POST: dict[str, Callable[[App, dict], Any]] = {
 }
 
 
+from .handlers_capture import CAPTURE_GET, CAPTURE_POST  # noqa: E402
+from .handlers_settings import SETTINGS_GET, SETTINGS_POST  # noqa: E402
+from .handlers_system import SYSTEM_GET, SYSTEM_POST  # noqa: E402
 from .handlers_tools import TOOL_GET, TOOL_POST  # noqa: E402  (tables merged last)
 
-GET.update(TOOL_GET)
-POST.update(TOOL_POST)
+for table in (TOOL_GET, CAPTURE_GET, SETTINGS_GET, SYSTEM_GET):
+    GET.update(table)
+for table in (TOOL_POST, CAPTURE_POST, SETTINGS_POST, SYSTEM_POST):
+    POST.update(table)

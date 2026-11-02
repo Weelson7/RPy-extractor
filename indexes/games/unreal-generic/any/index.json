@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "slug": "unreal-generic",
+  "game_version": "any",
+  "title": "Any Unreal Engine game",
+  "engine": "unreal",
+  "detect": [
+    "*/Content/Paks/*.pak"
+  ],
+  "plugins": [
+    "unreal"
+  ],
+  "tools": [
+    "repak",
+    "retoc"
+  ],
+  "notes": "AES-encrypted paks open with a key you supply or one found in the game's own executables (verified on the pak index). UE5 IoStore (.utoc/.ucas) goes through retoc.",
+  "source": "own testing; trumank/repak, trumank/retoc",
+  "options": {},
+  "scripts": []
+}

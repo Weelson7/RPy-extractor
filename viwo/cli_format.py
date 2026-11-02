@@ -19,6 +19,15 @@ def detect(data: dict) -> str:
     return "\n".join(lines)
 
 
+def _where(d: dict) -> str:
+    """third_party / python / PATH or ini, from the dependency report."""
+    if not d["available"]:
+        return "pinned: viwo install " + d["id"] if d.get("installable") else "manual"
+    if "third_party" in d["location"].replace("\\", "/").split("/"):
+        return "third_party"
+    return "python" if d["kind"] == "python" else "PATH or ini"
+
+
 def slots(data: dict) -> str:
     lines = ["SLOT                     MAIN                 SPARE"]
     for slot_id, b in sorted(data.get("slots", data.get("bindings", {})).items()):
@@ -27,10 +36,21 @@ def slots(data: dict) -> str:
         lines.append(f"{slot_id:<24} {main + flag:<20} {b.get('spare') or '-'}")
     deps = data.get("dependencies")
     if deps:
-        lines += ["", "DEPENDENCY        STATUS     WHERE / HOW"]
+        lines += [
+            "",
+            f"{'DEPENDENCY':<16} {'STATUS':<8} {'VERSION':<14} {'WHERE':<24} LOCATION / HOW",
+        ]
         for d in deps:
             state = "found" if d["available"] else "missing"
-            lines.append(f"{d['id']:<17} {state:<10} {d['location'] or d['hint']}")
+            version = str(d.get("version") or "-")[:14]
+            lines.append(
+                f"{d['id']:<16} {state:<8} {version:<14} {_where(d):<24} "
+                f"{d['location'] or d['hint']}"
+            )
+        lines.append("")
+        lines.append(
+            "missing tools: `viwo install --all` (pinned, checksums verified) or 05 SYSTEM"
+        )
     return "\n".join(lines)
 
 
@@ -129,22 +149,46 @@ def sanitize(data: dict) -> str:
 
 
 def error(err: dict) -> str:
-    if err["code"] == "needs_decision":
-        err = {**err, "hint": "re-run with --on-existing new | replace | cancel"}
+    if err["code"] == "needs_decision" and (not err.get("hint") or "replace" in err["hint"]):
+        flag = "re-run with --on-existing new | replace | cancel"
+        err = {**err, "hint": f"{err['hint']}; {flag}" if err.get("hint") else flag}
     hint = f"\n  hint: {err['hint']}" if err.get("hint") else ""
     return f"viwo: {err['code']}: {err['message']}{hint}"
 
 
-WELCOME = """ViWo // Vidya Wormhole - game asset extraction, local only.
+WELCOME = """ViWo // Vidya Wormhole - game reverse engineering, local only.
 
   viwo serve                         open the web UI in your browser
   viwo survey <games folder>         what ViWo can pull from each game (read-only)
-  viwo extract <game> --workspace W  extract one game
-  viwo slots                         which optional tools are installed
+  viwo extract <game> --workspace W  extract one game into a workspace
+  viwo capture <game> --exe E --workspace W --confirm
+                                     frames from the running game (RenderDoc, opt-in)
+  viwo repack <workspace> --out P    patched copy of the game with your edits
+  viwo slots                         which tools are installed, and where
+  viwo install --all | --game SLUG   pinned tools into third_party/ (checksums verified)
+  viwo indexes update                latest per-game indexes release for this version
+  viwo config check startup.ini      strict configuration check
+  viwo diag                          bundle logs and run records for a bug report
 
-Run `viwo -h` for every command, `viwo <command> -h` for its options."""
+Run `viwo -h` for every command and the exit codes, `viwo <command> -h` for its options.
+
+A community tool for everyone who wants to look inside a game. No boundaries in the code; a
+disclaimer instead: ViWo and the tools it ships could be misused, nobody here condones or
+suggests it, and the responsibility is yours (README: Philosophy, Legal and disclaimer)."""
 
 FORMATTERS: dict[str, Any] = {
+    "diag": lambda d: f"Diagnostics bundle written: {d['path']} (secrets stripped)",
+    "indexes": lambda d: f"Indexes {d['tag']} installed into {d['where']}",
+    "install": lambda d: "\n".join(
+        [f"Installed: {', '.join(d['installed']) or 'nothing'}"]
+        + ([f"Into     : {d['where']}"] if d.get("where") and d["installed"] else [])
+        + [f"FAILED {k}: {v}" for k, v in d["failed"].items()]
+        + (
+            ["Try again: `viwo install <id>` (downloads resume from scratch)"]
+            if d["failed"]
+            else []
+        )
+    ),
     "detect": detect,
     "survey": survey,
     "repack": repack,

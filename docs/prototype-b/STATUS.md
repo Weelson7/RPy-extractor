@@ -11,7 +11,7 @@ This file records what Prototype B delivered, what is verified and how, and what
 | M8 | custom-engine showcase: Doom WAD (Freedoom on CI); Overwatch via DataTool (tos-sensitive, operator-tested); QuickBMS bridge for any scripted format | done |
 | M9 | round trip into a verified patched copy: loose override, Ren'Py RPA rebuild, Godot PCK, Unreal `_P.pak`, zip, Unity (TextAsset / Texture2D), RPG Maker MV/MZ | done |
 | M10 | mixed mode over every plugin pair; sanitizer phase 1 (plan / apply safe / undo) | done |
-| M11 | runtime capture pilot: refusal policy, journaled overlay, RenderDoc capture + harvest, diff vs static | done (RenderDoc itself not run, see below) |
+| M11 | runtime capture pilot: warnings policy (no refusals), journaled overlay, RenderDoc capture + harvest, diff vs static | done (RenderDoc itself not run, see below) |
 | D21 | coverage ladder: carver, zlib/gzip streams, decoders, survey, more engines | done |
 
 Engines added in B: Unreal, Doom engine, RPG Maker (XP/VX/VX Ace archives, MV/MZ media), KiriKiri
@@ -33,6 +33,22 @@ Synthetic tests cover every format plugin, the carver (every format at a known o
 noise), streams, survey, sanitizer, round trip, capture policy, the journal with crash recovery, and
 91 mixed-mode extractions.
 
+## 1.0 evidence (local, Windows 11, 2026-11-02)
+
+- **Startup installer:** `viwo install <every id>` installed all 17 pinned dependencies into
+  `third_party/` from the real pinned URLs with checksums verified: repak, retoc, vgmstream, GDRE
+  Tools, GodotPckTool, AssetStudioModCLI (on the pinned .NET 10 runtime under `third_party/dotnet`),
+  7-Zip (MSI administrative unpack), ffmpeg, ffprobe, unrar (self-extractor opened by 7-Zip),
+  QuickBMS, DataTool, RenderDoc (`renderdoccmd` and `qrenderdoc --py` as the harvest Python),
+  unrpyc, plus UnityPy, py7zr, unrpa and lz4 into `third_party/python`. `viwo slots` binds every
+  slot afterwards, including `capture.gpu` and `export.overwatch`. Two defects found and fixed on
+  the way: msiexec needs its quotes verbatim (paths with spaces), and a slow link can end a
+  download early (now retried with a size check).
+- **Preflight API:** `POST /api/preflight` as a job with one event per check and install; the
+  landing screen and 05 SYSTEM INSTALL buttons drive it.
+- **Merger on ffmpeg 7:** xfade needs a constant frame rate after setpts (fixed, test green with
+  ffmpeg 7.1.1 on Windows).
+
 ## Not verified yet (honest list)
 
 | Item | Why | How it gets verified |
@@ -48,7 +64,8 @@ noise), streams, survey, sanitizer, round trip, capture policy, the journal with
 
 - The game folder is only read: extraction copies, repack writes a separate marked copy, capture
   agents write through a journal that is restored.
-- No DRM or anti-cheat circumvention; no password or key guessing. Keys come from the user or from
-  the game's own files and are verified (D18). Capture is refused when anti-cheat or an online title
-  is detected.
+- No policy boundaries in code (owner's decision, 1.0): anti-cheat, online titles and sensitive
+  plugins produce warnings and one confirmation, never refusals; the user is responsible (README:
+  Philosophy, Legal and disclaimer). Keys come from the user or from the game's own files and are
+  verified (D18); ViWo authors no code for defeating copy protection or brute-forcing keys.
 - Secrets and found keys are never logged or written to disk.

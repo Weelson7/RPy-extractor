@@ -33,6 +33,7 @@ if b"BROKEN" in data and "{name}" == "gdre":
 target = Path(out) / "res" / "icon.png"
 target.parent.mkdir(parents=True, exist_ok=True)
 target.write_bytes(b"PNG-" + data[-6:])
+print("fake tool progress: 1 file written")
 """
 
 
@@ -91,12 +92,14 @@ class GodotPipelineTests(unittest.TestCase):
 
     def run_it(self, **kw):
         request = ExtractionRequest(str(self.game), str(self.root / "ws"), **kw)
-        return extract(self.rt, request, "j", lambda e: None, CancelToken())
+        self.events = []
+        return extract(self.rt, request, "j", self.events.append, CancelToken())
 
     def test_embedded_and_failover(self) -> None:
         embed(self.game / "Game.exe", make_pck())
         (self.game / "extra.pck").write_bytes(make_pck(b"BROKEN"))
         result = self.run_it()
+        self.assertTrue(any("fake tool progress" in e.message for e in self.events))
         self.assertEqual(result.runs[0].plugin_id, "godot")
         self.assertEqual(dict(result.by_backend), {"gdre-tools": 1, "godotpcktool": 1})
         self.assertIn("png/icon.png", tree_hashes(self.root / "ws", skip_reserved=True))

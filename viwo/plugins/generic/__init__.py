@@ -8,6 +8,9 @@ from viwo.contracts.types import DetectionResult
 MANIFEST = PluginManifest("generic", "Generic", "0.1.0", engine_type="generic", priority=-100)
 
 
+PLUGIN = "GenericPlugin"  # discovered by viwo.core.wiring.registry
+
+
 class GenericPlugin(EnginePlugin):
     @property
     def manifest(self) -> PluginManifest:

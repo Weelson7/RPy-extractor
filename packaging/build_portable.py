@@ -37,18 +37,44 @@ def build(out: Path) -> Path:
         str(work),
         "--collect-submodules",
         "viwo",
+        "--hidden-import",
+        "ssl",  # urllib only imports it lazily: without it https downloads fail in the bundle
+        "--hidden-import",
+        "_ssl",
         "--collect-data",
         "viwo",
         "--add-data",
         f"{ROOT / 'viwo/core/capture/rd_harvest.py'}{SEP}viwo/core/capture",
+        "--add-data",
+        f"{ROOT / 'indexes'}{SEP}indexes",  # per-game indexes ship with the bundle
     ]
     for package in ("UnityPy", "py7zr", "unrpa"):
         args += ["--collect-all", package]
     subprocess.run([*args, str(ROOT / "packaging" / "viwo_entry.py")], check=True, cwd=ROOT)
     bundle = out / "viwo"
-    for name in ("startup.ini", "README.md", "LICENSE"):
+    for name in (
+        "startup.ini",
+        "README.md",
+        "LICENSE",
+        "THIRD_PARTY_NOTICES.md",
+        "CONTRIBUTING.md",
+    ):
         shutil.copy2(ROOT / name, bundle / name)
+    _fix_openssl(bundle / "_internal")
     return bundle
+
+
+def _fix_openssl(internal: Path) -> None:
+    """PyInstaller resolves libssl/libcrypto by name and can pick a foreign build from PATH
+    (MSYS2, Git): the interpreter's own copies must ship, or https fails in the bundle."""
+    if os.name != "nt":
+        return
+    base = Path(sys.base_prefix)
+    for name in ("libssl-3-x64.dll", "libcrypto-3-x64.dll", "libssl-3.dll", "libcrypto-3.dll"):
+        for folder in (base / "Library" / "bin", base / "DLLs", base):
+            if (folder / name).is_file():
+                shutil.copy2(folder / name, internal / name)
+                break
 
 
 def smoke(bundle: Path) -> None:
@@ -63,6 +89,7 @@ def smoke(bundle: Path) -> None:
         ["--json", "detect", str(game)],
         ["extract", str(game), "--workspace", str(game.parent / "ws")],
         ["-m", "unrpa", "--version"],
+        ["-m", "ssl"],  # the installer needs https inside the bundle
     ):
         result = subprocess.run([str(exe), *argv], capture_output=True, text=True)
         print(f"$ viwo {' '.join(argv)} -> {result.returncode}")

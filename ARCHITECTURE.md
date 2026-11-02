@@ -20,16 +20,20 @@ viwo/
     sanitizer.py  phase 1: zero-byte, junk, wrong extension, duplicates, health; journaled
     survey.py  read-only coverage report per game / library
     jobs.py    background work with events, cancellation and results
-    workspace.py  ownership marker, re-extraction policy, per-workspace lock
+    workspace.py  ownership marker, re-extraction policy, per-workspace lock (+ lock file)
+    thirdparty.py / preflight.py  pinned tool installer (tools.json) and the startup check
+    indexes.py  per-game indexes (indexes/): validate, match, install tools and scripts, update
+    provenance.py / diag.py  provenance rewrite on moves; diagnostics bundle
   backends/    core unpackers: zip, tar (stdlib), 7-Zip, py7zr, unrar; zip packer
   plugins/     generic, renpy, unity, godot, unreal (repak/retoc, verified AES keys), doom (WAD),
                rpgmaker, kirikiri (XP3), electron (asar), source (VPK), bethesda (BSA/BA2),
                quickbms (script bridge)
-  api/         local web server (token, JSON-only, Host check), JSON handlers, job routes
-  web/         the web UI (plain HTML/CSS/ES modules, no build step)
-  data/        policy data (capture refusal list)
+  api/         local web server (token, JSON-only, Host check), JSON handlers (tools, capture,
+               settings, system), job routes
+  web/         the web UI (plain HTML/CSS/ES modules, no build step): landing + 11 views
+  data/        tools.json (pinned tools), capture_policy.json (warnings, never refusals)
   cli.py       viwo info | slots | detect | extract | replay | unpack | survey | sanitize |
-               repack | capture | serve
+               repack | capture | install | indexes | diag | config | serve
 ```
 
 Dependency direction: every layer may use the layers listed above it in this tree (contracts
@@ -45,5 +49,6 @@ Key invariants (tested):
 - GPL/AGPL tools run as separate processes; Ren'Py pickles are read with an allow-list.
 - Secrets are never written to disk (run records store `<secret>`); found AES keys are never logged.
 - Round trip writes only into a separate, marked patched copy and verifies every packed member.
-- Runtime capture is refused when anti-cheat or an online title is detected (no override).
+- No policy boundaries: nothing is refused because of what a game is. Anti-cheat, online titles and
+  sensitive plugins produce warnings; the user confirms once and is responsible (README: Philosophy).
 - Code size caps: see `loc_caps.ini` and `tools/loc_count.py`.

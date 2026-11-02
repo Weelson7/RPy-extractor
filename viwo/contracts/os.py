@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from pathlib import Path
-from typing import Mapping, Sequence
+from typing import Callable, Mapping, Sequence
 
 from .types import CancelToken, DependencySpec, ProcessResult, ToolLocation
 
@@ -31,9 +31,11 @@ class ProcessRunner(ABC):
         timeout: float | None = None,
         cancel: CancelToken | None = None,
         env: Mapping[str, str] | None = None,
+        on_line: Callable[[str], None] | None = None,
     ) -> ProcessResult:
         """Run to completion; never raises for non-zero exits. On timeout or cancel
-        the whole process tree is killed and timed_out=True is returned."""
+        the whole process tree is killed and timed_out=True is returned. on_line, when
+        given, receives every stdout/stderr line as it arrives (output is still captured)."""
 
 
 class ToolLocator(ABC):

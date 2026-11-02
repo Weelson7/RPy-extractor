@@ -24,6 +24,7 @@ from .pipeline.failover import run_with_failover
 from .pipeline.guard import changes, refuse_writes_inside, snapshot
 from .pipeline.identify import identify
 from .pipeline.ticker import Ticker
+from .workspace import workspace_lock, write_atomic
 
 MARKER = ".viwo-patched"
 CORE_PACK = {"unarchive.zip": "pack.zip"}
@@ -120,11 +121,13 @@ def source_game(workspace: Path) -> Path:
     return Path(max(runs)[2])
 
 
-def _policy(rt, items: list[PlanItem]) -> None:
+def _reminders(rt, items: list[PlanItem]) -> list[str]:
+    """Terms-of-service-sensitive plugins: a reminder, never a refusal (the user is responsible)."""
     owners = {rt.slots[i.slot].owner for i in items if i.slot in rt.slots}
     sensitive = [o for o in owners if o in rt.plugins and rt.plugins[o].manifest.tos_sensitive]
     if sensitive:
-        raise ViwoError("refused", f"repacking is refused for {', '.join(sensitive)} (policy)")
+        return [f"{', '.join(sensitive)}: own install, offline use; respect the game's terms"]
+    return []
 
 
 def _prepare(game: Path, target: Path, temp: Path, say=None) -> None:
@@ -135,10 +138,12 @@ def _prepare(game: Path, target: Path, temp: Path, say=None) -> None:
         shutil.copy2(src, dst)
         ticker.tick()
 
-    if target.exists() and any(target.iterdir()):
+    if target.exists() and any(p.name != ws.METADATA_DIR for p in target.iterdir()):
         if not (target / MARKER).is_dir():
             raise ViwoError("refused", f"{target} is not empty and is not a ViWo patched copy")
-        shutil.rmtree(target)
+        for entry in target.iterdir():  # the lock file (.extraction_metadata) stays
+            if entry.name != ws.METADATA_DIR:
+                shutil.rmtree(entry) if entry.is_dir() else entry.unlink()
     shutil.copytree(game, target, symlinks=True, dirs_exist_ok=True, copy_function=copy)
     (target / MARKER).mkdir(exist_ok=True)
 
@@ -234,7 +239,7 @@ def repack(
     game = source_game(workspace)
     edits, skipped = edit_set(workspace)
     items, warnings = plan(rt, game, edits)
-    _policy(rt, items)
+    warnings = [*warnings, *_reminders(rt, items)]
     report = {
         "game": str(game),
         "target": str(target or ""),
@@ -249,7 +254,8 @@ def repack(
         return report
     if target is None:
         raise ViwoError("invalid_request", "no target folder for the patched copy")
-    return _build(rt, game, target, items, report, (sink, cancel or CancelToken()))
+    with workspace_lock(target):  # two builds into one target cannot interleave
+        return _build(rt, game, target, items, report, (sink, cancel or CancelToken()))
 
 
 def _build(rt, game: Path, target: Path, items: list[PlanItem], report: dict, control) -> dict:
@@ -277,7 +283,7 @@ def _build(rt, game: Path, target: Path, items: list[PlanItem], report: dict, co
     touched = changes(before, snapshot(game))
     if touched:
         report["warnings"].append(f"GAME FOLDER CHANGED during repack: {', '.join(touched[:10])}")
-    (target / MARKER / "report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+    write_atomic(target / MARKER / "report.json", json.dumps(report, indent=2))
     say(
         ProgressEvent(
             f"Patched copy ready ({'verified' if report['verified'] else 'NOT verified'})",

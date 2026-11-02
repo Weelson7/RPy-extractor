@@ -63,6 +63,9 @@ class QuickBmsCli(Unarchiver):
         return Outcome(OutcomeKind.OK, files, notes=(f"script {script.name}",))
 
 
+PLUGIN = "QuickBmsPlugin"  # discovered by viwo.core.wiring.registry
+
+
 class QuickBmsPlugin(EnginePlugin):
     def __init__(self) -> None:
         self.table = ScriptTable()

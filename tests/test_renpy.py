@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import os
 import pickle
+import stat
+import sys
 import tempfile
 import unittest
 import zlib
@@ -125,6 +127,68 @@ class UnrpaSmokeTest(unittest.TestCase):
             outcome = Unrpa().extract(archive, root / "out", _Ctx())
             self.assertTrue(outcome.ok, outcome.error)
             self.assertEqual((root / "out/images/bg.png").read_bytes(), b"PNGDATA")
+
+
+FAKE_UNRPYC = """import sys
+from pathlib import Path
+args = [a for a in sys.argv[1:] if not a.startswith("-") and a != "1"]
+for name in args:
+    Path(name).with_suffix(".rpy").write_text("label start:\\n    'decompiled'\\n")
+"""
+
+
+def fake_unrpyc(folder: Path) -> str:
+    script = folder / "fake_unrpyc.py"
+    script.write_text(FAKE_UNRPYC)
+    script.chmod(script.stat().st_mode | stat.S_IEXEC)
+    tool = script
+    if sys.platform == "win32":
+        tool = folder / "fake_unrpyc.cmd"
+        tool.write_text(f'@"{sys.executable}" "{script}" %*\r\n')
+    return f"[plugins]\nrenpy = on\n[tools]\nunrpyc = {tool}\n"
+
+
+class DecompileTests(unittest.TestCase):
+    """decode.rpyc: every collected .rpyc gets a .rpy through unrpyc; the option switches it."""
+
+    def _game(self, root: Path) -> Path:
+        game = root / "game"
+        (game / "game").mkdir(parents=True)
+        make_rpa(game / "game" / "archive.rpa", {"packed.rpyc": b"RENPY RPC2 packed"})
+        (game / "game" / "loose.rpyc").write_bytes(b"RENPY RPC2 loose")
+        (game / "renpy").mkdir()
+        return game
+
+    def test_rpyc_files_are_decompiled_with_provenance(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            game = self._game(root)
+            rt = runtime(root, fake_unrpyc(root))
+            self.assertEqual(rt.bindings["decode.rpyc"].main, "unrpyc-cli")
+            ws = root / "ws"
+            result = extract(
+                rt, ExtractionRequest(str(game), str(ws)), "j", lambda e: None, CancelToken()
+            )
+            self.assertTrue(result.success)
+            files = tree_hashes(ws, skip_reserved=True)
+            self.assertIn("rpy/packed.rpy", files)
+            self.assertIn("rpy/loose.rpy", files)
+            self.assertIn("rpyc/loose.rpyc", files)  # originals stay
+            lines = (ws / ".extraction_metadata" / "provenance.jsonl").read_text().splitlines()
+            origins = {r["origin"] for r in map(__import__("json").loads, lines)}
+            self.assertIn("decode:unrpyc-cli:rpyc/loose.rpyc:loose.rpy", origins)
+
+    def test_decompile_option_off_and_missing_tool(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            game = self._game(root)
+            rt = runtime(root, fake_unrpyc(root) + "[options.renpy]\ndecompile = off\n")
+            ws = root / "ws"
+            extract(rt, ExtractionRequest(str(game), str(ws)), "j", lambda e: None, CancelToken())
+            self.assertFalse((ws / "rpy").exists())
+            (root / "bare").mkdir()
+            bare = runtime(root / "bare", "[plugins]\nrenpy = on\n")
+            self.assertFalse(bare.bindings["decode.rpyc"].bound)
 
 
 if __name__ == "__main__":

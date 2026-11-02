@@ -1,6 +1,6 @@
 // 07 SURVEY: read-only coverage check of one game or a whole library — what ViWo can pull, and what stays locked.
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, viewHead, empty, errorBox, toastErr, pref, logLine, fmtBytes, fmtNum, emit, bus, stat, browseBtn } from "../ui.js";
+import { h, fill, btn, panel, badge, viewHead, empty, errorBox, toast, toastErr, pref, logLine, fmtBytes, fmtNum, emit, bus, stat, browseBtn } from "../ui.js";
 import { jobProgress } from "../progress.js";
 import { gameCard, categoryKey, dataBytes, coveredBytes, pct, covKind } from "./survey-card.js";
 
@@ -19,6 +19,7 @@ function mount(root) {
   el.sum = h("div", { class: "ab-sum mono" });
   el.why = h("span", { class: "ab-why" });
   el.run = btn("SURVEY", () => run(), "primary lg");
+  el.cancel = btn("CANCEL", cancelJob, "ghost", { hidden: true });
   root.append(
     viewHead("07", "SURVEY", "What can ViWo pull? Survey one game or a folder of games: every file is sorted by what extraction would do with it. Read-only — nothing is copied or written."),
     panel("07.A", "GAME OR LIBRARY FOLDER", badge("READ-ONLY", "ok"),
@@ -28,7 +29,7 @@ function mount(root) {
         h("span", { class: "dim", id: "survey-deep-note" }, "also try the carver on unknown files — slower")),
       h("p", { class: "note" }, "A folder that looks like a game is surveyed as one game; otherwise each sub-folder is one game.")),
     el.progPanel, el.summary, el.cards,
-    h("div", { class: "actionbar" }, el.sum, el.why, el.run));
+    h("div", { class: "actionbar" }, el.sum, el.why, el.cancel, el.run));
   setDeep(S.deep);
   renderIdle();
 }
@@ -47,6 +48,13 @@ function bar() {
   el.why.textContent = S.running ? "survey running…" : !name ? "pick a folder" : "";
   el.run.disabled = Boolean(el.why.textContent);
   el.run.textContent = S.running ? "SURVEYING…" : "SURVEY";
+  el.cancel.hidden = !S.running;
+}
+
+async function cancelJob() {
+  const id = el.prog.id;
+  if (!id) return toast("Job not registered yet — try again in a moment.", "warn");
+  try { await api.cancel(id); toast("Cancellation requested.", "warn"); } catch (err) { toastErr(err); }
 }
 
 function renderIdle() {
@@ -75,8 +83,8 @@ async function run() {
     S.ranDeep = S.deep;
     render();
   } catch (err) {
-    await el.prog.finish("fail", err.message);
-    fill(el.cards, errorBox(err, "SURVEY FAILED", err.code === "not_found" ? "Check the folder path: pick a game folder or a folder that holds several games." : ""));
+    await el.prog.finish(err.code === "cancelled" ? "cancel" : "fail", err.message);
+    fill(el.cards, errorBox(err, err.code === "cancelled" ? "SURVEY CANCELLED" : "SURVEY FAILED", err.code === "not_found" ? "Check the folder path: pick a game folder or a folder that holds several games." : ""));
     toastErr(err, "Survey failed: ");
   } finally {
     S.running = false;

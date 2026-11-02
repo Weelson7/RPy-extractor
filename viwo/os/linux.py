@@ -7,7 +7,7 @@ import signal
 import subprocess
 import sys
 from pathlib import Path
-from typing import Mapping
+from typing import Mapping, Sequence
 
 from viwo.contracts.os import OS, DesktopShell, FileSystemPolicy
 
@@ -54,7 +54,7 @@ class LinuxShell(DesktopShell):
 class LinuxOS(OS):
     os_id = "linux"
 
-    def __init__(self, tool_overrides: Mapping[str, str] | None = None) -> None:
+    def __init__(self, tool_overrides: Mapping[str, str | Sequence[str]] | None = None) -> None:
         arg_max = os.sysconf("SC_ARG_MAX") if hasattr(os, "sysconf") else 131072
         self._process = SubprocessRunner(
             max(4096, arg_max // 2), {"start_new_session": True}, _kill_group

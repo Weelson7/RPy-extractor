@@ -21,7 +21,7 @@ from ..pipeline.failover import run_with_failover
 from ..pipeline.guard import refuse_writes_inside
 from ..pipeline.probe import FolderProbe
 from ..pipeline.runner import detect_all
-from ..workspace import claim
+from ..workspace import claim, write_atomic
 from .journal import pending
 from .policy import check
 from .renderdoc import RENDERDOCCMD, RenderDocCapture
@@ -55,7 +55,8 @@ class CaptureRequest:
 
 
 def _restore_pending(rt, say) -> None:
-    for journal in pending(rt.temp_root.parent / "capture"):
+    warn = lambda m: say(ProgressEvent(m, "warn", "core", "restore"))  # noqa: E731
+    for journal in pending(rt.temp_root.parent / "capture", warn):
         say(
             ProgressEvent(
                 f"Restoring an interrupted session in {journal.game}", "warn", "core", "restore"
@@ -138,7 +139,7 @@ def capture(rt, req: CaptureRequest, sink=None, cancel=None) -> dict:
     }
     (req.workspace / ws.RUNS_DIR).mkdir(parents=True, exist_ok=True)
     record = req.workspace / ws.RUNS_DIR / f"capture-{job}.json"
-    record.write_text(json.dumps(report, indent=2), encoding="utf-8")
+    write_atomic(record, json.dumps(report, indent=2))
     say(
         ProgressEvent(
             f"Captured {gathered.collected} file(s), {len(new)} new vs static",

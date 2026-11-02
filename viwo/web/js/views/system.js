@@ -1,7 +1,8 @@
-// 05 SYSTEM: optional tools by engine (what each enables), formats (slots), plugins, startup ini and notes.
+// 05 SYSTEM: optional tools by engine (what each enables, INSTALL buttons), formats (slots), plugins, startup ini and notes.
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, viewHead, errorBox, busy, fmtNum, stat } from "../ui.js";
-import { withSkeleton } from "../progress.js";
+import { h, fill, btn, panel, badge, viewHead, errorBox, busy, fmtNum, stat, toast, toastErr, emit, bus } from "../ui.js";
+import { withSkeleton, jobProgress } from "../progress.js";
+import { maintenancePanel } from "./system-maint.js";
 
 /** Tool id -> what it enables, in plain words. */
 const ENABLES = {
@@ -12,16 +13,18 @@ const ENABLES = {
   unrar: "opening .rar archives",
   vgmstream: "turning game audio (Wwise .wem, FMOD .fsb, CRI…) into playable WAV",
   renderdoccmd: "runtime GPU capture (advanced)",
-  rdpython: "runtime GPU capture (advanced)",
+  rdpython: "runtime GPU capture: harvesting captures (RenderDoc's own Python)",
   gdre: "opening Godot .pck packs, encrypted ones too",
   godotpcktool: "opening Godot .pck packs and Godot patched copies",
   datatool: "Overwatch extraction",
-  quickbms: "archives handled by QuickBMS scripts",
+  quickbms: "archives handled by QuickBMS scripts (installed per game by the indexes)",
   unrpa: "a second Ren'Py .rpa unpacker (the built-in one already works)",
   assetstudiomod: "Unity asset export (alternative to UnityPy)",
   unitypy: "Unity asset export and Unity patched copies",
   repak: "opening Unreal .pak files and Unreal patched copies",
   retoc: "Unreal Engine 5 IoStore files (.utoc/.ucas)",
+  lz4: "Skyrim Special Edition .bsa archives (LZ4-compressed entries)",
+  unrpyc: "Ren'Py scripts: .rpyc compiled files back to readable .rpy",
 };
 const NAMES = { upak: ".pak", unity: "Unity bundles", rpgmaker: "RPG Maker files", bms: "QuickBMS archives", utoc: ".utoc/.ucas" };
 const FIXED = { "carve.signatures": "find files hidden inside unknown data", "capture.gpu": "runtime GPU capture", "media.encode": "encode MP4 videos (06 MERGER)" };
@@ -35,21 +38,28 @@ export function slotText(id) {
 }
 
 const el = {};
+const S = { busy: false };
 
 function mount(root) {
+  el.root = root;
   el.stats = h("div", { class: "stats" }, ["OS", "TOOLS FOUND", "FORMATS READY", "PLUGINS", "STARTUP NOTES"].map((l) => stat(l, "…")));
   el.tools = h("div", {});
   el.slots = h("div", {});
   el.plugins = h("div", { class: "cards" });
   el.startup = h("div", {});
+  el.prog = jobProgress("install", { logClass: "feed short" });
+  el.progHost = h("div", { class: "install-prog", hidden: true }, el.prog.el);
+  el.all = btn("INSTALL ALL MISSING", (e) => busy(e.currentTarget, installAll), "primary");
+  el.recheck = btn("RE-CHECK", (e) => busy(e.currentTarget, recheck), "ghost");
   root.append(
-    viewHead("05", "SYSTEM", "What this ViWo install can do, and which optional tools unlock more formats. Install a tool, then restart ViWo.",
+    viewHead("05", "SYSTEM", "What this ViWo install can do. Missing tools install themselves into third_party/ (pinned versions, checksums verified); nothing is installed anywhere else.",
       btn("REFRESH", (e) => busy(e.currentTarget, load), "ghost")),
     el.stats,
-    panel("05.A", "OPTIONAL TOOLS BY ENGINE", null, el.tools),
+    panel("05.A", "OPTIONAL TOOLS BY ENGINE", h("div", { class: "row" }, el.recheck, el.all), el.progHost, el.tools),
     h("div", { class: "grid2 sys" },
       h("div", { class: "col" }, panel("05.B", "FORMATS (BACKEND SLOTS)", null, el.slots)),
-      h("div", { class: "col" }, panel("05.C", "ENGINE PLUGINS", null, el.plugins), panel("05.D", "STARTUP", null, el.startup))));
+      h("div", { class: "col" }, panel("05.C", "ENGINE PLUGINS", null, el.plugins), panel("05.D", "STARTUP", null, el.startup), maintenancePanel())));
+  bus.addEventListener("preflight", () => { if (!el.root.hidden) load(); }); // the landing or an install changed the bindings
 }
 
 async function load() {
@@ -62,7 +72,44 @@ async function load() {
   show(el.startup, distro, startup, "STARTUP INFO UNAVAILABLE");
   show(el.plugins, plugins, (list) => list.map(pluginCard), "PLUGINS UNAVAILABLE");
   if (distro.status === "fulfilled") renderStats(distro.value, deps.value);
+  const missing = (deps.value?.dependencies || []).filter((d) => !d.available && d.installable).length;
+  el.all.disabled = !missing || S.busy;
+  el.all.textContent = missing ? `INSTALL ALL MISSING (${missing})` : "NOTHING TO INSTALL";
 }
+
+/** One install at a time: every install control is disabled while a job runs. */
+function lock(on) {
+  S.busy = on;
+  el.recheck.disabled = on;
+  if (on) el.all.disabled = true;
+  el.tools.querySelectorAll("button").forEach((b) => { b.disabled = on; });
+}
+
+/** Run one install/preflight job with live progress, then reload the tables (bindings changed). */
+async function runJob(kind, work, label) {
+  if (S.busy) return toast("Another install is running.", "warn");
+  lock(true);
+  el.progHost.hidden = false;
+  el.prog.stop();
+  el.prog = jobProgress(kind, { logClass: "feed short" });
+  fill(el.progHost, el.prog.el);
+  await el.prog.start();
+  try {
+    const res = await work();
+    await el.prog.finish("ok", label(res));
+    toast(label(res), "ok");
+  } catch (err) {
+    await el.prog.finish("fail", err.message);
+    toastErr(err, "INSTALL FAILED: ");
+  } finally {
+    lock(false);
+    emit("preflight"); // 05 SYSTEM (through the bus), the top-bar chips and 01 EXTRACT re-read the bindings
+  }
+}
+
+const installOne = (d) => runJob("install", () => api.installTool(d.id), () => `${d.label} installed`);
+const installAll = () => runJob("preflight", api.preflight, (r) => `${r.ready}/${r.total} tools ready, ${r.installed.length} installed${r.failed.length ? `, ${r.failed.length} failed` : ""}`);
+const recheck = installAll;
 
 function renderStats(d, deps) {
   const slots = Object.values(d.slots || {});
@@ -76,21 +123,28 @@ function renderStats(d, deps) {
     stat("STARTUP NOTES", fmtNum(d.problems.length), "mostly tools not installed", d.problems.length ? "warn" : "ok"));
 }
 
+function toolRow(d) {
+  const how = d.available ? h("span", { class: "mono small" }, d.location || "on PATH")
+    : d.installable ? h("div", { class: "row" }, btn("INSTALL", (e) => busy(e.currentTarget, () => installOne(d)), "sm primary"), h("span", { class: "small dim" }, "pinned, checksum verified"))
+    : h("span", { class: "small" }, d.hint);
+  return h("tr", {},
+    h("td", {}, h("b", {}, d.label), d.version ? h("small", { class: "mono dim block" }, d.version) : null),
+    h("td", { class: "small" }, ENABLES[d.id] || d.category),
+    h("td", {}, d.available ? badge("INSTALLED", "ok") : badge(d.installable ? "NOT INSTALLED" : "MANUAL", d.installable ? "warn" : "mute")),
+    h("td", {}, how));
+}
+
 function toolGroups(res, names) {
   const groups = {};
   res.dependencies.forEach((d) => (groups[d.category] ||= []).push(d));
   const order = Object.keys(groups).sort((a, b) => (a === "core" ? -1 : b === "core" ? 1 : a.localeCompare(b)));
-  return [h("p", { class: "note first" }, "Everything here is optional. Without a tool ViWo still runs; it just skips the formats that tool handles."),
+  return [h("p", { class: "note first" }, "Everything here is optional. Without a tool ViWo still runs; it just skips the formats that tool handles. INSTALL fetches the pinned release into third_party/ and binds it right away."),
     h("table", { class: "tbl deps" },
-      h("thead", {}, h("tr", {}, ["TOOL", "ENABLES", "STATUS", "HOW TO GET IT"].map((c) => h("th", {}, c)))),
+      h("thead", {}, h("tr", {}, ["TOOL", "ENABLES", "STATUS", "WHERE / INSTALL"].map((c) => h("th", {}, c)))),
       order.map((cat) => h("tbody", {},
         h("tr", { class: "grp" }, h("th", { colspan: 4, scope: "rowgroup" }, cat === "core" ? "ALL ENGINES" : (names[cat] || cat).toUpperCase(),
           h("span", { class: "dim" }, ` · ${groups[cat].filter((d) => d.available).length}/${groups[cat].length} installed`))),
-        groups[cat].map((d) => h("tr", {},
-          h("td", {}, h("b", {}, d.label)),
-          h("td", { class: "small" }, ENABLES[d.id] || d.category),
-          h("td", {}, d.available ? badge("INSTALLED", "ok") : badge(d.required ? "MISSING" : "OPTIONAL", d.required ? "err" : "mute")),
-          h("td", { class: "mono small" }, d.available ? d.location || "on PATH" : d.hint))))))];
+        groups[cat].map(toolRow))))];
 }
 
 function slotsTable(d) {

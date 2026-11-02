@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "slug": "godot-generic",
+  "game_version": "any",
+  "title": "Any Godot game",
+  "engine": "godot",
+  "detect": [
+    "*.pck"
+  ],
+  "plugins": [
+    "godot"
+  ],
+  "tools": [
+    "gdre",
+    "godotpcktool"
+  ],
+  "notes": "Standalone .pck; PCKs embedded in the executable are carved. Encrypted PCKs need the key as a plugin option (entered at run time, never stored here).",
+  "source": "own testing; GDRE Tools",
+  "options": {},
+  "scripts": []
+}

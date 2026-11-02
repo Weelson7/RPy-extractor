@@ -29,6 +29,9 @@ PCK_SLOT = SlotDefinition(
 EXECUTABLES = (".exe", ".x86_64", ".x86_32", ".arm64", ".arm32")
 
 
+PLUGIN = "GodotPlugin"  # discovered by viwo.core.wiring.registry
+
+
 class GodotPlugin(EnginePlugin):
     @property
     def manifest(self) -> PluginManifest:

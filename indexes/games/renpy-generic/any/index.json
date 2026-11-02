@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "slug": "renpy-generic",
+  "game_version": "any",
+  "title": "Any Ren'Py game",
+  "engine": "renpy",
+  "detect": [
+    "game/*.rpa",
+    "renpy"
+  ],
+  "plugins": [
+    "renpy"
+  ],
+  "tools": [],
+  "notes": "The built-in safe RPA reader handles RPA-2/3; unrpa is the spare. .rpyc script decompilation is a later rung.",
+  "source": "own testing",
+  "options": {},
+  "scripts": []
+}

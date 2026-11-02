@@ -82,7 +82,7 @@ function missingTools() {
   return h("div", { class: "alert warn" }, h("b", {}, "OPTIONAL TOOLS NOT INSTALLED"),
     h("p", {}, `${gaps.map(([n, s]) => `${n}: ${slotText(s)}`).join(" · ")}. Extraction still runs and copies everything else.`),
     h("ul", { class: "small" }, how.map((x) => h("li", {}, x))),
-    h("p", {}, h("a", { href: "#system" }, "Open 05 SYSTEM for what to install →")));
+    h("p", {}, h("a", { href: "#system" }, "Open 05 SYSTEM to install them (one click) →")));
 }
 
 function renderDetect() {

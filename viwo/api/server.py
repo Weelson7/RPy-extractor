@@ -23,6 +23,7 @@ from .handlers import GET, POST
 WEB_ROOT = Path(__file__).resolve().parent.parent / "web"
 TOKEN_HEADER = "X-VIWO-Token"
 RANGE = re.compile(r"bytes=(\d*)-(\d*)")
+MAX_BODY = 16 << 20  # JSON requests only; anything bigger is not a ViWo request
 
 
 def byte_range(header: str, size: int) -> tuple[int, int] | None:
@@ -118,7 +119,12 @@ class Handler(BaseHTTPRequestHandler):
         kind = str(self.headers.get("Content-Type", "")).split(";", 1)[0].strip().lower()
         if kind != "application/json":
             return self._reject(415, "Content-Type must be application/json")
-        size = int(self.headers.get("Content-Length", 0) or 0)
+        try:
+            size = int(self.headers.get("Content-Length", 0) or 0)
+        except ValueError:
+            size = -1
+        if size < 0 or size > MAX_BODY:
+            return self._reject(413, "Request body too large or malformed")
         try:
             data = json.loads(self.rfile.read(size).decode("utf-8") or "{}")
         except (UnicodeDecodeError, json.JSONDecodeError):
@@ -189,10 +195,24 @@ def make_server(app: App, host: str | None = None, port: int | None = None) -> T
     )
 
 
+def strict_check(app: App) -> list[str]:
+    """doc 9.3 step 9: run the preflight (installs), rebind, list plugin slots still unbound."""
+    from viwo.core.preflight import preflight, strict_problems
+
+    report = preflight(app.rt, lambda e: print(e.legacy_line(), flush=True))
+    if report["installed"]:
+        app.reload()
+    return strict_problems(app.rt)
+
+
 def serve(
     ini: Path | None = None, host: str | None = None, port: int | None = None, browser: bool = True
 ) -> int:
     app = get_app(ini)
+    if app.rt.config.strict_preflight and (missing := strict_check(app)):
+        print("viwo: strict_preflight is on and these formats have no tool:", flush=True)
+        print("\n".join(f"  {m}" for m in missing), flush=True)
+        return 4
     try:
         httpd = make_server(app, host, port)
     except OSError as exc:

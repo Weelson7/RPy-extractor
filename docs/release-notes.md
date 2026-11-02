@@ -16,8 +16,15 @@ A local-first game reverse-engineering platform, oriented towards asset extracti
   files, zlib/gzip stream inflation, and decoders (game audio to WAV, DDS to PNG).
 - `survey` a whole library, `sanitize` a workspace (with undo), `repack` your edits into a
   verified patched copy of the game, and a runtime-capture pilot (RenderDoc, off by default).
-- Web UI: extract, workspace, sort, jobs, system, merger, survey, cleanup, patched copy.
+- Web UI: a landing screen that installs the missing tools, then extract, workspace, sort, jobs,
+  system (install buttons, updates, diagnostics), merger, survey, cleanup, patched copy, capture,
+  settings.
 
-**Never**: writes to your game folder, circumvents DRM or anti-cheat, or guesses keys.
+**Philosophy** (README): a community tool, MIT, forkable. For everyone who wants to look inside a
+game, with no judgement of user or purpose. No boundaries and no safeguards in the code: nothing
+is refused because of what a game is; anti-cheat and online detection are warnings plus one
+opt-in. A disclaimer replaces safeguards: ViWo and the third-party tools and scripts it ships
+could be misused; the project neither condones nor suggests it and the responsibility is the
+user's. Borderline code is never first-party. The game folder is never written to.
 
 Known limits are listed in `docs/prototype-b/STATUS.md`.

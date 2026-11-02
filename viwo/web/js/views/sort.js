@@ -88,15 +88,17 @@ function renderList() {
   renderReview();
   fill(el.list, shown().map((i) => {
     const a = S.items[i];
-    return h("li", { role: "option", "aria-selected": String(i === S.idx), class: S.kept.has(a.path) ? "kept" : "", "data-i": i, onclick: () => select(i) },
+    return h("li", { role: "option", id: `asset-${i}`, "aria-selected": String(i === S.idx), class: S.kept.has(a.path) ? "kept" : "", "data-i": i, onclick: () => select(i) },
       h("span", { class: `tag t-${a.type}` }, TAG[a.type] || "BIN"), h("span", { class: "nm", title: a.name }, a.name),
       S.kept.has(a.path) ? h("span", { class: "ok-mark", title: "kept this session" }, "✓") : null, h("span", { class: "sz mono" }, fmtBytes(a.size)));
   }));
+  el.list.setAttribute("aria-activedescendant", `asset-${S.idx}`);
   row(S.idx)?.scrollIntoView({ block: "nearest" });
 }
 
 function select(i) {
   S.idx = i;
+  el.list.setAttribute("aria-activedescendant", `asset-${i}`);
   el.list.querySelectorAll("li").forEach((li) => li.setAttribute("aria-selected", String(Number(li.dataset.i) === i)));
   row(i)?.scrollIntoView({ block: "nearest" });
   preview();
@@ -248,7 +250,8 @@ function onKey(e) {
   };
   const fn = ctrl && e.key.toLowerCase() === "z" ? undo : !ctrl && !e.altKey ? map[e.key] : null;
   if (!fn) return;
-  if (e.key === " " && (e.target.closest?.("audio, video") || !el.root.contains(e.target) && !["BODY", "MAIN"].includes(e.target.tagName))) return;
+  // Space on a focused button or link activates it; on the player it toggles; elsewhere in the view it is play/pause
+  if (e.key === " " && (e.target.closest?.("audio, video, button, a, [role=\"button\"]") || (!el.root.contains(e.target) && !["BODY", "MAIN"].includes(e.target.tagName)))) return;
   e.preventDefault();
   fn();
 }

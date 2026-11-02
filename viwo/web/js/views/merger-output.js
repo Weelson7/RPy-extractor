@@ -60,7 +60,7 @@ function overlayRow() {
     oninput: (e) => { O.overlaySound = e.target.value.trim(); } });
   const pick = (e) => busy(e.currentTarget, async () => {
     try { O.overlaySound = input.value = (await api.mergerOverlay(O.overlaySound)).path; } catch (err) {
-      if (!err.payload?.cancelled) toast("Picker unavailable on this host — type the path.", "warn", err.message);
+      if (!err.payload?.cancelled) toast("No file picker on this computer: type or paste the path instead.", "warn", err.message);
     }
   });
   const vol = h("output", { class: "mono" }, `${Math.round(O.overlayVolume * 100)}%`);

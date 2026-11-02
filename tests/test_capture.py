@@ -46,7 +46,8 @@ def script(folder: Path, name: str, body: str) -> Path:
 
 
 class PolicyTests(unittest.TestCase):
-    def test_refusals(self) -> None:
+    def test_feature_switch_confirmation_and_warnings(self) -> None:
+        """Capture is gated by the ini switch and one confirmation; the rest are warnings."""
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             game = root / "MyGame"
@@ -59,15 +60,13 @@ class PolicyTests(unittest.TestCase):
             with self.assertRaises(ViwoError) as err:
                 check(rt, game, False, [])
             self.assertEqual(err.exception.code, "needs_decision")
-            self.assertTrue(check(rt, game, True, []))
+            self.assertEqual(len(check(rt, game, True, [])), 1)
             (game / "EasyAntiCheat").mkdir()
-            for folder in (game, root / "Overwatch"):
-                folder.mkdir(exist_ok=True)
-                with self.assertRaises(ViwoError) as err:
-                    check(rt, folder, True, [])
-                self.assertEqual(err.exception.code, "refused")
-            with self.assertRaises(ViwoError):
-                check(rt, root / "Overwatch", True, ["overwatch"])
+            (root / "Overwatch").mkdir()
+            self.assertIn("anti-cheat", check(rt, game, True, [])[0])
+            warned = check(rt, root / "Overwatch", True, ["overwatch"])
+            self.assertEqual(len(warned), 3)  # online title, sensitive plugin, offline advice
+            self.assertIn("online", warned[0])
 
 
 class JournalTests(unittest.TestCase):
@@ -88,7 +87,30 @@ class JournalTests(unittest.TestCase):
             [found] = pending(root / "state")
             self.assertEqual(found.restore(), [])
             self.assertEqual({k: v for k, v in tree_hashes(game).items()}, before)
+            self.assertFalse((game / "BepInEx").exists())  # folders the agent created are gone
             self.assertEqual(pending(root / "state"), [])
+
+    def test_damaged_journal_restores_what_it_can(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            game = root / "game"
+            game.mkdir()
+            (game / "a.txt").write_text("A")
+            journal = Journal(root / "state", game, "s2")
+            journal.write("a.txt", b"patched")
+            journal.write("new/b.txt", b"B")
+            text = journal.file.read_text(encoding="utf-8")
+            journal.file.write_text(text[:-10], encoding="utf-8")  # truncated last line
+            warned = []
+            [found] = pending(root / "state", warned.append)
+            self.assertEqual(len(found.entries), 1)
+            self.assertTrue(warned and "damaged" in warned[0])
+            self.assertEqual(found.restore(), [])
+            self.assertEqual((game / "a.txt").read_text(), "A")
+            (root / "state" / "s3").mkdir(parents=True)
+            (root / "state" / "s3" / "journal.json").write_text("garbage", encoding="utf-8")
+            self.assertEqual(pending(root / "state", warned.append), [])
+            self.assertTrue(any("unreadable" in w for w in warned))
 
 
 class CaptureRunTests(unittest.TestCase):

@@ -99,20 +99,34 @@ def decoders() -> list[Decoder]:
     return [VgmstreamCli(), FfmpegDecode(), FfmpegImage(), FfmpegVideo()]
 
 
+def _wanted(run, options: dict) -> dict[str, str]:
+    """suffix -> bound decode slot: core slots (video opt-in) and plugin-owned decompilers
+    (switched by the plugin's `decompile` option, default on)."""
+    rt, wanted = run.rt, {}
+    video = str(options.get("decode_video", "off")).lower() in ("on", "true", "1", "yes")
+    for sid, slot in rt.slots.items():
+        if slot.family != "decode" or not (sid in rt.bindings and rt.bindings[sid].bound):
+            continue
+        if sid == "decode.video" and not video:
+            continue
+        if slot.owner != "core":
+            choice = str(run.ctx(slot.owner).options.get("decompile", "on")).lower()
+            if choice in ("off", "false", "0", "no"):
+                continue
+        wanted.update(dict.fromkeys(slot.suffixes, sid))
+    return wanted
+
+
 def decode_all(run, workspace: Path, provenance: list[dict]):
     """Decode collected files in place; returns the collect report of the new files."""
     ctx, rt = run.ctx("core"), run.rt
     if str(ctx.options.get("decode", "on")).lower() in ("off", "false", "0", "no"):
         return None
-    video = str(ctx.options.get("decode_video", "off")).lower() in ("on", "true", "1", "yes")
-    wanted: dict[str, str] = {}
-    for sid in ("decode.audio", "decode.image") + (("decode.video",) if video else ()):
-        if sid in rt.bindings and rt.bindings[sid].bound:
-            wanted.update(dict.fromkeys(rt.slots[sid].suffixes, sid))
+    wanted = _wanted(run, ctx.options)
     todo = [p["path"] for p in provenance if Path(p["path"]).suffix.lower() in wanted]
     if not todo:
         return None
-    run.log(f"Decoding {len(todo)} file(s) into WAV / PNG / MP4", "decode")
+    run.log(f"Decoding {len(todo)} file(s) into WAV / PNG / MP4 / RPY", "decode")
 
     def one(rel: str) -> Source | None:
         if run.cancel.cancelled:

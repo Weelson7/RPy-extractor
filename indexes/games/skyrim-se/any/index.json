@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "slug": "skyrim-se",
+  "game_version": "any",
+  "title": "The Elder Scrolls V: Skyrim Special Edition",
+  "engine": "bethesda",
+  "detect": [
+    "Skyrim.esm",
+    "Data/Skyrim - Textures0.bsa"
+  ],
+  "plugins": [
+    "bethesda"
+  ],
+  "tools": [
+    "lz4"
+  ],
+  "notes": "BSA version 105 compresses entries with LZ4 frames: the lz4 Python package is needed or those entries are skipped (reported). Textures are DDS; decode to PNG through the DECODE stage.",
+  "source": "UESP BSA format page; own testing",
+  "options": {},
+  "scripts": []
+}

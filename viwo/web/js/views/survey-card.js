@@ -52,7 +52,7 @@ function unknownBlock(list, deep, onDeep) {
 
 const missingBlock = (tools) => (tools?.length ? h("div", { class: "alert warn" }, h("b", {}, "OPTIONAL TOOLS NOT INSTALLED · WOULD COVER MORE"),
   h("ul", { class: "mono" }, tools.map((t) => h("li", {}, t))),
-  h("p", {}, h("a", { href: "#system" }, "Open 05 SYSTEM →"), " for what to install. Restart ViWo afterwards.")) : null);
+  h("p", {}, h("a", { href: "#system" }, "Install them in 05 SYSTEM (one click) →"), " then survey again.")) : null);
 
 export function gameCard(g, i, { deep, onExtract, onDeep }) {
   const name = g.path.split(/[\\/]/).filter(Boolean).pop() || g.path;

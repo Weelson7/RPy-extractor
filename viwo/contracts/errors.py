@@ -15,6 +15,7 @@ CODES = (
     "failed",
     "cancelled",
     "refused",
+    "offline",
     "internal",
 )
 

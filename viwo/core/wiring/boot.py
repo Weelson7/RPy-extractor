@@ -13,6 +13,7 @@ from viwo.contracts.plugin import EnginePlugin
 from viwo.contracts.slots import Backend, SlotBinding, SlotDefinition
 from viwo.os import select_os
 
+from .. import thirdparty
 from .binder import bind_all
 from .ini import StartupConfig, load_ini
 from .registry import collect, load_enabled
@@ -57,6 +58,7 @@ class Runtime:
                         "requirement": spec.requirement.value,
                         "location": found.path if found else "",
                         "hint": spec.hint,
+                        "installable": thirdparty.installable(spec.dep_id, spec.kind),
                     }
                 )
         unique = {item["id"]: item for item in items}
@@ -78,13 +80,14 @@ def boot(
     temp_root: Path | None = None,
 ) -> Runtime:
     config = load_ini(ini_path if ini_path is not None else DEFAULT_INI)
-    from viwo.core import thirdparty
-
     home = thirdparty.home_of(config)
     thirdparty.activate(home)  # pinned Python packages installed under third_party/python
     tools = {**thirdparty.found_tools(home), **config.tools}  # the ini wins over third_party/
+    scripts = home / "third_party" / "quickbms" / "scripts"
+    if scripts.is_dir() and not config.options.get("quickbms", {}).get("scripts"):
+        config.options.setdefault("quickbms", {})["scripts"] = str(scripts)
     layer = select_os(os_id or config.os_id, tools)
-    plugins, problems = load_enabled(config.plugins)
+    plugins, problems = load_enabled(config.plugins, config.custom_dirs)
     for plugin_id, plugin in plugins.items():
         try:
             plugin.configure(config.options.get(plugin_id, {}))

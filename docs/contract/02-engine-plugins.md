@@ -142,6 +142,9 @@ into these declarations, so the tool-name lists that v1 duplicates between
 
 ## 2.8 Custom plugins
 
+> **Revision (1.0, implemented):** nothing is hardcoded any more. Built-ins are discovered by scanning `viwo/plugins/*/` (marker `PLUGIN = "ClassName"` or the single `EnginePlugin` subclass; id = `manifest.plugin_id`). Drop-ins come from `[plugins] custom_dirs` folders with a `plugin.json` (`entry` or `module` + `class`, `requires`, `enabled`, `override`) and from the `viwo.plugins` entry-point group. Drop-ins are opt-in; a failure disables only that plugin. See `docs/plugins.md` and `examples/plugins/hello/`.
+
+
 ```text
 <custom_dir>/<name>/plugin.json        # custom_dirs from the startup ini, e.g. user_plugins/ (not plugins/, which is the built-in layer)
 {

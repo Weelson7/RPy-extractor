@@ -1,22 +1,33 @@
-"""Ren'Py engine plugin (doc 2.7): RPA archives, `game/` as the loose-file root."""
+"""Ren'Py engine plugin (doc 2.7): RPA archives, `game/` as the loose-file root, .rpyc decompile."""
 
 from __future__ import annotations
 
 from pathlib import Path
 
-from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest
+from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest, PluginOption
 from viwo.contracts.slots import SlotDefinition
 from viwo.contracts.types import DetectionResult
 
+from .decompile import RPYC_SLOT, UnrpycCli
 from .pack import RpaWriter
 from .rpa import RpaSafe, Unrpa
 
-MANIFEST = PluginManifest("renpy", "Ren'Py", "0.1.0", engine_type="renpy", priority=10)
+MANIFEST = PluginManifest(
+    "renpy",
+    "Ren'Py",
+    "0.2.0",
+    engine_type="renpy",
+    priority=10,
+    options=(PluginOption("decompile", "decompile .rpyc scripts to .rpy (unrpyc)", "bool", "on"),),
+)
 RPA_SLOT = SlotDefinition(
     "unarchive.rpa", "unarchive", "renpy", "rpa-safe", "unrpa", suffixes=(".rpa",), magic=(b"RPA-",)
 )
 
 PACK_SLOT = SlotDefinition("pack.rpa", "pack", "renpy", "rpa-writer")
+
+
+PLUGIN = "RenPyPlugin"  # discovered by viwo.core.wiring.registry
 
 
 class RenPyPlugin(EnginePlugin):
@@ -36,10 +47,10 @@ class RenPyPlugin(EnginePlugin):
         return DetectionResult("renpy", round(score, 2), evidence, "renpy")
 
     def slot_definitions(self):
-        return (RPA_SLOT, PACK_SLOT)
+        return (RPA_SLOT, PACK_SLOT, RPYC_SLOT)
 
     def backends(self):
-        return (RpaSafe(), Unrpa(), RpaWriter())
+        return (RpaSafe(), Unrpa(), RpaWriter(), UnrpycCli())
 
     def pack_slot(self, unarchive_slot: str) -> str:
         return "pack.rpa" if unarchive_slot == "unarchive.rpa" else ""

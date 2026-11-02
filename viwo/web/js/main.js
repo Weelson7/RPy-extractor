@@ -10,10 +10,13 @@ import merger from "./views/merger.js";
 import survey from "./views/survey.js";
 import cleanup from "./views/cleanup.js";
 import repack from "./views/repack.js";
+import capture from "./views/capture.js";
+import settings from "./views/settings.js";
 import { openWorkspaceDialog } from "./workspace-dialog.js";
+import { landingWanted, runLanding } from "./landing.js";
 import { KIND } from "./views/jobs.js";
 
-const VIEWS = { extract, workspace, sort, jobs, system, merger, survey, cleanup, repack };
+const VIEWS = { extract, workspace, sort, jobs, system, merger, survey, cleanup, repack, capture, settings };
 const scroll = {};
 const state = { chips: "", current: "", distro: null, dockOpen: pref("dock") === "1", logCount: -1, lastLog: "" };
 
@@ -72,7 +75,7 @@ async function pollStatus() {
   } catch (err) {
     state.chips = "";
     $("#status-chips").replaceChildren(Object.assign(chip("SERVER", err.code === "offline" ? "OFFLINE" : "ERROR", "err"),
-      { title: "ViWo's server does not answer. Start it again (python3 Start.py), then reload." }));
+      { title: "ViWo's server does not answer. Start it again (viwo serve, or Start.py), then reload." }));
   }
 }
 
@@ -115,7 +118,7 @@ async function pollLogs() {
 function boot() {
   if (!hasToken()) {
     $("#main").prepend(h("div", { class: "alert err" }, h("b", {}, "NO API TOKEN"),
-      h("p", {}, "This page was not opened from ViWo's server, so nothing will load. Start ViWo with python3 Start.py and open the address it prints.")));
+      h("p", {}, "This page was not opened from ViWo's server, so nothing will load. Start ViWo with `viwo serve` (or Start.py) and open the address it prints.")));
   }
   document.querySelectorAll(".mods a").forEach((a) => { a.title = a.querySelector("span").textContent.replace(/^([A-Z ]+)/, "$1 — "); });
   $("#dock-toggle").addEventListener("click", () => setDock(!state.dockOpen));
@@ -124,6 +127,7 @@ function boot() {
   window.addEventListener("hashchange", route);
   bus.addEventListener("workspace", refreshWorkspacePath);
   bus.addEventListener("jobs", pollStatus);
+  bus.addEventListener("preflight", () => { state.distro = null; state.chips = ""; pollStatus(); });
   if (!location.hash && pref("view")) location.hash = pref("view");
   route();
   setDock(state.dockOpen);
@@ -131,6 +135,7 @@ function boot() {
   refreshWorkspacePath();
   setInterval(pollStatus, 3000);
   setInterval(pollLogs, 1500);
+  if (hasToken() && landingWanted()) runLanding(); // first load only: the real preflight, then the app
 }
 
 boot();

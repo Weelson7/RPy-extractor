@@ -7,6 +7,7 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
 import time
 from pathlib import Path
 from typing import Callable, Mapping, Sequence
@@ -31,12 +32,11 @@ class SubprocessRunner(ProcessRunner):
     def python_executable(self) -> str:
         return sys.executable
 
-    def run(self, argv, cwd=None, timeout=None, cancel=None, env=None) -> ProcessResult:
-        merged_env = {**os.environ, **env} if env else None
-        proc = subprocess.Popen(
+    def _popen(self, argv, cwd, env) -> subprocess.Popen:
+        return subprocess.Popen(
             [str(a) for a in argv],
             cwd=str(cwd) if cwd else None,
-            env=merged_env,
+            env={**os.environ, **env} if env else None,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             stdin=subprocess.DEVNULL,
@@ -45,7 +45,12 @@ class SubprocessRunner(ProcessRunner):
             errors="replace",
             **self._popen_kwargs,
         )
+
+    def run(self, argv, cwd=None, timeout=None, cancel=None, env=None, on_line=None):
+        proc = self._popen(argv, cwd, env)
         deadline = time.monotonic() + timeout if timeout else None
+        if on_line is not None:
+            return self._stream(proc, deadline, cancel, on_line)
         while True:
             try:
                 out, err = proc.communicate(timeout=0.2)
@@ -57,13 +62,46 @@ class SubprocessRunner(ProcessRunner):
                     out, err = proc.communicate()
                     return ProcessResult(-9, out or "", err or "", timed_out=True)
 
+    def _stream(self, proc, deadline, cancel, on_line) -> ProcessResult:
+        """Capture stdout/stderr while handing every line to on_line as it arrives."""
+        chunks: dict[str, list[str]] = {"out": [], "err": []}
+
+        def pump(stream, key: str) -> None:
+            for line in iter(stream.readline, ""):
+                chunks[key].append(line)
+                try:
+                    on_line(line.rstrip("\r\n"))
+                except Exception:  # noqa: BLE001  (a progress relay never kills the tool)
+                    pass
+            stream.close()
+
+        threads = [
+            threading.Thread(target=pump, args=(proc.stdout, "out"), daemon=True),
+            threading.Thread(target=pump, args=(proc.stderr, "err"), daemon=True),
+        ]
+        for thread in threads:
+            thread.start()
+        timed_out = False
+        while proc.poll() is None:
+            expired = deadline is not None and time.monotonic() > deadline
+            if expired or (cancel is not None and cancel.cancelled):
+                self._kill_tree(proc)
+                timed_out = True
+                break
+            time.sleep(0.1)
+        proc.wait()
+        for thread in threads:
+            thread.join(timeout=5)
+        out, err = "".join(chunks["out"]), "".join(chunks["err"])
+        return ProcessResult(-9 if timed_out else proc.returncode, out, err, timed_out=timed_out)
+
 
 class Locator(ToolLocator):
     """Search order: config override, env var, python module, PATH, known dirs."""
 
     def __init__(
         self,
-        overrides: Mapping[str, str],
+        overrides: Mapping[str, str | Sequence[str]],
         roots: Sequence[Path],
         suffixes: Sequence[str],
         wrap: Callable[[Path], tuple[str, ...]],
@@ -86,8 +124,12 @@ class Locator(ToolLocator):
 
     def locate(self, spec: DependencySpec) -> ToolLocation | None:
         override = self._overrides.get(spec.dep_id, "")
-        if override and Path(override).exists():
-            return self._found(spec, Path(override), "config")
+        if isinstance(override, str):
+            if override and Path(override).exists():
+                return self._found(spec, Path(override), "config")
+        elif override and Path(override[0]).exists():  # argv prefix, e.g. dotnet + dll
+            path = next((a for a in reversed(override) if Path(a).exists()), override[0])
+            return ToolLocation(spec.dep_id, tuple(override), str(path), "config")
         env_value = os.environ.get(spec.env_var, "") if spec.env_var else ""
         if env_value and Path(env_value).exists():
             return self._found(spec, Path(env_value), "env")

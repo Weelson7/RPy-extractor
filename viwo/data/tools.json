@@ -1,9 +1,10 @@
 {
- "_comment": "Pinned third-party tools installed automatically into third_party/<id>/ (doc 10). Every download is checked against sha256 before use. Change a pin only together with its checksum. Still to add (required, see docs/HANDOFF.md item 1): unrar, quickbms, datatool, renderdoccmd + rdpython.",
+ "_comment": "Pinned third-party tools installed automatically into third_party/<id>/ (doc 10). Every download is HTTPS and checked against the pinned sha256 before use; change a pin only together with its checksum. Keys: kind zip|tar|gz|raw|msi|sfx (sfx = 7-Zip opens a self-extractor), find = file located under the folder, argv = how to run it ({path}, {dotnet}), needs = entries installed first, from = another entry's folder (no download), hidden = not a dependency of its own, mkdir = folders created after install.",
  "python": {
   "unitypy": "UnityPy==1.25.4",
   "py7zr": "py7zr==1.1.4",
-  "unrpa": "unrpa==2.3.0"
+  "unrpa": "unrpa==2.3.0",
+  "lz4": "lz4==4.4.5"
  },
  "tools": {
   "repak": {
@@ -106,15 +107,30 @@
     "sha256": "0caff1e9d381083324f65241f55171768cd08effe626b0125b63497cd2510cc7",
     "size": 6357294,
     "kind": "zip",
-    "find": "AssetStudioModCLI.exe"
+    "find": "AssetStudioModCLI.dll",
+    "argv": [
+     "{dotnet}",
+     "{path}"
+    ],
+    "needs": [
+     "dotnet"
+    ]
    },
    "linux": {
     "url": "https://github.com/aelurum/AssetStudio/releases/download/v0.20.0/AssetStudioModCLI_net10_linux64.zip",
     "sha256": "76aa84569b3040ec9c5b736bfb2eaa968c9722527ad978acef3d765fae92a7d2",
     "size": 7028949,
     "kind": "zip",
-    "find": "AssetStudioModCLI"
-   }
+    "find": "AssetStudioModCLI.dll",
+    "argv": [
+     "{dotnet}",
+     "{path}"
+    ],
+    "needs": [
+     "dotnet"
+    ]
+   },
+   "_note": "framework-dependent net10 build, run with the ViWo-owned .NET runtime (third_party/dotnet)"
   },
   "sevenzip": {
    "version": "26.05",
@@ -172,6 +188,159 @@
     "kind": "gz",
     "find": "ffprobe",
     "save_as": "ffprobe"
+   }
+  },
+  "dotnet": {
+   "version": "10.0.14",
+   "license": "MIT",
+   "hidden": true,
+   "_note": ".NET runtime for framework-dependent tools; hashes cross-checked with Microsoft's release metadata (sha512)",
+   "windows": {
+    "url": "https://builds.dotnet.microsoft.com/dotnet/Runtime/10.0.14/dotnet-runtime-10.0.14-win-x64.zip",
+    "sha256": "d861ab80f232adf3bdce83293bc1fa92868400330c477bf854d8558eb91c7ca6",
+    "size": 36971047,
+    "kind": "zip",
+    "find": "dotnet.exe"
+   },
+   "linux": {
+    "url": "https://builds.dotnet.microsoft.com/dotnet/Runtime/10.0.14/dotnet-runtime-10.0.14-linux-x64.tar.gz",
+    "sha256": "bd3a25b2c5b617934de7ca55fc410711afd772c0d95a1af9205db6c3cc2c59f1",
+    "size": 36673986,
+    "kind": "tar",
+    "find": "dotnet"
+   }
+  },
+  "unrar": {
+   "version": "7.30 beta 2 (Windows), 7.23 (Linux)",
+   "license": "freeware (RARLAB unrar license)",
+   "_note": "RARLAB's official builds; the URLs are not versioned, the checksums pin the exact files",
+   "windows": {
+    "url": "https://www.rarlab.com/rar/unrarw64.exe",
+    "sha256": "89276cb1155b70ce8a1678311b78ce72485c9bebe7127882358da7ed48b85a9c",
+    "size": 746896,
+    "kind": "sfx",
+    "needs": [
+     "sevenzip"
+    ],
+    "find": "UnRAR.exe",
+    "version": "7.30 beta 2"
+   },
+   "linux": {
+    "url": "https://www.rarlab.com/rar/rarlinux-x64-723.tar.gz",
+    "sha256": "759b4b6aa0d9f77131882162951193f3a0e54bf60e1d8dc4255aa308accab588",
+    "size": 746868,
+    "kind": "tar",
+    "find": "unrar",
+    "version": "7.23"
+   }
+  },
+  "quickbms": {
+   "version": "0.12.0",
+   "license": "GPL-2.0",
+   "_note": "official QuickBMS build (aluigi); unversioned URL pinned by checksum; scripts folder = third_party/quickbms/scripts (filled per game by the indexes)",
+   "windows": {
+    "url": "https://aluigi.altervista.org/papers/quickbms.zip",
+    "sha256": "b9d4f9efb55692994cd42a491cfea11f86e3375a618b9bd771583ce40ddb3828",
+    "size": 15979735,
+    "kind": "zip",
+    "find": "quickbms.exe",
+    "mkdir": [
+     "scripts"
+    ]
+   },
+   "linux": {
+    "url": "https://aluigi.altervista.org/papers/quickbms_linux.zip",
+    "sha256": "b702019930ba44e2a0e124338ec737ceaf9b83a1ab747affd3fb19ef3b6aea88",
+    "size": 13441150,
+    "kind": "zip",
+    "find": "quickbms",
+    "mkdir": [
+     "scripts"
+    ]
+   }
+  },
+  "datatool": {
+   "version": "2.25.0.0+1151",
+   "license": "MIT",
+   "_note": "overtools/OWLib toolchain release: self-contained .NET 10 build for Windows (no runtime needed); Overwatch plugin stays explicit-only",
+   "windows": {
+    "url": "https://github.com/overtools/OWLib/releases/download/v2.25.0.0%2B1151/toolchain-release.zip",
+    "sha256": "6bd283281cbf4df2f365fcc93804a042a23a5ce298031e715866ec465955a231",
+    "size": 75529581,
+    "kind": "zip",
+    "find": "DataTool.exe"
+   }
+  },
+  "renderdoccmd": {
+   "version": "1.47",
+   "license": "MIT",
+   "windows": {
+    "url": "https://renderdoc.org/stable/1.47/RenderDoc_1.47_64.zip",
+    "sha256": "b51712e58d40066b34ca30c7869d15f72e4b5c001b2d92232f6783a636d5a3c1",
+    "size": 101729763,
+    "kind": "zip",
+    "find": "renderdoccmd.exe"
+   },
+   "linux": {
+    "url": "https://renderdoc.org/stable/1.47/renderdoc_1.47.tar.gz",
+    "sha256": "200361c2761da1ca77a2acfe0c37e8db5839ba7cb9f204e8394d66dad7e6336a",
+    "size": 83597576,
+    "kind": "tar",
+    "find": "renderdoccmd"
+   }
+  },
+  "rdpython": {
+   "version": "1.47",
+   "license": "MIT",
+   "_note": "RenderDoc's own embedded Python (qrenderdoc --py script): the portable builds ship no standalone renderdoc module",
+   "windows": {
+    "from": "renderdoccmd",
+    "needs": [
+     "renderdoccmd"
+    ],
+    "find": "qrenderdoc.exe",
+    "argv": [
+     "{path}",
+     "--py"
+    ]
+   },
+   "linux": {
+    "from": "renderdoccmd",
+    "needs": [
+     "renderdoccmd"
+    ],
+    "find": "qrenderdoc",
+    "argv": [
+     "{path}",
+     "--py"
+    ]
+   }
+  },
+  "unrpyc": {
+   "version": "2.0.4",
+   "license": "MIT",
+   "_note": "pure Python, run by ViWo's own interpreter (GitHub tag archive pinned by checksum; no release asset ships the CLI)",
+   "windows": {
+    "url": "https://github.com/CensoredUsername/unrpyc/archive/refs/tags/v2.0.4.zip",
+    "sha256": "df7446d89f68a9a94a62378248da875e9e75e983bf81de53d92b2c19f359673e",
+    "size": 1161266,
+    "kind": "zip",
+    "find": "unrpyc.py",
+    "argv": [
+     "{python}",
+     "{path}"
+    ]
+   },
+   "linux": {
+    "url": "https://github.com/CensoredUsername/unrpyc/archive/refs/tags/v2.0.4.zip",
+    "sha256": "df7446d89f68a9a94a62378248da875e9e75e983bf81de53d92b2c19f359673e",
+    "size": 1161266,
+    "kind": "zip",
+    "find": "unrpyc.py",
+    "argv": [
+     "{python}",
+     "{path}"
+    ]
    }
   }
  }

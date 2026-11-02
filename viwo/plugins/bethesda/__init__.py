@@ -9,7 +9,7 @@ from pathlib import Path
 
 from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest
 from viwo.contracts.slots import SlotDefinition, Unarchiver
-from viwo.contracts.types import DetectionResult, Outcome, OutcomeKind
+from viwo.contracts.types import DependencySpec, DetectionResult, Outcome, OutcomeKind
 from viwo.contracts.workspace import safe_member
 
 from .archives import ba2_files, bsa_data, bsa_entries
@@ -18,6 +18,9 @@ MANIFEST = PluginManifest(
     "bethesda", "Bethesda (BSA/BA2)", "0.1.0", engine_type="bethesda", priority=12
 )
 BSA, BA2 = b"BSA\0", b"BTDX"
+LZ4 = DependencySpec(
+    "lz4", "lz4 (Skyrim SE BSA)", kind="python", import_name="lz4", hint="pip install lz4"
+)
 
 
 def _write(dest: Path, name: str, data: bytes) -> int:
@@ -38,6 +41,12 @@ def _mapped(archive: Path, read):
 
 class BsaBuiltin(Unarchiver):
     backend_id, owner, license = "bsa-builtin", "bethesda", "MIT"
+
+    def dependencies(self):
+        return (LZ4,)
+
+    def available(self, os) -> tuple[bool, str]:
+        return True, ""  # lz4 only unlocks version-105 entries; everything else works without it
 
     def extract(self, archive: Path, dest: Path, ctx) -> Outcome:
         def read(blob) -> tuple[int, int]:
@@ -87,6 +96,9 @@ SLOTS = (
         "unarchive.ba2", "unarchive", "bethesda", "ba2-builtin", suffixes=(".ba2",), magic=(BA2,)
     ),
 )
+
+
+PLUGIN = "BethesdaPlugin"  # discovered by viwo.core.wiring.registry
 
 
 class BethesdaPlugin(EnginePlugin):

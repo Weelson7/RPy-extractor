@@ -96,6 +96,9 @@ def _part(handles: dict, archive: Path, stem: str, index: int):
 SLOT = SlotDefinition("unarchive.vpk", "unarchive", "source", "vpk-builtin", identify=identify_vpk)
 
 
+PLUGIN = "SourcePlugin"  # discovered by viwo.core.wiring.registry
+
+
 class SourcePlugin(EnginePlugin):
     @property
     def manifest(self) -> PluginManifest:

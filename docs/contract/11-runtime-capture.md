@@ -9,7 +9,9 @@ starts with the boundaries and then sketches the structure.
 Research notes are in doc 13. Tools named here were checked against their
 repositories on 2026-11-02; anything marked UNVERIFIED wasn't confirmed.
 
-## 11.1 Boundaries (proposal)
+## 11.1 Boundaries (proposal; revised for 1.0)
+
+> **Revision (owner's decision, 1.0):** nothing below is refused any more. Anti-cheat markers, online or competitive titles and terms-of-service-sensitive plugins produce **warnings** and one confirmation; the capture runs and the user is responsible. ViWo authors no anti-cheat evasion and no code for defeating copy protection. The table below is kept as the original proposal.
 
 What the framework would do:
 - capture from a game **the user launches through the framework**, on their own machine, for offline or single-player use;

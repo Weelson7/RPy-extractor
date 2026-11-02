@@ -14,6 +14,7 @@ from viwo.contracts import workspace as ws
 from viwo.contracts.errors import ViwoError
 from viwo.contracts.os import FileSystemPolicy
 
+from .. import provenance
 from .trash import area
 
 IMAGE = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".svg", ".ico"}
@@ -108,6 +109,7 @@ def trash_item(workspace: Path, encoded: str, history: list[dict]) -> dict:
     target = ws.next_free(area(workspace, "items") / rel)
     target.parent.mkdir(parents=True, exist_ok=True)
     shutil.move(str(path), str(target))
+    provenance.moved(workspace, path, target)
     history.append({"action": "trash", "source": str(path), "target": str(target)})
     return {"success": True, "action": "trash", "path": encoded, "name": rel.name}
 
@@ -123,6 +125,7 @@ def rename(
     if target.exists() and target != path:
         raise ViwoError("invalid_request", f"File already exists: {new_name}")
     path.rename(target)
+    provenance.moved(workspace, path, target)
     history.append({"action": "rename", "old_path": str(path), "new_path": str(target)})
     return {
         "success": True,
@@ -155,6 +158,7 @@ def undo(workspace: Path, history: list[dict]) -> dict:
     if action not in ("trash", "rename") or not current.exists():
         raise ViwoError("not_found", f"Cannot undo {action}: file no longer exists")
     restored = _restore(current, Path(last[moved_to]))
+    provenance.moved(workspace, current, restored)
     result = {"success": True, "undone": action, "path": encode(root, restored)}
     if action == "rename":
         result["previousPath"] = encode(root, current)

@@ -23,7 +23,7 @@ async function request(method, url, body) {
   try {
     res = await fetch(url, opts);
   } catch {
-    throw new ApiError("Server unreachable", { code: "offline", hint: "Is ViWo running? Start it with python3 Start.py" });
+    throw new ApiError("Server unreachable", { code: "offline", hint: "Is ViWo running? Start it with `viwo serve` (or Start.py), then reload." });
   }
   let json = null;
   try { json = await res.json(); } catch { /* non-JSON body */ }
@@ -80,7 +80,17 @@ export const api = {
   logs: () => v1("GET", "/api/logs"),
   clearLogs: () => v1("POST", "/api/logs/clear", {}),
   deps: () => v1("GET", "/api/dependencies"),
+  preflight: () => v1("POST", "/api/preflight", {}),
+  installTool: (id) => v1("POST", "/api/preflight/install", { id }),
   recipes: () => v1("GET", "/api/sanitizer/recipes"),
   sanitize: (op, body = {}) => v1("POST", `/api/sanitizer/${op}`, body),
   repack: (body) => v1("POST", "/api/repack", body),
+  browseFile: (initialPath = "") => v1("GET", `/api/browse-file?initialPath=${encodeURIComponent(initialPath)}`),
+  captureWarnings: (gamePath) => v1("POST", "/api/capture/warnings", { gamePath }),
+  capture: (body) => v1("POST", "/api/capture", body),
+  settings: () => v1("GET", "/api/settings"),
+  saveSettings: (changes) => v1("POST", "/api/settings", changes),
+  updates: () => v1("GET", "/api/updates"),
+  diag: () => v1("POST", "/api/diag", {}),
+  updateIndexes: () => v1("POST", "/api/indexes/update", {}),
 };

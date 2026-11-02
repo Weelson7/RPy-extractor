@@ -103,5 +103,30 @@ class ProcessRunnerTests(unittest.TestCase):
         self.assertTrue(result.timed_out)
 
 
+class StreamingRunTests(unittest.TestCase):
+    def test_lines_arrive_while_the_tool_runs_and_output_is_still_captured(self) -> None:
+        code = "import sys,time\nfor i in range(3):\n print('line', i, flush=True)\n"
+        code += " time.sleep(0.05)\nprint('err', file=sys.stderr)"
+        seen = []
+        result = select_os().process.run(
+            [sys.executable, "-c", code], timeout=30, on_line=seen.append
+        )
+        self.assertTrue(result.ok)
+        self.assertEqual(result.stdout.splitlines(), ["line 0", "line 1", "line 2"])
+        self.assertIn("err", result.stderr)
+        self.assertEqual(sorted(seen), ["err", "line 0", "line 1", "line 2"])
+
+    def test_streaming_respects_cancel(self) -> None:
+        token = CancelToken()
+        token.cancel()
+        result = select_os().process.run(
+            [sys.executable, "-c", "import time; time.sleep(20)"],
+            timeout=30,
+            cancel=token,
+            on_line=lambda line: None,
+        )
+        self.assertTrue(result.timed_out)
+
+
 if __name__ == "__main__":
     unittest.main()

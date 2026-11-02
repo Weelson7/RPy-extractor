@@ -87,6 +87,13 @@ def _wanted(ctx, ext: str) -> bool:
     return ctx.selected_exts is None or ext in ctx.selected_exts
 
 
+def _flag(ctx, key: str, default: bool) -> bool:
+    value = (getattr(ctx, "options", None) or {}).get(key)
+    if value is None or value == "":
+        return default
+    return str(value).lower() in ("1", "true", "yes", "on")
+
+
 def _write(ctx, kind: str, name: str, ext: str, payload: bytes) -> Path | None:
     if not _wanted(ctx, ext):
         return None
@@ -135,10 +142,10 @@ def _export_object(ctx, obj, fallback: str, record: dict) -> int:
         if target and record.get("where"):
             record["map"][f"text/{target.name}"] = [record["where"], str(obj.path_id)]
         return int(target is not None)
-    if kind == "Mesh":
-        text = data.export()
+    if kind == "Mesh" and record.get("meshes", True):
+        text = data.export()  # UnityPy Mesh.export(format="obj"): Wavefront OBJ text
         return int(
-            bool(text) and _write(ctx, "models", name, ".obj", text.encode("utf-8")) is not None
+            bool(text) and _write(ctx, "mesh", name, ".obj", text.encode("utf-8")) is not None
         )
     return 0
 
@@ -156,7 +163,7 @@ def _export_env(ctx, env, label: str, record: dict) -> tuple[int, list[str]]:
 
 def _export_group(ctx, unitypy, files: list[Path], mapping: dict) -> tuple[int, list[str]]:
     """Load a folder's containers together; fall back to one file at a time."""
-    record = {"files": files, "map": mapping}
+    record = {"files": files, "map": mapping, "meshes": _flag(ctx, "meshes", True)}
     try:
         return _export_env(
             ctx, unitypy.load(*[str(f) for f in files]), files[0].parent.name, record
@@ -184,7 +191,7 @@ class UnityPyExporter(Exporter):
         except ImportError:
             return Outcome(OutcomeKind.UNAVAILABLE, error=UNITYPY.hint)
         roots = [ctx.game_root]
-        if str(ctx.options.get("include_cache", "")).lower() in ("1", "true", "yes", "on"):
+        if _flag(ctx, "include_cache", False):
             roots += cache_roots(ctx.game_root)
         exported, notes, mapping = 0, [], {}
         for root in roots:
@@ -205,23 +212,34 @@ class AssetStudioModCli(Exporter):
     def dependencies(self):
         return (ASSETSTUDIO,)
 
-    def export(self, ctx) -> Outcome:
-        tool = ctx.os.tools.locate(ASSETSTUDIO)
-        if tool is None:
-            return Outcome(OutcomeKind.UNAVAILABLE, error=ASSETSTUDIO.hint)
-        argv = [
+    @staticmethod
+    def argv(ctx, tool) -> list[str]:
+        """Flags verified against AssetStudioModCLI 0.20 --help (-m/-t/-o, convert, logger)."""
+        types = ["tex2d", "sprite", "audio", "textAsset"] + (
+            ["mesh"] if _flag(ctx, "meshes", True) else []
+        )
+        return [
             *tool.argv_prefix,
             str(ctx.game_root),
             "-m",
             "export",
             "-t",
-            "tex2d,sprite,audio,textAsset,mesh",
+            ",".join(types),
             "-o",
             str(ctx.staging),
             "--image-format",
             "png",
+            "--audio-format",
+            "wav",
+            "--log-level",
+            "warning",
         ]
-        result = ctx.os.process.run(argv, timeout=7200, cancel=ctx.cancel)
+
+    def export(self, ctx) -> Outcome:
+        tool = ctx.os.tools.locate(ASSETSTUDIO)
+        if tool is None:
+            return Outcome(OutcomeKind.UNAVAILABLE, error=ASSETSTUDIO.hint)
+        result = ctx.os.process.run(self.argv(ctx, tool), timeout=7200, cancel=ctx.cancel)
         if not result.ok:
             return Outcome(OutcomeKind.FAILED, error=(result.stderr or result.stdout)[-300:])
         return Outcome(OutcomeKind.OK, sum(1 for p in ctx.staging.rglob("*") if p.is_file()))
