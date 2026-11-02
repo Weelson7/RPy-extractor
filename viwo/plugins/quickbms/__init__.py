@@ -76,7 +76,7 @@ class QuickBmsPlugin(EnginePlugin):
             self.table.load(str(options["scripts"]))
 
     def detect(self, probe: GameProbe) -> DetectionResult:
-        return DetectionResult("quickbms", 0.0, (), "any")  # never picks a game: it serves all
+        return DetectionResult("any", 0.0, (), "quickbms")  # never picks a game: it serves all
 
     def slot_definitions(self):
         return (

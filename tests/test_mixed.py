@@ -10,13 +10,31 @@ from pathlib import Path
 from unittest import mock
 
 from tests.helpers import make_zip, runtime, tree_hashes
-from tests.test_godot import embed, fake_tools, make_pck
+from tests.test_doom import make_wad
+from tests.test_formats import asar, bsa, vpk, xp3
+from tests.test_godot import embed, make_pck
+from tests.test_godot import fake_tools as godot_tools
 from tests.test_renpy import make_rpa
+from tests.test_rpgmaker import rgssad_v3
 from tests.test_unity import fake_unitypy
+from tests.test_unreal import fake_tools as unreal_tools
+from tests.test_unreal import make_pak
 from viwo.contracts import CancelToken, ExtractionMode, ExtractionRequest
 from viwo.core.pipeline.runner import extract
+from viwo.core.wiring.registry import BUILTIN_PLUGINS
 
-PLUGINS = ("generic", "renpy", "unity", "godot")
+PLUGINS = tuple(BUILTIN_PLUGINS)
+
+
+def tools_ini(root: Path) -> str:
+    """One [tools] section with the fake Godot and Unreal tools."""
+    lines = [
+        line
+        for text in (godot_tools(root), unreal_tools(root))
+        for line in text.splitlines()
+        if " = " in line and not line.startswith(("godot =", "unreal ="))
+    ]
+    return "[tools]\n" + "\n".join(lines) + "\n"
 
 
 def make_mixed_game(root: Path) -> Path:
@@ -28,6 +46,15 @@ def make_mixed_game(root: Path) -> Path:
     (game / "Mixed_Data" / "globalgamemanagers").write_bytes(b"\0" * 8)
     embed(game / "Mixed.exe", make_pck())
     make_zip(game / "dlc.zip", {"dlc/readme.txt": b"dlc"})
+    make_wad(game / "doom2.wad", [("TITLE", b"t" * 40)], b"IWAD")
+    (game / "Paks").mkdir()
+    make_pak(game / "Paks" / "pakchunk0.pak")
+    (game / "Game.rgss3a").write_bytes(rgssad_v3({"Graphics\\a.png": b"rgss"}))
+    (game / "data.xp3").write_bytes(xp3([("bg/x.png", b"xp3", False)]))
+    (game / "resources").mkdir()
+    (game / "resources" / "app.asar").write_bytes(asar({"index.html": b"<html>"}))
+    (game / "pak01_dir.vpk").write_bytes(vpk({"materials/m.vmt": (b"vmt", 0)})[0])
+    (game / "Interface.bsa").write_bytes(bsa({"ui.txt": b"ui" * 10}))
     return game
 
 
@@ -41,7 +68,7 @@ class MixedPairwiseTests(unittest.TestCase):
             root = Path(tmp)
             game = make_mixed_game(root)
             before = tree_hashes(game)
-            rt = runtime(root, fake_tools(root))  # every built-in plugin is on by default
+            rt = runtime(root, tools_ini(root))  # every built-in plugin is on by default
             for index, combo in enumerate(combos):
                 request = ExtractionRequest(
                     str(game), str(root / f"ws{index}"), mode=ExtractionMode.MIXED, plugins=combo
