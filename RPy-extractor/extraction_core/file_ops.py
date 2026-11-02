@@ -3,7 +3,7 @@ import os
 import shutil
 from pathlib import Path
 
-from models import DEFAULT_COMMON_EXTS, SKIP_DIRS
+from models import DEFAULT_COMMON_EXTS, SKIP_DIRS, WORKSPACE_MARKER
 
 from .runtime import tlog
 
@@ -28,12 +28,20 @@ def walk_files(root: Path, skip_dirs: set[str]) -> list[Path]:
         current = Path(dirpath)
         dirnames[:] = [d for d in dirnames if d not in skip_dirs]
         for filename in filenames:
+            if filename == WORKSPACE_MARKER:
+                continue
             files.append(current / filename)
     return files
 
 
-def move_one(src: Path, assets_dir: Path, moved_by_ext: dict[str, int], selected_exts: set[str] | None) -> bool:
-    """Move single file to assets directory."""
+def move_one(
+    src: Path,
+    assets_dir: Path,
+    moved_by_ext: dict[str, int],
+    selected_exts: set[str] | None,
+    copy: bool = False,
+) -> bool:
+    """Move (or copy, for files that must stay in place) one file into the assets directory."""
     ext = safe_suffix(src)
     if selected_exts is not None and ext not in selected_exts:
         return False
@@ -61,7 +69,10 @@ def move_one(src: Path, assets_dir: Path, moved_by_ext: dict[str, int], selected
             candidate = dst_dir / f"{base}__{index}{src.suffix}"
             index += 1
 
-        shutil.move(str(src), str(candidate))
+        if copy:
+            shutil.copy2(str(src), str(candidate))
+        else:
+            shutil.move(str(src), str(candidate))
         moved_by_ext[folder] = moved_by_ext.get(folder, 0) + 1
         return True
     except Exception as exc:

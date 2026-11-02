@@ -221,11 +221,13 @@ async function syncDependencyStatuses() {
   }
 }
 
+const API_TOKEN = document.querySelector('meta[name="rpyx-token"]')?.content || "";
+
 async function api(path, options = {}) {
   try {
     const response = await fetch(path, {
       method: options.method || "GET",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-RPYX-Token": API_TOKEN },
       body: options.body ? JSON.stringify(options.body) : undefined,
     });
 

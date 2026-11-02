@@ -32,6 +32,9 @@ PYTHON_ARCHIVE_SUFFIXES = {
 SKIP_DIRS = {".git", ".venv", "__pycache__"}
 RPA_TEMP_PREFIX = "rpa_extract_"
 TRASH_DIR_NAME = ".trash"
+# Marks a folder as an extraction workspace owned by this app; only such
+# folders may be cleared before an extraction.
+WORKSPACE_MARKER = ".rpyx-workspace"
 
 
 # ============================================================================

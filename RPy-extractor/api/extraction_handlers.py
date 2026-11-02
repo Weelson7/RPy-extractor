@@ -2,7 +2,7 @@
 from pathlib import Path
 from typing import Callable
 
-from models import AppConfig
+from models import AppConfig, WORKSPACE_MARKER
 from extraction_core import detect_extensions_in_dir
 from extraction_types import run_extraction
 from sorting import (
@@ -15,6 +15,29 @@ from sorting import (
     clear_all_trash,
 )
 from .common import assets_dir, set_session_asset_path, trash_operation_endpoint
+
+
+def claim_workspace(output_dir: Path, default_dir: Path) -> str:
+    """Mark output_dir as app-owned if that is safe; return an error message otherwise.
+
+    Owned: the default assets folder, a folder that does not exist yet, an empty
+    folder, or a folder already carrying the marker. Anything else may be user
+    data and must not be cleared by an extraction.
+    """
+    marker = output_dir / WORKSPACE_MARKER
+    if marker.exists():
+        return ""
+    is_default = output_dir.resolve() == default_dir.resolve()
+    if output_dir.exists() and not output_dir.is_dir():
+        return f"Output path is not a folder: {output_dir}"
+    if output_dir.exists() and any(output_dir.iterdir()) and not is_default:
+        return (
+            f"Refusing to extract into {output_dir}: the folder is not empty and was not "
+            "created by RPy Extractor. Choose an empty folder or the default assets folder."
+        )
+    output_dir.mkdir(parents=True, exist_ok=True)
+    marker.write_text('{"app": "rpy-extractor"}\n', encoding="utf-8")
+    return ""
 
 
 def extract_repo(
@@ -35,6 +58,9 @@ def extract_repo(
             }
 
         output_dir = assets_dir(app_config)
+        ownership_error = claim_workspace(output_dir, app_config.temp_path / app_config.output_dir_name)
+        if ownership_error:
+            return {"success": False, "error": ownership_error, "details": ""}
         selected_exts_set = set(selected_exts) if selected_exts else None
 
         result = run_extraction(

@@ -1,5 +1,4 @@
 """Archive extraction helpers."""
-import shutil
 import sys
 import tarfile
 import uuid
@@ -68,33 +67,44 @@ def try_external_archive_extract(archive: Path, output_dir: Path) -> tuple[bool,
     return False, "No supported external extractor found (install 7z/unrar)."
 
 
+def _safe_tar_members(tf: tarfile.TarFile, dest: Path) -> list[tarfile.TarInfo]:
+    """Members that stay inside dest: regular files and dirs only, no links/devices."""
+    root = dest.resolve()
+    safe: list[tarfile.TarInfo] = []
+    for member in tf.getmembers():
+        if not (member.isfile() or member.isdir()):
+            continue
+        target = (root / member.name).resolve()
+        if target != root and root not in target.parents:
+            continue
+        safe.append(member)
+    return safe
+
+
+def safe_tar_extract(tf: tarfile.TarFile, dest: Path) -> None:
+    """Extract a tar archive without path traversal, links or special files."""
+    members = _safe_tar_members(tf, dest)
+    if hasattr(tarfile, "data_filter"):
+        tf.extractall(dest, members=members, filter="data")
+    else:  # older Python without extraction filters
+        tf.extractall(dest, members=members)
+
+
 def try_python_archive_extract(archive: Path, output_dir: Path) -> tuple[bool, str]:
     """Extract archive using Python (zip, tar)."""
     suffix = archive_suffix(archive)
     if suffix not in PYTHON_ARCHIVE_SUFFIXES:
         return False, "Unsupported Python archive type."
 
-    if suffix == ".unitypackage":
-        try:
-            with tarfile.open(archive, "r:gz") as tf:
-                tf.extractall(output_dir)
-            return True, ""
-        except Exception as exc:
-            return False, str(exc)
-
-    try:
-        shutil.unpack_archive(str(archive), str(output_dir))
-        return True, ""
-    except Exception:
-        pass
-
     try:
         if suffix == ".zip":
+            # zipfile sanitizes absolute paths and ".." components itself.
             with zipfile.ZipFile(archive, "r") as zf:
                 zf.extractall(output_dir)
             return True, ""
-        with tarfile.open(archive, "r:*") as tf:
-            tf.extractall(output_dir)
+        mode = "r:gz" if suffix == ".unitypackage" else "r:*"
+        with tarfile.open(archive, mode) as tf:
+            safe_tar_extract(tf, output_dir)
         return True, ""
     except Exception as exc:
         return False, str(exc)
