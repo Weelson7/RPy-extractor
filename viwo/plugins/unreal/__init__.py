@@ -10,7 +10,15 @@ from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest, Plugi
 from viwo.contracts.slots import SlotDefinition
 from viwo.contracts.types import DetectionResult
 
-from .pak import PAK_MAGIC, UTOC_MAGIC, RepakCli, RetocLegacy, RetocUnpack, identify_unreal
+from .pak import (
+    PAK_MAGIC,
+    UTOC_MAGIC,
+    RepakCli,
+    RepakPatch,
+    RetocLegacy,
+    RetocUnpack,
+    identify_unreal,
+)
 
 MANIFEST = PluginManifest(
     "unreal",
@@ -38,6 +46,7 @@ SLOTS = (  # identified by footer / magic only: ".pak" is used by many engines
     ),
     SlotDefinition("unarchive.utoc", "unarchive", "unreal", "retoc-legacy", "retoc-unpack"),
 )
+PACK_SLOT = SlotDefinition("pack.upak", "pack", "unreal", "repak-patch")
 MARKERS = ("ue4game", "engine", "ue4prereqsetup_x64.exe", "ueprereqsetup_x64.exe")
 
 
@@ -62,10 +71,13 @@ class UnrealPlugin(EnginePlugin):
         return DetectionResult("unreal", score, tuple(evidence), "unreal")
 
     def slot_definitions(self):
-        return SLOTS
+        return (*SLOTS, PACK_SLOT)
 
     def backends(self):
-        return (RepakCli(), RetocLegacy(), RetocUnpack())
+        return (RepakCli(), RetocLegacy(), RetocUnpack(), RepakPatch())
+
+    def pack_slot(self, unarchive_slot: str) -> str:
+        return "pack.upak" if unarchive_slot == "unarchive.upak" else ""
 
     def claimed_suffixes(self):
         return (".ucas", ".sig")

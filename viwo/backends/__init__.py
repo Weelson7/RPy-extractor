@@ -5,12 +5,14 @@ from __future__ import annotations
 from viwo.contracts.slots import Backend, SlotDefinition
 
 from .archives import Py7zrBackend, SevenZipCli, TarBackend, UnrarCli, ZipBackend
+from .packers import ZipPacker
 
 TAR_SUFFIXES = (".tar", ".tar.gz", ".tgz", ".tar.bz2", ".tbz", ".tbz2", ".tar.xz", ".txz")
 
 CORE_SLOTS = (
     SlotDefinition("media.encode", "media.encode", "core", "ffmpeg"),
     SlotDefinition("carve.signatures", "carve", "core", "signature-carver"),
+    SlotDefinition("pack.zip", "pack", "core", "zip-packer"),
     SlotDefinition(
         "unarchive.zip",
         "unarchive",
@@ -56,4 +58,5 @@ def core_backends() -> list[Backend]:
         Py7zrBackend(),
         FfmpegBackend(),
         SignatureCarver(),
+        ZipPacker(),
     ]

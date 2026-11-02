@@ -6,7 +6,7 @@ from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest, Plugi
 from viwo.contracts.slots import SlotDefinition
 from viwo.contracts.types import DetectionResult
 
-from .pck import MAGIC, GdreTools, GodotPckTool, embedded_chunk, identify_pck
+from .pck import MAGIC, GdreTools, GodotPckPacker, GodotPckTool, embedded_chunk, identify_pck
 
 MANIFEST = PluginManifest(
     "godot",
@@ -47,7 +47,10 @@ class GodotPlugin(EnginePlugin):
         return DetectionResult("godot", score, tuple(evidence), "godot")
 
     def slot_definitions(self):
-        return (PCK_SLOT,)
+        return (PCK_SLOT, SlotDefinition("pack.pck", "pack", "godot", "godotpcktool-pack"))
 
     def backends(self):
-        return (GdreTools(), GodotPckTool())
+        return (GdreTools(), GodotPckTool(), GodotPckPacker())
+
+    def pack_slot(self, unarchive_slot: str) -> str:
+        return "pack.pck" if unarchive_slot == "unarchive.pck" else ""

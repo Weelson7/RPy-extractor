@@ -97,6 +97,24 @@ def survey(data: dict) -> str:
     return "\n".join(lines + [f"\n{covered}/{len(data['games'])} game(s) fully covered"])
 
 
+def repack(data: dict) -> str:
+    lines = [f"Game    : {data['game']}", f"Edits   : {data['edits']} file(s)"]
+    for item in data["plan"]:
+        where = item["container"] or "loose files"
+        lines.append(f"Plan    : {where} -> {item['slot']} ({len(item['members'])} member(s))")
+    for r in data.get("results", []):
+        state = "verified" if not r["failed"] else f"FAILED: {', '.join(r['failed'][:5])}"
+        lines.append(f"Packed  : {r.get('output') or r['container'] or 'loose files'} {state}")
+    lines += [f"Skipped : {s}" for s in data["skipped"]] + [
+        f"Warning : {w}" for w in data["warnings"]
+    ]
+    if "verified" in data:
+        lines.append(
+            f"Result  : {data['target']} ({'verified' if data['verified'] else 'NOT verified'})"
+        )
+    return "\n".join(lines)
+
+
 def error(err: dict) -> str:
     if err["code"] == "needs_decision":
         err = {**err, "hint": "re-run with --on-existing new | replace | cancel"}
@@ -107,6 +125,7 @@ def error(err: dict) -> str:
 FORMATTERS: dict[str, Any] = {
     "detect": detect,
     "survey": survey,
+    "repack": repack,
     "slots": slots,
     "info": info,
     "extract": extraction,

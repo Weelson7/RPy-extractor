@@ -21,6 +21,7 @@ from .slots import (
     Decoder,
     Exporter,
     Match,
+    Packer,
     SlotBinding,
     SlotDefinition,
     Unarchiver,

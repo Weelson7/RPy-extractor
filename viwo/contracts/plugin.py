@@ -104,6 +104,10 @@ class EnginePlugin(ABC):
         """Suffixes (or exact lowercase names) the exporter decodes: not carved by default."""
         return ()
 
+    def pack_slot(self, unarchive_slot: str) -> str:
+        """Round trip: the pack.* slot that writes back into this kind of container."""
+        return ""
+
     def export_slot(self) -> str:
         """Slot id run in the EXPORT stage, "" for none."""
         return ""

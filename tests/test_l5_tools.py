@@ -230,5 +230,54 @@ class RealVgmstreamTest(unittest.TestCase):
                 self.assertGreater(w.getnframes(), 20000)
 
 
+@unittest.skipUnless(os.environ.get("VIWO_L5"), "L5 real-tool test (set VIWO_L5=1)")
+class RealRoundTripTest(unittest.TestCase):
+    """Extract -> edit -> repack with the real tools -> re-extract verification."""
+
+    def edit_and_repack(self, root: Path, rt, rel: str, data: bytes) -> dict:
+        from viwo.core.roundtrip import repack
+
+        extract(
+            rt,
+            ExtractionRequest(str(root / "game"), str(root / "ws")),
+            "j",
+            lambda e: None,
+            CancelToken(),
+        )
+        (root / "ws" / rel).write_bytes(data)
+        return repack(rt, root / "ws", root / "patched")
+
+    def test_unreal_patch_pak(self) -> None:
+        repak = _tool("VIWO_REPAK")
+        if repak is None:
+            self.skipTest("repak not installed (set VIWO_REPAK)")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "src" / "Game" / "Content").mkdir(parents=True)
+            (root / "src" / "Game" / "Content" / "Logo.uasset").write_bytes(b"original")
+            (root / "game" / "Paks").mkdir(parents=True)
+            pak = root / "game" / "Paks" / "pakchunk0-Windows.pak"
+            subprocess.run([str(repak), "pack", str(root / "src"), str(pak)], check=True)
+            rt = runtime(root, f"[tools]\nrepak = {repak}\n")
+            report = self.edit_and_repack(root, rt, "uasset/Logo.uasset", b"modded")
+            self.assertTrue(report["verified"], report)
+            self.assertTrue((root / "patched" / "Paks" / "pakchunk0-Windows_P.pak").is_file())
+
+    def test_godot_pck_rebuild(self) -> None:
+        pcktool = _tool("VIWO_GODOTPCKTOOL")
+        if pcktool is None:
+            self.skipTest("GodotPckTool not installed (set VIWO_GODOTPCKTOOL)")
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pck = RealGodotToolsTest.make_real_pck(self, root, pcktool)
+            (root / "game").mkdir()
+            pck.rename(root / "game" / "data.pck")
+            rt = runtime(
+                root, f"[slots]\nunarchive.pck = godotpcktool\n[tools]\ngodotpcktool = {pcktool}\n"
+            )
+            report = self.edit_and_repack(root, rt, "png/icon.png", b"modded-png")
+            self.assertTrue(report["verified"], report)
+
+
 if __name__ == "__main__":
     unittest.main()

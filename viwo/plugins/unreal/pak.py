@@ -6,7 +6,7 @@ import struct
 from dataclasses import dataclass
 from pathlib import Path
 
-from viwo.contracts.slots import Match, Unarchiver
+from viwo.contracts.slots import Match, Packer, Unarchiver
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 
 from .aes import decrypt_block
@@ -139,3 +139,55 @@ class RetocUnpack(_UnrealCli):
 
     def argv(self, archive, dest):
         return ["unpack", str(archive), str(dest)]
+
+
+REPAK_VERSIONS = {v: f"V{v}" for v in range(1, 12)} | {8: "V8B"}
+
+
+class RepakPatch(Packer):
+    """Round trip by override: edited assets go into <container>_P.pak, which the engine
+    mounts over the original. Signed games (.sig) may refuse it; that is reported."""
+
+    backend_id, owner, license, isolation = (
+        "repak-patch",
+        "unreal",
+        "MIT OR Apache-2.0",
+        "subprocess",
+    )
+
+    def dependencies(self):
+        return (REPAK,)
+
+    def output_for(self, container: Path) -> Path:
+        return container.with_name(f"{container.stem}_P.pak")
+
+    def pack(self, container, members, ctx) -> Outcome:
+        from viwo.contracts.workspace import safe_member
+
+        tool, info = ctx.os.tools.locate(REPAK), pak_info(container)
+        if tool is None:
+            return Outcome(OutcomeKind.UNAVAILABLE, error=REPAK.hint)
+        root = ctx.scratch / f"pak-{container.stem}"
+        for member, source in members.items():
+            rel = safe_member(member)
+            if rel is not None:
+                (root / rel).parent.mkdir(parents=True, exist_ok=True)
+                (root / rel).write_bytes(source.read_bytes())
+        version = REPAK_VERSIONS.get(info.version if info else 8, "V8B")
+        argv = [
+            *tool.argv_prefix,
+            "pack",
+            "--version",
+            version,
+            str(root),
+            str(self.output_for(container)),
+        ]
+        result = ctx.os.process.run(argv, timeout=3600, cancel=ctx.cancel)
+        if not result.ok:
+            return Outcome(OutcomeKind.FAILED, error=(result.stderr or result.stdout)[-300:])
+        notes = (
+            ("signed game (.sig files): it may refuse the patch",)
+            if list(container.parent.glob("*.sig"))
+            else ()
+        )
+        return Outcome(OutcomeKind.OK, len(members), notes=notes)

@@ -5,7 +5,7 @@ from __future__ import annotations
 import struct
 from pathlib import Path
 
-from viwo.contracts.slots import Match, Unarchiver
+from viwo.contracts.slots import Match, Packer, Unarchiver
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 
 MAGIC = b"GDPC"
@@ -89,3 +89,41 @@ class GodotPckTool(_PckCli):
 
     def argv(self, archive: Path, dest: Path, key: str) -> list[str]:
         return ["--pack", str(archive), "--action", "extract", "--output", str(dest)]
+
+
+def stage_members(members: dict[str, Path], root: Path) -> list[Path]:
+    """Copy edited members to root/<member> (traversal-checked); returns the staged files."""
+    from viwo.contracts.workspace import safe_member
+
+    staged = []
+    for member, source in members.items():
+        rel = safe_member(member)
+        if rel is None:
+            continue
+        target = root.joinpath(*rel.parts)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(source.read_bytes())
+        staged.append(target)
+    return staged
+
+
+class GodotPckPacker(Packer):
+    """Round trip: GodotPckTool adds (replaces) the edited files inside the copied PCK."""
+
+    backend_id, owner, license, isolation = "godotpcktool-pack", "godot", "MIT", "subprocess"
+
+    def dependencies(self):
+        return (PCKTOOL,)
+
+    def pack(self, container, members, ctx) -> Outcome:
+        tool = ctx.os.tools.locate(PCKTOOL)
+        if tool is None:
+            return Outcome(OutcomeKind.UNAVAILABLE, error=PCKTOOL.hint)
+        root = ctx.scratch / f"pck-{container.stem}"
+        staged = stage_members(members, root)
+        argv = [*tool.argv_prefix, "--pack", str(container), "--action", "add"]
+        argv += ["--remove-prefix", str(root), *map(str, staged)]
+        result = ctx.os.process.run(argv, timeout=3600, cancel=ctx.cancel)
+        if not result.ok:
+            return Outcome(OutcomeKind.FAILED, error=(result.stderr or result.stdout)[-300:])
+        return Outcome(OutcomeKind.OK, len(staged))

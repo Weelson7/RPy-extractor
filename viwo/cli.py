@@ -53,6 +53,10 @@ def _parser() -> argparse.ArgumentParser:
     su = command("survey", "read-only coverage report for a game or a whole library")
     su.add_argument("folder", type=Path)
     su.add_argument("--deep", action="store_true", help="also run the carver on unknown blobs")
+    rk = command("repack", "build a patched copy of the game with the files you edited")
+    rk.add_argument("workspace", type=Path)
+    rk.add_argument("--out", type=Path, help="target folder for the patched copy")
+    rk.add_argument("--plan", action="store_true", help="only show what would be written")
     sv = command("serve", "start the web UI (host/port from [server] in the ini)")
     sv.add_argument("--host", help="override [server] host")
     sv.add_argument("--port", type=int, help="override [server] port")
@@ -117,6 +121,13 @@ def _run(args) -> Envelope:
     if args.command == "detect":
         found = detect_all(rt, FolderProbe(args.game))
         return Envelope.success({k: v.to_legacy_dict() for k, v in found.items()})
+    if args.command == "repack":
+        from viwo.core.roundtrip import repack
+
+        if not args.plan and args.out is None:
+            raise ViwoError("invalid_request", "give --out <folder> (or --plan)")
+        note = None if args.json else (lambda e: print(e.legacy_line(), file=sys.stderr))
+        return Envelope.success(repack(rt, args.workspace, args.out, note, apply=not args.plan))
     if args.command == "survey":
         from viwo.core.survey import survey
 

@@ -8,12 +8,15 @@ from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest
 from viwo.contracts.slots import SlotDefinition
 from viwo.contracts.types import DetectionResult
 
+from .pack import RpaWriter
 from .rpa import RpaSafe, Unrpa
 
 MANIFEST = PluginManifest("renpy", "Ren'Py", "0.1.0", engine_type="renpy", priority=10)
 RPA_SLOT = SlotDefinition(
     "unarchive.rpa", "unarchive", "renpy", "rpa-safe", "unrpa", suffixes=(".rpa",), magic=(b"RPA-",)
 )
+
+PACK_SLOT = SlotDefinition("pack.rpa", "pack", "renpy", "rpa-writer")
 
 
 class RenPyPlugin(EnginePlugin):
@@ -33,10 +36,13 @@ class RenPyPlugin(EnginePlugin):
         return DetectionResult("renpy", round(score, 2), evidence, "renpy")
 
     def slot_definitions(self):
-        return (RPA_SLOT,)
+        return (RPA_SLOT, PACK_SLOT)
 
     def backends(self):
-        return (RpaSafe(), Unrpa())
+        return (RpaSafe(), Unrpa(), RpaWriter())
+
+    def pack_slot(self, unarchive_slot: str) -> str:
+        return "pack.rpa" if unarchive_slot == "unarchive.rpa" else ""
 
     def source_roots(self, game_root: Path, probe: GameProbe):
         game_dir = game_root / "game"
