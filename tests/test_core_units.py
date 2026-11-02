@@ -44,7 +44,7 @@ class IniTests(unittest.TestCase):
             (cfg.os_id, cfg.auto_install, cfg.plugins), ("linux", True, {"unity": False})
         )
         self.assertEqual(cfg.slots["unarchive.7z"], ("py7zr", ""))
-        self.assertTrue(cfg.tools["sevenzip"].endswith("bin/7z"))
+        self.assertTrue(Path(cfg.tools["sevenzip"]).as_posix().endswith("bin/7z"))
         self.assertEqual(cfg.options, {"godot": {"level": "2"}})  # secret refused
         self.assertEqual(len(cfg.problems), 2)
 
