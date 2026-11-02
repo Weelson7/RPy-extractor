@@ -189,11 +189,11 @@ def _carve(run: Run, runs, game_files, unpacked):
 
 
 def _claimed(run: Run, runs) -> frozenset[str]:
-    """Suffixes/names decoded by exporters that succeeded: not carved, not copied raw."""
+    """Suffixes/names a plugin handles (its exporter succeeded, or it has none and they are
+    container parts): not carved, not copied raw."""
     plugins = run.rt.plugins
-    return frozenset(
-        s.lower() for r in runs if r.backend for s in plugins[r.plugin_id].claimed_suffixes()
-    )
+    decoded = [r for r in runs if r.backend or not plugins[r.plugin_id].export_slot()]
+    return frozenset(s.lower() for r in decoded for s in plugins[r.plugin_id].claimed_suffixes())
 
 
 def _game_sources(run: Run, chosen: tuple[str, ...], exclude: frozenset[str]) -> list[Source]:

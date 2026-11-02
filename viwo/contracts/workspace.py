@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 MARKER = ".viwo-workspace"
 LEGACY_MARKERS = (".rpyx-workspace",)  # written by the v1 hotfix
@@ -42,3 +42,12 @@ def next_free(path: Path) -> Path:
         if not candidate.exists():
             return candidate
         index += 1
+
+
+def safe_member(name: str) -> PurePosixPath | None:
+    """An archive member name as a relative path, or None when it would leave the target
+    (absolute, drive letter, "..")."""
+    parts = [p for p in name.replace("\\", "/").split("/") if p not in ("", ".")]
+    if not parts or ".." in parts or ":" in parts[0] or name.startswith(("/", "\\")):
+        return None
+    return PurePosixPath(*parts)

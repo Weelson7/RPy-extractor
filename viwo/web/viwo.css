@@ -693,6 +693,7 @@ kbd { margin-right: 6px; padding: 1px 6px; border: 1px solid var(--line); border
 .sv-legend.key { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
 .sv-legend.key b { flex: none; width: 92px; }
 .sv-unk td { padding: 6px 8px; }
+.sv-unk td.num { white-space: nowrap; }
 .sv-unk td.small { color: var(--text-2); }
 .sv-deep { margin-top: 10px; }
 .sv-card .alert { margin: 14px 0 0; }

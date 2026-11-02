@@ -60,6 +60,10 @@ for machine-readable output.
 | Unreal 5 | IoStore `.utoc`/`.ucas` | retoc (to legacy assets) | retoc (raw packages) |
 | Doom engine | IWAD/PWAD: PNG, WAV, MIDI, maps | built-in reader | — |
 | RPG Maker | XP/VX/VX Ace archives; MV/MZ encrypted images and audio (key from System.json) | built-in | — |
+| KiriKiri | `.xp3` (unencrypted entries; per-title ciphers are reported) | built-in | — |
+| Electron / NW.js | `app.asar` (`package.nw` is a zip) | built-in | — |
+| Source engine | `.vpk` (v1/v2, multi-part) | built-in | — |
+| Bethesda | `.bsa` (103–105; LZ4 needs `lz4`), `.ba2` (files, textures rebuilt as DDS) | built-in | — |
 | anything else | files hidden inside unknown data, zlib/gzip streams | built-in carver | — |
 | media merger | video build | ffmpeg | — |
 

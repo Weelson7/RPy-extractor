@@ -16,6 +16,10 @@ BUILTIN_PLUGINS = {
     "doom": "viwo.plugins.doom:DoomPlugin",
     "unreal": "viwo.plugins.unreal:UnrealPlugin",
     "rpgmaker": "viwo.plugins.rpgmaker:RpgMakerPlugin",
+    "kirikiri": "viwo.plugins.kirikiri:KiriKiriPlugin",
+    "electron": "viwo.plugins.electron:ElectronPlugin",
+    "source": "viwo.plugins.source:SourcePlugin",
+    "bethesda": "viwo.plugins.bethesda:BethesdaPlugin",
 }
 
 
