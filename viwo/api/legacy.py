@@ -18,6 +18,12 @@ from viwo.core.wiring.boot import Runtime, boot
 
 _LOCK = threading.Lock()
 _STATE: dict[str, Runtime] = {}
+_JOBS = JobRunner()
+
+
+def jobs() -> JobRunner:
+    """The server-wide job registry (visible through /api/jobs)."""
+    return _JOBS
 
 
 def runtime(temp_root: Path | None = None) -> Runtime:
@@ -38,7 +44,8 @@ def extract_for_v1(
     rt = runtime(temp_root)
     request = ExtractionRequest.from_payload(payload, str(workspace))
     sink = (lambda event: progress(event.legacy_line())) if progress else None
-    job = JobRunner(sink).submit(
+    job = jobs().submit_with_listener(
+        sink,
         "extract",
         lambda jid, s, c: extract(rt, request, jid, s, c, default_workspace),
         background=False,
@@ -84,3 +91,32 @@ def dependencies_for_v1() -> dict:
         "dependencies": items,
         "problems": list(runtime().problems),
     }
+
+
+def locked(workspace: Path, fn: Callable[[], dict]) -> dict:
+    """Run one curation call under the workspace lock (doc 4.1): busy -> error dict."""
+    from viwo.contracts.errors import ViwoError
+    from viwo.core.curation.trash import migrate
+    from viwo.core.workspace import workspace_lock
+
+    try:
+        with workspace_lock(workspace):
+            migrate(workspace)
+            return fn()
+    except ViwoError as exc:
+        return {"success": False, "error": exc.message, "code": exc.code}
+
+
+def run_locked_job(kind: str, workspace: Path, fn: Callable[[], dict]) -> dict:
+    """Run a long v1 operation (merger build) as a ViWo job under the workspace lock."""
+    from viwo.contracts.errors import ViwoError
+    from viwo.core.workspace import workspace_lock
+
+    try:
+        with workspace_lock(workspace):
+            job = jobs().submit(kind, lambda jid, sink, cancel: fn(), background=False)
+    except ViwoError as exc:
+        return {"success": False, "error": exc.message, "code": exc.code}
+    if job.error:
+        return {"success": False, "error": job.error["message"], "code": job.error["code"]}
+    return job.result

@@ -451,7 +451,9 @@ class Handler(BaseHTTPRequestHandler):
     def serve_asset_preview(self, rel_path: str) -> None:
         """Serve asset preview file with logging."""
         try:
-            assets_dir = (self.app_config.temp_path / self.app_config.output_dir_name).resolve()
+            from api.common import assets_dir as active_assets_dir
+
+            assets_dir = active_assets_dir(self.app_config).resolve()
             asset_path = (assets_dir / unquote(rel_path)).resolve()
 
             try:

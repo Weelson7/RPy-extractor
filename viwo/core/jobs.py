@@ -45,26 +45,35 @@ class JobRunner:
         self._listener = listener
 
     def submit(self, kind: str, fn: JobFn, background: bool = True) -> Job:
+        return self.submit_with_listener(self._listener, kind, fn, background)
+
+    def submit_with_listener(
+        self, listener: ProgressSink | None, kind: str, fn: JobFn, background: bool = True
+    ) -> Job:
         job = Job(f"{time.strftime('%Y%m%d-%H%M%S')}-{next(_IDS):04d}", kind)
         self._jobs[job.job_id] = job
         if background:
-            threading.Thread(target=self._run, args=(job, fn), daemon=True).start()
+            threading.Thread(target=self._run, args=(job, fn, listener), daemon=True).start()
         else:
-            self._run(job, fn)
+            self._run(job, fn, listener)
         return job
 
-    def _sink(self, job: Job) -> ProgressSink:
+    def list(self) -> list[Job]:
+        return list(self._jobs.values())
+
+    @staticmethod
+    def _sink(job: Job, listener: ProgressSink | None) -> ProgressSink:
         def sink(event: ProgressEvent) -> None:
             job.emit(event)
-            if self._listener:
-                self._listener(event)
+            if listener:
+                listener(event)
 
         return sink
 
-    def _run(self, job: Job, fn: JobFn) -> None:
+    def _run(self, job: Job, fn: JobFn, listener: ProgressSink | None = None) -> None:
         job.state = "running"
         try:
-            job.result = fn(job.job_id, self._sink(job), job.cancel)
+            job.result = fn(job.job_id, self._sink(job, listener), job.cancel)
             job.state = "cancelled" if job.cancel.cancelled else "succeeded"
         except ViwoError as exc:
             job.state = "cancelled" if exc.code == "cancelled" else "failed"

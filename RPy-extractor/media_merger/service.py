@@ -347,25 +347,9 @@ def _safe_output_name(raw_name: str) -> str:
 
 
 def _safe_move_to_trash(working_dir: Path, source_paths: list[Path]) -> int:
-    trash_root = working_dir / ".trash" / "media-merger"
-    trash_root.mkdir(parents=True, exist_ok=True)
+    from viwo.core.curation.trash import trash_files
 
-    moved = 0
-    for src in source_paths:
-        if not src.exists() or not src.is_file():
-            continue
-
-        base_name = src.name
-        target = trash_root / base_name
-        suffix = 1
-        while target.exists():
-            target = trash_root / f"{src.stem}_{suffix}{src.suffix}"
-            suffix += 1
-
-        src.rename(target)
-        moved += 1
-
-    return moved
+    return trash_files(working_dir, source_paths, "merger")
 
 
 def _build_ffmpeg_filter(

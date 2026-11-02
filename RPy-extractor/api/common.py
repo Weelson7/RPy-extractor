@@ -47,34 +47,6 @@ def resume_assets_candidate_paths(app_config: AppConfig) -> list[Path]:
     return unique
 
 
-def trash_operation_endpoint(
-    operation: str,
-    app_config: AppConfig,
-    ext_folder: str,
-    operation_func: Callable,
-    progress_callback: Callable[[str], None] | None = None,
-) -> dict:
-    """Generic helper for trash operations (move, restore, delete)."""
-    if not operation or not ext_folder:
-        return {
-            "success": False,
-            "error": f"Missing {operation} or folder parameter",
-            "type": operation,
-            "folder": ext_folder,
-        }
-
-    try:
-        out_dir = assets_dir(app_config)
-        return operation_func(out_dir, ext_folder, progress_callback)
-    except Exception as exc:
-        return {
-            "success": False,
-            "error": str(exc),
-            "type": operation,
-            "folder": ext_folder,
-        }
-
-
 def get_sort_history_session() -> tuple[dict[str, Any], list[dict[str, str]]]:
     """Get session and mutable sort history list."""
     session = SESSIONS.get_current() or {}
@@ -83,24 +55,6 @@ def get_sort_history_session() -> tuple[dict[str, Any], list[dict[str, str]]]:
         history = []
     session["sortingHistory"] = history
     return session, history
-
-
-def resolve_asset_path_for_action(out_dir: Path, encoded_path: str) -> tuple[Path | None, str | None]:
-    """Resolve and validate encoded asset path under active assets root."""
-    if not encoded_path:
-        return None, "Missing asset path"
-
-    decoded = unquote(encoded_path)
-    candidate = (out_dir / decoded).resolve()
-    try:
-        candidate.relative_to(out_dir.resolve())
-    except Exception:
-        return None, "Invalid asset path"
-
-    if not candidate.exists() or not candidate.is_file():
-        return None, f"Asset not found: {decoded}"
-
-    return candidate, None
 
 
 def open_folder_in_explorer(path: Path) -> tuple[bool, str]:

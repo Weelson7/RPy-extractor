@@ -160,6 +160,14 @@ def list_media_merger_candidates(
 
 
 def build_media_merger_output(app_config: AppConfig, payload: dict[str, Any]) -> dict[str, Any]:
+    """Merger build as a ViWo job under the workspace lock (doc 4.1)."""
+    from viwo.api.legacy import run_locked_job
+
+    working_dir = _resolve_working_dir(app_config, str(payload.get("workingDir", "")))
+    return run_locked_job("merge", working_dir, lambda: _build_output(app_config, payload))
+
+
+def _build_output(app_config: AppConfig, payload: dict[str, Any]) -> dict[str, Any]:
     working_dir = _resolve_working_dir(app_config, str(payload.get("workingDir", "")))
     selected_paths = payload.get("selectedPaths", [])
     selected_candidates = payload.get("selectedCandidates", [])

@@ -13,7 +13,7 @@ from sorting import (
     delete_extension_from_trash,
     clear_all_trash,
 )
-from .common import assets_dir, set_session_asset_path, trash_operation_endpoint
+from .common import assets_dir, set_session_asset_path
 
 
 def extract_repo(
@@ -201,13 +201,9 @@ def move_to_trash_endpoint(
     progress_callback: Callable[[str], None] | None = None,
 ) -> dict:
     """Move extension to trash."""
-    return trash_operation_endpoint(
-        "move_to_trash",
-        app_config,
-        ext_folder,
-        move_extension_to_trash,
-        progress_callback,
-    )
+    if not ext_folder:
+        return {"success": False, "error": "Missing folder parameter", "type": "move_to_trash", "folder": ext_folder}
+    return move_extension_to_trash(assets_dir(app_config), ext_folder, progress_callback)
 
 
 def restore_from_trash_endpoint(
@@ -216,13 +212,9 @@ def restore_from_trash_endpoint(
     progress_callback: Callable[[str], None] | None = None,
 ) -> dict:
     """Restore extension from trash."""
-    return trash_operation_endpoint(
-        "restore_from_trash",
-        app_config,
-        ext_folder,
-        restore_extension_from_trash,
-        progress_callback,
-    )
+    if not ext_folder:
+        return {"success": False, "error": "Missing folder parameter", "type": "restore_from_trash", "folder": ext_folder}
+    return restore_extension_from_trash(assets_dir(app_config), ext_folder, progress_callback)
 
 
 def delete_from_trash_endpoint(
@@ -231,13 +223,9 @@ def delete_from_trash_endpoint(
     progress_callback: Callable[[str], None] | None = None,
 ) -> dict:
     """Permanently delete from trash."""
-    return trash_operation_endpoint(
-        "delete_from_trash",
-        app_config,
-        ext_folder,
-        delete_extension_from_trash,
-        progress_callback,
-    )
+    if not ext_folder:
+        return {"success": False, "error": "Missing folder parameter", "type": "delete_from_trash", "folder": ext_folder}
+    return delete_extension_from_trash(assets_dir(app_config), ext_folder, progress_callback)
 
 
 def clear_trash_endpoint(
