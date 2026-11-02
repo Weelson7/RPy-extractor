@@ -21,6 +21,7 @@ BUILTIN_PLUGINS = {
     "source": "viwo.plugins.source:SourcePlugin",
     "bethesda": "viwo.plugins.bethesda:BethesdaPlugin",
     "quickbms": "viwo.plugins.quickbms:QuickBmsPlugin",
+    "overwatch": "viwo.plugins.overwatch:OverwatchPlugin",
 }
 
 

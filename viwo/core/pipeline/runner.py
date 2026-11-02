@@ -117,7 +117,13 @@ def _select(run: Run) -> tuple[str, ...]:
     rt = run.rt
     run.detections = detect_all(rt, FolderProbe(run.game))
     priorities = {pid: p.manifest.priority for pid, p in rt.plugins.items()}
-    chosen = select_plugins(run.request, list(run.detections.values()), priorities)
+    named = set(run.request.plugins)  # terms-of-service-sensitive plugins only when named
+    allowed = [
+        d
+        for pid, d in run.detections.items()
+        if pid in named or not rt.plugins[pid].manifest.tos_sensitive
+    ]
+    chosen = select_plugins(run.request, allowed, priorities)
     run.log(f"Selected plugin(s): {', '.join(chosen)}", "detect")
     return chosen
 

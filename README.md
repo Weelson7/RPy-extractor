@@ -42,10 +42,24 @@ python -m viwo.cli extract "/path/to/game" --workspace ./ws
 python -m viwo.cli replay ./ws/.extraction_metadata/runs/<job>.json --workspace ./ws-again
 ```
 
-`viwo survey <library or game folder>` reports, per game, what ViWo can extract and what it cannot
-(add `--deep` to try the carver on unknown files). `viwo info`, `viwo slots` and
-`viwo unpack <archive> --out DIR` are also available; add `--json`
-for machine-readable output.
+More commands (add `--json` to any of them for machine-readable output):
+
+| Command | What it does |
+|---------|--------------|
+| `viwo survey <library or game>` | read-only: per game, what ViWo can pull and what it cannot (`--deep` also tries the carver) |
+| `viwo sanitize <workspace>` | find empty, junk, duplicate, mislabeled or broken files; `--apply` the safe fixes, `--undo TOKEN` |
+| `viwo repack <workspace> --out DIR` | build a patched copy of the game with the files you edited (`--plan` first); verified by re-extraction |
+| `viwo capture <game> --exe EXE --workspace WS --confirm` | runtime capture with RenderDoc for what static extraction cannot reach (off by default, policy-checked) |
+| `viwo unpack <archive> --out DIR`, `viwo info`, `viwo slots` | single archive, configuration, tool status |
+
+## How far it reaches
+
+Anything stored on your disk should come out, through a ladder of fallbacks: engine plugins with
+real names, container unpackers, a carver that finds standard files (images, audio, video,
+archives) inside unknown data, zlib/gzip stream inflation, decoders that turn game audio and
+textures into WAV/PNG, QuickBMS scripts for custom formats, and runtime capture as the last rung.
+`viwo survey` shows where each of your games stands. Out of scope by design: DRM or anti-cheat
+circumvention, guessing passwords or keys, and content that only exists on a server.
 
 ## Supported engines and tools
 
