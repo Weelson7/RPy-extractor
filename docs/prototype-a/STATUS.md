@@ -14,7 +14,7 @@ contract with its reason.
 | M3 | flat startup ini; slot binder (failover); stage runner (probe, detect, select, identify/carve, unpack, collect copy/move, provenance, verify, report); workspace ownership + lock; jobs + run records + envelope; CLI `info/detect/extract/slots/serve`; v1 server delegates extraction to the core; `generic` plugin; zip/tar/7z/rar/py7zr backends | done (see notes) |
 | M4 | `renpy` plugin: safe RPA reader (main) + unrpa subprocess (spare) | done |
 | M5 | `unity` plugin: UnityPy (main) / AssetStudioModCLI (spare) | done |
-| M6 | `godot` plugin: PCK identify + carving of embedded PCKs, GDRE (main) / GodotPckTool (spare) | todo |
+| M6 | `godot` plugin: PCK identify + carving of embedded PCKs, GDRE (main) / GodotPckTool (spare) | done |
 
 ## Layout
 
@@ -62,3 +62,15 @@ not installable here). Detection fixes v1 F2 (case-insensitive markers; `*_Data`
 Removed v1 placeholder "slices" and the always-passing completeness gate (F11). Tests use a fake
 `UnityPy` module; L5 checks real UnityPy on a corrupt container. **Gap:** no real Unity asset
 fixture yet (needs a redistributable sample; L7 manual check on a real game is pending).
+
+**M6 (Godot).** PCKs are identified by the `GDPC` magic, and PCKs embedded in executables by the
+`GDPC` trailer (size + magic), then carved out before unpacking. GDRE Tools is main
+(`--headless --extract= --output= [--key=]`), GodotPckTool spare. The encryption key is a
+`secret` plugin option: "needs key" outcomes do not fall through to the spare (it cannot
+decrypt). **Not verified against the real binaries:** the exact GDRE/GodotPckTool flags
+(tools not installable here), and whether carved PCKs from Godot 3 executables keep valid
+offsets. Tests use fake CLI tools (POSIX only; skipped on Windows CI).
+
+**Mixed mode (pulled forward from M10, small).** Pairwise runs over generic/renpy/unity/godot
+on one mixed fixture: every run selects exactly the requested set, the game folder is
+unchanged, results are deterministic.
