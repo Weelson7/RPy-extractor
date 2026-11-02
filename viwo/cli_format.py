@@ -135,6 +135,15 @@ def error(err: dict) -> str:
     return f"viwo: {err['code']}: {err['message']}{hint}"
 
 
+WELCOME = """ViWo // Vidya Wormhole - game asset extraction, local only.
+
+  viwo serve                         open the web UI in your browser
+  viwo survey <games folder>         what ViWo can pull from each game (read-only)
+  viwo extract <game> --workspace W  extract one game
+  viwo slots                         which optional tools are installed
+
+Run `viwo -h` for every command, `viwo <command> -h` for its options."""
+
 FORMATTERS: dict[str, Any] = {
     "detect": detect,
     "survey": survey,

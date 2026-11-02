@@ -18,15 +18,48 @@ curated workspace, and records where every file came from. Your game is never mo
 - **Safe by default:** traversal-safe unpacking, Ren'Py archive indexes read with a pickle
   allow-list, a per-start API token for the local web UI, secrets never written to disk.
 
-## Quick start
+## Quick start (test it locally)
 
-Requires Python 3.11+. Optional tools are detected automatically (see `viwo slots`).
+1. Python 3.11 or newer.
+2. From the repository folder:
 
-```bash
-python -m viwo.cli serve
-```
+   ```bash
+   pip install -e ".[unity,sevenzip,renpy]"
+   ```
 
-Then open the printed address (default `http://127.0.0.1:8081/`). `python Start.py` does the same.
+3. Start the web UI (it opens your browser; `--no-browser` to skip):
+
+   ```bash
+   viwo serve
+   ```
+
+   Data goes to `viwo-data/` next to `startup.ini` (workspace, merger output, logs, temp). Plain
+   `viwo` prints a short guide; `python Start.py` does the same as `viwo serve`.
+
+4. Check which optional tools are found, then add the ones for the engines you care about:
+
+   ```bash
+   viwo slots
+   ```
+
+| Tool | Enables | Get it | Point ViWo at it |
+|------|---------|--------|------------------|
+| 7-Zip | 7z / rar / zip spares, `.unitypackage` | 7-zip.org | on PATH, or `[tools] sevenzip = C:/Program Files/7-Zip/7z.exe` |
+| unrar | RAR archives | rarlab.com | PATH or `[tools] unrar = ...` |
+| ffmpeg | media merger, DDS to PNG, Bink to MP4 | ffmpeg.org | PATH or `[tools] ffmpeg = ...` (and `ffprobe`) |
+| vgmstream-cli | Wwise / FMOD / CRI / console audio to WAV | github.com/vgmstream/vgmstream releases | PATH or `[tools] vgmstream = ...` |
+| GDRE Tools | Godot `.pck` (main) | github.com/GDRETools/gdsdecomp releases | PATH or `[tools] gdre = ...` |
+| GodotPckTool | Godot `.pck` (spare), Godot repack | github.com/hhyyrylainen/GodotPckTool | PATH or `[tools] godotpcktool = ...` |
+| AssetStudioModCLI | Unity (spare to UnityPy) | github.com/aelurum/AssetStudio releases | PATH or `[tools] assetstudiomod = ...` |
+| repak | Unreal `.pak`, Unreal repack | github.com/trumank/repak releases | PATH or `[tools] repak = ...` |
+| retoc | Unreal 5 IoStore `.utoc/.ucas` | github.com/trumank/retoc releases | PATH or `[tools] retoc = ...` |
+| DataTool | Overwatch (choose it explicitly) | github.com/overtools/OWLib | PATH or `[tools] datatool = ...` |
+| QuickBMS | any format you have a `.bms` script for | QuickBMS site | PATH or `[tools] quickbms = ...`, plus `[options.quickbms] scripts = <folder>` |
+| RenderDoc | runtime capture (off by default) | renderdoc.org | `[tools] renderdoccmd = ...`, `[tools] rdpython = ...`, and add `capture` to `[startup] features` |
+
+Every tool is optional: a missing one disables only what needs it, and `viwo slots` / 05 SYSTEM
+say what to install. The engine tools can also be set with environment variables
+(`VIWO_REPAK`, `VIWO_GDRE`, `VIWO_VGMSTREAM`, ...).
 
 Command line:
 

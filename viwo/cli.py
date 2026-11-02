@@ -33,7 +33,7 @@ def _parser() -> argparse.ArgumentParser:
     ap.add_argument("--json", action="store_true", help="print a JSON envelope")
     common = argparse.ArgumentParser(add_help=False)  # --json also after the command
     common.add_argument("--json", action="store_true", default=argparse.SUPPRESS)
-    sub = ap.add_subparsers(dest="command", required=True)
+    sub = ap.add_subparsers(dest="command")
 
     def command(name: str, text: str) -> argparse.ArgumentParser:
         return sub.add_parser(name, parents=[common], help=text)
@@ -55,6 +55,7 @@ def _parser() -> argparse.ArgumentParser:
     sv = command("serve", "start the web UI (host/port from [server] in the ini)")
     sv.add_argument("--host", help="override [server] host")
     sv.add_argument("--port", type=int, help="override [server] port")
+    sv.add_argument("--no-browser", action="store_true", help="do not open the browser")
     return ap
 
 
@@ -157,10 +158,13 @@ def _run(args) -> Envelope:
 
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
+    if args.command is None:
+        print(cli_format.WELCOME)
+        return 0
     if args.command == "serve":
         from viwo.api.server import serve
 
-        return serve(args.ini, args.host, args.port)
+        return serve(args.ini, args.host, args.port, not args.no_browser)
     try:
         envelope = _run(args)
     except ViwoError as exc:

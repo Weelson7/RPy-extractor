@@ -7,6 +7,8 @@ import json
 import mimetypes
 import re
 import secrets
+import threading
+import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
@@ -187,7 +189,9 @@ def make_server(app: App, host: str | None = None, port: int | None = None) -> T
     )
 
 
-def serve(ini: Path | None = None, host: str | None = None, port: int | None = None) -> int:
+def serve(
+    ini: Path | None = None, host: str | None = None, port: int | None = None, browser: bool = True
+) -> int:
     app = get_app(ini)
     try:
         httpd = make_server(app, host, port)
@@ -204,6 +208,9 @@ def serve(ini: Path | None = None, host: str | None = None, port: int | None = N
     for problem in app.rt.problems:
         app.log(f"[SERVER] note: {problem}")
     print(f"ViWo // Vidya Wormhole -> {url}", flush=True)
+    print(f"Workspace: {app.workspace}   (Ctrl+C stops the server)", flush=True)
+    if browser:
+        threading.Timer(0.6, webbrowser.open, [url]).start()
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
