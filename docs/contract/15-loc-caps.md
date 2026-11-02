@@ -55,6 +55,7 @@ functions, not copy them.
 | `core/merger` | 650 | v1 ≈800 across service + handlers; must shrink |
 | `core/sanitizer` (runner + phase 1 rules) | 400 | |
 | `core/capture` (policy, journal, diff) | 400 | S7 |
+| `core/roundtrip` (edit set, plan, patched copy, verify) | 450 | doc 18; plugins add ≤ 150 each for packing |
 | `api/` | 700 | thin adapters; v1 `extract.py` + `api/` ≈1,550, so most of that logic moves to core |
 | `cli/` | 400 | |
 | `backends/` (core-owned backends) | 1,200 | ≤ **150** per backend |
@@ -63,7 +64,7 @@ functions, not copy them.
 | each custom plugin (`user_plugins/…`, e.g. the showcase or Overwatch) | 300 | |
 | **Total Python product, hard cap** | **10,000** | |
 | **Prototype A target** (end of M6) | **≤ 5,500** |
-| **Prototype B target** (end of M9) | **≤ 8,000** | |
+| **Prototype B target** (end of M10, with round trip) | **≤ 9,000** | |
 
 **Other languages:**
 
@@ -102,7 +103,7 @@ Tests have no total budget. Instead, a **floor**: test LoC should be at least
   ; ...
   [exceptions]
   ; path = new cap | reason | expires at milestone
-  core/merger/filtergraph.py = 300 | ffmpeg graph builder; split planned | M9
+  core/merger/filtergraph.py = 300 | ffmpeg graph builder; split planned | M10
   [ratchet]
   web/app.js = 1879
   ```

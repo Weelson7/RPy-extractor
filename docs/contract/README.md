@@ -29,6 +29,7 @@ are places where I'm unsure or where the choice is yours.
 | 15 | [15-loc-caps.md](15-loc-caps.md) | strict caps on non-blank, non-comment LoC: counting rules, v1 baseline, budgets |
 | 16 | [16-roadmap.md](16-roadmap.md) | milestones M0–M12, decision gates, exit criteria |
 | 17 | [17-testing-model.md](17-testing-model.md) | test levels L0–L7, safety catalogue, fixtures, CI, definition of done |
+| 18 | [18-round-trip.md](18-round-trip.md) | repack and modding: provenance map, edit set, per-plugin strategy, patched game copy |
 
 ## Scope decisions taken (your answers)
 
@@ -39,6 +40,12 @@ are places where I'm unsure or where the choice is yours.
 | Form | **Headless core + CLI + web UI** (the web UI is one client) |
 | Build vs wrap | **Orchestrate existing tools, write glue**; native code only where nothing exists or as a light spare |
 | Prototype engines | **Ren'Py + Unity (port v1), Godot, Unreal, plus a custom-plugin showcase (e.g. Overwatch)** |
+| Round trip | **Full round trip; repack in Prototype B**; output = **patched game copy**; strategy **per plugin**; **same format first** (doc 18) |
+| License | **MIT core**; dependencies keep their own licenses (GPL/AGPL tools only as subprocesses) |
+| Re-extraction | **ask every time** (new workspace / replace / cancel) |
+| Terms-of-service-sensitive testing | run by an **independent operator** (doc 17.4b) |
+| v1 hotfix | **done** on branch `hotfix/v1-data-safety` (H1, H2, H3, F17 + 11 regression tests), not merged yet |
+| Naming | **rename the product** (name to be chosen) |
 
 ## Goals (as I understood them)
 
@@ -115,13 +122,13 @@ These are the ideas the other documents build on. Each is up for debate.
 | D6 | macOS kernel | later |
 | D7 | `export.unity`: v1 runs every available exporter and adds up their output. Keep that (`supplement`) or switch to main + spare (`failover`)? | ❓ depends on whether duplicate files are acceptable |
 | D8 | Vendored compiled tools: build from source, or pin the version and fetch the release binary? (doc 10.4) | pin + fetch for heavy native tools |
-| D9 | Project license, needed before vendoring GPL tools (doc 10.4) | — |
-| D10 | **Hotfix v1 now** for H1 (moves files out of the game folder), H2 (deletes a user-chosen folder), H3 (cross-site POSTs) and F17 (zip-slip), before the overhaul? All are confirmed in the code (doc 7) | **yes, urgently** (roadmap M1) |
+| D9 | Project license | **decided:** MIT core; dependencies keep their own licenses |
+| D10 | Hotfix v1 for H1, H2, H3, F17 | **decided and done:** branch `hotfix/v1-data-safety`, awaiting your review/merge |
 | D11 | Ren'Py RPA: should our own safe reader (restricted unpickler) be main, with unrpa as a subprocess spare? | yes; RPA indexes are pickles (doc 13.3) |
 | D12 | Should CATALOG → SELECT be a separate stage for huge games (CASC, Unreal)? | yes, optional |
 | D13 | Runtime agents: journaled overlay on the game folder, or a copy of the game? | overlay + crash recovery |
 | D14 | Custom plugin showcase | **decided:** an open-source custom-engine game in CI; Overwatch allowed as a `tos_sensitive` plugin whose real-data tests are run by an **independent operator** (doc 17.4b) |
-| D15 | Product and CLI name ("RPy Extractor" undersells a multi-engine framework) | — |
+| D15 | Product and CLI name | **decided to rename**; the name itself is still open (`rpyx` is a placeholder) |
 
 ## Not in this draft
 

@@ -64,6 +64,14 @@ least sure about are marked ❓.
 - **Inventory:** what a plugin expects to find (expected items), as opposed to what was actually **collected**.
 - **Manifest:** a machine-readable report in `.extraction_metadata/`.
 
+### Round trip (doc 18)
+
+- **Provenance map:** for each workspace file, its container chain, member path, producing backend and original hash.
+- **Edit set:** workspace files changed (hash differs from provenance) or explicitly added.
+- **Mod strategy:** how an engine takes changes back: **override** (loose files, patch containers) or **rebuild** (a new container).
+- **Patched copy:** a modified copy of the game folder; the original is never written to.
+- **Pack:** the slot family that writes overrides or rebuilds containers.
+
 ### Curation
 
 - **Sorting:** going through assets one at a time (mark kept, item trash, rename, undo).

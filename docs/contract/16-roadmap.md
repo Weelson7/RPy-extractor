@@ -16,7 +16,7 @@ folder), and the prototype is split into **A (viable core)** and
 M0 Decisions ─▶ M1 Hotfix+Safety net ─▶ M2 Contracts+Kernels ─▶ M3 Lean core+CLI ─┬▶ M4 Ren'Py ─┐
                                                                                    ├▶ M5 Unity  ─┼▶ ★A
                                                                                    └▶ M6 Godot  ─┘
-★A ─▶ M7 Unreal unpack ─┬▶ M9 Mixed + Sanitizer P1 ─▶ ★B ─▶ M10 Capture pilot ─▶ M11 Vendoring ─▶ M12+
+★A ─▶ M7 Unreal unpack ─┬▶ M9 Round trip ─▶ M10 Mixed + Sanitizer P1 ─▶ ★B ─▶ M11 Capture pilot ─▶ M12 Vendoring ─▶ M13+
       M8 Custom plugins ─┘
 ```
 
@@ -25,7 +25,7 @@ M0 Decisions ─▶ M1 Hotfix+Safety net ─▶ M2 Contracts+Kernels ─▶ M3 L
 | M | Name | Content | Needs | New LoC cap | Exit criteria |
 |---|------|---------|-------|-------------|---------------|
 | **M0** | Decisions & semantics | sign-off on docs 0–17; close or explicitly park D0–D15; rewrite the scratchpad interface draft to match draft 3 | — | 0 | glossary + caps agreed; decision table filled in |
-| **M1** | **Hotfix + safety net** | **in v1:** H1 copy-not-move, H2 workspace marker, H3 token/JSON-only/Host/containment, F17 safe extraction, F1 exports to staging, F3 dot-folder filter. **Then** the L2 characterization tests against the *intended* behavior, with an intended-differences list; LoC counter + L0 in report-only mode; CI on Linux + Windows | D10 | hotfix ≤ 250 in v1; counter ≤ 120 | H1/H2/H3/F17 regression tests green; golden files committed |
+| **M1** | **Hotfix + safety net** (hotfix part **done**: branch `hotfix/v1-data-safety`) | **in v1:** H1 copy-not-move, H2 workspace marker, H3 token/JSON-only/Host/containment, F17 safe extraction, F1 exports to staging, F3 dot-folder filter. **Then** the L2 characterization tests against the *intended* behavior, with an intended-differences list; LoC counter + L0 in report-only mode; CI on Linux + Windows | D10 | hotfix ≤ 250 in v1; counter ≤ 120 | H1/H2/H3/F17 regression tests green; golden files committed |
 | **M2** | Contracts + kernels (lean) | `contracts/`; conformance kit; ProcessRunner (tree-kill, timeout), ToolLocator, FileSystemPolicy for Linux and Windows; v1 OS code behind them; installer/shell kept as thin v1 adapters | D0, D2, D6 | contracts 900; kernels 900 | L1 green on both OSes; L2 unchanged; F4, F13 gone |
 | **M3** | Lean core + CLI | flat startup ini; slot binder (failover only); stage runner (identify/carve, unpack, collect copy/move, verify, report); workspace (marker, lock, three trash layouts); jobs + run records + envelope; CLI `info/detect/extract/unpack/serve`; v1 routes as adapters (doc 4.1 mapping); `generic` plugin; core backends zip/tar/7z/rar/py7zr. If it overruns, split into M3a (wiring + slots + CLI on the v1 pipeline) and M3b (new stage runner) | D3, D12, D15 | pipeline 900, wiring 500, jobs 350, workspace 800, api 700, cli 400, backends 600 | L0 **blocking**; L1–L4 for generic; L2 matches the intended behavior; replay identical; `.7z` failover shown |
 | **M4** | Ren'Py | safe RPA reader (main) + unrpa subprocess (spare); source root copied | D11 | 500 | malicious-RPA test; v1 Ren'Py parity on L2; L5 with unrpa |
@@ -33,10 +33,11 @@ M0 Decisions ─▶ M1 Hotfix+Safety net ─▶ M2 Contracts+Kernels ─▶ M3 L
 | **M6** | Godot | PCK v1–v4; carving of embedded PCKs; GDRE → GodotPckTool; key as a plugin option | — | 500 | PCK fixtures (embedded, encrypted); L5 with both tools. **★ Prototype A** (doc 14.4) |
 | **M7** | Unreal unpack | repak → QuickBMS; retoc; AES key option | — | 500 | pak fixtures built with repak; export explicitly out of scope |
 | **M8** | Custom plugins | out-of-tree loader (`user_plugins/`, entry points); open-source custom-engine showcase (CI); optional local-only Overwatch plugin (D14); CATALOG → SELECT if D12 says yes | D5, D12, D14 | loader ≤ 200; plugins ≤ 300 each | conformance from outside the tree; offline defaults verified |
-| **M9** | Mixed + sanitizer P1 | exhaustive selection + pairwise pipeline tests; minimal mixed selector in the UI; report-only sanitizer | D1, D4 | sanitizer 400; web ≤ 300 | product ≤ 8,000. **★ Prototype B** |
-| **M10** | Capture pilot | policy + refusal list (data); journal overlay + crash recovery; RenderDoc → harvest → DIFF on an open game | D13, legal stance | capture 400 | refusal and restore tests green |
-| **M11** | Vendoring | tool lock → sparse submodules for the source-usable tools; bootstrap reapplies sparse rules; nightly L5 on vendored tools | D8, D9 | bootstrap ≤ 150 | clean clone + bootstrap → `rpyx slots --check` green on both OSes |
-| **M12+** | Next | distro layering + the 12 ini files + hooks; installer abstraction; RPG Maker, Electron/NW, GameMaker; Unreal export (CUE4Parse wrapper); sanitizer P2–3; analysis backends; UI (plugin option forms, run history, sanitizer panel); Wine | — | within the 10k total | per item |
+| **M9** | Round trip (repack) | provenance-based edit set; per-plugin `repack_plan`; patched game copy (copy-on-write clones where supported); `pack.*` slots for Ren'Py (override + RPA writer), Godot (PCK rebuild), Unreal (`_P.pak` via repak), Unity (UnityPy save, same-format); verification by re-extraction | — | roundtrip 450; +150 per plugin | round-trip tests green for each engine; original game folder hashes unchanged; repack refused for policy-listed games |
+| **M10** | Mixed + sanitizer P1 | exhaustive selection + pairwise pipeline tests; minimal mixed selector in the UI; report-only sanitizer | D1, D4 | sanitizer 400; web ≤ 300 | product ≤ 9,000. **★ Prototype B** |
+| **M11** | Capture pilot | policy + refusal list (data); journal overlay + crash recovery; RenderDoc → harvest → DIFF on an open game | D13, legal stance | capture 400 | refusal and restore tests green |
+| **M12** | Vendoring | tool lock → sparse submodules for the source-usable tools; bootstrap reapplies sparse rules; nightly L5 on vendored tools | D8, D9 | bootstrap ≤ 150 | clean clone + bootstrap → `rpyx slots --check` green on both OSes |
+| **M13+** | Next | distro layering + the 12 ini files + hooks; installer abstraction; RPG Maker, Electron/NW, GameMaker; Unreal export (CUE4Parse wrapper); sanitizer P2–3; analysis backends; UI (plugin option forms, run history, sanitizer panel); Wine | — | within the 10k total | per item |
 
 ## 16.3 Decision gates
 
@@ -47,8 +48,8 @@ M0 Decisions ─▶ M1 Hotfix+Safety net ─▶ M2 Contracts+Kernels ─▶ M3 L
 | G2 | M3 | D3 Unity layout, D12 catalog stage, D15 name |
 | G3 | M4/M5 | D11 safe RPA reader, D7 Unity export main |
 | G4 | M8 | D5 declarative plugins, D14 showcase |
-| G5 | M10 | D13 overlay vs copy; written legal/terms-of-service stance |
-| G6 | M11 | D8/D9 vendoring and project license |
+| G5 | M11 | D13 overlay vs copy; written legal/terms-of-service stance |
+| G6 | M12 | D8 vendoring (D9 license already decided: MIT core) |
 
 ## 16.4 Risks to the roadmap
 

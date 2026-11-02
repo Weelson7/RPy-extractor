@@ -45,6 +45,7 @@ work into an urgent hotfix plus two prototypes:
 | S4 Unreal unpack | repak → QuickBMS; retoc; AES key as a plugin option | repak → QuickBMS |
 | S5 custom plugin | loader for out-of-tree plugins (`user_plugins/`); **an open-source custom-engine game as the CI showcase**; **Overwatch (DataTool) as an optional, local-only plugin** with offline defaults, if you keep it (D14) | DataTool → CascLib |
 | S6 mixed + sanitizer P1 | exhaustive selection tests + pairwise pipeline runs (doc 3.6); report-only sanitizer | — |
+| S6b round trip | repack into a **patched game copy**; per-plugin strategy; same-format; verified by re-extraction (doc 18) | `pack.*` main → spare |
 | S7 capture pilot | policy + journal + RenderDoc texture capture + DIFF, on an open game | RenderDoc → apitrace |
 
 ## 14.4 How we'd know it works
@@ -57,7 +58,7 @@ work into an urgent hotfix plus two prototypes:
 5. Product LoC ≤ **5,500** (doc 15). The startup ini with each single profile boots on its native runner. Ini files for the other kernel are validated but not booted.
 
 **Prototype B is done when:** the doc 14.4 draft-2 criteria hold for all
-five engines, product LoC ≤ 8,000, and the capture pilot's refusal and restore
+five engines, round-trip tests pass for Ren'Py, Godot, Unreal and Unity, product LoC ≤ 9,000, and the capture pilot's refusal and restore
 tests pass.
 
 ## 14.5 Not in either prototype

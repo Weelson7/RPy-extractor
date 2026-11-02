@@ -85,7 +85,7 @@ change is safe.
 ```
 
 - **Ownership (fixes H2):** the framework only ever **clears or replaces** content inside a folder that holds a `.rpyx-workspace` marker it wrote. Pointing Step 2 at an arbitrary folder makes it a *read/curate* target only; extracting into it is refused unless it's empty, in which case the marker is created.
-- **Re-extraction policy** ❓: the default proposal is that re-extracting into an owned workspace **replaces the extension groups** but **keeps** `.extraction_metadata/runs/`, `.sanitizer/journal/` and `.trash/` (so replay and undo survive). Alternative: always make a new workspace folder per run.
+- **Re-extraction policy (decided: ask every time).** When the target workspace is owned and not empty, the user chooses: **new** (a new workspace folder `<name>-<n>`), **replace** (replace the extension groups, keep `.extraction_metadata/runs/`, `.sanitizer/journal/` and `.trash/`), or **cancel**. HTTP: `/api/extract` takes an optional `onExisting: new|replace|cancel`. Without it, the response is `{success:false, needsDecision:true, options:[...]}` and the UI shows a dialog (a small v1 UI addition in M3). CLI: `--on-existing` is required in that situation; without it the command exits with code 2 and an explanation.
 - **Three trash layouts, made explicit** (fixes F18): `groups/`, `items/`, `merger/`. v1 trees with the old layout are migrated once, on first open.
 - **All top-level folders starting with `.` are reserved:** never listed, counted, sorted, merged, or trashed by "keep selected" (fixes F3).
 - Collision naming stays as it is: `name__N.ext`; undo uses `name__undoN.ext`; group trash copies `<ext>_N`; restored groups `<ext>__N`.

@@ -10,7 +10,7 @@
 | INVENTORY / CATALOG | plugins | `inventory()` for the selected plugins. Draft 2: optionally a browsable **catalog** the user or CLI selects from, for huge games (CASC, big Unreal) ❓ D12 | Unity discovery phase |
 | UNPACK | core + `unarchive.*` slots | identify (head + tail, carving embedded containers), then recursive unpack. After an outer *wrapper* (Electron/NW.js) is unpacked, detection runs once more; each file goes to the matching slot's main, then spare (doc 8) | PHASE 1 `extract_archives` |
 | EXPORT | plugins | `export()` for each selected plugin, into its own staging folder | Unity export phase |
-| COLLECT | core | **copy** from game-folder source roots and **move** only from staging, into the `<ext>/` layout, filtered by `selected_exts`, with v1 collision naming. Dedupe: same size **and** same content hash → skip (fixes F6) | PHASE 2 (v1 *moves* out of the game folder: H1) |
+| COLLECT | core | **copy** from game-folder source roots and **move** only from staging, into the `<ext>/` layout, filtered by `selected_exts`, with v1 collision naming. Dedupe: same size **and** same content hash → skip (fixes F6). Also writes the **provenance map** (doc 18.2) | PHASE 2 (v1 *moves* out of the game folder: H1) |
 | VERIFY | core + plugins | `logic_check_summary` warnings, then `verify()` | PHASE 3 + Unity verification phase |
 | SANITIZE | core + rules | optional recipe; only plans, unless the request asks to apply automatically | — (doc 5) |
 | REPORT | core | write manifests to `.extraction_metadata/` and build the result | Unity manifest phase |
