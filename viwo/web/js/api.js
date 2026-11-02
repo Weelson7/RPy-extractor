@@ -59,6 +59,7 @@ export const api = {
   events: (id, from) => v2("GET", `/api/jobs/${encodeURIComponent(id)}/events?from=${from}`),
   cancel: (id) => v2("POST", `/api/jobs/${encodeURIComponent(id)}/cancel`, {}),
   extract: (payload) => v1("POST", "/api/extract", payload),
+  survey: (folder, deep) => v1("POST", "/api/survey", { folder, deep }),
   browse: (initialPath = "") => v1("GET", `/api/browse-folder?initialPath=${encodeURIComponent(initialPath)}`),
   openFolder: (path) => v1("POST", "/api/open-folder", { path }),
   status: () => v1("GET", "/api/status"),

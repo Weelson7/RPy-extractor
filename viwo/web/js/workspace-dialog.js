@@ -16,11 +16,19 @@ export async function openWorkspaceDialog() {
     actions: [{ label: "CANCEL", value: false, kind: "ghost" }, { label: "OPEN", value: true, kind: "primary", primary: true }] });
   const path = res.text.trim();
   if (!res.value || !path || path === cur.path) return;
+  const chip = document.getElementById("ws-btn"), label = document.getElementById("ws-path"), was = label.textContent;
+  chip.classList.add("loading");
+  chip.setAttribute("aria-busy", "true");
+  label.textContent = `OPENING ${path}…`;
   try {
     const next = await api.setWorkspace(path);
     toast(`Workspace: ${next.path}`, "ok", next.owned ? "" : "Not created by ViWo: extraction will refuse it unless it is empty.");
-    emit("workspace");
+    emit("workspace", { switched: true });
   } catch (err) {
+    label.textContent = was;
     toastErr(err);
+  } finally {
+    chip.classList.remove("loading");
+    chip.removeAttribute("aria-busy");
   }
 }

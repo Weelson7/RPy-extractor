@@ -59,6 +59,7 @@ for machine-readable output.
 | Unreal | `.pak` (any version, AES per user key or found in the game executable) | repak | — |
 | Unreal 5 | IoStore `.utoc`/`.ucas` | retoc (to legacy assets) | retoc (raw packages) |
 | Doom engine | IWAD/PWAD: PNG, WAV, MIDI, maps | built-in reader | — |
+| RPG Maker | XP/VX/VX Ace archives; MV/MZ encrypted images and audio (key from System.json) | built-in | — |
 | anything else | files hidden inside unknown data, zlib/gzip streams | built-in carver | — |
 | media merger | video build | ffmpeg | — |
 

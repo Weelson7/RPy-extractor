@@ -1,6 +1,7 @@
 // 02 WORKSPACE: extension groups (kept / trashed), group actions, retain-selected, clear trash.
 import { api } from "../api.js";
 import { h, $, btn, panel, badge, viewHead, empty, errorBox, toast, toastErr, confirmBox, busy, fmtNum, bus, emit } from "../ui.js";
+import { withSkeleton } from "../progress.js";
 
 const S = { status: null, selected: new Set() };
 const el = {};
@@ -15,19 +16,22 @@ function mount(root) {
       btn("REFRESH", (e) => busy(e.currentTarget, load), "ghost"),
       btn("OPEN FOLDER", openFolder, "ghost")),
     el.totals,
-    panel("02.A", "EXTENSION GROUPS", h("div", { class: "row" }, el.retain, el.clear), el.body));
-  bus.addEventListener("workspace", () => { if (!root.hidden) load(); });
+    el.panel = panel("02.A", "EXTENSION GROUPS", h("div", { class: "row" }, el.retain, el.clear), el.body));
+  bus.addEventListener("workspace", (e) => { if (e.detail?.switched) S.status = null; if (!root.hidden) load(); });
 }
 
 async function load() {
+  el.panel.classList.add("syncing");
   try {
-    const status = await api.status();
+    const status = await (S.status ? api.status() : withSkeleton(el.body, "READING EXTENSION GROUPS…", api.status, 6));
     S.status = status;
     const exts = new Set(status.allExtensions || []);
     S.selected = new Set([...S.selected].filter((e) => exts.has(e)));
     render();
   } catch (err) {
     el.body.replaceChildren(errorBox(err, "WORKSPACE UNAVAILABLE"));
+  } finally {
+    el.panel.classList.remove("syncing");
   }
 }
 

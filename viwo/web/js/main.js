@@ -7,9 +7,10 @@ import sort from "./views/sort.js";
 import jobs from "./views/jobs.js";
 import system from "./views/system.js";
 import merger from "./views/merger.js";
+import survey from "./views/survey.js";
 import { openWorkspaceDialog } from "./workspace-dialog.js";
 
-const VIEWS = { extract, workspace, sort, jobs, system, merger };
+const VIEWS = { extract, workspace, sort, jobs, system, merger, survey };
 const scroll = {};
 const state = { current: "", distro: null, dockOpen: pref("dock") === "1", logCount: -1, lastLog: "" };
 

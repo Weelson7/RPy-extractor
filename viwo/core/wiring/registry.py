@@ -15,6 +15,7 @@ BUILTIN_PLUGINS = {
     "godot": "viwo.plugins.godot:GodotPlugin",
     "doom": "viwo.plugins.doom:DoomPlugin",
     "unreal": "viwo.plugins.unreal:UnrealPlugin",
+    "rpgmaker": "viwo.plugins.rpgmaker:RpgMakerPlugin",
 }
 
 

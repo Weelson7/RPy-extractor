@@ -2,6 +2,7 @@
 import { api } from "../api.js";
 import { h, fill, btn, panel, badge, viewHead, empty, errorBox, busy, fmtNum, bus } from "../ui.js";
 import { outputPanel, applyState, refreshBar, actionBar } from "./merger-output.js";
+import { withSkeleton } from "../progress.js";
 
 const LIMIT = 300;
 const PATTERNS = { "number-to-name": "01_NAME", "name-to-number": "NAME_01" };
@@ -30,15 +31,13 @@ function mount(root) {
 
 async function load() {
   try {
-    S.st = await api.mergerState();
-    applyState(S.st);
+    await withSkeleton(el.list, "INDEXING WORKSPACE MEDIA…", async () => { S.st = await api.mergerState(); applyState(S.st); await list(); }, 6);
     fill(el.banner,
       S.st.encoder ? null : h("div", { class: "alert err", role: "alert" }, h("b", {}, "ENCODER MISSING // BUILD DISABLED"),
         h("p", {}, "ffmpeg (with ffprobe) was not found, so timelines cannot be rendered."),
         h("p", { class: "hint" }, "HINT: install ffmpeg (Linux: apt install ffmpeg · Windows: winget install ffmpeg) or set its path in startup.ini [tools], then restart ViWo.")),
       h("div", { class: "kv" }, h("span", { class: "lbl" }, "SOURCE"), h("code", { class: "mono path" }, S.st.workingDir)),
       h("div", { class: "kv" }, h("span", { class: "lbl" }, "OUTPUT"), h("code", { class: "mono path" }, S.st.mergerDir)));
-    await list();
   } catch (err) {
     fill(el.list, errorBox(err, "MERGER UNAVAILABLE"));
   }

@@ -162,7 +162,8 @@ def _stages(run: Run, workspace: Path) -> ExtractionResult:
 
 def _sources(run: Run, chosen, moved: dict[Path, str], runs) -> list[Source]:
     """Game roots are copied; unpack, carve and export outputs are moved."""
-    sources = _game_sources(run, chosen) + [Source(d, True, o) for d, o in moved.items()]
+    sources = _game_sources(run, chosen, _claimed(run, runs))
+    sources += [Source(d, True, o) for d, o in moved.items()]
     staging = run.work / "staging"
     return sources + [
         Source(staging / r.plugin_id, True, f"export:{r.backend}") for r in runs if r.backend
@@ -173,11 +174,7 @@ def _carve(run: Run, runs, game_files, unpacked):
     """Carve unknown blobs (game and unpacked), then unpack any archives found inside them.
     Files an exporter decoded are left alone, unless that exporter failed or is missing."""
     items = game_files + [i for d, o in unpacked.origins.items() for i in files_under(d, o, set())]
-    plugins = run.rt.plugins
-    claimed = {
-        s.lower() for r in runs if r.backend for s in plugins[r.plugin_id].claimed_suffixes()
-    }
-    carved = carve_all(run, frozenset(claimed), items)
+    carved = carve_all(run, _claimed(run, runs), items)
     nested = [i for d, o in carved.origins.items() for i in files_under(d, o, set())]
     if nested:
         more = unpack_all(run.rt, nested, run.work / "unpack-carved", run.ctx)
@@ -191,7 +188,15 @@ def _carve(run: Run, runs, game_files, unpacked):
     return carved, unpacked
 
 
-def _game_sources(run: Run, chosen: tuple[str, ...]) -> list[Source]:
+def _claimed(run: Run, runs) -> frozenset[str]:
+    """Suffixes/names decoded by exporters that succeeded: not carved, not copied raw."""
+    plugins = run.rt.plugins
+    return frozenset(
+        s.lower() for r in runs if r.backend for s in plugins[r.plugin_id].claimed_suffixes()
+    )
+
+
+def _game_sources(run: Run, chosen: tuple[str, ...], exclude: frozenset[str]) -> list[Source]:
     probe = FolderProbe(run.game, limit=1)
     roots = {
         r.resolve() for pid in chosen for r in run.rt.plugins[pid].source_roots(run.game, probe)
@@ -199,7 +204,8 @@ def _game_sources(run: Run, chosen: tuple[str, ...]) -> list[Source]:
     outer = [r for r in roots if not any(o != r and o in r.parents for o in roots)]
     labels = {r: r.relative_to(run.game.resolve()).as_posix() for r in outer}
     return [
-        Source(r, False, "game" if labels[r] == "." else f"game:{labels[r]}") for r in sorted(outer)
+        Source(r, False, "game" if labels[r] == "." else f"game:{labels[r]}", exclude)
+        for r in sorted(outer)
     ]
 
 

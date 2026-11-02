@@ -105,7 +105,7 @@ async function build() {
   el.prog.el.scrollIntoView({ block: "nearest" });
   try {
     const res = await api.mergerBuild({ ...O, namingPattern: ctx.pattern(), selectedCandidates: selected });
-    await el.prog.finish(res.partial ? "fail" : "ok", `${res.builtCount ?? 1} VIDEO(S) BUILT${res.partial ? " · SOME FAILED" : ""}`);
+    await el.prog.finish("ok", `${res.builtCount ?? 1} VIDEO(S) BUILT${res.partial ? " · SOME FAILED" : ""}`);
     renderResults(res);
     el.results.firstElementChild?.classList.add("reveal");
     toast(`Built ${res.builtCount ?? 1} video(s).`, res.partial ? "warn" : "ok", res.partial ? "Some candidates failed." : "");

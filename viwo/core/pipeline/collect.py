@@ -19,6 +19,7 @@ class Source:
     root: Path
     move: bool  # False: copy (game folder is read-only); True: move (staging)
     origin: str  # label prefix for provenance
+    exclude: frozenset[str] = frozenset()  # suffixes / names already decoded by an exporter
 
 
 @dataclass
@@ -72,6 +73,8 @@ def collect(
             if cancel.cancelled:
                 return report
             report.scanned += 1
+            if src.suffix.lower() in source.exclude or src.name.lower() in source.exclude:
+                continue
             ext = ws.ext_of(src)
             group = ws.ext_folder(ext)
             if selected is not None and ext not in selected:

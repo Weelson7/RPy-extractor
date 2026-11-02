@@ -2,6 +2,7 @@
 import { api } from "../api.js";
 import { h, fill, btn, panel, meter, viewHead, empty, errorBox, toast, toastErr, promptBox, modal, fmtBytes, fmtNum, pad, bus, emit } from "../ui.js";
 import { audioStage } from "./sort-audio.js";
+import { skeleton, withSkeleton } from "../progress.js";
 
 const LIMIT = 100;
 const TAG = { image: "IMG", audio: "AUD", video: "VID", text: "TXT", binary: "BIN" };
@@ -32,7 +33,8 @@ function mount(root) {
 
 async function load(keepIdx = false, last = false) {
   try {
-    const res = await api.assets(S.offset, LIMIT);
+    const pull = () => api.assets(S.offset, LIMIT);
+    const res = await (S.loaded ? pull() : withSkeleton(el.stage, "INDEXING WORKSPACE ASSETS…", pull, 5));
     S.items = res.assets || [];
     S.total = res.totalCount || 0;
     if (!S.items.length && S.offset > 0) { S.offset = Math.max(0, S.offset - LIMIT); return load(); }
@@ -122,12 +124,13 @@ async function preview() {
   }
   el.meta.replaceChildren(h("span", { class: "mono" }, `${pad(S.offset + S.idx + 1, 4)} / ${pad(S.total, 4)}`),
     h("span", { class: `tag t-${a.type}` }, TAG[a.type]), h("span", { class: "mono dim" }, fmtBytes(a.size)));
+  const slow = setTimeout(() => { if (seq === S.seq) el.stage.replaceChildren(skeleton("LOADING PREVIEW…", 3)); }, 150);
   try {
     const p = await api.preview(a.path);
     if (seq === S.seq) el.stage.replaceChildren(stageFor(p, a));
   } catch (err) {
     if (seq === S.seq) el.stage.replaceChildren(errorBox(err, "PREVIEW FAILED"));
-  }
+  } finally { clearTimeout(slow); }
 }
 
 function stageFor(p, a) {

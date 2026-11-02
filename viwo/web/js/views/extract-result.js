@@ -5,7 +5,7 @@ import { stateBadge } from "./jobs.js";
 
 const ALARM = "GAME FOLDER CHANGED";
 
-const stat = (label, value, sub = "") =>
+export const stat = (label, value, sub = "") =>
   h("div", { class: "stat" }, h("span", { class: "lbl" }, label), h("b", { class: "mono" }, value), sub ? h("small", {}, sub) : null);
 
 function table(head, rows, empty) {
