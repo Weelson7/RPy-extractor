@@ -1,7 +1,7 @@
 // 06 MERGER: pick candidates (numbered frame/clip groups), tune loops + conflict order, render MP4s.
 import { api } from "../api.js";
 import { h, fill, btn, panel, badge, viewHead, empty, errorBox, busy, fmtNum, bus } from "../ui.js";
-import { outputPanel, applyState } from "./merger-output.js";
+import { outputPanel, applyState, refreshBar, actionBar } from "./merger-output.js";
 
 const LIMIT = 300;
 const PATTERNS = { "number-to-name": "01_NAME", "name-to-number": "NAME_01" };
@@ -23,7 +23,8 @@ function mount(root) {
     h("div", { class: "merge-grid" },
       panel("06.A", "CANDIDATES", el.count, el.filters, el.list),
       h("div", { class: "col" }, panel("06.B", "TIMELINE", el.selCount, el.timeline),
-        outputPanel({ specs, pattern: () => S.pattern, count: () => S.sel.size }))));
+        outputPanel({ specs, stats, pattern: () => S.pattern }))),
+    actionBar());
   bus.addEventListener("workspace", () => { S.sel.clear(); S.offset = 0; if (!root.hidden) load(); });
 }
 
@@ -44,7 +45,7 @@ async function load() {
 }
 
 async function list() {
-  const res = await api.mergerList({ namingPattern: S.pattern, allowedExts: S.exts.size ? [...S.exts] : null, offset: S.offset, limit: LIMIT });
+  const res = await api.mergerList({ namingPattern: S.pattern, allowedExts: S.exts.size ? [...S.exts] : null, offset: S.offset, limit: LIMIT, includeFiles: true });
   Object.assign(S, { list: res.candidates || [], extList: res.extensions || [], total: res.totalCount || 0, files: res.fileCount || 0 });
   for (const c of S.list) if (S.sel.has(c.name)) S.sel.get(c.name).cand = c;
   renderFilters();
@@ -102,15 +103,29 @@ function pickAll(on) {
   visible().forEach((c) => { if (on !== S.sel.has(c.name)) toggle(c, on); });
 }
 
+/** Rough timeline size for the action bar (part loops and whole-timeline repeats applied). */
+function stats() {
+  let clips = 0, videos = 0;
+  for (const { cand, spec } of S.sel.values()) {
+    const files = cand.files || [];
+    const extra = spec.partLoops.flatMap((l) => l.indexes.split(/[\s,;]+/).filter(Boolean).map((i) =>
+      files.filter((f) => f.parsedIndex === i).length * (l.times - 1))).reduce((a, b) => a + b, 0);
+    clips += (files.length + extra) * spec.entiretyTimes;
+    videos += files.filter((f) => f.type === "video").length * spec.entiretyTimes;
+  }
+  return { timelines: S.sel.size, clips, videos };
+}
+
 function specs() {
   return [...S.sel.values()].map(({ spec }) => ({ ...spec, partLoops: spec.partLoops.filter((l) => l.indexes.trim()) }));
 }
 
 const num = (label, value, set, min = 1) => h("label", { class: "nfield" }, h("span", { class: "lbl" }, label),
-  h("input", { class: "input mono", type: "number", min, step: 1, value: String(value), oninput: (e) => set(Math.max(min, parseInt(e.target.value, 10) || min)) }));
+  h("input", { class: "input mono", type: "number", min, step: 1, value: String(value), oninput: (e) => { set(Math.max(min, parseInt(e.target.value, 10) || min)); refreshBar(); } }));
 
 function renderTimeline() {
   el.selCount.textContent = `${S.sel.size} SELECTED`;
+  refreshBar();
   if (!S.sel.size) return fill(el.timeline, empty("NO CANDIDATE SELECTED", "Tick candidates on the left. Each one becomes its own MP4."));
   fill(el.timeline, [...S.sel.values()].map(card));
 }
@@ -118,18 +133,24 @@ function renderTimeline() {
 function card({ cand, spec }) {
   const loops = h("div", { class: "loops" });
   const drawLoops = () => fill(loops, spec.partLoops.map((l, i) => h("div", { class: "row loop" },
-    h("input", { class: "input mono grow", value: l.indexes, placeholder: "indexes, e.g. 02, 03", "aria-label": "Indexes to loop", oninput: (e) => { l.indexes = e.target.value; } }),
+    h("input", { class: "input mono grow", value: l.indexes, placeholder: "indexes, e.g. 02, 03", "aria-label": "Indexes to loop", oninput: (e) => { l.indexes = e.target.value; refreshBar(); } }),
     num("×", l.times, (v) => { l.times = v; }),
-    btn("✕", () => { spec.partLoops.splice(i, 1); drawLoops(); }, "sm ghost", { "aria-label": "Remove loop" }))),
+    btn("✕", () => { spec.partLoops.splice(i, 1); drawLoops(); refreshBar(); }, "sm ghost", { "aria-label": "Remove loop" }))),
   btn("+ PART LOOP", () => { spec.partLoops.push({ indexes: "", times: 2 }); drawLoops(); loops.querySelector(".loop:last-of-type input")?.focus(); }, "sm ghost"));
   drawLoops();
   return h("article", { class: "tcard" },
     h("header", {}, h("b", {}, cand.name), h("span", { class: "mono dim" }, `${cand.count} FILES · ${span(cand)}`),
       btn("✕", () => toggle(cand, false), "sm ghost", { "aria-label": `Remove ${cand.name}` })),
+    strip(cand.files || []),
     h("div", { class: "row" }, num("PLAY WHOLE TIMELINE ×", spec.entiretyTimes, (v) => { spec.entiretyTimes = v; })),
     h("span", { class: "lbl" }, "PART LOOPS"), loops,
     cand.conflicts.length ? [h("span", { class: "lbl" }, "SAME-INDEX CONFLICTS · PLAY ORDER"), cand.conflicts.map((k) => conflictList(spec, k.index))] : null);
 }
+
+const TAGS = { image: "IMG", video: "VID", audio: "AUD" };
+const strip = (files) => h("ol", { class: "strip", "aria-label": "Timeline contents" }, files.slice(0, 48).map((f) =>
+  h("li", { class: `t-${f.type}`, title: f.path }, h("b", { class: "mono" }, f.parsedIndex || "·"), TAGS[f.type] || "BIN")),
+files.length > 48 ? h("li", { class: "more" }, `+${files.length - 48}`) : null);
 
 function conflictList(spec, index, focusAt = -1) {
   const order = spec.conflictResolutions[index];

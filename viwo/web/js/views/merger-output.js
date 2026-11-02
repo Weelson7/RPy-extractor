@@ -8,6 +8,7 @@ const el = {};
 let ctx = null;
 let st = null;
 let seeded = false;
+let running = false;
 
 export function applyState(state) {
   st = state;
@@ -25,14 +26,31 @@ export function outputPanel(context) {
   el.build = btn("BUILD TIMELINES", build, "primary lg");
   el.status = h("div", { class: "progress" });
   el.results = h("div", {});
+  el.sum = h("div", { class: "ab-sum mono" });
+  el.why = h("span", { class: "ab-why" });
+  el.bar = h("div", { class: "actionbar" }, el.sum, el.why, el.build);
   renderForm();
-  return panel("06.C", "RENDER", null, el.form, h("div", { class: "row run-row" }, el.build), el.status, el.results);
+  return panel("06.C", "RENDER", null, el.form, el.status, el.results);
+}
+
+export const actionBar = () => el.bar;
+
+/** Sticky bar: what will be rendered, an estimate, and why BUILD is blocked. */
+export function refreshBar() {
+  if (!el.sum || !ctx) return;
+  const s = ctx.stats();
+  const fade = O.transitionType === "fade";
+  const est = (s.clips - s.videos) * O.diapoDelay - (fade ? Math.max(0, s.clips - s.timelines) * O.fadeCrossTime : 0) + s.timelines * (O.endLastImageTime || 0);
+  el.sum.textContent = s.timelines ? `${s.timelines} TIMELINE(S) · ${s.clips} CLIPS · ≈${Math.max(0, est).toFixed(1)} s${s.videos ? ` + ${s.videos} video clip(s)` : ""} · ${fade ? "CROSSFADE" : "CUT"}` : "no timeline selected";
+  el.why.textContent = !st?.encoder ? "ffmpeg missing" : running ? "rendering…" : !s.timelines ? "select a candidate"
+    : fade && O.fadeCrossTime >= O.diapoDelay ? "crossfade ≥ image hold" : "";
+  el.build.disabled = Boolean(el.why.textContent);
 }
 
 function field(label, key, opts = {}) {
   return h("label", { class: "nfield" }, h("span", { class: "lbl" }, label),
     h("input", { class: "input mono", type: "number", min: 0, step: opts.step || 0.1, value: String(O[key] ?? 0), disabled: opts.disabled || null,
-      oninput: (e) => { O[key] = Math.max(0, parseFloat(e.target.value) || 0); } }));
+      oninput: (e) => { O[key] = Math.max(0, parseFloat(e.target.value) || 0); refreshBar(); } }));
 }
 
 function overlayRow() {
@@ -68,16 +86,23 @@ function renderForm() {
       oninput: (e) => { O.outputName = e.target.value; } }),
     h("label", { class: "field inline" }, h("span", { class: "lbl" }, "Move merged source files to the workspace trash after a successful build"),
       h("input", { type: "checkbox", checked: O.trashAfterBuild, onchange: (e) => { O.trashAfterBuild = e.target.checked; } })));
-  el.build.disabled = !st?.encoder;
-  el.build.title = st?.encoder ? "" : "ffmpeg not found";
+  refreshBar();
 }
 
+/** Follow the merge job: last progress event ("Probing…", "Encoding…", "Wrote…") + elapsed time. */
 function tick(t0, known) {
+  const t = { id: null, from: 0, msg: "starting", busy: false };
   return setInterval(async () => {
-    const job = (await api.jobs().catch(() => [])).filter((j) => j.kind === "merge" && !known.has(j.id)).pop();
+    if (t.busy) return;
+    t.busy = true;
+    try {
+      t.id ||= (await api.jobs()).filter((j) => j.kind === "merge" && !known.has(j.id)).pop()?.id;
+      const page = t.id ? await api.events(t.id, t.from) : null;
+      if (page?.events.length) { t.from = page.next; t.msg = page.events[page.events.length - 1].message; }
+    } catch { /* the build call reports failures */ } finally { t.busy = false; }
     fill(el.status, h("span", { class: "lbl live" }, "RENDERING"),
-      h("span", { class: "mono" }, `${job ? job.id : "starting"} · ${Math.round((Date.now() - t0) / 1000)}s`), h("div", { class: "scan-bar" }, h("i", {})));
-  }, 800);
+      h("span", { class: "mono" }, `${t.msg} · ${Math.round((Date.now() - t0) / 1000)}s`), h("div", { class: "scan-bar" }, h("i", {})));
+  }, 700);
 }
 
 async function build() {
@@ -86,8 +111,10 @@ async function build() {
   if (O.transitionType === "fade" && O.fadeCrossTime >= O.diapoDelay) return toast("Crossfade must be shorter than the image hold.", "warn");
   const known = new Set((await api.jobs().catch(() => [])).map((j) => j.id));
   const timer = tick(Date.now(), known);
-  el.build.disabled = true;
+  running = true;
+  refreshBar();
   el.build.textContent = "RENDERING…";
+  el.status.scrollIntoView({ block: "nearest" });
   fill(el.results);
   emit("jobs");
   try {
@@ -100,8 +127,9 @@ async function build() {
     toastErr(err, "Build failed: ");
   } finally {
     clearInterval(timer);
+    running = false;
     el.build.textContent = "BUILD TIMELINES";
-    el.build.disabled = !st?.encoder;
+    refreshBar();
     fill(el.status);
     emit("jobs");
   }

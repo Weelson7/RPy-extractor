@@ -7,6 +7,7 @@ import json
 import sys
 from pathlib import Path
 
+from viwo import cli_format
 from viwo.cli_extra import replay_request, unpack_one
 from viwo.contracts.errors import Envelope, ViwoError
 from viwo.contracts.pipeline import ExtractionMode, ExtractionRequest, MixedPolicy, OnExisting
@@ -118,10 +119,12 @@ def main(argv: list[str] | None = None) -> int:
         envelope = _run(args)
     except ViwoError as exc:
         envelope = Envelope.failure(exc)
-    if args.json or not envelope.ok:
+    if args.json:
         print(json.dumps(envelope.to_dict(), indent=2, default=str))
+    elif not envelope.ok:
+        print(cli_format.error(envelope.error), file=sys.stderr)
     else:
-        print(json.dumps(envelope.data, indent=2, default=str))
+        print(cli_format.FORMATTERS[args.command](envelope.data))
     return 0 if envelope.ok else EXIT.get(envelope.error["code"], 1)
 
 

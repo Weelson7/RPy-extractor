@@ -16,7 +16,7 @@ from viwo.contracts.pipeline import ExtractionRequest, ExtractionResult, PluginR
 from viwo.contracts.plugin import ExtractionContext
 from viwo.contracts.types import CancelToken, DetectionResult, ProgressEvent, ProgressSink
 
-from ..workspace import resolve_target, workspace_lock
+from ..workspace import precheck, resolve_target, workspace_lock
 from .collect import Source, collect
 from .failover import run_with_failover
 from .guard import changes, refuse_writes_inside, snapshot
@@ -92,6 +92,7 @@ def extract(
         raise ViwoError("invalid_request", "no workspace given")
     refuse_writes_inside(game, workspace=target, temp_folder=rt.temp_root)
     with workspace_lock(target):
+        precheck(target, request.on_existing, default_workspace)  # ask before announcing work
         sink(
             ProgressEvent(
                 f"Preparing workspace {target} ({request.on_existing.value})",

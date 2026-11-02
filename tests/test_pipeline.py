@@ -193,3 +193,22 @@ class ReplayAndUnpackTests(unittest.TestCase):
                 str(root / "out"),
             )
             self.assertEqual(env["error"]["code"], "refused")
+
+
+class HumanOutputTests(unittest.TestCase):
+    def test_readable_output_and_errors(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            game, ini = make_game(root), str(write_ini(root))
+            out, err = io.StringIO(), io.StringIO()
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+                cli_main(["--ini", ini, "detect", str(game)])
+                cli_main(["--ini", ini, "extract", str(game), "--workspace", str(root / "ws")])
+                code = cli_main(
+                    ["--ini", ini, "extract", str(game), "--workspace", str(root / "ws")]
+                )
+            text = out.getvalue()
+            self.assertIn("ENGINE", text)
+            self.assertIn("Run record", text)
+            self.assertEqual(code, 2)
+            self.assertIn("--on-existing", err.getvalue())

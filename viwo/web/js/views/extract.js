@@ -1,7 +1,7 @@
 // 01 EXTRACT: target, detection, mode, plugin options, filter, run + live feed.
 import { api } from "../api.js";
 import { h, fill, btn, panel, badge, meter, viewHead, toast, toastErr, busy, pref, logLine, emit, modal, errorBox, pad, fmtNum, bus } from "../ui.js";
-import { renderResult, renderFailure } from "./extract-result.js";
+import { renderResult, renderFailure, renderIdle } from "./extract-result.js";
 import { openWorkspaceDialog } from "../workspace-dialog.js";
 
 const PRESETS = {
@@ -19,15 +19,18 @@ const S = { plugins: [], detect: null, mode: "auto", single: "", mixed: new Set(
 const el = {};
 
 function mount(root) {
-  el.path = h("input", { class: "input mono grow", id: "game-path", placeholder: "/path/to/game  (folder containing the game executable)",
-    value: pref("gamePath") || "", spellcheck: "false", onkeydown: (e) => e.key === "Enter" && detect() });
+  el.path = h("input", { class: "input mono grow", id: "game-path", placeholder: "/path/to/game",
+    value: pref("gamePath") || "", spellcheck: "false", onkeydown: (e) => e.key === "Enter" && detect(), oninput: () => updateBar() });
   el.detect = h("div", { class: "detect" });
   el.mode = h("div", {});
-  el.options = h("div", { class: "opts" });
-  el.exts = h("input", { class: "input mono grow", id: "ext-filter", placeholder: "all extensions — or e.g. .png .ogg .webm", spellcheck: "false" });
+  el.options = h("details", { class: "optgroup", open: true });
+  el.exts = h("input", { class: "input mono grow", id: "ext-filter", placeholder: "all extensions — or e.g. .png .ogg .webm", spellcheck: "false", oninput: () => updateBar() });
   el.feed = h("pre", { class: "log feed", "aria-live": "off" });
   el.progress = h("div", { class: "progress" });
   el.result = h("div", { class: "result-host" });
+  el.idle = h("div", { class: "idle" });
+  el.sum = h("div", { class: "ab-sum mono" });
+  el.why = h("span", { class: "ab-why" });
   el.run = btn("RUN EXTRACTION", () => run(), "primary lg");
   el.target = h("code", { class: "mono path" }, "—");
   el.cancel = btn("CANCEL JOB", cancelJob, "ghost", { hidden: true });
@@ -35,11 +38,13 @@ function mount(root) {
     viewHead("01", "EXTRACT", "Pull assets from a game folder into a ViWo workspace. The game folder is opened read-only and never modified."),
     h("div", { class: "grid2" },
       h("div", { class: "col" }, targetPanel(), detectPanel(), modePanel(), runPanel()),
-      h("div", { class: "col" }, feedPanel(), el.result)));
+      h("div", { class: "col" }, feedPanel(), el.result)),
+    h("div", { class: "actionbar" }, el.sum, el.why, el.cancel, el.run));
   renderIdleFeed();
   loadPlugins();
-  el.target.textContent = bus.ws?.path || "—";
-  bus.addEventListener("wspath", (e) => { el.target.textContent = e.detail.path || "—"; });
+  const showWs = (path) => { el.target.textContent = path || "—"; updateBar(); };
+  showWs(bus.ws?.path);
+  bus.addEventListener("wspath", (e) => showWs(e.detail.path));
 }
 
 function targetPanel() {
@@ -129,13 +134,13 @@ function renderMode() {
   };
   el.mode.replaceChildren(...parts[S.mode]);
   renderOptions();
+  updateBar();
 }
 
 function pluginsInPlay() {
   if (S.mode === "single") return S.plugins.filter((p) => p.id === S.single);
-  if (S.mode === "mixed" && S.policy === "selected") return S.plugins.filter((p) => S.mixed.has(p.id));
-  if (S.mode === "auto" && S.detect?.auto?.length) return S.plugins.filter((p) => S.detect.auto.includes(p.id));
-  return S.plugins;
+  if (S.mode === "mixed") return S.plugins.filter((p) => S.mixed.has(p.id));
+  return S.plugins.filter((p) => S.detect?.auto?.includes(p.id));
 }
 
 function optionField(pid, opt) {
@@ -156,34 +161,52 @@ function optionField(pid, opt) {
 
 function renderOptions() {
   const list = pluginsInPlay().filter((p) => p.options?.length);
-  el.options.replaceChildren(...list.map((p) => h("fieldset", { class: "optset" },
+  el.options.hidden = !list.length;
+  fill(el.options, h("summary", {}, `ENGINE OPTIONS · ${list.map((p) => p.name).join(", ")}`), list.map((p) => h("fieldset", { class: "optset" },
     h("legend", {}, `${p.name} OPTIONS`, p.tosSensitive ? badge("TOS-SENSITIVE", "warn") : null),
     p.options.map((o) => optionField(p.id, o)))));
 }
 
 function runPanel() {
   const presets = Object.entries(PRESETS).map(([k, v]) => btn(k, () => addExts(v), "sm ghost"));
-  return panel("01.D", "FILTER + RUN", null,
+  return panel("01.D", "FILTER + OUTPUT", null,
     h("label", { class: "lbl", for: "ext-filter" }, "EXTENSION FILTER (OPTIONAL)"),
     h("div", { class: "row" }, el.exts, btn("CLEAR", () => { el.exts.value = ""; }, "sm ghost")),
     h("div", { class: "row presets" }, h("span", { class: "dim" }, "ADD"), presets),
     h("div", { class: "kv target" }, h("span", { class: "lbl" }, "OUTPUT →"), el.target,
-      h("div", { class: "row" }, h("span", { class: "dim small" }, "Extraction always writes into the active workspace."), btn("SWITCH", openWorkspaceDialog, "sm ghost"))),
-    h("div", { class: "row run-row" }, el.run, el.cancel));
+      h("div", { class: "row" }, h("span", { class: "dim small" }, "Extraction always writes into the active workspace."), btn("SWITCH", openWorkspaceDialog, "sm ghost"))));
 }
 
 function addExts(list) {
   const set = new Set([...parseExts(el.exts.value), ...parseExts(list)]);
   el.exts.value = [...set].join(" ");
+  updateBar();
+}
+
+/** Why RUN cannot start yet ("" when it can). */
+function blocker() {
+  if (S.running) return "extraction running…";
+  if (!el.path.value.trim()) return "pick a game folder";
+  if (S.mode === "single" && !S.single) return "pick a plugin for SINGLE";
+  if (S.mode === "mixed" && S.policy === "selected" && !S.mixed.size) return "pick plugins for MIXED";
+  return "";
+}
+
+function updateBar() {
+  if (!el.run) return;
+  const name = el.path.value.trim().split(/[\\/]/).filter(Boolean).pop() || "no game folder";
+  const plugins = S.mode === "single" ? S.single : S.mode === "mixed" ? [...S.mixed].join("+") : S.detect?.auto?.join("+") || "";
+  const exts = parseExts(el.exts.value);
+  el.sum.textContent = `${name} · ${S.mode.toUpperCase()}${plugins ? ` ${plugins}` : ""} · ${exts.length ? exts.join(" ") : "all types"} → ${(bus.ws?.path || "").split(/[\\/]/).pop() || "workspace"}`;
+  el.why.textContent = blocker();
+  el.run.disabled = Boolean(el.why.textContent);
 }
 
 const parseExts = (text) => text.split(/[\s,;]+/).filter(Boolean).map((e) => (e.startsWith(".") ? e : `.${e}`).toLowerCase());
 
 function buildPayload(onExisting) {
   const gamePath = el.path.value.trim();
-  if (!gamePath) return toast("Enter a game folder first.", "warn"), null;
-  if (S.mode === "single" && !S.single) return toast("Pick a plugin for SINGLE mode.", "warn"), null;
-  if (S.mode === "mixed" && S.policy === "selected" && !S.mixed.size) return toast("Pick at least one plugin for MIXED mode.", "warn"), null;
+  if (blocker()) return toast(`Cannot run: ${blocker()}.`, "warn"), null;
   const pluginOptions = {};
   for (const p of pluginsInPlay()) {
     const vals = Object.entries(S.options[p.id] || {}).filter(([, v]) => v !== "" && v != null);
@@ -198,19 +221,24 @@ function buildPayload(onExisting) {
 }
 
 function feedPanel() {
-  return panel("01.E", "LIVE FEED", null, el.progress, el.feed);
+  return panel("01.E", "LIVE FEED", null, el.idle, el.progress, el.feed);
 }
 
 function renderIdleFeed() {
-  el.progress.replaceChildren(h("span", { class: "lbl" }, "STANDBY"), h("span", { class: "dim mono" }, "no extraction running"));
-  el.feed.replaceChildren(h("span", { class: "ln dim" }, "// events stream here while an extraction runs\n"));
+  el.progress.hidden = el.feed.hidden = true;
+  el.idle.hidden = false;
+  renderIdle(el.idle);
 }
 
 function setRunning(on) {
   S.running = on;
-  el.run.disabled = on;
   el.run.textContent = on ? "EXTRACTING…" : "RUN EXTRACTION";
   el.cancel.hidden = !on;
+  if (on) {
+    el.idle.hidden = true;
+    el.progress.hidden = el.feed.hidden = false;
+  }
+  updateBar();
 }
 
 /** Follow the running extract job: discover it via /api/jobs, then stream its events. */
@@ -281,6 +309,7 @@ async function run(onExisting) {
     setRunning(false);
     emit("jobs");
     emit("workspace");
+    renderIdle(el.idle);
   }
   if (next) run(next);
 }

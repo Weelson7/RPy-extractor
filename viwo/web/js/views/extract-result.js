@@ -1,6 +1,7 @@
 // 01.F RESULT: counts, alarms, per-backend and per-plugin tables for one /api/extract response.
 import { api } from "../api.js";
-import { h, btn, panel, badge, errorBox, fmtNum, toast, toastErr } from "../ui.js";
+import { h, fill, btn, panel, badge, errorBox, fmtNum, toast, toastErr } from "../ui.js";
+import { stateBadge } from "./jobs.js";
 
 const ALARM = "GAME FOLDER CHANGED";
 
@@ -79,4 +80,30 @@ export function renderFailure(host, err) {
   host.replaceChildren(panel("01.F", "RESULT", badge(String(err.code || "error").toUpperCase(), err.code === "cancelled" ? "warn" : "err"),
     errorBox(err, title),
     EXPLAIN[err.code] ? h("p", { class: "note" }, EXPLAIN[err.code]) : null));
+}
+
+const STEPS = [["01", "TARGET", "pick the game folder — opened read-only, never modified"],
+  ["02", "DETECT", "see which engine plugin recognises it"], ["03", "RUN", "assets are copied into the active workspace"]];
+
+function lastRun(job) {
+  const r = job.result || {};
+  const ws = String(r.runRecord || "").split(/[\\/]\.extraction_metadata/)[0];
+  return h("div", { class: "lastrun" },
+    h("div", { class: "row" }, h("span", { class: "lbl" }, "// LAST RUN"), stateBadge(job.state), h("code", { class: "mono dim small" }, job.id)),
+    job.error ? errorBox(job.error, "RUN FAILED") : h("div", { class: "stats" },
+      stat("COPIED", fmtNum(r.copiedFiles)), stat("SCANNED", fmtNum(r.scannedFiles)),
+      stat("ARCHIVES", `${fmtNum(r.archivesExtracted)}/${fmtNum(r.archivesFound)}`), stat("WARNINGS", fmtNum(r.checks?.warnings?.length || 0))),
+    ws ? pathRow("WORKSPACE", ws) : null);
+}
+
+/** Idle LIVE FEED: last extract job summary + how it works. */
+export async function renderIdle(host) {
+  let last = null;
+  try {
+    const job = (await api.jobs()).filter((j) => j.kind === "extract").pop();
+    if (job) last = await api.job(job.id);
+  } catch { /* the summary is optional */ }
+  fill(host, last ? lastRun(last) : h("p", { class: "dim" }, "No extraction yet in this server session."),
+    h("span", { class: "lbl" }, "// HOW IT WORKS"),
+    h("ol", { class: "how" }, STEPS.map(([n, t, d]) => h("li", {}, h("b", { class: "mono" }, n), h("span", {}, t), h("small", {}, d)))));
 }
