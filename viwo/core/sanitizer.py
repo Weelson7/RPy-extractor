@@ -153,7 +153,7 @@ def apply(workspace: Path, plan_id: str, accept: list[int] | str = "all-safe") -
                 if finding["action"] == "trash"
                 else src.with_name(finding["to"])
             )
-            journal.append([str(_move(src, dest).relative_to(workspace)), finding["path"]])
+            journal.append([_move(src, dest).relative_to(workspace).as_posix(), finding["path"]])
         except OSError as exc:
             failed.append(f"{finding['path']}: {exc}")
     folder = workspace / ROOT / "journal"
