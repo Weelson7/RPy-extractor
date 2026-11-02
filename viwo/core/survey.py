@@ -118,11 +118,11 @@ def survey_game(rt, game: Path, deep: bool = False) -> GameSurvey:
 
 
 def games_in(root: Path, rt) -> list[Path]:
-    """The folder itself when it looks like a game, otherwise each subfolder."""
-    if _engine(rt, root)[0] != "generic":
-        return [root]
-    subs = sorted(p for p in root.iterdir() if p.is_dir() and not p.name.startswith("."))
-    return subs or [root]
+    """A folder holding only folders is a library (each subfolder a game, like Steam's
+    common/); a folder with files of its own is one game."""
+    entries = [p for p in root.iterdir() if not p.name.startswith(".")]
+    subs = sorted(p for p in entries if p.is_dir())
+    return subs if subs and all(p.is_dir() for p in entries) else [root]
 
 
 def survey(rt, root: Path, deep: bool = False, progress=None) -> list[dict]:

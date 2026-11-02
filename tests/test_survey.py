@@ -40,6 +40,7 @@ class SurveyTests(unittest.TestCase):
             before = tree_hashes(lib)
             rt = runtime(Path(tmp))
             self.assertEqual([g.name for g in games_in(lib, rt)], ["Doomish", "Odd"])
+            self.assertEqual(games_in(lib / "Doomish", rt), [lib / "Doomish"])
             doom, odd = survey(rt, lib)
             self.assertEqual((doom["engine"], doom["coverage"]), ("doom", 1.0))
             cats = odd["categories"]

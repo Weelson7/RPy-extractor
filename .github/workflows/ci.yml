@@ -95,7 +95,9 @@ jobs:
         continue-on-error: true
         run: |
           gh release download v0.13.0 -R freedoom/freedoom -p "freedoom-0.13.0.zip" -D fd
-          cd fd && unzip -q freedoom-0.13.0.zip && echo "VIWO_FREEDOOM=$PWD/freedoom-0.13.0" >> "$GITHUB_ENV"
+          cd fd && unzip -q freedoom-0.13.0.zip && dir="$PWD/freedoom-0.13.0"
+          if [ "$RUNNER_OS" = "Windows" ]; then dir=$(cygpath -w "$dir"); fi
+          echo "VIWO_FREEDOOM=$dir" >> "$GITHUB_ENV"
       - name: L5 real-tool smoke tests
         env:
           VIWO_L5: "1"
