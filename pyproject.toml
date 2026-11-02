@@ -24,6 +24,9 @@ viwo = "viwo.cli:main"
 [tool.setuptools.packages.find]
 include = ["viwo*"]
 
+[tool.setuptools.package-data]
+viwo = ["web/**/*"]
+
 [tool.ruff]
 line-length = 100
 target-version = "py311"

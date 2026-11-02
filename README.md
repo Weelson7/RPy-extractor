@@ -1,104 +1,93 @@
-﻿# RPy Extractor
+﻿# ViWo // Vidya Wormhole
 
-RPy Extractor is a local-first desktop tool to extract, triage, and compose game media assets.
+**A local-first game reverse-engineering platform, oriented towards asset extraction.**
 
-It runs as a Python app with a browser-based interface and is designed for creators, modders, and archivists who want a fast workflow from raw game files to curated outputs.
+Point ViWo at a game folder. It recognizes the engine, routes every container to the best
+available tool (with a spare when that tool is missing or fails), collects everything into one
+curated workspace, and records where every file came from. Your game is never modified.
 
-## Vidya Wormhole (ViWo): the new core
+- **Engines:** Ren'Py, Unity, Godot, plus plain archives (zip, tar, 7z, rar) for anything else.
+- **Never touches the game:** files are copied, never moved; a workspace or temp folder inside the
+  game folder is refused; every run compares the game folder before and after.
+- **Main + spare tools:** each job (unpack `.rpa`, export Unity assets, unpack a Godot PCK...) has a
+  main backend and a spare; a missing tool disables only what needs it.
+- **Curation built in:** extension groups, a keyboard-driven sorting view with previews, undo,
+  and a media merger that turns frames and clips into one video.
+- **Reproducible:** every run leaves a run record and a provenance map; `viwo replay` re-runs it.
+- **Safe by default:** traversal-safe unpacking, Ren'Py archive indexes read with a pickle
+  allow-list, a per-start API token for the local web UI, secrets never written to disk.
 
-This app is being rebuilt as **ViWo**, a cross-platform game asset extraction and curation
-framework (contract: [docs/contract/](docs/contract/README.md), status:
-[docs/prototype-a/STATUS.md](docs/prototype-a/STATUS.md)). The web UI below still works;
-extraction now runs through the ViWo core, which never modifies the game folder.
+## Quick start
+
+Requires Python 3.11+. Optional tools are detected automatically (see `viwo slots`).
 
 ```bash
-python -m viwo.cli info                                  # OS layer, plugins, slot bindings
-python -m viwo.cli detect "/path/to/game"                # engine detection
-python -m viwo.cli extract "/path/to/game" --workspace ./ws   # extract into a workspace
-python -m viwo.cli serve                                 # web UI (same as python Start.py)
+python -m viwo.cli serve
 ```
 
-Supported in Prototype A: generic archives (zip, tar, 7z, rar), Ren'Py (safe RPA reader, unrpa
-as spare), Unity (UnityPy, AssetStudioModCLI as spare), Godot (GDRE Tools, GodotPckTool as spare;
-PCKs embedded in executables). Wiring is configured in `startup.ini`.
+Then open the printed address (default `http://127.0.0.1:8081/`). `python Start.py` does the same.
 
-Tests: `python -m unittest discover -s tests -t .` (set `VIWO_L5=1` to include real-tool
-tests); code size caps: `python tools/loc_count.py --report`.
+Command line:
 
-## What You Can Do
-
-- Extract archives and asset folders from supported game structures.
-- Filter by extension types and keep only what matters.
-- Review files quickly in a sorting window with preview + keyboard actions.
-- Use trash/restore/undo flows during curation.
-- Build merged videos from mixed media (images + videos) in the Media Merger panel.
-- Navigate large candidate sets efficiently with paged candidate browsing.
-
-## Typical Use Cases
-
-- Triage large extracted asset sets and keep only production-ready files.
-- Build quick media reels from texture/video dumps.
-- Recover and organize media from RenPy and Unity projects.
-- Prepare selected outputs for editing pipelines or dataset curation.
-
-## Main Workflow
-
-1. Extract archives from a game folder.
-2. Scan extensions and keep selected types.
-3. Continue in Workspace Panels:
-- Sorting Window for manual keep/trash/rename.
-- Media Merger for timeline builds with transitions, conflict ordering, and loop controls.
-
-## Media Merger Highlights
-
-- Merge mixed media in one output timeline (for example `.webm` + `.png`).
-- Transition modes:
-- `diapo` with delay
-- `fade` with cross time
-- Optional overlay soundtrack looped over native video audio.
-- End controls:
-- fadeout (`time`): fades video and audio at the timeline end.
-- last image (`time`): freezes the final frame for the configured duration (works when the last item is an image or a video).
-- Per-candidate controls:
-- Loop entirety (`times`)
-- Loop parts (indexes + times), with auto-add row and explicit `+` add-row button.
-- Same-index mixed-media conflict ordering with Up/Down controls; ordering is applied automatically.
-- Paged candidate list (Prev/Next) for responsive handling of large media folders.
-
-## Dependency Status In App
-
-The app surfaces dependency readiness directly in the UI, including:
-
-- required: `unrpa`
-- optional: `7zip`, `unrar`, `ffmpeg + ffprobe`, Unity tooling
-
-This helps you immediately understand which features are fully available.
-
-## Run
-
-From repository root:
-
-```powershell
-python Start.py
+```bash
+python -m viwo.cli detect "/path/to/game"
 ```
+
+```bash
+python -m viwo.cli extract "/path/to/game" --workspace ./ws
+```
+
+```bash
+python -m viwo.cli replay ./ws/.extraction_metadata/runs/<job>.json --workspace ./ws-again
+```
+
+`viwo info`, `viwo slots` and `viwo unpack <archive> --out DIR` are also available; add `--json`
+for machine-readable output.
+
+## Supported engines and tools
+
+| Engine | Unpack / export | Main | Spare |
+|--------|-----------------|------|-------|
+| any | zip, tar | Python standard library | 7-Zip |
+| any | 7z / rar | 7-Zip / unrar | py7zr / 7-Zip |
+| Ren'Py | `.rpa` archives | built-in safe reader | unrpa |
+| Unity | assets | UnityPy | AssetStudioModCLI |
+| Godot | `.pck`, PCK embedded in the executable | GDRE Tools | GodotPckTool |
+| media merger | video build | ffmpeg | — |
+
+From a checkout, `pip install -e ".[unity,sevenzip,renpy]"` installs the `viwo` command and the
+optional Python tools; other tools are found on PATH or set in the `[tools]` section of
+`startup.ini`.
 
 ## Configuration
 
-Runtime config file:
-- [RPy-extractor/config.json](RPy-extractor/config.json)
+Everything lives in [`startup.ini`](startup.ini): enabled plugins, which tool is main or spare for
+each job, tool locations, and the `[server]` section (host, port, default workspace, merger output,
+logs, temp folders).
 
-Important paths:
-- `tempPath`: working temp directory
-- `outputDir`: extracted asset output base
-- `mergerDir`: merged media output directory
-- `logDir`: runtime logs
+## Development
+
+```bash
+python -m unittest discover -s tests -t .
+```
+
+```bash
+python tools/loc_count.py --report
+```
+
+Real-tool tests run with `VIWO_L5=1`; CI runs everything on Linux and Windows. Code size is capped
+(non-blank, non-comment lines: 40 per function, 250 per file; budgets per package in
+[`loc_caps.ini`](loc_caps.ini)).
 
 ## Documentation
 
-- Product/use-case docs: [README.md](README.md)
-- Technical architecture details: [ARCHITECTURE.md](ARCHITECTURE.md)
+- Architecture contract: [docs/contract/](docs/contract/README.md)
+- Prototype A status and decisions log: [docs/prototype-a/STATUS.md](docs/prototype-a/STATUS.md)
 
-## Ownership
+## Legal
 
-- Author: Weelson
-- Initiative: C.O.R.E.
+ViWo extracts files from games you have on your own machine. Respect the license and terms of the
+games you work with; distributing extracted assets is a separate matter from extracting them.
+MIT license; third-party tools keep their own licenses and GPL tools only run as separate processes.
+
+Author: Weelson.
