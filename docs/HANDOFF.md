@@ -216,6 +216,16 @@ so `progress.js` stops parsing message text, let `list_window` return the type c
   analysis; BinDiff is not pinnable (no HTTPS asset with a checksum), so A3 "diff" stays open.
 - Roadmap: A3 diff, A4, D2-D3, T1-T2 remain.
 
+## 1.4.2 (CTF flags for the library games, 2026-11-03)
+- Owner's rule: the library games' flags are three shared baselines (run record names the
+  plugin, a provenance line per file, the executable collected) plus objectives only that game
+  can satisfy; `sqc/ctf.json` rewritten accordingly (`sqc/17-ctf.md`).
+- Analysis flags: `{"analyze": "<target key>", "slot": "..."}` makes the integration runner run
+  `viwo analyze` once per target (analysis on through a throwaway ini in the report folder)
+  before the glob is checked under `.analysis/`: Cpp2IL stubs for the IL2CPP titles, Detect It
+  Easy for every executable. The generic plugin proposes executables up to two folders down
+  (`bin/Win64_Shipping_Client/Bannerlord.exe`).
+
 ## Morning deliverable (owner, 2026-11-04)
 A PDF presentation of the project status, the sqc suite and the CTF flags (`sqc/ctf.json`,
 `sqc/17-ctf.md`: five basic objectives per game plus one per GB), with no known limitation or

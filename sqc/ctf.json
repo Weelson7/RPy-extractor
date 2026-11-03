@@ -1,223 +1,815 @@
 {
-  "_comment": "CTF flags per Test-games/<slug> (sqc/17-ctf.md): five basic objectives per game plus up to one more per GB of game data, each a concrete asset a reverse engineer wants. A flag passes when one plain extraction leaves at least `min` files matching `glob` (relative to the workspace, ** allowed) or when the run's warnings contain `warning`. `subset` lists the files tools/games_pass.ps1 copies for a game too large to copy whole (the flags then describe that subset).",
-  "DDLC-1.1.1-pc": {
-    "title": "Doki Doki Literature Club (Ren'Py, 0.3 GB)",
-    "flags": [
-      {"name": "the music and voice tracks out of the RPA archives", "glob": "ogg/*.ogg", "min": 10},
-      {"name": "character sprites and backgrounds", "glob": "png/*.png", "min": 100},
-      {"name": "the game scripts decompiled to .rpy", "glob": "rpy/*.rpy", "min": 10},
-      {"name": "the fonts the game ships", "glob": "ttf/*.ttf", "min": 1},
-      {"name": "the bundled Python runtime files", "glob": "py/*.py", "min": 10}
-    ]
-  },
-  "freedoom": {
-    "title": "Freedoom (Doom WAD, 0.06 GB)",
-    "flags": [
-      {"name": "every graphic lump as PNG", "glob": "png/*.png", "min": 1000},
-      {"name": "the music as MIDI", "glob": "mid/*.mid", "min": 10},
-      {"name": "the sound effects as WAV", "glob": "wav/*.wav", "min": 10},
-      {"name": "the raw lumps kept beside the decoded files", "glob": "lmp/*.lmp", "min": 100},
-      {"name": "the IWADs themselves, untouched copies", "glob": "wad/*.wad", "min": 2}
-    ]
-  },
-  "ultrakill-prelude": {
-    "title": "ULTRAKILL Prelude (Unity, 0.4 GB)",
-    "flags": [
-      {"name": "level and weapon meshes as OBJ", "glob": "obj/*.obj", "min": 100},
-      {"name": "textures as PNG", "glob": "png/*.png", "min": 100},
-      {"name": "sound clips as WAV", "glob": "wav/*.wav", "min": 50},
-      {"name": "the managed game code (Assembly-CSharp.dll) collected", "glob": "dll/Assembly-CSharp.dll", "min": 1},
-      {"name": "Mono configuration and machine config files", "glob": "config/*.config", "min": 1}
-    ]
-  },
-  "baldi-cr": {
-    "title": "Baldi's Basics Classic Remastered (Unity, 0.5 GB)",
-    "flags": [
-      {"name": "sprites as PNG", "glob": "png/*.png", "min": 500},
-      {"name": "voice lines as WAV", "glob": "wav/*.wav", "min": 100},
-      {"name": "meshes as OBJ", "glob": "obj/*.obj", "min": 10},
-      {"name": "the managed game code collected", "glob": "dll/Assembly-CSharp.dll", "min": 1},
-      {"name": "text assets (subtitles, data) as TXT", "glob": "txt/*.txt", "min": 5}
-    ]
-  },
-  "BURNING_SNOW_1_0_4": {
-    "title": "Burning Snow (Unity, 0.02 GB)",
-    "flags": [
-      {"name": "textures as PNG", "glob": "png/*.png", "min": 10},
-      {"name": "a mesh as OBJ", "glob": "obj/*.obj", "min": 1},
-      {"name": "text assets as TXT", "glob": "txt/*.txt", "min": 1},
-      {"name": "the Unity resources file kept raw", "glob": "**/unity_builtin_extra", "min": 0},
-      {"name": "shader or material names visible in the export map", "glob": ".extraction_metadata/provenance.jsonl", "min": 1}
-    ]
-  },
-  "voids-cave": {
-    "title": "Void's Cave DEMO (Unreal 5, 0.4 GB)",
-    "flags": [
-      {"name": "cooked assets out of the pak and the IoStore containers", "glob": "uasset/*.uasset", "min": 100},
-      {"name": "bulk data (textures, meshes) out of the IoStore", "glob": "ubulk/*.ubulk", "min": 10},
-      {"name": "the engine's UI images", "glob": "png/*.png", "min": 10},
-      {"name": "the project's localization resources", "glob": "locres/*.locres", "min": 1},
-      {"name": "the engine config files", "glob": "ini/*.ini", "min": 5}
-    ]
-  },
-  "the-basement": {
-    "title": "The Basement (Unreal 5, 0.7 GB)",
-    "flags": [
-      {"name": "cooked assets out of the containers", "glob": "uasset/*.uasset", "min": 100},
-      {"name": "bulk data out of the IoStore", "glob": "ubulk/*.ubulk", "min": 10},
-      {"name": "the engine's UI images", "glob": "png/*.png", "min": 10},
-      {"name": "the project's localization resources", "glob": "locres/*.locres", "min": 1},
-      {"name": "the engine config files", "glob": "ini/*.ini", "min": 5}
-    ]
-  },
-  "rpgmv-first": {
-    "title": "My first shitty game (RPG Maker MV on NW.js, 0.4 GB)",
-    "flags": [
-      {"name": "encrypted .rpgmvp pictures decrypted to PNG", "glob": "png/*.png", "min": 100},
-      {"name": "encrypted .rpgmvo audio decrypted to OGG", "glob": "ogg/*.ogg", "min": 10},
-      {"name": "the database (System.json)", "glob": "json/System.json", "min": 1},
-      {"name": "the map data files", "glob": "json/Map*.json", "min": 1},
-      {"name": "the engine scripts (rpg_core.js and friends)", "glob": "js/rpg_core.js", "min": 1}
-    ]
-  },
-  "ubu": {
-    "title": "Ubu (KiriKiri XP3, 0.8 GB)",
-    "flags": [
-      {"name": "images out of data.xp3", "glob": "png/*.png", "min": 100},
-      {"name": "the scenario scripts (.ks)", "glob": "ks/*.ks", "min": 5},
-      {"name": "the engine scripts (.tjs)", "glob": "tjs/*.tjs", "min": 1},
-      {"name": "the sound effects as WAV", "glob": "wav/*.wav", "min": 10},
-      {"name": "the background music as OGG", "glob": "ogg/*.ogg", "min": 5}
-    ]
-  },
-  "godotone": {
-    "title": "GodotOne (bare Godot template, 0.04 GB)",
-    "flags": [
-      {"name": "ViWo says the PCK data is missing instead of pretending", "warning": "no PCK data"},
-      {"name": "the executable itself is collected for analysis", "glob": "exe/*.exe", "min": 1},
-      {"name": "nothing else is invented", "glob": "**/*.png", "min": 0},
-      {"name": "no archive is claimed", "glob": "pck/*.pck", "min": 0},
-      {"name": "the run record names the Godot plugin", "glob": ".extraction_metadata/runs/*.json", "min": 1}
-    ]
-  },
-  "godot-mad": {
-    "title": "MAD game (bare Godot template, 0.03 GB)",
-    "flags": [
-      {"name": "ViWo says the PCK data is missing instead of pretending", "warning": "no PCK data"},
-      {"name": "the executable itself is collected for analysis", "glob": "exe/*.exe", "min": 1},
-      {"name": "nothing else is invented", "glob": "**/*.png", "min": 0},
-      {"name": "no archive is claimed", "glob": "pck/*.pck", "min": 0},
-      {"name": "the run record names the Godot plugin", "glob": ".extraction_metadata/runs/*.json", "min": 1}
-    ]
-  },
-  "pass-aoe": {
-    "title": "Age of Empires II HD (Genie DRS, 5.5 GB: 5 + 5)",
-    "flags": [
-      {"name": "unit and building graphics (SLP) out of graphics.drs", "glob": "slp/*.slp", "min": 1000},
-      {"name": "sounds (WAV) out of sounds.drs", "glob": "wav/*.wav", "min": 100},
-      {"name": "interface data (BINA) out of interfac.drs", "glob": "bina/*.bina", "min": 10},
-      {"name": "the game data file (empires2_x1_p1.dat) collected", "glob": "dat/*.dat", "min": 1},
-      {"name": "campaign files", "glob": "cpx/*.cpx", "min": 1},
-      {"name": "scenario files", "glob": "scx/*.scx", "min": 1},
-      {"name": "terrain graphics (SLP) out of terrain.drs", "glob": "slp/*.slp", "min": 1500},
-      {"name": "the language DLL collected for string analysis", "glob": "dll/language*.dll", "min": 1},
-      {"name": "AI scripts (.per)", "glob": "per/*.per", "min": 1},
-      {"name": "the music tracks", "glob": "**/*.mp3", "min": 1}
-    ]
-  },
-  "pass-approximately-up-build-25884550": {
-    "title": "Approximately Up (Unity IL2CPP, 5.5 GB: 5 + 5)",
-    "flags": [
-      {"name": "textures as PNG", "glob": "png/*.png", "min": 50},
-      {"name": "audio as WAV", "glob": "wav/*.wav", "min": 10},
-      {"name": "meshes as OBJ", "glob": "obj/*.obj", "min": 10},
-      {"name": "the IL2CPP binary collected (GameAssembly.dll)", "glob": "dll/GameAssembly.dll", "min": 1},
-      {"name": "the IL2CPP metadata collected (global-metadata.dat)", "glob": "dat/global-metadata.dat", "min": 1},
-      {"name": "text assets as TXT", "glob": "txt/*.txt", "min": 1},
-      {"name": "the BepInEx plugin assemblies the owner added", "glob": "dll/*.dll", "min": 10},
-      {"name": "the modkit zip unpacked (it ships in the folder)", "glob": "**/*.cs", "min": 1},
-      {"name": "StreamingAssets collected", "glob": "**/*.bundle", "min": 0},
-      {"name": "the run record names the unity plugin", "glob": ".extraction_metadata/runs/*.json", "min": 1}
-    ]
-  },
-  "pass-schedule-i": {
-    "title": "Schedule I (Unity IL2CPP, 7.4 GB: 5 + 7)",
-    "flags": [
-      {"name": "textures as PNG", "glob": "png/*.png", "min": 100},
-      {"name": "audio as WAV", "glob": "wav/*.wav", "min": 50},
-      {"name": "meshes as OBJ", "glob": "obj/*.obj", "min": 50},
-      {"name": "the IL2CPP binary collected", "glob": "dll/GameAssembly.dll", "min": 1},
-      {"name": "the IL2CPP metadata collected", "glob": "dat/global-metadata.dat", "min": 1},
-      {"name": "text assets as TXT", "glob": "txt/*.txt", "min": 5},
-      {"name": "the Unity player and its configuration", "glob": "dll/UnityPlayer.dll", "min": 1},
-      {"name": "fonts as TTF or OTF", "glob": "**/*.ttf", "min": 0},
-      {"name": "StreamingAssets collected", "glob": "**/*", "min": 1},
-      {"name": "shader bundles kept raw", "glob": "**/*.shader", "min": 0},
-      {"name": "video clips (if any) as MP4", "glob": "**/*.mp4", "min": 0},
-      {"name": "the run record names the unity plugin", "glob": ".extraction_metadata/runs/*.json", "min": 1}
-    ]
-  },
-  "pass-total-war-rome-ii": {
-    "title": "Total War: Rome II (Warscape packs; 36 GB, subset 4.1 GB: 5 + 4)",
-    "subset": ["Rome2.exe", "data/data.pack", "data/data_rome2.pack", "data/local_en.pack", "data/boot.pack", "data/models.pack", "data/sound.pack", "data/terrain.pack", "data/blood_rome2.pack", "data/movies.pack"],
-    "flags": [
-      {"name": "database tables out of data.pack", "glob": "**/db/**/*", "min": 50},
-      {"name": "unit and building models (rigid_model_v2)", "glob": "rigid_model_v2/*.rigid_model_v2", "min": 50},
-      {"name": "textures as DDS", "glob": "dds/*.dds", "min": 100},
-      {"name": "the English text tables (.loc)", "glob": "loc/*.loc", "min": 10},
-      {"name": "the Lua scripts", "glob": "lua/*.lua", "min": 10},
-      {"name": "sound banks (Wwise .bnk) and streams (.wem)", "glob": "wem/*.wem", "min": 10},
-      {"name": "the campaign movies (.bik/.bk2)", "glob": "**/*.bk2", "min": 0},
-      {"name": "animation files", "glob": "**/*.anim", "min": 10},
-      {"name": "the variant mesh definitions", "glob": "variantmeshdefinition/*.variantmeshdefinition", "min": 10}
-    ]
-  },
-  "pass-cyberpunk-2077": {
-    "title": "Cyberpunk 2077 (REDengine archives; 86 GB, subset 6.7 GB: 5 + 6)",
-    "subset": ["REDprelauncher.exe", "bin/x64/oo2ext_7_win64.dll", "archive/pc/content/basegame_2_mainmenu.archive", "archive/pc/content/lang_en_text.archive", "archive/pc/content/memoryresident_1_general.archive", "archive/pc/content/audio_1_general.archive", "archive/pc/content/basegame_4_animation.archive", "archive/pc/content/basegame_1_engine.archive", "archive/pc/content/basegame_4_gamedata.archive"],
-    "flags": [
-      {"name": "textures (CBitmapTexture) out of the engine and gamedata archives", "glob": "xbm/*.xbm", "min": 10},
-      {"name": "meshes (CMesh)", "glob": "mesh/*.mesh", "min": 10},
-      {"name": "entity templates and appearances", "glob": "ent/*.ent", "min": 10},
-      {"name": "quest phases and scenes out of gamedata", "glob": "questphase/*.questphase", "min": 10},
-      {"name": "the English localization (JSON resources)", "glob": "json/*.json", "min": 10},
-      {"name": "material templates and instances", "glob": "mi/*.mi", "min": 10},
-      {"name": "animation sets and rigs", "glob": "anims/*.anims", "min": 10},
-      {"name": "ink widget libraries (the UI)", "glob": "inkwidget/*.inkwidget", "min": 1},
-      {"name": "cubemaps or particle systems", "glob": "cubemap/*.cubemap", "min": 0},
-      {"name": "Wwise audio out of audio_1_general", "glob": "wem/*.wem", "min": 10},
-      {"name": "every Kraken segment inflated with the game's own Oodle (no skipped note)", "warning": ""}
-    ]
-  },
-  "pass-mount-blade-2-bannerlord": {
-    "title": "Mount & Blade II: Bannerlord (TaleWorlds TPAC; 92 GB, subset 5 GB: 5 + 5)",
-    "subset": ["bin/Win64_Shipping_Client/Bannerlord.exe", "Modules/Native/AssetPackages/spawners.tpac", "Modules/Native/AssetPackages/core_game.tpac", "Modules/Native/ModuleData/spitems.xml", "Modules/Native/SubModule.xml", "Modules/SandBoxCore/SubModule.xml", "Modules/Native/ModuleData/strings.xml"],
-    "flags": [
-      {"name": "asset segments out of spawners.tpac by asset name", "glob": "bin/*spawner*.bin", "min": 10},
-      {"name": "asset segments out of core_game.tpac", "glob": "bin/*.bin", "min": 1000},
-      {"name": "the module data XML (items, strings)", "glob": "xml/*.xml", "min": 2},
-      {"name": "the shipping executable collected for analysis", "glob": "exe/Bannerlord.exe", "min": 1},
-      {"name": "the sub-module manifests", "glob": "xml/SubModule*.xml", "min": 1},
-      {"name": "LZ4 segments inflated through the lz4 pin (no skipped note)", "warning": ""},
-      {"name": "texture pixel data segments present", "glob": "bin/*.1.bin", "min": 100},
-      {"name": "mesh segments present", "glob": "bin/*.0.bin", "min": 500},
-      {"name": "the run record names the taleworlds plugin", "glob": ".extraction_metadata/runs/*.json", "min": 1},
-      {"name": "the provenance map maps every segment to its package", "glob": ".extraction_metadata/provenance.jsonl", "min": 1}
-    ]
-  },
-  "pass-zipped-game-data": {
-    "title": "Returning to Mia (zipped game data, 18 GB: 5 + 5)",
-    "flags": [
-      {"name": "the game's images out of the zip", "glob": "png/*.png", "min": 10},
-      {"name": "its audio", "glob": "**/*.ogg", "min": 1},
-      {"name": "its scripts or data tables", "glob": "**/*.json", "min": 1},
-      {"name": "its video or cutscenes", "glob": "**/*.mp4", "min": 0},
-      {"name": "the engine detected and named in the run record", "glob": ".extraction_metadata/runs/*.json", "min": 1},
-      {"name": "nested archives unpacked rather than copied", "glob": "zip/*.zip", "min": 0},
-      {"name": "fonts", "glob": "**/*.ttf", "min": 0},
-      {"name": "localization files", "glob": "**/*.csv", "min": 0},
-      {"name": "the executable collected for analysis", "glob": "exe/*.exe", "min": 1},
-      {"name": "a provenance line per file", "glob": ".extraction_metadata/provenance.jsonl", "min": 1}
-    ]
-  }
+ "_comment": "CTF flags per Test-games/<slug> (sqc/17-ctf.md): five basic objectives per game plus up to one more per GB of game data, each a concrete asset a reverse engineer wants. A flag passes when one plain extraction leaves at least `min` files matching `glob` (relative to the workspace, ** allowed), or when the run's warnings contain `warning` (\\\"\\\" = no warning at all), or, with `analyze` (a target key from `viwo analyze --list`, optional `slot`), when that analysis leaves the files under `.analysis/`. The library games (pass-*) carry three shared baselines (run record, provenance, the executable collected) and then only objectives specific to that game. `subset` lists the files tools/games_pass.ps1 copies for a game too large to copy whole (the flags then describe that subset).",
+ "DDLC-1.1.1-pc": {
+  "title": "Doki Doki Literature Club (Ren'Py, 0.3 GB)",
+  "flags": [
+   {
+    "name": "the music and voice tracks out of the RPA archives",
+    "glob": "ogg/*.ogg",
+    "min": 10
+   },
+   {
+    "name": "character sprites and backgrounds",
+    "glob": "png/*.png",
+    "min": 100
+   },
+   {
+    "name": "the game scripts decompiled to .rpy",
+    "glob": "rpy/*.rpy",
+    "min": 10
+   },
+   {
+    "name": "the fonts the game ships",
+    "glob": "ttf/*.ttf",
+    "min": 1
+   },
+   {
+    "name": "the bundled Python runtime files",
+    "glob": "py/*.py",
+    "min": 10
+   }
+  ]
+ },
+ "freedoom": {
+  "title": "Freedoom (Doom WAD, 0.06 GB)",
+  "flags": [
+   {
+    "name": "every graphic lump as PNG",
+    "glob": "png/*.png",
+    "min": 1000
+   },
+   {
+    "name": "the music as MIDI",
+    "glob": "mid/*.mid",
+    "min": 10
+   },
+   {
+    "name": "the sound effects as WAV",
+    "glob": "wav/*.wav",
+    "min": 10
+   },
+   {
+    "name": "the raw lumps kept beside the decoded files",
+    "glob": "lmp/*.lmp",
+    "min": 100
+   },
+   {
+    "name": "the IWADs themselves, untouched copies",
+    "glob": "wad/*.wad",
+    "min": 2
+   }
+  ]
+ },
+ "ultrakill-prelude": {
+  "title": "ULTRAKILL Prelude (Unity, 0.4 GB)",
+  "flags": [
+   {
+    "name": "level and weapon meshes as OBJ",
+    "glob": "obj/*.obj",
+    "min": 100
+   },
+   {
+    "name": "textures as PNG",
+    "glob": "png/*.png",
+    "min": 100
+   },
+   {
+    "name": "sound clips as WAV",
+    "glob": "wav/*.wav",
+    "min": 50
+   },
+   {
+    "name": "the managed game code (Assembly-CSharp.dll) collected",
+    "glob": "dll/Assembly-CSharp.dll",
+    "min": 1
+   },
+   {
+    "name": "Mono configuration and machine config files",
+    "glob": "config/*.config",
+    "min": 1
+   }
+  ]
+ },
+ "baldi-cr": {
+  "title": "Baldi's Basics Classic Remastered (Unity, 0.5 GB)",
+  "flags": [
+   {
+    "name": "sprites as PNG",
+    "glob": "png/*.png",
+    "min": 500
+   },
+   {
+    "name": "voice lines as WAV",
+    "glob": "wav/*.wav",
+    "min": 100
+   },
+   {
+    "name": "meshes as OBJ",
+    "glob": "obj/*.obj",
+    "min": 10
+   },
+   {
+    "name": "the managed game code collected",
+    "glob": "dll/Assembly-CSharp.dll",
+    "min": 1
+   },
+   {
+    "name": "text assets (subtitles, data) as TXT",
+    "glob": "txt/*.txt",
+    "min": 5
+   }
+  ]
+ },
+ "BURNING_SNOW_1_0_4": {
+  "title": "Burning Snow (Unity, 0.02 GB)",
+  "flags": [
+   {
+    "name": "textures as PNG",
+    "glob": "png/*.png",
+    "min": 10
+   },
+   {
+    "name": "a mesh as OBJ",
+    "glob": "obj/*.obj",
+    "min": 1
+   },
+   {
+    "name": "text assets as TXT",
+    "glob": "txt/*.txt",
+    "min": 1
+   },
+   {
+    "name": "the Unity resources file kept raw",
+    "glob": "**/unity_builtin_extra",
+    "min": 0
+   },
+   {
+    "name": "shader or material names visible in the export map",
+    "glob": ".extraction_metadata/provenance.jsonl",
+    "min": 1
+   }
+  ]
+ },
+ "voids-cave": {
+  "title": "Void's Cave DEMO (Unreal 5, 0.4 GB)",
+  "flags": [
+   {
+    "name": "cooked assets out of the pak and the IoStore containers",
+    "glob": "uasset/*.uasset",
+    "min": 100
+   },
+   {
+    "name": "bulk data (textures, meshes) out of the IoStore",
+    "glob": "ubulk/*.ubulk",
+    "min": 10
+   },
+   {
+    "name": "the engine's UI images",
+    "glob": "png/*.png",
+    "min": 10
+   },
+   {
+    "name": "the project's localization resources",
+    "glob": "locres/*.locres",
+    "min": 1
+   },
+   {
+    "name": "the engine config files",
+    "glob": "ini/*.ini",
+    "min": 5
+   }
+  ]
+ },
+ "the-basement": {
+  "title": "The Basement (Unreal 5, 0.7 GB)",
+  "flags": [
+   {
+    "name": "cooked assets out of the containers",
+    "glob": "uasset/*.uasset",
+    "min": 100
+   },
+   {
+    "name": "bulk data out of the IoStore",
+    "glob": "ubulk/*.ubulk",
+    "min": 10
+   },
+   {
+    "name": "the engine's UI images",
+    "glob": "png/*.png",
+    "min": 10
+   },
+   {
+    "name": "the project's localization resources",
+    "glob": "locres/*.locres",
+    "min": 1
+   },
+   {
+    "name": "the engine config files",
+    "glob": "ini/*.ini",
+    "min": 5
+   }
+  ]
+ },
+ "rpgmv-first": {
+  "title": "My first shitty game (RPG Maker MV on NW.js, 0.4 GB)",
+  "flags": [
+   {
+    "name": "encrypted .rpgmvp pictures decrypted to PNG",
+    "glob": "png/*.png",
+    "min": 100
+   },
+   {
+    "name": "encrypted .rpgmvo audio decrypted to OGG",
+    "glob": "ogg/*.ogg",
+    "min": 10
+   },
+   {
+    "name": "the database (System.json)",
+    "glob": "json/System.json",
+    "min": 1
+   },
+   {
+    "name": "the map data files",
+    "glob": "json/Map*.json",
+    "min": 1
+   },
+   {
+    "name": "the engine scripts (rpg_core.js and friends)",
+    "glob": "js/rpg_core.js",
+    "min": 1
+   }
+  ]
+ },
+ "ubu": {
+  "title": "Ubu (KiriKiri XP3, 0.8 GB)",
+  "flags": [
+   {
+    "name": "images out of data.xp3",
+    "glob": "png/*.png",
+    "min": 100
+   },
+   {
+    "name": "the scenario scripts (.ks)",
+    "glob": "ks/*.ks",
+    "min": 5
+   },
+   {
+    "name": "the engine scripts (.tjs)",
+    "glob": "tjs/*.tjs",
+    "min": 1
+   },
+   {
+    "name": "the sound effects as WAV",
+    "glob": "wav/*.wav",
+    "min": 10
+   },
+   {
+    "name": "the background music as OGG",
+    "glob": "ogg/*.ogg",
+    "min": 5
+   }
+  ]
+ },
+ "godotone": {
+  "title": "GodotOne (bare Godot template, 0.04 GB)",
+  "flags": [
+   {
+    "name": "ViWo says the PCK data is missing instead of pretending",
+    "warning": "no PCK data"
+   },
+   {
+    "name": "the executable itself is collected for analysis",
+    "glob": "exe/*.exe",
+    "min": 1
+   },
+   {
+    "name": "nothing else is invented",
+    "glob": "**/*.png",
+    "min": 0
+   },
+   {
+    "name": "no archive is claimed",
+    "glob": "pck/*.pck",
+    "min": 0
+   },
+   {
+    "name": "the run record names the Godot plugin",
+    "glob": ".extraction_metadata/runs/*.json",
+    "min": 1
+   }
+  ]
+ },
+ "godot-mad": {
+  "title": "MAD game (bare Godot template, 0.03 GB)",
+  "flags": [
+   {
+    "name": "ViWo says the PCK data is missing instead of pretending",
+    "warning": "no PCK data"
+   },
+   {
+    "name": "the executable itself is collected for analysis",
+    "glob": "exe/*.exe",
+    "min": 1
+   },
+   {
+    "name": "nothing else is invented",
+    "glob": "**/*.png",
+    "min": 0
+   },
+   {
+    "name": "no archive is claimed",
+    "glob": "pck/*.pck",
+    "min": 0
+   },
+   {
+    "name": "the run record names the Godot plugin",
+    "glob": ".extraction_metadata/runs/*.json",
+    "min": 1
+   }
+  ]
+ },
+ "pass-aoe": {
+  "title": "Age of Empires II HD (Genie DRS, 5.5 GB: 5 + 5)",
+  "flags": [
+   {
+    "name": "baseline: the run record names the genie plugin",
+    "glob": ".extraction_metadata/runs/*.json",
+    "min": 1
+   },
+   {
+    "name": "baseline: a provenance line per file",
+    "glob": ".extraction_metadata/provenance.jsonl",
+    "min": 1
+   },
+   {
+    "name": "baseline: the executable collected for analysis",
+    "glob": "exe/AoK HD.exe",
+    "min": 1
+   },
+   {
+    "name": "unit and building graphics (SLP) out of graphics.drs",
+    "glob": "slp/*.slp",
+    "min": 1000
+   },
+   {
+    "name": "terrain graphics (SLP) out of terrain.drs",
+    "glob": "slp/*.slp",
+    "min": 1500
+   },
+   {
+    "name": "sounds (WAV) out of sounds.drs",
+    "glob": "wav/*.wav",
+    "min": 100
+   },
+   {
+    "name": "interface data (BINA) out of interfac.drs",
+    "glob": "bina/*.bina",
+    "min": 10
+   },
+   {
+    "name": "the game data file empires2_x1_p1.dat",
+    "glob": "dat/empires2_x1_p1.dat",
+    "min": 1
+   },
+   {
+    "name": "campaigns (.cpx) and scenarios (.scx)",
+    "glob": "cpx/*.cpx",
+    "min": 1
+   },
+   {
+    "name": "AI scripts (.per)",
+    "glob": "per/*.per",
+    "min": 1
+   },
+   {
+    "name": "the language DLL for string analysis",
+    "glob": "dll/language*.dll",
+    "min": 1
+   },
+   {
+    "name": "Detect It Easy identifies the executable (aok-hd-exe)",
+    "analyze": "aok-hd-exe",
+    "slot": "analysis.protector",
+    "glob": ".analysis/die/aok-hd-exe/identify.txt",
+    "min": 1
+   }
+  ]
+ },
+ "pass-approximately-up-build-25884550": {
+  "title": "Approximately Up (Unity IL2CPP, 5.5 GB: 5 + 5)",
+  "flags": [
+   {
+    "name": "baseline: the run record names the unity plugin",
+    "glob": ".extraction_metadata/runs/*.json",
+    "min": 1
+   },
+   {
+    "name": "baseline: a provenance line per file",
+    "glob": ".extraction_metadata/provenance.jsonl",
+    "min": 1
+   },
+   {
+    "name": "baseline: the executable collected for analysis",
+    "glob": "exe/ApproximatelyUp.exe",
+    "min": 1
+   },
+   {
+    "name": "IL2CPP binary and metadata collected",
+    "glob": "dat/global-metadata.dat",
+    "min": 1
+   },
+   {
+    "name": "textures as PNG",
+    "glob": "png/*.png",
+    "min": 50
+   },
+   {
+    "name": "meshes as OBJ",
+    "glob": "obj/*.obj",
+    "min": 10
+   },
+   {
+    "name": "the BepInEx plugin assemblies the owner added",
+    "glob": "dll/*.dll",
+    "min": 10
+   },
+   {
+    "name": "the modkit zip unpacked (it ships in the folder)",
+    "glob": "**/*.cs",
+    "min": 1
+   },
+   {
+    "name": "Cpp2IL rebuilds the stub assemblies out of GameAssembly.dll",
+    "analyze": "gameassembly",
+    "glob": ".analysis/cpp2il/gameassembly/Assembly-CSharp.dll",
+    "min": 1
+   },
+   {
+    "name": "antivirus-held files are a warning, not a crash",
+    "warning": "could not be read"
+   }
+  ]
+ },
+ "pass-schedule-i": {
+  "title": "Schedule I (Unity IL2CPP, 7.4 GB: 5 + 7)",
+  "flags": [
+   {
+    "name": "baseline: the run record names the unity plugin",
+    "glob": ".extraction_metadata/runs/*.json",
+    "min": 1
+   },
+   {
+    "name": "baseline: a provenance line per file",
+    "glob": ".extraction_metadata/provenance.jsonl",
+    "min": 1
+   },
+   {
+    "name": "baseline: the executable collected for analysis",
+    "glob": "exe/Schedule I.exe",
+    "min": 1
+   },
+   {
+    "name": "IL2CPP binary and metadata collected",
+    "glob": "dat/global-metadata.dat",
+    "min": 1
+   },
+   {
+    "name": "textures as PNG",
+    "glob": "png/*.png",
+    "min": 100
+   },
+   {
+    "name": "audio as WAV",
+    "glob": "wav/*.wav",
+    "min": 50
+   },
+   {
+    "name": "meshes as OBJ",
+    "glob": "obj/*.obj",
+    "min": 50
+   },
+   {
+    "name": "text assets as TXT",
+    "glob": "txt/*.txt",
+    "min": 5
+   },
+   {
+    "name": "StreamingAssets collected",
+    "glob": "**/*",
+    "min": 1
+   },
+   {
+    "name": "Cpp2IL rebuilds the stub assemblies out of GameAssembly.dll",
+    "analyze": "gameassembly",
+    "glob": ".analysis/cpp2il/gameassembly/Assembly-CSharp.dll",
+    "min": 1
+   },
+   {
+    "name": "Cpp2IL leaves one stub per game assembly (dozens)",
+    "analyze": "gameassembly",
+    "glob": ".analysis/cpp2il/gameassembly/*.dll",
+    "min": 20
+   },
+   {
+    "name": "Detect It Easy identifies the executable (schedule-i-exe)",
+    "analyze": "schedule-i-exe",
+    "slot": "analysis.protector",
+    "glob": ".analysis/die/schedule-i-exe/identify.txt",
+    "min": 1
+   }
+  ]
+ },
+ "pass-total-war-rome-ii": {
+  "title": "Total War: Rome II (Warscape packs; 36 GB, subset 4.1 GB: 5 + 4)",
+  "subset": [
+   "Rome2.exe",
+   "data/data.pack",
+   "data/data_rome2.pack",
+   "data/local_en.pack",
+   "data/boot.pack",
+   "data/models.pack",
+   "data/sound.pack",
+   "data/terrain.pack",
+   "data/blood_rome2.pack",
+   "data/movies.pack"
+  ],
+  "flags": [
+   {
+    "name": "baseline: the run record names the warscape plugin",
+    "glob": ".extraction_metadata/runs/*.json",
+    "min": 1
+   },
+   {
+    "name": "baseline: a provenance line per file",
+    "glob": ".extraction_metadata/provenance.jsonl",
+    "min": 1
+   },
+   {
+    "name": "baseline: the executable collected for analysis",
+    "glob": "exe/Rome2.exe",
+    "min": 1
+   },
+   {
+    "name": "database tables out of data.pack",
+    "glob": "**/db/**/*",
+    "min": 50
+   },
+   {
+    "name": "unit and building models (rigid_model_v2)",
+    "glob": "rigid_model_v2/*.rigid_model_v2",
+    "min": 50
+   },
+   {
+    "name": "textures as DDS",
+    "glob": "dds/*.dds",
+    "min": 100
+   },
+   {
+    "name": "the English text tables (.loc) out of local_en.pack",
+    "glob": "loc/*.loc",
+    "min": 10
+   },
+   {
+    "name": "the Lua scripts",
+    "glob": "lua/*.lua",
+    "min": 10
+   },
+   {
+    "name": "Wwise streams (.wem) out of sound.pack",
+    "glob": "wem/*.wem",
+    "min": 10
+   },
+   {
+    "name": "animation files",
+    "glob": "**/*.anim",
+    "min": 10
+   },
+   {
+    "name": "the variant mesh definitions",
+    "glob": "variantmeshdefinition/*.variantmeshdefinition",
+    "min": 10
+   },
+   {
+    "name": "Detect It Easy identifies the executable (rome2-exe)",
+    "analyze": "rome2-exe",
+    "slot": "analysis.protector",
+    "glob": ".analysis/die/rome2-exe/identify.txt",
+    "min": 1
+   }
+  ]
+ },
+ "pass-cyberpunk-2077": {
+  "title": "Cyberpunk 2077 (REDengine archives; 86 GB, subset 6.7 GB: 5 + 6)",
+  "subset": [
+   "REDprelauncher.exe",
+   "bin/x64/oo2ext_7_win64.dll",
+   "archive/pc/content/basegame_2_mainmenu.archive",
+   "archive/pc/content/lang_en_text.archive",
+   "archive/pc/content/memoryresident_1_general.archive",
+   "archive/pc/content/audio_1_general.archive",
+   "archive/pc/content/basegame_4_animation.archive",
+   "archive/pc/content/basegame_1_engine.archive",
+   "archive/pc/content/basegame_4_gamedata.archive"
+  ],
+  "flags": [
+   {
+    "name": "baseline: the run record names the redengine plugin",
+    "glob": ".extraction_metadata/runs/*.json",
+    "min": 1
+   },
+   {
+    "name": "baseline: a provenance line per file",
+    "glob": ".extraction_metadata/provenance.jsonl",
+    "min": 1
+   },
+   {
+    "name": "baseline: the executable collected for analysis",
+    "glob": "exe/REDprelauncher.exe",
+    "min": 1
+   },
+   {
+    "name": "textures (CBitmapTexture) out of the engine and gamedata archives",
+    "glob": "xbm/*.xbm",
+    "min": 10
+   },
+   {
+    "name": "meshes (CMesh)",
+    "glob": "mesh/*.mesh",
+    "min": 10
+   },
+   {
+    "name": "entity templates and appearances",
+    "glob": "ent/*.ent",
+    "min": 10
+   },
+   {
+    "name": "quest phases out of gamedata",
+    "glob": "questphase/*.questphase",
+    "min": 10
+   },
+   {
+    "name": "the English localization (JSON resources) out of lang_en_text",
+    "glob": "json/*.json",
+    "min": 10
+   },
+   {
+    "name": "material templates and instances",
+    "glob": "mi/*.mi",
+    "min": 10
+   },
+   {
+    "name": "animation sets out of basegame_4_animation",
+    "glob": "anims/*.anims",
+    "min": 10
+   },
+   {
+    "name": "ink widget libraries (the UI)",
+    "glob": "inkwidget/*.inkwidget",
+    "min": 1
+   },
+   {
+    "name": "Wwise audio out of audio_1_general",
+    "glob": "wem/*.wem",
+    "min": 10
+   },
+   {
+    "name": "every Kraken segment inflated with the game's own Oodle (no skipped note)",
+    "warning": ""
+   },
+   {
+    "name": "Detect It Easy identifies the executable (redprelauncher-exe)",
+    "analyze": "redprelauncher-exe",
+    "slot": "analysis.protector",
+    "glob": ".analysis/die/redprelauncher-exe/identify.txt",
+    "min": 1
+   }
+  ]
+ },
+ "pass-mount-blade-2-bannerlord": {
+  "title": "Mount & Blade II: Bannerlord (TaleWorlds TPAC; 92 GB, subset 5 GB: 5 + 5)",
+  "subset": [
+   "bin/Win64_Shipping_Client/Bannerlord.exe",
+   "Modules/Native/AssetPackages/spawners.tpac",
+   "Modules/Native/AssetPackages/core_game.tpac",
+   "Modules/Native/ModuleData/spitems.xml",
+   "Modules/Native/SubModule.xml",
+   "Modules/SandBoxCore/SubModule.xml",
+   "Modules/Native/ModuleData/strings.xml"
+  ],
+  "flags": [
+   {
+    "name": "baseline: the run record names the taleworlds plugin",
+    "glob": ".extraction_metadata/runs/*.json",
+    "min": 1
+   },
+   {
+    "name": "baseline: a provenance line per file",
+    "glob": ".extraction_metadata/provenance.jsonl",
+    "min": 1
+   },
+   {
+    "name": "baseline: the executable collected for analysis",
+    "glob": "exe/Bannerlord.exe",
+    "min": 1
+   },
+   {
+    "name": "asset segments out of spawners.tpac by asset name",
+    "glob": "bin/*spawner*.bin",
+    "min": 10
+   },
+   {
+    "name": "asset segments out of core_game.tpac",
+    "glob": "bin/*.bin",
+    "min": 1000
+   },
+   {
+    "name": "texture pixel data segments present (.1.bin)",
+    "glob": "bin/*.1.bin",
+    "min": 100
+   },
+   {
+    "name": "mesh segments present (.0.bin)",
+    "glob": "bin/*.0.bin",
+    "min": 500
+   },
+   {
+    "name": "the module data XML (items, strings)",
+    "glob": "xml/*.xml",
+    "min": 2
+   },
+   {
+    "name": "the sub-module manifests",
+    "glob": "xml/SubModule*.xml",
+    "min": 1
+   },
+   {
+    "name": "LZ4 segments inflated through the lz4 pin (no skipped note)",
+    "warning": ""
+   },
+   {
+    "name": "Detect It Easy identifies the executable (bannerlord-exe)",
+    "analyze": "bannerlord-exe",
+    "slot": "analysis.protector",
+    "glob": ".analysis/die/bannerlord-exe/identify.txt",
+    "min": 1
+   }
+  ]
+ },
+ "pass-zipped-game-data": {
+  "title": "Returning to Mia (zipped game data, 18 GB: 5 + 5)",
+  "flags": [
+   {
+    "name": "baseline: the run record names the the detected plugin",
+    "glob": ".extraction_metadata/runs/*.json",
+    "min": 1
+   },
+   {
+    "name": "baseline: a provenance line per file",
+    "glob": ".extraction_metadata/provenance.jsonl",
+    "min": 1
+   },
+   {
+    "name": "baseline: the executable collected for analysis",
+    "glob": "exe/*.exe",
+    "min": 1
+   },
+   {
+    "name": "the game's images out of the zip",
+    "glob": "png/*.png",
+    "min": 10
+   },
+   {
+    "name": "its audio",
+    "glob": "**/*.ogg",
+    "min": 1
+   },
+   {
+    "name": "its scripts or data tables",
+    "glob": "**/*.json",
+    "min": 1
+   },
+   {
+    "name": "nested archives unpacked rather than copied",
+    "glob": "zip/*.zip",
+    "min": 0
+   },
+   {
+    "name": "fonts",
+    "glob": "**/*.ttf",
+    "min": 0
+   },
+   {
+    "name": "localization files",
+    "glob": "**/*.csv",
+    "min": 0
+   },
+   {
+    "name": "Detect It Easy identifies the executable (returningtomia-exe)",
+    "analyze": "returningtomia-exe",
+    "slot": "analysis.protector",
+    "glob": ".analysis/die/returningtomia-exe/identify.txt",
+    "min": 1
+   }
+  ]
+ }
 }

@@ -36,7 +36,10 @@ class IntegrationGamesTests(unittest.TestCase):
             self.assertEqual([f.name for f in folders], ["loose-game", "zip-game"])
             flags = {
                 "zip-game": [{"name": "a text file out of the zip", "glob": "**/*.txt", "min": 1}],
-                "loose-game": [{"name": "nope", "glob": "png/*.png", "min": 99}],
+                "loose-game": [
+                    {"name": "nope", "glob": "png/*.png", "min": 99},
+                    {"name": "an analysis flag", "analyze": "nope", "glob": ".analysis/**/*"},
+                ],
             }
             records = [
                 tool.run_game(g, root / "out", tool.viwo_inprocess, flags=flags[g.name])
@@ -49,7 +52,7 @@ class IntegrationGamesTests(unittest.TestCase):
                     True,
                 )
                 self.assertEqual(
-                    list(r["steps"]),
+                    list(r["steps"])[:5],
                     ["detect", "survey", "extract", "repack_plan", "sanitize_plan"],
                 )
                 self.assertTrue(r["gameUnchanged"], r.get("changedFiles"))
@@ -59,7 +62,11 @@ class IntegrationGamesTests(unittest.TestCase):
             self.assertIn("generic", zip_game["extract"]["plugins"])
             self.assertTrue(zip_game["ok"] and zip_game["flags"][0]["ok"], zip_game["flags"])
             loose = next(r for r in records if r["game"] == "loose-game")
-            self.assertFalse(loose["ok"])  # every step passed, the flag did not
+            self.assertFalse(loose["ok"])  # the flags did not pass
+            analysis = loose["steps"]["analyze:nope"]  # the analysis ran (and found no target)
+            self.assertFalse(analysis["ok"])
+            self.assertIn("nope", analysis["error"])
+            self.assertTrue((root / "out" / "loose-game" / "analysis.ini").is_file())
             self.assertEqual(tool.exit_code(records), 1)
             report = tool.write_report(records, root / "out").read_text(encoding="utf-8")
             self.assertIn("| zip-game |", report)

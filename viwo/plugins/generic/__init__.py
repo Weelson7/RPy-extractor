@@ -35,10 +35,10 @@ class GenericPlugin(EnginePlugin):
         )
 
     def analysis_targets(self, probe: GameProbe):
-        """Executables at the root or one level down (doc 6.1, generic row), and Lua bytecode."""
+        """Executables up to two folders down (doc 6.1, generic row), and Lua bytecode."""
         out = lua_targets(probe)
         for path in probe.with_suffix(".exe", ".x86_64", ".x86", ".elf")[:50]:
             rel = path.relative_to(probe.root)
-            if len(rel.parts) <= 2 and "crashhandler" not in path.name.lower():
+            if len(rel.parts) <= 3 and "crashhandler" not in path.name.lower():
                 out.append(AnalysisTarget(target_key(path), "native_binary", (path,), "generic"))
         return out

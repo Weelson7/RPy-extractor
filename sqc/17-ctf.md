@@ -22,10 +22,18 @@ CR, Burning Snow, Void's Cave, The Basement, RPG Maker MV, Ubu, GodotOne, MAD ga
 deletes the copy. A game too large to copy whole carries a `subset` (the files copied: a few
 archives plus the executable and, for Cyberpunk, the game's own Oodle DLL); its flags describe
 that subset. Every engine in the owner's library has a plugin since 1.3.3 (Cyberpunk `.archive`,
-Bannerlord `.tpac`, Rome II `.pack`, AoE II `.drs`).
+Bannerlord `.tpac`, Rome II `.pack`, AoE II `.drs`). Their flags (owner's rule, 2026-11-03) are
+three shared baselines (the run record names the plugin, a provenance line per file, the
+executable collected) and then only objectives specific to that game: the named DRS members of
+AoE, the Kraken-inflated CR2W classes of Cyberpunk, the TPAC texture and mesh segments of
+Bannerlord, the db tables and `.loc` text of Rome II, the Cpp2IL stub assemblies of the two
+IL2CPP titles, and Detect It Easy's identification of every executable.
 
 ## SQC-CTF-03 (P1) Adding a flag
 Add the slug and a flag `{"name", "glob", "min"}` (or `{"name", "warning"}`) to `ctf.json`;
+an analysis flag adds `"analyze": "<target key from viwo analyze --list>"` (and `"slot"` for a
+second analyzer such as `analysis.protector`): the runner runs that analysis once, with the
+`analysis` feature on, before the glob is checked under `.analysis/`.
 `tests/test_integration_games.py` keeps the file valid.
 
 | ID | Result | Version | Notes |
