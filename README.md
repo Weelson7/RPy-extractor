@@ -69,11 +69,13 @@ Today and as it grows:
   fonts, script decompilation, localization tables.
 - **Runtime capture:** GPU frames through RenderDoc for content that only exists at runtime,
   then a diff against static extraction.
-- **Static code and data analysis (next rungs, same slot system):** executable and engine metadata,
-  Unity IL2CPP and Mono metadata, Unreal class layouts, string and localization tables, save and
-  config formats; headless analysis backends (Ghidra, ilspycmd, Cpp2IL), library/middleware
-  signatures, protector identification, version diffing for update-resilient offsets, and emulation
-  of isolated routines. Everything reads a copy; the game is never run.
+- **Static code analysis (opt-in, 1.3):** the plugins name the binaries (the player executable,
+  Unreal's shipping exe, Unity's IL2CPP and managed assemblies, script bytecode); Ghidra analyses
+  a copy headless into the workspace (functions, decompiled C, strings, symbols) and CONTINUE IN
+  GHIDRA opens the same project in the GUI. Next rungs, same slot system: ilspycmd and Cpp2IL for
+  managed code, library/middleware signatures, protector identification, version diffing for
+  update-resilient offsets, emulation of isolated routines. Everything reads a copy; the game is
+  never run.
 - **Dynamic and runtime (opt-in, journaled):** GPU frame capture through RenderDoc for content that
   only exists at runtime, engine agents (BepInEx, UE4SS) that dump live objects or feed the static
   arm, plus debugging, instrumentation and tracing, memory inspection, runtime hooking, your-own-
@@ -150,6 +152,7 @@ More commands (add `--json` to any of them for machine-readable output):
 | `viwo sanitize <workspace>` | find empty, junk, duplicate, mislabeled or broken files; `--apply` the safe fixes, `--undo TOKEN` |
 | `viwo repack <workspace> --out DIR` | build a patched copy of the game with the files you edited (`--plan` first); verified by re-extraction |
 | `viwo capture <game> --exe EXE --workspace WS --confirm` | runtime capture with RenderDoc for what static extraction cannot reach (off by default, policy-checked) |
+| `viwo analyze <game> --list`, `--target KEY --workspace WS [--open]` | static analysis: list the binaries the plugins propose, run Ghidra headless on one into `WS/.analysis/`, or open the project in Ghidra (feature `analysis`, off by default) |
 | `viwo unpack <archive> --out DIR`, `viwo info`, `viwo slots` | single archive, configuration, tool status |
 
 ## How far it reaches

@@ -193,8 +193,12 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", type=Path, default=ROOT / "viwo-data" / "integration")
     ap.add_argument("--deep", action="store_true", help="survey with the carver on unknown blobs")
     ap.add_argument("--skip-extract", action="store_true", help="detect and survey only")
+    ap.add_argument("--only", default="", help="comma-separated slugs (default: every folder)")
     args = ap.parse_args(argv)
     folders = game_folders(args.games)
+    if args.only:
+        wanted = {s.strip() for s in args.only.split(",") if s.strip()}
+        folders = [f for f in folders if f.name in wanted]
     if not folders:
         print(f"no games under {args.games}: install some (sqc/games.md)")
         return 1

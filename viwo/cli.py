@@ -12,6 +12,7 @@ from viwo.cli_check import slots_check, unpack_forced
 from viwo.cli_extra import (
     add_plugin_commands,
     boot_for_cli,
+    event_printer,
     replay_request,
     run_plugin_command,
     unpack_one,
@@ -25,7 +26,17 @@ from viwo.core.pipeline.runner import detect_all, extract
 from viwo.core.wiring.boot import boot
 
 EXIT = {"invalid_request": 2, "needs_decision": 2, "refused": 3, "cancelled": 130}
-TOOL_COMMANDS = ("repack", "sanitize", "survey", "capture", "config", "install", "diag", "indexes")
+TOOL_COMMANDS = (
+    "repack",
+    "sanitize",
+    "survey",
+    "capture",
+    "analyze",
+    "config",
+    "install",
+    "diag",
+    "indexes",
+)
 
 
 def _parser(rt=None) -> argparse.ArgumentParser:
@@ -80,13 +91,6 @@ def _query(rt, args) -> Envelope:
     return Envelope.success({k: v.to_legacy_dict() for k, v in found.items()})
 
 
-def _sink(args):
-    """Progress lines on stderr unless --json/--quiet; --verbose adds the ini and bindings."""
-    if args.json or args.quiet:
-        return None
-    return lambda e: print(e.legacy_line(), file=sys.stderr)
-
-
 def _verbose_header(rt, args) -> None:
     if args.verbose and not args.json:
         print(f"[CLI] ini: {rt.config.source}", file=sys.stderr)
@@ -104,7 +108,7 @@ def _run(args, rt=None) -> Envelope:
         return _query(rt, args)
     if args.command in TOOL_COMMANDS:
         return workspace_command(rt, args)
-    sink = _sink(args)
+    sink = event_printer(args)
     if args.command == "unpack":
         opts = cli_args.options(args.option)
         if args.slot or args.backend:

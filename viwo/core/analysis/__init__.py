@@ -1,0 +1,208 @@
+"""Static analysis jobs (doc 6): targets proposed by the plugins, one analyzer run per target
+into `<workspace>/.analysis/<analyzer>/<key>/`, and "continue in <tool>" handoffs (doc 8.3a).
+Never part of an extraction; behind the `analysis` feature switch (a capability switch)."""
+
+from __future__ import annotations
+
+import json
+import shutil
+import tempfile
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+
+from viwo.contracts.analysis import ANALYSIS_DIR, AnalysisTarget, LaunchSpec
+from viwo.contracts.errors import ViwoError
+from viwo.contracts.plugin import ExtractionContext
+from viwo.contracts.slots import SlotDefinition
+from viwo.contracts.types import CancelToken, DetectionResult, Outcome
+
+from ..pipeline.failover import run_with_failover
+from ..pipeline.probe import FolderProbe
+from ..records import record_context
+from ..workspace import write_atomic
+from .ghidra import GhidraGui, GhidraHeadless
+
+
+def slot_for(kind: str) -> str:
+    """`analysis.<family>` for a target kind (doc 6.2): native_binary -> analysis.native."""
+    return f"analysis.{kind.split('_')[0]}"
+
+
+def output_dir(workspace: Path, backend_id: str, key: str) -> Path:
+    return workspace / ANALYSIS_DIR / backend_id / key
+
+
+SLOTS = (
+    SlotDefinition("analysis.native", "analysis", "core", "ghidra-headless"),
+    SlotDefinition("handoff.native", "handoff", "core", "ghidra-gui"),
+)
+
+
+def backends() -> list:
+    return [GhidraHeadless(), GhidraGui()]
+
+
+@dataclass
+class AnalysisRequest:
+    game: Path
+    workspace: Path
+    target_key: str
+    options: dict = field(default_factory=dict)  # timeout_s, analyzer-specific keys
+
+
+def targets_for(rt, game: Path, problems: list[str] | None = None) -> list[AnalysisTarget]:
+    """Every plugin's proposals for this folder (doc 6.1), deduplicated by key. A hook that
+    raises is reported in `problems` (when given) and never hides the other plugins."""
+    probe = FolderProbe(game)
+    out: dict[str, AnalysisTarget] = {}
+    for plugin_id, plugin in sorted(rt.plugins.items()):
+        try:
+            found = list(plugin.analysis_targets(probe))
+        except Exception as exc:  # noqa: BLE001
+            if problems is not None:
+                problems.append(f"plugin {plugin_id}: analysis_targets failed: {exc}")
+            continue
+        for target in found:
+            out.setdefault(target.key, target)
+    return list(out.values())
+
+
+def _check_enabled(rt) -> None:
+    if "analysis" not in rt.config.features:
+        raise ViwoError(
+            "refused",
+            "static analysis is off",
+            hint="add analysis to [startup] features in the ini (11 SETTINGS); first use shows "
+            "the disclaimer: you are responsible for having the right to analyse the binaries",
+        )
+
+
+def _pick(rt, req: AnalysisRequest) -> tuple[AnalysisTarget, str]:
+    """(target, slot id) for the request; unknown key or kind without a slot is an error."""
+    targets = {t.key: t for t in targets_for(rt, req.game)}
+    if req.target_key not in targets:
+        raise ViwoError(
+            "not_found",
+            f"no analysis target {req.target_key!r} in {req.game}",
+            hint="targets: " + ", ".join(sorted(targets)) if targets else "no target proposed",
+        )
+    target = targets[req.target_key]
+    slot = slot_for(target.kind)
+    if slot not in rt.bindings:
+        raise ViwoError("unavailable", f"no analyzer slot for {target.kind} targets yet")
+    return target, slot
+
+
+def _context(rt, req: AnalysisRequest, out: Path, scratch: Path, sink, cancel):
+    out.mkdir(parents=True, exist_ok=True)
+    detection = DetectionResult("core", 1.0, (), "core")
+    return ExtractionContext(
+        "analyze", req.game, out, scratch, rt.os, detection, None, req.options, sink, cancel
+    )
+
+
+def _copy_inputs(target: AnalysisTarget, scratch: Path) -> AnalysisTarget:
+    """The analyzer reads a copy (doc 6.5): the game folder is never handed to a tool."""
+    folder = scratch / "input"
+    folder.mkdir(parents=True, exist_ok=True)
+    copies = tuple(Path(shutil.copy2(p, folder / p.name)) for p in target.paths)
+    return AnalysisTarget(target.key, target.kind, copies, target.owner, target.label, target.hints)
+
+
+def analyze(rt, req: AnalysisRequest, sink=None, cancel: CancelToken | None = None) -> dict:
+    """One analyzer run as a job: copy the inputs, run the slot's backend, write the record."""
+    _check_enabled(rt)
+    target, slot = _pick(rt, req)
+    binding, cancel = rt.bindings[slot], cancel or CancelToken()
+    if not binding.bound:
+        raise ViwoError(
+            "unavailable",
+            f"{slot} has no available backend",
+            hint=binding.reasons[0] if binding.reasons else "see `viwo slots`",
+        )
+    rt.temp_root.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(dir=rt.temp_root, prefix="viwo-analyze-") as tmp:
+        scratch = Path(tmp)
+        inputs = _copy_inputs(target, scratch)
+        out = output_dir(req.workspace, binding.main, target.key)
+        ctx = _context(rt, req, out, scratch, sink or (lambda e: None), cancel)
+        outcome, used = run_with_failover(binding, rt.backends, lambda b: b.analyze(inputs, ctx))
+    if not outcome.ok:
+        raise ViwoError(
+            outcome.kind.value if outcome.kind.value != "ok" else "failed",
+            outcome.error or f"{slot} failed",
+        )
+    out = output_dir(req.workspace, used, target.key)
+    artifacts = sorted(p.name for p in out.iterdir() if p.is_file())
+    report = {
+        "target": target.to_dict(),
+        "backend": used,
+        "outputDir": str(out),
+        "artifacts": artifacts,
+        "notes": list(outcome.notes),
+        "finished": time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "context": record_context(rt),
+    }
+    write_atomic(out / "record.json", json.dumps(report, indent=2, sort_keys=True))
+    return report
+
+
+def handoffs_for(rt, kind: str) -> list[dict]:
+    """The handoffs that accept this target kind and are bound (doc 8.3a)."""
+    binding = rt.bindings.get(slot_for(kind).replace("analysis.", "handoff."))
+    if binding is None or not binding.bound:
+        return []
+    backend = rt.backends[binding.main]
+    return [{"id": backend.backend_id, "label": backend.label}]
+
+
+LAUNCHED: dict[int, object] = {}  # pid -> Child, for callers that wait on the tool
+
+
+def wait_for(pid: int, cancel: CancelToken | None = None) -> bool:
+    """Block until the launched tool exits (CLI); True when it ended by itself."""
+    child = LAUNCHED.get(pid)
+    while child is not None and child.alive():
+        if cancel is not None and cancel.cancelled:
+            child.kill()
+            return False
+        time.sleep(0.5)
+    return True
+
+
+def open_in(rt, req: AnalysisRequest, handoff_id: str = "") -> dict:
+    """Prepare the target and start the GUI tool as a tracked child; returns the pid."""
+    _check_enabled(rt)
+    target, slot = _pick(rt, req)
+    binding = rt.bindings.get(slot.replace("analysis.", "handoff."))
+    if binding is None or not binding.bound:
+        raise ViwoError("unavailable", f"no handoff for {target.kind} targets")
+    backend = rt.backends[handoff_id or binding.main]
+    out = output_dir(req.workspace, rt.bindings[slot].main, target.key)  # the analyzer's project
+    ctx = ExtractionContext(
+        "handoff", req.game, out, rt.temp_root, rt.os, DetectionResult("core", 1.0, (), "core")
+    )
+    spec = backend.prepare(target, ctx)
+    if isinstance(spec, Outcome):
+        raise ViwoError(spec.kind.value if spec.kind.value != "ok" else "failed", spec.error)
+    child = rt.os.process.launch(spec.argv, spec.cwd, spec.env)
+    LAUNCHED[child.pid] = child
+    return {
+        "handoff": backend.backend_id,
+        "label": backend.label,
+        "pid": child.pid,
+        "target": target.key,
+    }
+
+
+__all__ = [
+    "AnalysisRequest",
+    "LaunchSpec",
+    "SLOTS",
+    "analyze",
+    "backends",
+    "handoffs_for",
+    "open_in",
+    "targets_for",
+]

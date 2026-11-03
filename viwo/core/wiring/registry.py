@@ -224,6 +224,16 @@ def cli_commands(
     return found, problems
 
 
+def core_sources() -> tuple[tuple[SlotDefinition, ...], list[Backend]]:
+    """Every core-owned slot and backend (backends/, decode, capture, analysis): the one list
+    boot, the distro generator and the L0 lint share, so a new arm is added here only."""
+    from viwo.backends import CORE_SLOTS, core_backends
+    from viwo.core import analysis, capture, decode
+
+    slots = (*CORE_SLOTS, *decode.SLOTS, *capture.SLOTS, *analysis.SLOTS)
+    return slots, [*core_backends(), *decode.decoders(), *capture.backends(), *analysis.backends()]
+
+
 def known_ids(custom_dirs: Iterable[Path] = ()) -> set[str]:
     """Every plugin id a config may name: built-ins, drop-ins and entry points."""
     return set(BUILTIN_PLUGINS) | set(dropin_manifests(custom_dirs, []))

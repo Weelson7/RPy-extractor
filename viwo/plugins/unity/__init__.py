@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from viwo.contracts.analysis import AnalysisTarget
 from viwo.contracts.plugin import (
     EnginePlugin,
     GameProbe,
@@ -75,6 +76,18 @@ class UnityPlugin(EnginePlugin):
         strong = len(evidence) - int(data_dir)
         score = 0.92 if strong else (0.5 if data_dir else 0.0)
         return DetectionResult("unity", score, tuple(evidence), "unity")
+
+    def analysis_targets(self, probe: GameProbe):
+        """IL2CPP (GameAssembly + metadata) and the managed Assembly-CSharp (doc 6.1)."""
+        out = []
+        assembly = probe.find("GameAssembly.dll", limit=1)
+        meta = probe.find("global-metadata.dat", limit=1)
+        if assembly and meta:
+            paths = (assembly[0], meta[0])
+            out.append(AnalysisTarget("gameassembly", "il2cpp", paths, "unity", "IL2CPP"))
+        for dll in probe.find("Assembly-CSharp.dll", limit=1):
+            out.append(AnalysisTarget("assembly-csharp", "dotnet_assembly", (dll,), "unity"))
+        return out
 
     def slot_definitions(self):
         return SLOTS

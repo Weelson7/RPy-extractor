@@ -31,7 +31,9 @@ viwo/
     curation/  extension groups, sorting (keep / trash / rename / undo), three trash areas
     merger/    media merger: candidates, timeline expansion, ffmpeg filtergraph and builds
     carve/     signature carver (format sizers) and zlib/gzip stream inflation
-    capture/   runtime capture pilot: refusal policy, journaled overlay, RenderDoc backend
+    capture/   runtime capture pilot: warnings policy, journaled overlay, RenderDoc backend
+    analysis/  static analysis arm (A1): targets from the plugins, Ghidra headless into
+               <workspace>/.analysis/, "Continue in Ghidra" handoff as a tracked child
     decode.py  DECODE stage: game audio -> WAV (vgmstream), DDS -> PNG, Bink -> MP4
     roundtrip.py  edit set -> plan -> patched copy -> pack.* slots -> verify -> report
     sanitizer.py  phase 1: zero-byte, junk, wrong extension, duplicates, health; journaled
@@ -47,10 +49,11 @@ viwo/
                quickbms (script bridge)
   api/         local web server (token, JSON-only, Host check), JSON handlers (tools, capture,
                settings, system), job routes
-  web/         the web UI (plain HTML/CSS/ES modules, no build step): landing + 11 views
-  data/        tools.json (pinned tools), capture_policy.json (warnings, never refusals)
+  web/         the web UI (plain HTML/CSS/ES modules, no build step): landing + 12 views
+  data/        tools.json (pinned tools), capture_policy.json (warnings, never refusals),
+               ghidra/ViwoExport.java (the headless export script)
   cli.py       viwo info | slots | detect | extract | replay | unpack | survey | sanitize |
-               repack | capture | install | indexes | diag | config | serve
+               repack | capture | analyze | install | indexes | diag | config | serve
 ```
 
 Dependency direction: every layer may use the layers listed above it in this tree (contracts

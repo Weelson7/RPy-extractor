@@ -6,6 +6,7 @@ media embedded in them). Decoding Unreal assets is a later milestone.
 
 from __future__ import annotations
 
+from viwo.contracts.analysis import AnalysisTarget
 from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest, PluginOption
 from viwo.contracts.slots import SlotDefinition
 from viwo.contracts.types import DetectionResult
@@ -73,6 +74,14 @@ class UnrealPlugin(EnginePlugin):
             evidence.append("Unreal engine folders")
         score = 0.92 if strong else (0.6 if evidence else 0.0)
         return DetectionResult("unreal", score, tuple(evidence), "unreal")
+
+    def analysis_targets(self, probe: GameProbe):
+        """The shipping executable, with any `.usmap` beside it as companions (doc 6.1)."""
+        exes = probe.find("*-shipping.exe", limit=1)
+        if not exes:
+            return ()
+        paths = (exes[0], *probe.with_suffix(".usmap")[:4])
+        return (AnalysisTarget("shipping-exe", "native_binary", paths, "unreal", exes[0].name),)
 
     def slot_definitions(self):
         return (*SLOTS, PACK_SLOT)

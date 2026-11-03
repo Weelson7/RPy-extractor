@@ -3,11 +3,9 @@
 from __future__ import annotations
 
 import sys
-import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from viwo.backends import CORE_SLOTS, core_backends
 from viwo.contracts.errors import ViwoError
 from viwo.contracts.os import OS
 from viwo.contracts.plugin import EnginePlugin
@@ -17,7 +15,7 @@ from viwo.os import select_os
 from .. import thirdparty
 from .binder import bind_all
 from .ini import StartupConfig, load_ini
-from .registry import collect, load_enabled
+from .registry import collect, core_sources, load_enabled
 
 # Frozen build (viwo.exe): startup.ini sits next to the executable; otherwise the repo root.
 _HOME = (
@@ -60,6 +58,7 @@ class Runtime:
                         "location": found.path if found else "",
                         "hint": spec.hint,
                         "installable": thirdparty.installable(spec.dep_id, spec.kind),
+                        "onDemand": thirdparty.on_demand(spec.dep_id),
                     }
                 )
         unique = {item["id"]: item for item in items}
@@ -77,16 +76,12 @@ class Runtime:
             "problems": list(self.problems),
         }
 
-    def self_checks(self) -> dict[str, tuple[bool, str]]:
-        """`viwo slots --check` (doc 14.6): every bound backend's own self test."""
-        wanted = {b.main for b in self.bindings.values()} | {
-            b.spare for b in self.bindings.values()
-        }
-        return {
-            bid: self.backends[bid].self_check(self.os)
-            for bid in sorted(wanted)
-            if bid in self.backends
-        }
+
+def _default_scripts(config, home: Path) -> None:
+    """The installed QuickBMS scripts folder is the default `[options.quickbms] scripts`."""
+    scripts = home / "third_party" / "quickbms" / "scripts"
+    if scripts.is_dir() and not config.options.get("quickbms", {}).get("scripts"):
+        config.options.setdefault("quickbms", {})["scripts"] = str(scripts)
 
 
 def _apply_profile(config, profile: str) -> None:
@@ -111,9 +106,7 @@ def boot(
     home = thirdparty.home_of(config)
     thirdparty.activate(home)  # pinned Python packages installed under third_party/python
     tools = {**thirdparty.found_tools(home), **config.tools}  # the ini wins over third_party/
-    scripts = home / "third_party" / "quickbms" / "scripts"
-    if scripts.is_dir() and not config.options.get("quickbms", {}).get("scripts"):
-        config.options.setdefault("quickbms", {})["scripts"] = str(scripts)
+    _default_scripts(config, home)
     layer = select_os(os_id or config.os_id, tools)
     if os_id:
         config.sources["startup.os"] = "cli"
@@ -123,20 +116,11 @@ def boot(
             plugin.configure(config.options.get(plugin_id, {}))
         except Exception as exc:  # a bad option disables only that plugin's extras
             problems.append(f"plugin {plugin_id}: options rejected: {exc}")
-    from viwo.core.capture import SLOTS as CAPTURE_SLOTS
-    from viwo.core.capture import backends as capture_backends
-    from viwo.core.decode import SLOTS as DECODE_SLOTS
-    from viwo.core.decode import decoders
-
-    slots, backends, clash = collect(
-        CORE_SLOTS + DECODE_SLOTS + CAPTURE_SLOTS,
-        core_backends() + decoders() + capture_backends(),
-        plugins,
-    )
+    slots, backends, clash = collect(*core_sources(), plugins)
     bindings, bind_problems = bind_all(slots, backends, config.slots, layer)
     for binding in bindings.values():
         problems += list(binding.reasons)
-    root = temp_root or Path(tempfile.gettempdir()) / "viwo"
+    root = temp_root or config.server.temp  # one answer for the CLI and the server
     root.mkdir(parents=True, exist_ok=True)
     all_problems = config.problems + problems + clash + bind_problems
     return Runtime(config, layer, plugins, slots, backends, bindings, root, all_problems)

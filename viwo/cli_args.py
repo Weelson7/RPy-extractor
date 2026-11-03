@@ -76,6 +76,7 @@ def tool_commands(command) -> None:
     cp.add_argument("--exe", type=Path, required=True, help="the game executable to launch")
     cp.add_argument("--workspace", type=Path, required=True, help="where captures are gathered")
     cp.add_argument("--confirm", action="store_true", help=f"I confirm: {CONFIRMATION}")
+    analysis_command(command)
     sz = command("sanitize", "find empty, junk, duplicate, mislabeled or broken files")
     sz.add_argument("workspace", type=Path, help="a ViWo workspace")
     sz.add_argument("--apply", action="store_true", help="apply every safe action of the plan")
@@ -93,6 +94,23 @@ def tool_commands(command) -> None:
     dg.add_argument("--out", type=Path, help="zip path (default: in the logs folder)")
     ix = command("indexes", "per-game indexes: update to the latest release for this version")
     ix.add_argument("action", choices=["update"], help="update: fetch the latest indexes release")
+
+
+def analysis_command(command) -> None:
+    """viwo analyze (doc 6): list the targets, run one, or open it in the GUI tool."""
+    an = command("analyze", "static analysis of a game binary (Ghidra headless; opt-in)")
+    an.description = (
+        "Lists the binaries the plugins propose (--list), runs the analyzer for one target into "
+        "<workspace>/.analysis/, or opens the prepared project in the GUI tool (--open). Opt-in: "
+        "add `analysis` to [startup] features; you are responsible for having the right to "
+        "analyse the binaries."
+    )
+    an.add_argument("game", type=Path, help="the game folder (read-only; the binary is copied)")
+    an.add_argument("--workspace", type=Path, help="where .analysis/ lands (required to run)")
+    an.add_argument("--target", metavar="KEY", help="target key from --list")
+    an.add_argument("--list", action="store_true", help="only list the targets")
+    an.add_argument("--open", metavar="HANDOFF", nargs="?", const="", help="continue in the GUI")
+    an.add_argument("--timeout", type=int, default=0, help="seconds (default 4 h)")
 
 
 def extract_args(ex: argparse.ArgumentParser) -> None:

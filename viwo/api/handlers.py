@@ -287,6 +287,7 @@ POST: dict[str, Callable[[App, dict], Any]] = {
 }
 
 
+from .handlers_analysis import ANALYSIS_GET, ANALYSIS_POST  # noqa: E402
 from .handlers_capture import CAPTURE_GET, CAPTURE_POST  # noqa: E402
 from .handlers_jobs import JOBS_POST  # noqa: E402
 from .handlers_plugins import PLUGINS_GET  # noqa: E402
@@ -294,7 +295,7 @@ from .handlers_settings import SETTINGS_GET, SETTINGS_POST  # noqa: E402
 from .handlers_system import SYSTEM_GET, SYSTEM_POST  # noqa: E402
 from .handlers_tools import TOOL_GET, TOOL_POST  # noqa: E402  (tables merged last)
 
-for table in (TOOL_GET, CAPTURE_GET, SETTINGS_GET, SYSTEM_GET, PLUGINS_GET):
+for table in (TOOL_GET, CAPTURE_GET, SETTINGS_GET, SYSTEM_GET, PLUGINS_GET, ANALYSIS_GET):
     GET.update(table)
-for table in (TOOL_POST, CAPTURE_POST, SETTINGS_POST, SYSTEM_POST, JOBS_POST):
+for table in (TOOL_POST, CAPTURE_POST, SETTINGS_POST, SYSTEM_POST, JOBS_POST, ANALYSIS_POST):
     POST.update(table)

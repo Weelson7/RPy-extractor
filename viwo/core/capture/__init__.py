@@ -24,7 +24,7 @@ from ..pipeline.runner import detect_all
 from ..records import record_context
 from ..workspace import claim, write_atomic
 from .journal import pending
-from .policy import check
+from .policy import check, warnings_for
 from .renderdoc import RENDERDOCCMD, RenderDocCapture
 
 SLOTS = (SlotDefinition("capture.gpu", "capture", "core", "renderdoc"),)
@@ -40,11 +40,17 @@ def _known_hashes(workspace: Path) -> set[str]:
     return {json.loads(line)["sha256"] for line in lines}
 
 
-def _sensitive(rt, game: Path) -> list[str]:
+def sensitive_plugins(rt, game: Path) -> list[str]:
     found = detect_all(rt, FolderProbe(game))
     return [
         p for p, d in found.items() if d.confidence >= 0.5 and rt.plugins[p].manifest.tos_sensitive
     ]
+
+
+def warnings(rt, game: Path) -> list[str]:
+    """Everything the user should know before a capture (doc 11.1): markers, running services,
+    online titles, sensitive plugins, network; information, never a block."""
+    return warnings_for(game, sensitive_plugins(rt, game), rt)
 
 
 @dataclass
@@ -121,7 +127,7 @@ def capture(rt, req: CaptureRequest, sink=None, cancel=None) -> dict:
     say = sink or (lambda e: None)
     if not ws.inside(req.game, req.exe) or not req.exe.is_file():  # policy covers the game only
         raise ViwoError("refused", "the executable must be a file inside the game folder")
-    warnings = check(rt, req.game, req.confirmed, _sensitive(rt, req.game))
+    warnings = check(rt, req.game, req.confirmed, sensitive_plugins(rt, req.game))
     _restore_pending(rt, say)
     known = _prepare(rt, req)
     gathered, used, job, same = _run(rt, req, known, sink, cancel)

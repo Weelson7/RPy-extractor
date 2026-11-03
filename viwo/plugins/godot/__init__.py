@@ -2,7 +2,14 @@
 
 from __future__ import annotations
 
-from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest, PluginOption
+from viwo.contracts.analysis import AnalysisTarget
+from viwo.contracts.plugin import (
+    EnginePlugin,
+    GameProbe,
+    PluginManifest,
+    PluginOption,
+    VerifyReport,
+)
 from viwo.contracts.slots import SlotDefinition
 from viwo.contracts.types import DetectionResult
 
@@ -13,6 +20,7 @@ from .pck import (
     GodotPckPacker,
     GodotPckTool,
     embedded_chunk,
+    godot_executable,
     identify_pck,
 )
 
@@ -48,6 +56,11 @@ PCK_SLOT = SlotDefinition(
     identify=identify_pck,
 )
 EXECUTABLES = (".exe", ".x86_64", ".x86_32", ".arm64", ".arm32")
+NO_DATA = "Godot executable (PE pck section) without PCK data"
+NO_PCK_HINT = (
+    "no PCK data: the executable carries an empty pck section and no .pck sits next to it; "
+    "copy the game's .pck beside the executable (or the export embedded nothing)"
+)
 
 
 PLUGIN = "GodotPlugin"  # discovered by viwo.core.wiring.registry
@@ -76,8 +89,34 @@ class GodotPlugin(EnginePlugin):
         strong = bool(evidence)
         if probe.has_name("project.godot", ".import") or probe.find(".godot", limit=1):
             evidence.append("Godot project files")
-        score = 0.9 if strong else (0.7 if evidence else 0.0)
+        exes = probe.with_suffix(*EXECUTABLES)[:20]
+        if not evidence and any(godot_executable(probe.head(p, 4096)) for p in exes):
+            evidence.append(NO_DATA)  # an engine binary with nothing to extract: say so
+        score = (
+            0.9
+            if strong
+            else 0.7
+            if "Godot project files" in evidence
+            else 0.6
+            if evidence
+            else 0.0
+        )
         return DetectionResult("godot", score, tuple(evidence), "godot")
+
+    def verify_report(self, ctx, inventory, export, collected) -> VerifyReport:
+        if NO_DATA in ctx.detection.evidence:
+            return VerifyReport(False, (NO_PCK_HINT,), 0, 0)
+        return super().verify_report(ctx, inventory, export, collected)
+
+    def analysis_targets(self, probe: GameProbe):
+        """Compiled GDScript (`.gdc`), one target for all of them (doc 6.1)."""
+        files = tuple(probe.with_suffix(".gdc")[:500])
+        label = f"{len(files)} .gdc"
+        return (
+            (AnalysisTarget("gdscript", "gdscript_bytecode", files, "godot", label),)
+            if files
+            else ()
+        )
 
     def slot_definitions(self):
         return (

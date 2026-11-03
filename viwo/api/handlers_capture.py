@@ -5,10 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Callable
 
-from viwo.core.capture import CaptureRequest, capture
-from viwo.core.capture.policy import CONFIRMATION, warnings_for
-from viwo.core.pipeline.probe import FolderProbe
-from viwo.core.pipeline.runner import detect_all
+from viwo.core.capture import CaptureRequest, capture, warnings
+from viwo.core.capture.policy import CONFIRMATION
 from viwo.core.workspace import claim
 
 from .app import App
@@ -31,14 +29,6 @@ def browse_file(app: App, q: dict) -> dict:
     return {"success": True, "path": str(chosen)}
 
 
-def _sensitive(app: App, game: Path) -> list[str]:
-    found = detect_all(app.rt, FolderProbe(game))
-    plugins = app.rt.plugins
-    return [
-        p for p, d in found.items() if d.confidence >= 0.5 and plugins[p].manifest.tos_sensitive
-    ]
-
-
 def capture_warnings(app: App, d: dict) -> dict:
     """What the user should know before capturing this game: information, never a block."""
     game = Path(str(d.get("gamePath", "")).strip())
@@ -47,7 +37,7 @@ def capture_warnings(app: App, d: dict) -> dict:
     binding = app.rt.bindings.get("capture.gpu")
     return {
         "success": True,
-        "warnings": warnings_for(game, _sensitive(app, game)),
+        "warnings": warnings(app.rt, game),
         "confirmation": CONFIRMATION,
         "enabled": "capture" in app.rt.config.features,
         "backend": binding.main if binding is not None and binding.bound else "",

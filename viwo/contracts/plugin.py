@@ -181,13 +181,10 @@ class EnginePlugin(ABC):
         EXPORT stage outcome when the core has one, else None."""
         return VerifyReport(True, (), len(inventory), collected if inventory else 0)
 
-    def verify(self, ctx: ExtractionContext, collected: int) -> Sequence[str]:
-        """The core's call (1.0 signature). Adapts to verify_report(); a plugin written against
-        1.0 may still override this method directly."""
-        report = self.verify_report(ctx, self.inventory(ctx), None, collected)
-        if report.ok:
-            return tuple(report.warnings)
-        return tuple(report.warnings) or (f"{self.manifest.name}: verification failed",)
+    def analysis_targets(self, probe: GameProbe) -> Sequence[object]:
+        """Doc 6.1: the binaries and bytecode this engine ships that the static analysis arm
+        can take (AnalysisTarget records); empty = nothing to propose."""
+        return ()
 
     def sanitizer_rules(self) -> Sequence[object]:
         """Sanitizer rule providers (doc 5.2); ids must start with "<plugin id>."."""

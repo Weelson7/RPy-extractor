@@ -73,8 +73,33 @@ noise), streams, survey, sanitizer, round trip, capture policy, the journal with
 | RenderDoc capture / harvest | no GPU on CI; tested with fake `renderdoccmd` and fake RenderDoc Python | operator run on a desktop |
 | QuickBMS flags (`-o -Y script input output`) | binary host not reachable from this environment | first real use / CI if a mirror is allowed |
 | DataTool modes on a real install | Overwatch is tos-sensitive | independent operator (doc 17.4b) |
-| Real commercial games end to end | D20: after Prototype B | you / the operator |
-| retoc IoStore conversion on real UE5 data | no redistributable UE5 IoStore fixture | real-game check |
+| Ghidra GUI handoff on a real project | the headless run is verified (below); the GUI launch is tested with a fake `ghidraRun` | 12 ANALYSIS > CONTINUE IN GHIDRA on a desktop (sqc 16) |
+| Real commercial games end to end | D20: after Prototype B; eleven free titles verified on 2026-11-03 (below) | the operator for tos-sensitive titles |
+
+## Real-game evidence (2026-11-03, `tools/integration_games.py`, Windows 11)
+
+Every game folder hashed before and after; detect, survey, extract, repack plan and sanitize plan
+ran on each; 11/11 passed (`viwo-data/integration/report.md`, not committed).
+
+| Game | Engine | Result |
+|------|--------|--------|
+| Doki Doki Literature Club 1.1.1 | Ren'Py 95 % | 8/8 RPA, 797 files, 35 `.rpyc` decompiled to `.rpy` (unrpyc) |
+| Freedoom 0.13.0 | Doom 90 % | 2/2 WAD, 4,100 files (3,095 PNG, 109 WAV, 76 MIDI) |
+| ULTRAKILL Prelude, Baldi's Basics CR, Burning Snow | Unity 92 % | UnityPy: 5,481 / 1,761 / 116 files (textures, audio, meshes to OBJ) |
+| Void's Cave DEMO, The Basement | Unreal 5 92 % | 3/3 containers each (`.pak` by repak, `.utoc/.ucas` by retoc): 5,312 / 2,623 files |
+| My first shitty game with RPG Maker MV | RPG Maker 90 % | 1,512 files, encrypted media decrypted (1,118 PNG, 264 OGG) |
+| Ubu 2.0b | KiriKiri 90 % | 3/3 XP3, 1,984 files |
+| GodotOne, "MAD game" | Godot 60 % | bare export templates: the PE `pck` section is empty and no `.pck` is beside the exe; reported as "no PCK data" (1.2.2) |
+
+Static analysis (1.3, Ghidra 12.2 + Temurin 25 installed by `viwo install ghidra`):
+`viwo analyze Test-games/ultrakill-prelude --target ultrakill-exe` ran headless in about a minute
+and wrote `functions.csv` (324 functions), `decompiled.c` (11,473 lines), `strings.txt`,
+`symbols.tsv` and `record.json`; the project `viwo.gpr` sits in `<workspace>.ghidra/ultrakill-exe/`.
+Found on the way: `cmd /c` drops the quotes of a batch path with spaces (`call` fixes it), Ghidra
+12.2 refuses JDK 21 (25 pinned) and any project path element starting with a dot.
+
+retoc on real UE5 IoStore data and the Unreal `.pak` path are verified by the two UE5 titles;
+the Godot PCK path still waits for a title that ships its data (`sqc/games.md`).
 
 ## Rules that hold everywhere
 

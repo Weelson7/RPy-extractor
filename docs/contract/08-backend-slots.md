@@ -110,6 +110,11 @@ warnings-and-opt-in step before they run.
 
 ## 8.3a Interactive handoff: "continue in &lt;tool&gt;"
 
+> **1.3:** implemented as `contracts/analysis.py` `Handoff` (a backend of family `handoff`,
+> `prepare(target, ctx) -> LaunchSpec | Outcome`) and `ProcessRunner.launch(argv, cwd, env)`
+> (doc 1.1): the tool starts as a child in ViWo's process tree, is tracked (`Child.alive`,
+> `Child.kill`) and torn down at exit. First handoff: `ghidra-gui` on the project of a headless run.
+
 Much of the real work in reverse engineering happens in GUI tools (Ghidra's listing, x64dbg,
 ReClass.NET, RenderDoc's viewer, dnSpyEx, FModel, a hex editor). ViWo does not reimplement them and
 cannot drive them headless, but it is the right place to **prepare the target and hand off**. Any

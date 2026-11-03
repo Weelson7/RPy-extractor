@@ -8,6 +8,8 @@ import { maintenancePanel } from "./system-maint.js";
 const ENABLES = {
   ffmpeg: "06 MERGER videos, and decoding game images, audio and video",
   ffprobe: "06 MERGER (reads clip lengths); ships with ffmpeg",
+  ghidra: "12 ANALYSIS: static analysis of game code, headless and Continue in Ghidra (570 MB, on demand)",
+  jdk: "12 ANALYSIS: the Java runtime Ghidra needs (205 MB, on demand)",
   py7zr: "opening .7z archives",
   sevenzip: "opening .7z, .rar and .unitypackage files",
   unrar: "opening .rar archives",
@@ -72,7 +74,7 @@ async function load() {
   show(el.startup, distro, startup, "STARTUP INFO UNAVAILABLE");
   show(el.plugins, plugins, (list) => list.map(pluginCard), "PLUGINS UNAVAILABLE");
   if (distro.status === "fulfilled") renderStats(distro.value, deps.value);
-  const missing = (deps.value?.dependencies || []).filter((d) => !d.available && d.installable).length;
+  const missing = (deps.value?.dependencies || []).filter((d) => !d.available && d.installable && !d.onDemand).length;
   el.all.disabled = !missing || S.busy;
   el.all.textContent = missing ? `INSTALL ALL MISSING (${missing})` : "NOTHING TO INSTALL";
 }
@@ -125,7 +127,7 @@ function renderStats(d, deps) {
 
 function toolRow(d) {
   const how = d.available ? h("span", { class: "mono small" }, d.location || "on PATH")
-    : d.installable ? h("div", { class: "row" }, btn("INSTALL", (e) => busy(e.currentTarget, () => installOne(d)), "sm primary"), h("span", { class: "small dim" }, "pinned, checksum verified"))
+    : d.installable ? h("div", { class: "row" }, btn("INSTALL", (e) => busy(e.currentTarget, () => installOne(d)), "sm primary"), h("span", { class: "small dim" }, d.onDemand ? "pinned, checksum verified; large: only when you ask" : "pinned, checksum verified"))
     : h("span", { class: "small" }, d.hint);
   return h("tr", {},
     h("td", {}, h("b", {}, d.label), d.version ? h("small", { class: "mono dim block" }, d.version) : null),

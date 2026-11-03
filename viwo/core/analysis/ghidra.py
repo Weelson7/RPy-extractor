@@ -1,0 +1,119 @@
+"""analysis.native main: Ghidra headless (Apache-2.0) with ViWo's export script, and the
+"Continue in Ghidra" handoff that opens the same project in the GUI (doc 6.4, 8.3a)."""
+
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+from viwo.contracts.analysis import AnalysisTarget, Analyzer, Handoff, LaunchSpec
+from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
+
+GHIDRA = DependencySpec(
+    "ghidra",
+    "Ghidra (analyzeHeadless)",
+    env_var="VIWO_GHIDRA",
+    executables=("analyzeHeadless",),
+    install_dirs=("ghidra",),
+    hint="install Ghidra (Apache-2.0): `viwo install ghidra` (with the JDK it needs)",
+)
+JDK = DependencySpec(
+    "jdk",
+    "Java runtime for Ghidra (Temurin 25)",
+    kind="runtime",
+    env_var="VIWO_JDK",
+    executables=("java",),
+    hint="install the JDK: `viwo install jdk`",
+)
+SCRIPTS = Path(__file__).resolve().parents[2] / "data" / "ghidra"
+PROJECT = "viwo"  # project name inside project_dir()
+ARTIFACTS = ("functions.csv", "decompiled.c", "strings.txt", "symbols.tsv")
+DEFAULT_TIMEOUT = 4 * 3600
+
+
+def _java_env(ctx) -> dict[str, str] | None:
+    """JAVA_HOME and PATH for Ghidra's launchers, from the pinned (or found) JDK."""
+    java = ctx.os.tools.locate(JDK)
+    if java is None:
+        return None
+    home = Path(java.path).resolve().parent.parent
+    path = f"{home / 'bin'}{os.pathsep}{os.environ.get('PATH', '')}"
+    return {"JAVA_HOME": str(home), "PATH": path}
+
+
+def project_dir(staging: Path) -> Path:
+    """Ghidra refuses any path element starting with a dot, so the project cannot live under
+    `.analysis/`: it goes beside the workspace, `<workspace>.ghidra/<target key>/`, and the
+    exports stay in `staging` (= `<workspace>/.analysis/<backend>/<key>/`)."""
+    workspace = staging.parents[2]
+    return workspace.parent / f"{workspace.name}.ghidra" / staging.name
+
+
+def _launcher(headless: Path, name: str) -> Path:
+    """ghidraRun next to support/analyzeHeadless, with the platform's suffix."""
+    return headless.resolve().parent.parent / (name + headless.suffix)
+
+
+class GhidraHeadless(Analyzer):
+    """One import + auto-analysis + export per target; the project stays for the handoff."""
+
+    backend_id, license, isolation = "ghidra-headless", "Apache-2.0", "subprocess"
+    kinds = ("native_binary",)
+    self_check_args = ()  # analyzeHeadless with no arguments prints its usage
+
+    def dependencies(self):
+        return (GHIDRA, JDK)
+
+    def analyze(self, target: AnalysisTarget, ctx) -> Outcome:
+        tool, env = ctx.os.tools.locate(GHIDRA), _java_env(ctx)
+        if tool is None or env is None:
+            return Outcome(OutcomeKind.UNAVAILABLE, error=GHIDRA.hint if tool is None else JDK.hint)
+        project = project_dir(ctx.staging)
+        project.mkdir(parents=True, exist_ok=True)
+        argv = [*tool.argv_prefix, str(project), PROJECT, "-import", str(target.paths[0])]
+        argv += ["-overwrite", "-postScript", "ViwoExport.java", str(ctx.staging)]
+        argv += ["-scriptPath", str(SCRIPTS)]
+        timeout = int(ctx.options.get("timeout_s") or DEFAULT_TIMEOUT)
+        ctx.log(f"Ghidra: importing and analysing {target.paths[0].name}", stage="analyze")
+        result = ctx.os.process.run(
+            argv, timeout=timeout, cancel=ctx.cancel, env=env, on_line=lambda ln: _relay(ctx, ln)
+        )
+        found = [a for a in ARTIFACTS if (ctx.staging / a).is_file()]
+        if result.timed_out:
+            return Outcome(OutcomeKind.FAILED, error="Ghidra timed out or was cancelled")
+        if "functions.csv" not in found:
+            return Outcome(OutcomeKind.FAILED, error=(result.stderr or result.stdout)[-400:])
+        return Outcome(OutcomeKind.OK, len(found), notes=tuple(found))
+
+
+def _relay(ctx, line: str) -> None:
+    text = line.strip()
+    if text.startswith(("INFO  ", "ERROR ", "WARN  ")) or "ViWo export" in text:
+        ctx.log(text[:200], level="warn" if text.startswith("ERROR") else "info", stage="analyze")
+
+
+class GhidraGui(Handoff):
+    """Opens the project a headless run left behind; without one it says so."""
+
+    backend_id, license, isolation = "ghidra-gui", "Apache-2.0", "subprocess"
+    label, accepts = "Continue in Ghidra", ("native_binary",)
+    self_check_args = ()
+
+    def dependencies(self):
+        return (GHIDRA, JDK)
+
+    def prepare(self, target: AnalysisTarget, ctx) -> LaunchSpec | Outcome:
+        tool, env = ctx.os.tools.locate(GHIDRA), _java_env(ctx)
+        if tool is None or env is None:
+            return Outcome(OutcomeKind.UNAVAILABLE, error=GHIDRA.hint if tool is None else JDK.hint)
+        gpr = project_dir(ctx.staging) / f"{PROJECT}.gpr"
+        if not gpr.is_file():
+            return Outcome(
+                OutcomeKind.FAILED, error="no Ghidra project yet: run the analysis first"
+            )
+        launcher = _launcher(Path(tool.path), "ghidraRun")
+        if not launcher.is_file():
+            return Outcome(
+                OutcomeKind.UNAVAILABLE, error=f"{launcher.name} not found beside Ghidra"
+            )
+        return LaunchSpec((str(launcher), str(gpr)), gpr.parent, env)

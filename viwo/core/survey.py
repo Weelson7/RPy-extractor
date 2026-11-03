@@ -147,6 +147,14 @@ def _probe(rt, report: GameSurvey, containers: list, cancel, sink) -> None:
         step.done()
 
 
+def _rel(report: GameSurvey, path: Path) -> str:
+    """Game-relative path (two Mono config dirs hold files of the same name)."""
+    try:
+        return path.relative_to(Path(report.path)).as_posix()
+    except (ValueError, TypeError, AttributeError):
+        return path.name
+
+
 def _examine(report: GameSurvey, blobs: list, deep: bool, cancel, sink) -> None:
     step = Step(sink, "carve", "Carving unknown blobs:", len(blobs)) if deep else None
     for path, _slot, size in blobs:
@@ -162,7 +170,9 @@ def _examine(report: GameSurvey, blobs: list, deep: bool, cancel, sink) -> None:
         except OSError:
             report.add("unreadable", 0)
             continue
-        report.unknown.append({"file": path.name, "bytes": size, "dense": kind.endswith("dense")})
+        report.unknown.append(
+            {"file": _rel(report, path), "bytes": size, "dense": kind.endswith("dense")}
+        )
         report.add(kind, size)
     if step is not None and blobs:
         step.done()

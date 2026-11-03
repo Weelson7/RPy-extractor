@@ -77,6 +77,13 @@ const KINDS = {
     counters: [["CAPTURES", /^Harvested /, add()], ["HARVESTED OK", /^Harvested .*: ok$/, add()],
       ["GATHERED", /^Captured ([\d,]+) file/, (m) => num(m[1])], ["NEW VS STATIC", /, ([\d,]+) new vs static/, (m) => num(m[1])]],
   },
+  analyze: {
+    verb: "ANALYSING",
+    first: "copy",
+    stages: ["copy", "analyze", "export", "report"],
+    stageOf: (e) => (/^Ghidra: importing/.test(e.message) ? ["copy", "analyze"] : /ViWo export/.test(e.message) ? ["export", "report"] : e.stage === "analyze" ? "analyze" : ""),
+    counters: [["GHIDRA LINES", /^(INFO|WARN|ERROR)\s/, add()], ["ERRORS", /^ERROR\s/, add()]],
+  },
   indexes: {
     verb: "UPDATING",
     counters: [["DOWNLOADED KB", /^Downloading .*KB: ([\d,]+)/, (m) => num(m[1])], ["INSTALLED", /^Indexes .* installed/, add()]],
@@ -95,7 +102,7 @@ const KINDS = {
 
 /** Build a progress block for one job kind. start() before the blocking POST, finish() after it. */
 export function jobProgress(kind, { logClass = "feed", onStatus = null } = {}) {
-  const K = KINDS[kind];
+  const K = KINDS[kind] || { verb: `${String(kind).toUpperCase()}…`, stages: [], stageOf: () => "", counters: [] }; // a new kind needs no table entry
   const el = {
     verb: h("span", { class: "lbl", "data-state": "live" }, K.verb),
     stage: h("b", { class: "jp-stage" }),

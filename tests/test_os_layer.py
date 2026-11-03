@@ -107,6 +107,23 @@ class ProcessRunnerTests(unittest.TestCase):
         self.assertTrue(any(n.startswith("python") for n in names), sorted(names)[:8])
 
 
+class BatchFileTests(unittest.TestCase):
+    @unittest.skipUnless(sys.platform == "win32", "Windows batch files")
+    def test_batch_file_in_a_folder_with_spaces_runs_with_its_arguments(self) -> None:
+        """Doc 1.2: `.bat` tools run through cmd; a path with spaces must survive `cmd /c`."""
+        from viwo.contracts import DependencySpec
+
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / "tool home"
+            folder.mkdir()
+            bat = folder / "echoargs.bat"
+            bat.write_text("@echo off" + os.linesep + "echo got %1 %2" + os.linesep)
+            layer = select_os("windows", {"echoargs": str(bat)})
+            tool = layer.tools.locate(DependencySpec("echoargs", "echo", executables=("echoargs",)))
+            result = layer.process.run([*tool.argv_prefix, "one", "two"], timeout=20)
+            self.assertEqual((result.returncode, result.stdout.strip()), (0, "got one two"))
+
+
 class StreamingRunTests(unittest.TestCase):
     def test_lines_arrive_while_the_tool_runs_and_output_is_still_captured(self) -> None:
         code = "import sys,time\nfor i in range(3):\n print('line', i, flush=True)\n"

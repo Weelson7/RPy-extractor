@@ -6,12 +6,13 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from .app import App
+from .handlers_analysis import run_analysis
 from .handlers_capture import run_capture
 from .handlers_tools import (
-    _sanitize,
     install_dependency,
     repack_workspace,
     run_preflight,
+    sanitize_handler,
     survey_library,
 )
 
@@ -22,7 +23,8 @@ KINDS: dict[str, Callable[[App, dict], dict]] = {
     "preflight": run_preflight,
     "install": install_dependency,
     "capture": run_capture,
-    "cleanup": lambda app, params: _sanitize(str(params.get("op") or "plan"))(app, params),
+    "analyze": run_analysis,
+    "cleanup": lambda app, params: sanitize_handler(str(params.get("op") or "plan"))(app, params),
 }
 
 

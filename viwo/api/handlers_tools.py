@@ -65,17 +65,7 @@ def survey_report(app: App, q: dict) -> dict:
     return {"success": True, "report": report}
 
 
-RECIPES = [
-    {
-        "id": "phase1-safe",
-        "name": "Safe cleanup",
-        "lossy": False,
-        "rules": ["core.zero_byte", "core.junk", "core.extension", "core.duplicate", "core.health"],
-    }
-]
-
-
-def _sanitize(op: str) -> Callable[[App, dict], dict]:
+def sanitize_handler(op: str) -> Callable[[App, dict], dict]:
     def handler(app: App, d: dict) -> dict:
         folder = app.workspace  # read once: the workspace can be switched meanwhile
 
@@ -155,7 +145,10 @@ def _job(app: App, kind: str, run) -> dict:
 
 
 TOOL_GET: dict[str, Callable[[App, dict], Any]] = {
-    "/api/sanitizer/recipes": lambda app, q: {"success": True, "recipes": RECIPES},
+    "/api/sanitizer/recipes": lambda app, q: {
+        "success": True,
+        "recipes": sanitizer.recipes(collect_rules(app.rt)),
+    },
     "/api/surveys": survey_reports,
     "/api/survey-report": survey_report,
 }
@@ -164,7 +157,7 @@ TOOL_POST: dict[str, Callable[[App, dict], Any]] = {
     "/api/preflight/install": install_dependency,
     "/api/survey": survey_library,
     "/api/repack": repack_workspace,
-    "/api/sanitizer/plan": _sanitize("plan"),
-    "/api/sanitizer/apply": _sanitize("apply"),
-    "/api/sanitizer/undo": _sanitize("undo"),
+    "/api/sanitizer/plan": sanitize_handler("plan"),
+    "/api/sanitizer/apply": sanitize_handler("apply"),
+    "/api/sanitizer/undo": sanitize_handler("undo"),
 }

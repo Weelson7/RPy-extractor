@@ -7,6 +7,7 @@ installation is not an OS-layer concern: pinned downloads live in core (doc 10, 
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Mapping, Sequence
 
@@ -40,6 +41,20 @@ class ProcessRunner(ABC):
     def running_images(self) -> set[str]:
         """Lowercase image names of the running processes (best effort; empty when unknown)."""
         return set()
+
+    def launch(self, argv: Sequence[str], cwd: Path | None = None, env=None) -> "Child":
+        """Start a GUI tool as a tracked child (doc 8.3a) and return at once; the child dies
+        with ViWo (tree kill). Not every runner supports it."""
+        raise NotImplementedError("this OS layer cannot launch tracked children")
+
+
+@dataclass(frozen=True)
+class Child:
+    """A launched tool: its pid, whether it still runs, and how to stop it (tree kill)."""
+
+    pid: int
+    alive: Callable[[], bool]
+    kill: Callable[[], None]
 
 
 class ToolLocator(ABC):

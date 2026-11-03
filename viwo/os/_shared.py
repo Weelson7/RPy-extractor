@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import atexit
 import glob
 import importlib.util
 import os
@@ -13,10 +14,22 @@ import time
 from pathlib import Path
 from typing import Callable, Mapping, Sequence
 
-from viwo.contracts.os import ProcessRunner, ToolLocator
+from viwo.contracts.os import Child, ProcessRunner, ToolLocator
 from viwo.contracts.types import DependencySpec, ProcessResult, ToolLocation
 
 KillTree = Callable[[subprocess.Popen], None]
+
+
+CHILDREN: list[Child] = []  # tracked GUI children (doc 8.3a), torn down at exit
+
+
+def _reap_children() -> None:
+    for child in CHILDREN:
+        if child.alive():
+            child.kill()
+
+
+atexit.register(_reap_children)
 
 
 class SubprocessRunner(ProcessRunner):
@@ -31,6 +44,22 @@ class SubprocessRunner(ProcessRunner):
             return set(self._lister(self)) if self._lister else set()
         except Exception:  # noqa: BLE001  (a process list is advice, never a blocker)
             return set()
+
+    def launch(self, argv, cwd=None, env=None) -> Child:
+        """A GUI tool as a tracked child (doc 8.3a): no pipes, same process group rules, killed
+        with the tree on exit."""
+        proc = subprocess.Popen(
+            [str(a) for a in argv],
+            cwd=str(cwd) if cwd else None,
+            env={**os.environ, **env} if env else None,
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            **self._popen_kwargs,
+        )
+        child = Child(proc.pid, lambda: proc.poll() is None, lambda: self._kill_tree(proc))
+        CHILDREN.append(child)
+        return child
 
     @property
     def max_command_length(self) -> int:

@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import replace
 
 from viwo.contracts.pipeline import PluginRun
-from viwo.contracts.plugin import EnginePlugin
 
 
 def _verify(unpacked, collected) -> list[str]:
@@ -20,10 +19,7 @@ def _verify(unpacked, collected) -> list[str]:
 
 
 def verify_one(plugin, ctx, collected: int) -> tuple[tuple[str, ...], int, int]:
-    """(warnings, inventory items, items found): verify_report() for a plugin on the 1.1
-    hook, the overridden verify() for a plugin written against 1.0 (doc 2.2, 0.4)."""
-    if type(plugin).verify is not EnginePlugin.verify:
-        return tuple(f"verify: {w}" for w in plugin.verify(ctx, collected)), 0, 0
+    """(warnings, inventory items, items found) from the plugin's verify_report() (doc 2.2)."""
     inventory = tuple(plugin.inventory(ctx))
     report = plugin.verify_report(ctx, inventory, None, collected)
     found = tuple(f"verify: {w}" for w in report.warnings)

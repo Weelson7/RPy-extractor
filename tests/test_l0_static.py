@@ -12,12 +12,7 @@ from pathlib import Path
 
 from tools import caps_ini
 from viwo import __version__
-from viwo.backends import CORE_SLOTS, core_backends
-from viwo.core.capture import SLOTS as CAPTURE_SLOTS
-from viwo.core.capture import backends as capture_backends
-from viwo.core.decode import SLOTS as DECODE_SLOTS
-from viwo.core.decode import decoders
-from viwo.core.wiring.registry import collect, load_enabled
+from viwo.core.wiring.registry import collect, core_sources, load_enabled
 
 ROOT = Path(__file__).resolve().parent.parent
 # doc 17 L0 layer rule: contracts <- os <- plugins/backends <- core <- api/cli. A module may
@@ -66,11 +61,7 @@ def imports(path: Path) -> list[str]:
 
 def all_backends():
     plugins, _ = load_enabled({})
-    _, backends, _ = collect(
-        CORE_SLOTS + DECODE_SLOTS + CAPTURE_SLOTS,
-        core_backends() + decoders() + capture_backends(),
-        plugins,
-    )
+    _, backends, _ = collect(*core_sources(), plugins)
     return backends
 
 

@@ -8,6 +8,7 @@ const FEATURES = [
   ["sorting", "SORTING", "02 WORKSPACE, 03 SORT, 08 CLEANUP"],
   ["merger", "MERGER", "06 MERGER (needs ffmpeg)"],
   ["capture", "RUNTIME CAPTURE (OPT-IN)", "10 CAPTURE: runs on any game; anti-cheat and online titles only produce warnings; you are responsible"],
+  ["analysis", "STATIC ANALYSIS (OPT-IN)", "12 ANALYSIS: Ghidra on a copy of the game's code; off by default because its tools are large (about 800 MB); you are responsible for having the right to analyse"],
 ];
 const STARTUP = [
   ["auto_install", "AUTO-INSTALL TOOLS", "missing pinned tools are downloaded into third_party/ at startup"],

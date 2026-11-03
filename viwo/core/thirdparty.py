@@ -130,6 +130,11 @@ def installed_version(dep_id: str, home: Path) -> str:
     return ""
 
 
+def on_demand(dep_id: str) -> bool:
+    """Heavy pins (Ghidra) install only when asked by name, never by the startup preflight."""
+    return bool(manifest()["tools"].get(dep_id, {}).get("on_demand"))
+
+
 def installable(dep_id: str, kind: str) -> bool:
     data = manifest()
     if kind == "python":

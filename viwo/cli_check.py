@@ -1,20 +1,22 @@
-"""`viwo slots --check` (backend self-tests, doc 12.4 / 14.6) and the forced single-archive
-unpack behind `viwo unpack --slot/--backend`."""
+"""`viwo slots --check` (backend self-tests, doc 12.4 / 14.6), the forced single-archive unpack
+behind `viwo unpack --slot/--backend`, and `viwo analyze` (doc 6)."""
 
 from __future__ import annotations
 
 import shutil
+import sys
 import tempfile
 from pathlib import Path
 
-from viwo.contracts.errors import ViwoError
+from viwo.contracts.errors import Envelope, ViwoError
 
 from .cli_extra import context_factory
+from .cli_extra import event_printer as printer
 
 
 def _check_one(rt, slot_id: str, backend_id: str, role: str) -> dict:
     backend = rt.backends[backend_id]
-    probe = getattr(backend, "self_check", None) or backend.available
+    probe = backend.self_check
     try:
         ok, reason = probe(rt.os)
     except Exception as exc:  # noqa: BLE001  (a self-test that crashes is a failed test)
@@ -91,3 +93,36 @@ def unpack_forced(rt, archive: Path, out: Path, options: dict, sink, choice) -> 
         "failures": [],
         "slot": slot_id,
     }
+
+
+def analyze_command(rt, args) -> Envelope:
+    """viwo analyze: --list targets, run one target, or --open it in the GUI tool."""
+    from viwo.core.analysis import (
+        AnalysisRequest,
+        analyze,
+        handoffs_for,
+        open_in,
+        targets_for,
+        wait_for,
+    )
+
+    if not args.game.is_dir():
+        raise ViwoError("not_found", f"game folder not found: {args.game}")
+    if args.list or not args.target:
+        found = targets_for(rt, args.game)
+        targets = [{**t.to_dict(), "handoffs": handoffs_for(rt, t.kind)} for t in found]
+        return Envelope.success({"targets": targets})
+    if args.workspace is None:
+        raise ViwoError("invalid_request", "give --workspace <folder>")
+    options = {"timeout_s": args.timeout} if args.timeout else {}
+    req = AnalysisRequest(args.game, args.workspace, args.target, options)
+    if args.open is not None:
+        opened = open_in(rt, req, args.open)
+        if not args.json:
+            print(
+                f"[ANALYZE] {opened['label']} running (pid {opened['pid']}); close it to return",
+                file=sys.stderr,
+            )
+        wait_for(opened["pid"])  # the tool is ViWo's child: it would die with this process
+        return Envelope.success(opened)
+    return Envelope.success(analyze(rt, req, printer(args)))

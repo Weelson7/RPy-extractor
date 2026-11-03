@@ -28,8 +28,10 @@ def _kill_tree(proc: subprocess.Popen) -> None:
 
 
 def _wrap(path: Path) -> tuple[str, ...]:
+    """Batch files run through cmd; `call` keeps a quoted path with spaces intact (cmd /c
+    strips the outer quotes of a command line that starts with one)."""
     if path.suffix.lower() in {".bat", ".cmd"}:
-        return ("cmd", "/c", str(path))
+        return ("cmd", "/c", "call", str(path))
     return (str(path),)
 
 

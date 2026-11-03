@@ -1,6 +1,4 @@
-"""Wrapper plugins (doc 14.2 #3): one re-detection after an outer wrapper is unpacked.
-
-Stage runner (doc 3.1): prepare, probe, detect, unpack, export, collect, verify, report."""
+"""Wrapper plugins (doc 14.2 #3): one re-detection after an outer wrapper is unpacked."""
 
 from __future__ import annotations
 
@@ -10,8 +8,6 @@ from viwo.contracts import workspace as ws
 from viwo.contracts.pipeline import PluginRun
 
 from .probe import FolderProbe
-
-SECRET = "<secret>"
 
 
 def _kinds(staging: Path) -> dict[str, int]:

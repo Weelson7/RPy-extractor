@@ -78,7 +78,7 @@ then `README.md` ("Philosophy", "Legal and disclaimer"), then `docs/prototype-b/
    `docs/indexes.md`); publish its first release (`indexes-v1.0.zip` + `SHA256SUMS.txt`) so
    `viwo indexes update` has something to fetch. Add real QuickBMS script pins per game (none
    could be pinned from a trusted HTTPS source with a checksum tonight).
-3. **Not verified on real data** (unchanged list in STATUS.md): Unity round trip on a real file,
+3. **Not verified on real data** (STATUS.md; eleven free titles passed the integration run on 2026-11-03, see STATUS "Real-game evidence"): Unity round trip on a real file,
    RenderDoc capture on a real GPU game, QuickBMS on a real archive, DataTool on a real install,
    retoc on real UE5 data. The landing and every view were loaded in headless Edge (screenshots,
    zero console errors) and driven through the API and unit tests, not by real clicks.
@@ -128,6 +128,24 @@ drop-ins, and the missing safety tests (tar links and devices, depth bomb, strea
 selection property, wrapper re-detection). `docs/contract/CONFORMANCE.md` is regenerated with
 the new evidence. Docs 06, 11 and 18 were being rewritten by the capabilities respec at the same
 time and are not re-audited here.
+
+## 1.3 (static analysis arm, rung A1, 2026-11-03)
+- `viwo/contracts/analysis.py` (`AnalysisTarget`, `Analyzer`, `Handoff`, `LaunchSpec`),
+  `viwo/core/analysis/` (targets from `EnginePlugin.analysis_targets(probe)`, one analyzer run
+  per target into `<workspace>/.analysis/<backend>/<key>/` with `record.json`, handoff launch),
+  `viwo/core/analysis/ghidra.py` (Ghidra headless with `viwo/data/ghidra/ViwoExport.java`:
+  functions.csv, decompiled.c, strings.txt, symbols.tsv; `ghidra-gui` opens the project; Ghidra
+  refuses dot folders, so the project lives beside the workspace in `<workspace>.ghidra/<key>/`),
+  `ProcessRunner.launch` (tracked GUI children, killed at exit), `viwo analyze`,
+  `/api/analysis/{targets,run,open}`, job kind `analyze`, 12 ANALYSIS view, `analysis` feature
+  toggle in 11 SETTINGS. Targets: generic (root executables), unity (IL2CPP pair, Assembly-CSharp),
+  unreal (shipping exe + usmap), godot (.gdc), renpy (.rpyc); only `native_binary` has an analyzer
+  in A1, the others show "no analyzer yet". Pins: Ghidra 12.2 and Temurin JDK 25 (`on_demand`:
+  never installed by the startup preflight; `viwo install ghidra` or 05 SYSTEM).
+- Also: `FolderProbe` now hands back case-preserved paths (matching stays case-insensitive);
+  the lowercased paths broke lookups on Linux for any name with capitals.
+- Verified on a real binary: ULTRAKILL.exe through the pinned Ghidra 12.2 + JDK 25 (STATUS
+  "Real-game evidence"); the GUI handoff is tested with a fake launcher only.
 
 ## Respec to a full RE orchestrator (2026-11-03, docs only)
 From `temp.md`. Reframes ViWo from "orchestrator oriented towards asset extraction" to a **full game

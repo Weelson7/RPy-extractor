@@ -19,10 +19,9 @@ import tempfile
 from pathlib import Path
 
 from viwo import CONTRACT_VERSION
-from viwo.backends import CORE_SLOTS, core_backends
 
 from .ini import KNOWN_SECTIONS, load_ini
-from .registry import BUILTIN_PLUGINS, collect, known_ids, load_enabled
+from .registry import BUILTIN_PLUGINS, collect, core_sources, known_ids, load_enabled
 
 OSES = ("linux", "windows")
 PROFILES = ("renpy", "unity", "unreal", "godot", "custom", "mixed")
@@ -42,15 +41,8 @@ def tool_example(os_id: str, spec) -> str:
 
 
 def _registry():
-    from viwo.core.capture import SLOTS as CAPTURE
-    from viwo.core.capture import backends as capture
-    from viwo.core.decode import SLOTS as DECODE
-    from viwo.core.decode import decoders
-
     plugins, _ = load_enabled({})
-    return plugins, collect(
-        CORE_SLOTS + DECODE + CAPTURE, core_backends() + decoders() + capture(), plugins
-    )
+    return plugins, collect(*core_sources(), plugins)
 
 
 def enabled_for(profile: str) -> dict[str, bool]:

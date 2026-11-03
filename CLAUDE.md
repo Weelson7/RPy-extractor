@@ -69,7 +69,7 @@ a reason in the comment next to it. Split functions rather than bending the caps
   handing them to Python.
 
 ## Layout cheat sheet
-- `viwo/contracts/` interfaces only · `viwo/os/` OS layer · `viwo/core/` pipeline, wiring
+- `viwo/contracts/` interfaces only · `viwo/os/` OS layer · `viwo/core/` pipeline, wiring, analysis,
   (ini + distros), carve, decode, roundtrip, sanitizer, survey, capture, curation, merger
 - `viwo/plugins/<engine>/` one folder per engine · `viwo/api/` server · `viwo/web/` UI
 - `distros/` generated configs (`viwo config generate`; a test guards against drift)

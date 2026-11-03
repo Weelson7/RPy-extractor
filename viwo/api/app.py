@@ -36,9 +36,7 @@ class App:
 
     def reload(self) -> None:
         """Boot again (after installing a tool) so new tools bind; jobs and workspace stay."""
-        rt = boot(self.ini)
-        rt.temp_root = rt.config.server.temp
-        self.rt = rt
+        self.rt = boot(self.ini)
 
     def log(self, line: str) -> None:
         stamped = f"[{time.strftime('%H:%M:%S')}] {line}"
@@ -146,9 +144,7 @@ _GUARD = threading.Lock()
 def get_app(ini: Path | None = None) -> App:
     with _GUARD:
         if "app" not in _STATE:
-            rt = boot(ini)
-            rt.temp_root = rt.config.server.temp
-            _STATE["app"] = App(rt, ini)
+            _STATE["app"] = App(boot(ini), ini)
         return _STATE["app"]
 
 

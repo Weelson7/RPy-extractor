@@ -54,7 +54,16 @@ class RouteTests(unittest.TestCase):
         self.assertEqual((bad["success"], bad["code"]), (False, "invalid_request"))
         self.assertEqual(
             set(KINDS),
-            {"extract", "survey", "repack", "preflight", "install", "capture", "cleanup"},
+            {
+                "extract",
+                "survey",
+                "repack",
+                "preflight",
+                "install",
+                "capture",
+                "cleanup",
+                "analyze",
+            },
         )
         with tempfile.TemporaryDirectory() as tmp:
             make_game(Path(tmp))

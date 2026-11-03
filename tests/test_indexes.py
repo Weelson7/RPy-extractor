@@ -72,7 +72,7 @@ class ValidatorTests(unittest.TestCase):
             )
         )
         self.assertTrue(
-            any("unknown dependency" in p for p in indexes.validate(entry(tools=["ghidra"])))
+            any("unknown dependency" in p for p in indexes.validate(entry(tools=["nope-tool"])))
         )
         self.assertTrue(any("relative" in p for p in indexes.validate(entry(detect=["../x"]))))
         self.assertTrue(

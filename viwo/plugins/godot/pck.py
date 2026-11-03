@@ -40,6 +40,29 @@ def embedded_chunk(path: Path, tail: bytes) -> tuple[int, int] | None:
         return (offset, size) if fh.read(4) == MAGIC else None
 
 
+def pe_sections(head: bytes) -> list[str]:
+    """Section names of a PE image from its first bytes (empty when it is not a PE)."""
+    if len(head) < 0x40 or head[:2] != b"MZ":
+        return []
+    pe = struct.unpack_from("<I", head, 0x3C)[0]
+    if pe + 24 > len(head) or head[pe : pe + 4] != b"PE\0\0":
+        return []
+    nsec = struct.unpack_from("<H", head, pe + 6)[0]
+    start = pe + 24 + struct.unpack_from("<H", head, pe + 20)[0]
+    names = []
+    for i in range(nsec):
+        if start + 40 * (i + 1) > len(head):
+            break
+        raw = head[start + 40 * i : start + 40 * i + 8].rstrip(b"\0")
+        names.append(raw.decode("ascii", "replace"))
+    return names
+
+
+def godot_executable(head: bytes) -> bool:
+    """A Godot export template: its PE carries the "pck" section the embed step fills."""
+    return "pck" in pe_sections(head)
+
+
 def identify_pck(path: Path, head: bytes, tail: bytes) -> Match | None:
     if head.startswith(MAGIC):
         return Match("unarchive.pck", path)

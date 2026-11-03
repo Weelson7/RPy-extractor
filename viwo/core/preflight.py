@@ -89,7 +89,7 @@ def preflight(rt, sink=None, cancel=None) -> dict:
     say = sink or (lambda e: None)
     say(_event(f"Loaded {len(rt.plugins)} engine plugins, {len(rt.slots)} formats", "boot"))
     items = check(rt, say)
-    missing = [i for i in items if not i["available"] and i["installable"]]
+    missing = [i for i in items if not i["available"] and i["installable"] and not i["onDemand"]]
     todo = missing if rt.config.auto_install else []
     installed, failed = _install_missing(rt, todo, sink, cancel)
     ready = sum(1 for i in items if i["available"]) + len(installed)

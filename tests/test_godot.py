@@ -14,7 +14,19 @@ from viwo.contracts import CancelToken, ExtractionRequest, OnExisting
 from viwo.core.pipeline.identify import carve, identify
 from viwo.core.pipeline.probe import FolderProbe
 from viwo.core.pipeline.runner import extract
-from viwo.plugins.godot import PCK_SLOT, GodotPlugin
+from viwo.plugins.godot import NO_DATA, PCK_SLOT, GodotPlugin
+
+
+def fake_pe(sections: tuple[str, ...]) -> bytes:
+    """A minimal PE image: MZ stub, COFF header without optional header, named sections."""
+    pe = 0x80
+    head = bytearray(b"MZ" + b"\0" * (0x3C - 2)) + struct.pack("<I", pe)
+    head += b"\0" * (pe - len(head))
+    head += b"PE\0\0" + struct.pack("<HHIIIHH", 0x8664, len(sections), 0, 0, 0, 0, 0)
+    for name in sections:
+        head += name.encode().ljust(8, b"\0") + b"\0" * 32
+    return bytes(head) + b"\0" * 512
+
 
 FAKE_TOOL = """#!{python}
 import sys
@@ -103,6 +115,17 @@ class GodotPipelineTests(unittest.TestCase):
         self.assertEqual(result.runs[0].plugin_id, "godot")
         self.assertEqual(dict(result.by_backend), {"gdre-tools": 1, "godotpcktool": 1})
         self.assertIn("png/icon.png", tree_hashes(self.root / "ws", skip_reserved=True))
+
+    def test_godot_executable_without_data_is_named(self) -> None:
+        """A bare export template (PE "pck" section, nothing embedded, no .pck beside it) is a
+        Godot game with its data missing, not a generic folder."""
+        (self.game / "Game.exe").write_bytes(fake_pe(("text", "pck", "rsrc")))
+        det = GodotPlugin().detect(FolderProbe(self.game))
+        self.assertEqual((det.confidence, det.evidence), (0.6, (NO_DATA,)))
+        result = self.run_it()
+        self.assertEqual(result.runs[0].plugin_id, "godot")
+        self.assertTrue(any("no PCK data" in w for w in result.runs[0].warnings), result.runs)
+        self.assertFalse(result.runs[0].verify_passed)
 
     def test_encrypted_needs_key_and_spare_is_not_tried(self) -> None:
         (self.game / "data.pck").write_bytes(make_pck(b"ENC"))

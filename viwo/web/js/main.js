@@ -14,6 +14,7 @@ import "./views/survey.js";
 import "./views/cleanup.js";
 import "./views/repack.js";
 import "./views/capture.js";
+import "./views/analysis.js";
 import "./views/settings.js";
 import { openWorkspaceDialog } from "./workspace-dialog.js";
 import { landingWanted, runLanding } from "./landing.js";

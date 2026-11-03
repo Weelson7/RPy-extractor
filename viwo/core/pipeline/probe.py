@@ -11,18 +11,20 @@ from pathlib import Path
 class FolderProbe:
     def __init__(self, root: Path, limit: int = 50000) -> None:
         self._root = root
-        self._rel: list[tuple[str, bool]] = []  # (lowercased relative posix path, is_dir)
+        # (lowercased relative posix path, is_dir, real relative path): matching is
+        # case-insensitive, the paths handed back keep their case (Linux is case-sensitive)
+        self._rel: list[tuple[str, bool, str]] = []
         self.truncated = False
         for dirpath, dirnames, filenames in os.walk(root):
             base = Path(dirpath).relative_to(root).as_posix()
             prefix = "" if base == "." else f"{base}/"
-            entries = [(f"{prefix}{d}".lower(), True) for d in dirnames]
-            entries += [(f"{prefix}{f}".lower(), False) for f in filenames]
+            entries = [(f"{prefix}{d}".lower(), True, f"{prefix}{d}") for d in dirnames]
+            entries += [(f"{prefix}{f}".lower(), False, f"{prefix}{f}") for f in filenames]
             self._rel += entries
             if len(self._rel) >= limit:
                 self.truncated = True
                 break
-        self._names = {rel.rsplit("/", 1)[-1] for rel, _ in self._rel}
+        self._names = {rel.rsplit("/", 1)[-1] for rel, _, _ in self._rel}
 
     @property
     def root(self) -> Path:
@@ -36,10 +38,10 @@ class FolderProbe:
         pat = pattern.lower().removeprefix("**/")
         on_path = "/" in pat
         hits = []
-        for rel, _ in self._rel:
+        for rel, _, real in self._rel:
             subject = rel if on_path else rel.rsplit("/", 1)[-1]
             if fnmatch.fnmatchcase(subject, pat):
-                hits.append(self._root / rel)
+                hits.append(self._root / real)
                 if len(hits) >= limit:
                     break
         return hits
@@ -47,7 +49,9 @@ class FolderProbe:
     def with_suffix(self, *suffixes: str) -> list[Path]:
         wanted = tuple(s.lower() for s in suffixes)
         return [
-            self._root / rel for rel, is_dir in self._rel if not is_dir and rel.endswith(wanted)
+            self._root / real
+            for rel, is_dir, real in self._rel
+            if not is_dir and rel.endswith(wanted)
         ]
 
     def head(self, path: Path, size: int = 64) -> bytes:
