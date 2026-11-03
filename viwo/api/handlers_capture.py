@@ -7,7 +7,7 @@ from typing import Any, Callable
 
 from viwo.contracts.errors import ViwoError
 from viwo.core.capture import CaptureRequest, capture, warnings
-from viwo.core.capture.policy import CONFIRMATION
+from viwo.core.capture.policy import CONFIRMATION, DEFAULT_AUTO
 from viwo.core.workspace import claim
 
 from .app import App, failure
@@ -56,7 +56,7 @@ def run_capture(app: App, d: dict) -> dict:
     workspace = app.workspace
     if not workspace.exists() or not any(workspace.iterdir()):
         claim(workspace)  # the lock file lands inside it before capture() looks at it
-    after = float(d.get("captureAfter") or 0)
+    after = float(d.get("captureAfter", DEFAULT_AUTO))
     request = CaptureRequest(game, exe, workspace, bool(d.get("confirmed")), after)
 
     def run(sink, cancel) -> dict:

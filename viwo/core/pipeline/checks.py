@@ -15,6 +15,12 @@ def _verify(unpacked, collected) -> list[str]:
         warnings.append("No files were scanned from source roots.")
     if collected.collected == 0:
         warnings.append("No files were copied into the output folder.")
+    if collected.unreadable:
+        shown = ", ".join(collected.unreadable[:5])
+        warnings.append(
+            f"{len(collected.unreadable)} file(s) could not be read "
+            f"(antivirus block or lock), skipped: {shown}"
+        )
     return warnings
 
 

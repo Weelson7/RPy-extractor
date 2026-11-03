@@ -27,9 +27,11 @@ Expected:
 - 1: `viwo: needs_decision: confirm before capturing`, hint = the confirmation text (`my own
   install, intended for offline use; I am responsible for terms of service, anti-cheat
   consequences and anything I do with the captures`); exit 2.
-- 2: the capture proceeds to the launch (`Launching Game.exe under RenderDoc: capture with F12 /
-  PrtScn, then quit the game`); with the fixture's fake exe it ends with `no capture was taken`
-  (`failed`), which is the expected outcome here; the warning `Go offline first if the game
+- 2: the capture proceeds to the launch (`Launching Game.exe under RenderDoc; one frame captured
+  after 30 s`); with the fixture's fake exe the trigger finds no target and it ends with `the
+  trigger helper took no capture` (`failed`) after its timeout, which is the expected outcome here
+  (`--auto 0` gives the attended message `capture with F12 / PrtScn, then quit the game` and the
+  quick `no capture was taken`); the warning `Go offline first if the game
   allows it...` is printed.
 - 3: NOT refused. The warnings contain `anti-cheat present: Easy Anti-Cheat (EasyAntiCheat). ViWo
   does not evade it: the capture may be blocked, and running a capture tool next to it can get an
@@ -78,7 +80,8 @@ Expected: `Launching ULTRAKILL.exe under RenderDoc; one frame captured after 45 
 `Harvested viwo_frame<N>.rdc: ok`, PNG textures in `png\` and `shader_<id>_<stage>.txt`
 disassemblies in `txt\`, all with provenance `capture`; `Captured N file(s) with renderdoc; M not
 found by static extraction`; `UI.config` now holds `Analytics_ManualCheck: true`; the game install
-is unchanged. The attended variant (no `--auto`, press F12, quit) harvests the same way.
+is unchanged. `--auto 30` is the default; the attended variant (`--auto 0`, press F12, quit)
+harvests the same way.
 
 ## SQC-CAP-07 (P1, OPERATOR) Real capture on a game with anti-cheat, offline
 

@@ -34,6 +34,7 @@ class CollectReport:
     by_ext: Counter = field(default_factory=Counter)
     skipped_by_ext: Counter = field(default_factory=Counter)
     provenance: list[dict] = field(default_factory=list)
+    unreadable: list[str] = field(default_factory=list)  # the OS refused them (antivirus, lock)
 
     @property
     def collected(self) -> int:
@@ -103,7 +104,10 @@ def collect(
         if selected is not None and ext not in selected:
             report.skipped_by_ext[group] += 1
             continue
-        _collect_one(src, workspace / group, source, report)
+        try:
+            _collect_one(src, workspace / group, source, report)
+        except OSError as exc:  # blocked by the antivirus or locked: a warning, not a crash
+            report.unreadable.append(f"{src.name} ({exc.strerror or exc.errno})")
     return report
 
 

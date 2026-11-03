@@ -174,7 +174,7 @@ so `progress.js` stops parsing message text, let `list_window` return the type c
 
 ## 1.3.6 (unattended capture, rung D1, 2026-11-03)
 - `CaptureRequest.capture_after` (CLI `--auto SECONDS`, API `captureAfter`, one number in 10
-  CAPTURE): the game runs as a tracked child of `renderdoccmd capture -w`, `rd_trigger.py` asks
+  CAPTURE; unattended is the default, 30 s, `0` = attended with F12): the game runs as a tracked child of `renderdoccmd capture -w`, `rd_trigger.py` asks
   RenderDoc's target control for one frame after the delay, the child tree is killed, the harvest
   runs as before. `rd_harvest.py` also writes every shader's disassembly (D1 "shader disasm").
 - Verified for real on ULTRAKILL (STATUS "Runtime capture, unattended"): 89 textures + 30 shaders.
@@ -184,6 +184,15 @@ so `progress.js` stops parsing message text, let `list_window` return the type c
   `-y`, QuickBMS `-o -Y`. A user's explicit choice (analytics opt-in) is kept.
 - OS layer: `run()` always reads output through pump threads and returns when the process exits;
   a grandchild holding the pipes (qrenderdoc's adb server) can no longer hang a run.
+
+## 1.3.7 (unattended by default; unreadable files, 2026-11-03)
+- Capture is unattended by default (`DEFAULT_AUTO` = 30 s in `capture/policy.py`; CLI `--auto`,
+  API `captureAfter`, the UI field): the minimal-prompt rule applied to the one manual step left.
+- A file the OS refuses to open (Windows Defender holding `winmm.dll` / `OnlineFix64.dll` in the
+  Approximately Up copy, WinError 225 surfacing as `OSError 22`) is a run warning
+  (`N file(s) could not be read (antivirus block or lock), skipped`), never a crash
+  (`CollectReport.unreadable`); the integration runner lists such files as `blockedFiles` and
+  keeps them out of the read-only comparison.
 
 ## Morning deliverable (owner, 2026-11-04)
 A PDF presentation of the project status, the sqc suite and the CTF flags (`sqc/ctf.json`,

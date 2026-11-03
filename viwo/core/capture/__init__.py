@@ -25,7 +25,7 @@ from ..records import record_context
 from ..steps import teller
 from ..workspace import claim, write_atomic
 from .journal import pending
-from .policy import check, warnings_for
+from .policy import DEFAULT_AUTO, check, warnings_for
 from .renderdoc import RENDERDOCCMD, RenderDocCapture
 
 SLOTS = (SlotDefinition("capture.gpu", "capture", "core", "renderdoc"),)
@@ -60,7 +60,7 @@ class CaptureRequest:
     exe: Path
     workspace: Path
     confirmed: bool = False
-    capture_after: float = 0.0  # seconds; > 0 = unattended: one frame, then the game is stopped
+    capture_after: float = DEFAULT_AUTO  # seconds; 0 = attended (F12, quit when done)
 
 
 def _restore_pending(rt, say) -> None:

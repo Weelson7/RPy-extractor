@@ -12,7 +12,7 @@ from viwo.contracts.pipeline import (
     MixedPolicy,
     OnExisting,
 )
-from viwo.core.capture.policy import CONFIRMATION
+from viwo.core.capture.policy import CONFIRMATION, DEFAULT_AUTO
 
 EPILOG = """examples:
   viwo survey D:/Games                 what can be pulled from each game (read-only)
@@ -55,7 +55,7 @@ def core_commands(command) -> None:
 
 
 def capture_command(command) -> None:
-    """capture: attended (F12) or unattended (--auto SECONDS: one frame, then the game stops)."""
+    """capture: unattended by default (--auto SECONDS: one frame, then the game stops; 0 = F12)."""
     cp = command("capture", "runtime GPU capture with RenderDoc (opt-in; see --help)")
     cp.description = (
         "Runs the game under RenderDoc and harvests every capture you take (F12) into the "
@@ -69,9 +69,9 @@ def capture_command(command) -> None:
     cp.add_argument(
         "--auto",
         type=float,
-        default=0,
+        default=DEFAULT_AUTO,
         metavar="SECONDS",
-        help="unattended: capture one frame after SECONDS, then stop the game",
+        help="one frame after SECONDS, then the game stops (default 30; 0 = press F12 yourself)",
     )
 
 

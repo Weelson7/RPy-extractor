@@ -12,11 +12,13 @@ import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from unittest import mock
 
 from tests.helpers import ROOT, make_game, runtime, tree_hashes, write_ini
 from viwo.cli import main as cli_main
 from viwo.contracts import LEGACY_RESULT_KEYS, CancelToken, ExtractionRequest, OnExisting, ViwoError
 from viwo.contracts import workspace as ws
+from viwo.core.pipeline import collect
 from viwo.core.pipeline.runner import extract
 
 
@@ -50,6 +52,19 @@ class PipelineTests(unittest.TestCase):
         lines = (self.root / "ws" / ws.PROVENANCE_FILE).read_text().splitlines()
         self.assertEqual(len(lines), result.copied_files)
         self.assertTrue(all(json.loads(line)["sha256"] for line in lines))
+
+    def test_unreadable_file_is_a_warning_not_a_crash(self) -> None:
+        real = collect.sha256
+
+        def refuse(path):  # what Windows raises for a file the antivirus holds (WinError 225)
+            if path.name == "readme.md":
+                raise OSError(22, "the file contains a virus or potentially unwanted software")
+            return real(path)
+
+        with mock.patch("viwo.core.pipeline.collect.sha256", refuse):
+            result = run_extract(self.rt, self.game, self.root / "ws")
+        self.assertTrue(any("could not be read" in w and "readme.md" in w for w in result.warnings))
+        self.assertNotIn("md/readme.md", tree_hashes(self.root / "ws", skip_reserved=True))
 
     def test_tar_links_and_devices_are_never_written(self) -> None:
         """Doc 17.3: symlinks, hard links and device members are filtered, regular files kept."""

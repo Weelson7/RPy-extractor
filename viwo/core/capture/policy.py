@@ -17,6 +17,8 @@ from viwo.contracts.errors import ViwoError
 from ..workspace import write_atomic
 
 POLICY_FILE = Path(__file__).resolve().parent.parent.parent / "data" / "capture_policy.json"
+DEFAULT_AUTO = 30.0  # seconds; unattended by default (minimal-prompt rule): one frame, then stop
+
 CONFIRMATION = (
     "my own install, intended for offline use; I am responsible for terms of service, "
     "anti-cheat consequences and anything I do with the captures"

@@ -14,7 +14,7 @@ function mount(root) {
     spellcheck: "false", oninput: () => bar(), onkeydown: (e) => e.key === "Enter" && check() });
   el.exe = h("input", { class: "input mono grow", id: "cap-exe", placeholder: "/path/to/game/Game.exe", value: pref("capExe") || "",
     spellcheck: "false", oninput: () => { pref("capExe", el.exe.value.trim()); bar(); } });
-  el.auto = h("input", { class: "input mono", id: "cap-auto", type: "number", min: "0", step: "5", value: pref("capAuto") || "0",
+  el.auto = h("input", { class: "input mono", id: "cap-auto", type: "number", min: "0", step: "5", value: pref("capAuto") || "30",
     oninput: () => pref("capAuto", el.auto.value) });
   el.before = h("div", {});
   el.checkBtn = btn("CHECK", (e) => busy(e.currentTarget, check), "");
@@ -27,7 +27,7 @@ function mount(root) {
   el.run = btn("LAUNCH + CAPTURE", run, "primary lg");
   el.cancel = btn("CANCEL", cancelJob, "ghost", { hidden: true });
   root.append(
-    viewHead("10", "CAPTURE", "Run the game under RenderDoc, press F12 (or PrtScn) in the game to take captures, then quit it. Every texture of every capture lands in the workspace, and ViWo says which ones static extraction had missed."),
+    viewHead("10", "CAPTURE", "Run the game under RenderDoc: after the delay one frame is captured and the game is stopped, nothing to press (set 0 to take captures yourself with F12 and quit when done). Every texture and shader of every capture lands in the workspace, and ViWo says which ones static extraction had missed."),
     assure([["ANY GAME", "anti-cheat and online titles only produce warnings; you decide, you are responsible"],
       ["GAME FOLDER RESTORED", "anything the capture agent writes next to the game is journaled and put back"],
       ["INTO THE WORKSPACE", "captures are harvested to PNG and collected like extracted files"]]),
@@ -50,8 +50,8 @@ function targetPanel() {
     h("div", { class: "row" }, el.game, browseGame),
     h("label", { class: "lbl", for: "cap-exe" }, "EXECUTABLE TO LAUNCH (INSIDE THAT FOLDER)"),
     h("div", { class: "row" }, el.exe, browseExe),
-    h("label", { class: "lbl", for: "cap-auto" }, "AUTO-CAPTURE AFTER (SECONDS; 0 = PRESS F12 YOURSELF)"),
-    h("div", { class: "row" }, el.auto, h("span", { class: "dim small" }, "unattended: one frame is captured, then the game is stopped")),
+    h("label", { class: "lbl", for: "cap-auto" }, "CAPTURE ONE FRAME AFTER (SECONDS; 0 = PRESS F12 YOURSELF)"),
+    h("div", { class: "row" }, el.auto, h("span", { class: "dim small" }, "default: unattended, the game is stopped after the frame")),
     h("p", { class: "note" }, "The captures go to the active workspace: ", (el.wsNote = h("code", { class: "mono" }, S.ws || "—")), ". Switch it in the top bar if you want them elsewhere."));
 }
 

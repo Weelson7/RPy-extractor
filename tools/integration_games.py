@@ -117,9 +117,18 @@ def _extract_summary(data: dict) -> dict:
 def integrity(record: dict, game: Path, before: dict[str, str]) -> bool:
     """The game folder must be byte-identical after the run."""
     after = tree_hashes(game)
-    changed = sorted(k for k in set(before) | set(after) if before.get(k) != after.get(k))
+    blocked = {  # the OS refused to read them on one side (antivirus): not ViWo's doing
+        k
+        for k in set(before) | set(after)
+        if str(before.get(k, "")).startswith("unreadable")
+        or str(after.get(k, "")).startswith("unreadable")
+    }
+    changed = sorted(
+        k for k in (set(before) | set(after)) - blocked if before.get(k) != after.get(k)
+    )
     record["gameUnchanged"] = not changed
     record["changedFiles"] = changed[:20]
+    record["blockedFiles"] = sorted(blocked)[:20]
     return not changed
 
 
