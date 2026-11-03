@@ -1,53 +1,64 @@
-// App shell: hash router, top-bar status chips, workspace path, activity console dock.
+// App shell: theme, registry-driven rail and router, top-bar status chips, workspace path, activity console dock.
 import { api, hasToken } from "./api.js";
-import { h, $, pref, logLine, bus, emit, toastErr } from "./ui.js";
-import extract from "./views/extract.js";
-import workspace from "./views/workspace.js";
-import sort from "./views/sort.js";
-import jobs from "./views/jobs.js";
-import system from "./views/system.js";
-import merger from "./views/merger.js";
-import survey from "./views/survey.js";
-import cleanup from "./views/cleanup.js";
-import repack from "./views/repack.js";
-import capture from "./views/capture.js";
-import settings from "./views/settings.js";
+import * as ui from "./ui.js";
+import { h, $, fill, pref, logLine, bus, emit, toastErr } from "./ui.js";
+import { views, view, loadPluginModules, addonPanels } from "./registry.js";
+import { setTheme } from "./theme.js";
+import "./views/extract.js";
+import "./views/workspace.js";
+import "./views/sort.js";
+import "./views/jobs.js";
+import "./views/system.js";
+import "./views/merger.js";
+import "./views/survey.js";
+import "./views/cleanup.js";
+import "./views/repack.js";
+import "./views/capture.js";
+import "./views/settings.js";
 import { openWorkspaceDialog } from "./workspace-dialog.js";
 import { landingWanted, runLanding } from "./landing.js";
 import { KIND } from "./views/jobs.js";
 
-const VIEWS = { extract, workspace, sort, jobs, system, merger, survey, cleanup, repack, capture, settings };
 const scroll = {};
 const state = { chips: "", current: "", distro: null, dockOpen: pref("dock") === "1", logCount: -1, lastLog: "" };
 
+/** Build the rail entries and one section per registered view (core and add-ons alike). */
+function buildShell() {
+  const list = views();
+  fill($("#mods"), list.map((v, i) => h("li", {}, h("a", { href: `#${v.id}`, "data-view": v.id, title: `${v.title} — ${v.subtitle}` },
+    h("b", {}, String(v.order / 10 || i + 1).padStart(2, "0")), h("span", {}, v.title, h("small", {}, v.subtitle))))));
+  fill($("#main"), list.map((v) => h("section", { class: "view", id: `view-${v.id}`, hidden: true })));
+}
+
 function route() {
   const want = location.hash.slice(1);
-  const id = want in VIEWS ? want : "extract";
+  const id = view(want) ? want : views()[0].id;
   if (state.current === id) return;
   if (state.current) {
     scroll[state.current] = $("#main").scrollTop;
-    VIEWS[state.current].hide?.();
+    view(state.current).hide?.();
     $(`#view-${state.current}`).hidden = true;
   }
   state.current = id;
   const el = $(`#view-${id}`);
   if (!el.dataset.mounted) {
-    VIEWS[id].mount(el);
+    view(id).mount(el);
+    el.append(...addonPanels(id, { root: el, api, ui })); // plugin panels, after the view's own
     el.dataset.mounted = "1";
   }
   el.hidden = false;
   $("#main").scrollTop = scroll[id] || 0;
-  VIEWS[id].show?.();
-  document.querySelectorAll(".mods a").forEach((a) => {
+  view(id).show?.();
+  document.querySelectorAll("#mods a").forEach((a) => {
     if (a.dataset.view === id) a.setAttribute("aria-current", "page");
     else a.removeAttribute("aria-current");
   });
-  document.title = `${id.toUpperCase()} // ViWo`;
+  document.title = `${view(id).title} // ViWo`;
   pref("view", id);
 }
 
 const chip = (label, value, kind = "", href = "") =>
-  h(href ? "a" : "span", { class: `chip ${kind}`, href: href || null }, h("i", {}), h("b", {}, label), h("span", {}, value));
+  h(href ? "a" : "span", { class: "chip", "data-kind": kind || null, href: href || null }, h("i", {}), h("b", {}, label), h("span", {}, value));
 
 function renderChips(jobList) {
   const d = state.distro;
@@ -57,15 +68,14 @@ function renderChips(jobList) {
   const sig = JSON.stringify([d && d.os, bound, running.map((j) => j.kind), Boolean(jobList)]);
   if (sig === state.chips) return; // the strip is a live region: re-render only on change
   state.chips = sig;
-  $("#status-chips").replaceChildren(
+  fill($("#status-chips"),
     chip("OS", d ? String(d.os).toUpperCase() : "…", d ? "ok" : ""),
     chip("PLUGINS", d ? String(d.plugins.length) : "…", d ? "ok" : ""),
     Object.assign(chip("FORMATS", d ? `${bound}/${slots.length} READY` : "…", d && bound === slots.length ? "ok" : "", "#system"), {
       title: "Formats ViWo can handle right now. The rest need an optional tool: ViWo skips those formats until it is installed. Click for 05 SYSTEM." }),
     running.length
       ? chip("RUNNING", `${(KIND[running[0].kind]?.[0] || running[0].kind).toUpperCase()}${running.length > 1 ? ` +${running.length - 1}` : ""}`, "live", "#jobs")
-      : chip("JOB", jobList ? "IDLE" : "…", "", "#jobs"),
-  );
+      : chip("JOB", jobList ? "IDLE" : "…", "", "#jobs"));
 }
 
 async function pollStatus() {
@@ -74,7 +84,7 @@ async function pollStatus() {
     renderChips(await api.jobs());
   } catch (err) {
     state.chips = "";
-    $("#status-chips").replaceChildren(Object.assign(chip("SERVER", err.code === "offline" ? "OFFLINE" : "ERROR", "err"),
+    fill($("#status-chips"), Object.assign(chip("SERVER", err.code === "offline" ? "OFFLINE" : "ERROR", "err"),
       { title: "ViWo's server does not answer. Start it again (viwo serve, or Start.py), then reload." }));
   }
 }
@@ -82,7 +92,7 @@ async function pollStatus() {
 async function refreshWorkspacePath() {
   try {
     const res = await api.workspace();
-    $("#ws-path").textContent = res.path ? `\u200e${res.path}\u200e` : "—";
+    $("#ws-path").textContent = res.path ? `‎${res.path}‎` : "—";
     $("#ws-path").title = res.path || "";
     bus.ws = res;
     emit("wspath", res);
@@ -93,7 +103,7 @@ function setDock(open) {
   state.dockOpen = open;
   pref("dock", open ? "1" : "0");
   $("#dock-body").hidden = !open;
-  $("#dock").classList.toggle("open", open);
+  $("#dock").dataset.state = open ? "open" : "";
   $("#dock-toggle").setAttribute("aria-expanded", String(open));
   if (open) pollLogs();
 }
@@ -108,19 +118,20 @@ async function pollLogs() {
     state.lastLog = last;
     const body = $("#dock-body");
     const stick = body.scrollHeight - body.scrollTop - body.clientHeight < 40;
-    body.replaceChildren(...lines.slice(-500).map((l) => logLine(l)));
+    fill(body, lines.slice(-500).map((l) => logLine(l)));
     if (!lines.length) body.append(h("span", { class: "ln dim" }, "// no activity yet — run an extraction or a workspace action"));
     $("#dock-count").textContent = `${lines.length} LINES`;
     if (stick) body.scrollTop = body.scrollHeight;
   } catch { /* status chip reports link problems */ }
 }
 
-function boot() {
+async function boot() {
+  setTheme(pref("theme") || "wormhole");
   if (!hasToken()) {
-    $("#main").prepend(h("div", { class: "alert err" }, h("b", {}, "NO API TOKEN"),
+    $("#main").prepend(h("div", { class: "alert", "data-kind": "err" }, h("b", {}, "NO API TOKEN"),
       h("p", {}, "This page was not opened from ViWo's server, so nothing will load. Start ViWo with `viwo serve` (or Start.py) and open the address it prints.")));
-  }
-  document.querySelectorAll(".mods a").forEach((a) => { a.title = a.querySelector("span").textContent.replace(/^([A-Z ]+)/, "$1 — "); });
+  } else await loadPluginModules(api, ui); // add-on views and panels register before the shell is built
+  buildShell();
   $("#dock-toggle").addEventListener("click", () => setDock(!state.dockOpen));
   $("#ws-btn").addEventListener("click", openWorkspaceDialog);
   $("#dock-clear").addEventListener("click", () => api.clearLogs().then(() => { state.logCount = -1; pollLogs(); }, toastErr));

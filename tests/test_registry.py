@@ -11,7 +11,9 @@ from pathlib import Path
 from unittest import mock
 
 from tests.helpers import make_zip, runtime, tree_hashes
+from viwo.api import plugin_assets
 from viwo.contracts import CancelToken, ExtractionRequest
+from viwo.contracts.plugin import CliCommand
 from viwo.core.pipeline.runner import extract
 from viwo.core.wiring import registry
 from viwo.core.wiring.distros import enabled_for
@@ -141,6 +143,82 @@ class DropinTests(unittest.TestCase):
             self.assertIn("hello", [r.plugin_id for r in result.runs])
             self.assertTrue((root / "ws" / "png" / "a.png").is_file())
             self.assertEqual(tree_hashes(game), before)
+
+
+class FakeHandler:
+    """Records what the server would have sent for a plugin asset."""
+
+    def __init__(self, rt) -> None:
+        self.app = mock.Mock(rt=rt)
+        self.sent: list = []
+
+    def send_error(self, status: int) -> None:
+        self.sent.append(("error", status))
+
+    def send_file(self, path: Path) -> None:
+        self.sent.append(("file", path))
+
+
+class AddonTests(unittest.TestCase):
+    def test_cli_commands_registry_and_clash_rules(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            custom = copy_hello(Path(tmp))
+            plugins, _ = registry.load_enabled({"hello": True}, [custom])
+            found, problems = registry.cli_commands(plugins, {"detect"})
+            self.assertEqual((list(found), problems), (["hello-list"], []))
+            self.assertEqual(found["hello-list"][0], "hello")
+            clash = mock.Mock(cli_enabled=True)
+            clash.cli_commands.return_value = (
+                CliCommand("detect", "x", lambda p: None, lambda rt, a: {}),
+            )
+            found, problems = registry.cli_commands({"c": clash}, {"detect"})
+            self.assertEqual(found, {})
+            self.assertTrue(any("override" in p for p in problems), problems)
+            clash.cli_commands.return_value = (
+                CliCommand("detect", "x", lambda p: None, lambda rt, a: {}, override=True),
+            )
+            found, problems = registry.cli_commands({"c": clash}, {"detect"})
+            self.assertEqual((list(found), problems), (["detect"], []))
+            quiet = copy_hello(Path(tmp) / "two", cli=False)
+            plugins, _ = registry.load_enabled({"hello": True}, [quiet])
+            found, problems = registry.cli_commands(plugins, set())
+            self.assertEqual(found, {})
+            self.assertTrue(any('"cli": true' in p for p in problems), problems)
+
+    def test_ui_modules_and_asset_containment(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            custom = copy_hello(root)
+            ini = f"[plugins]\ncustom_dirs = {custom.as_posix()}\nhello = on\n"
+            rt = runtime(root, ini)
+            self.assertEqual(
+                plugin_assets.ui_modules(rt), [{"plugin": "hello", "url": "/plugins/hello/ui.js"}]
+            )
+            hello = custom / "hello"
+            self.assertEqual(plugin_assets.resolve(rt, "/plugins/hello/ui.js"), hello / "ui.js")
+            self.assertEqual(
+                plugin_assets.resolve(rt, "/plugins/hello/ui/hello.css"), hello / "ui" / "hello.css"
+            )
+            for bad in (
+                "/plugins/hello/../plugin.json",
+                "/plugins/hello/__init__.py",
+                "/plugins/hello/plugin.json",
+                "/plugins/hello/ui/../__init__.py",
+                "/plugins/hello/ui",
+                "/plugins/doom/ui.js",
+                "/plugins/hello/",
+            ):
+                self.assertIsNone(plugin_assets.resolve(rt, bad), bad)
+            handler = FakeHandler(rt)
+            self.assertFalse(plugin_assets.serve(handler, "/js/main.js"))
+            self.assertTrue(plugin_assets.serve(handler, "/plugins/hello/ui.js"))
+            self.assertTrue(plugin_assets.serve(handler, "/plugins/hello/__init__.py"))
+            self.assertEqual(handler.sent, [("file", hello / "ui.js"), ("error", 404)])
+            meta = json.loads((hello / "plugin.json").read_text(encoding="utf-8"))
+            meta["ui"] = "../evil.js"
+            (hello / "plugin.json").write_text(json.dumps(meta), encoding="utf-8")
+            _, problems = registry.load_enabled({"hello": True}, [custom])
+            self.assertTrue(any("'ui'" in p for p in problems), problems)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,84 @@
+# The web UI: functional layer, style layer, add-ons
+
+The UI is plain ES modules served by `viwo serve` (no build step). It is split into a
+**functional layer** (JavaScript that builds semantic components and talks to the API) and a
+**style layer** (CSS tokens and skins). The boundary is enforced by `tests/test_ui_lint.py`;
+the real-browser behaviour by `tests/test_ui_smoke.py` (headless Edge or Chrome over the
+DevTools protocol, driven by `tests/ui/smoke.mjs`).
+
+## Functional layer (`viwo/web/js/`)
+
+| Module | Role |
+|--------|------|
+| `ui/dom.js` | `h` (element builder, text only, never innerHTML), `fill`, `add`, `cssVar`, `stagger`, `state`, `busy`, formatting, `pref`, the `bus` |
+| `ui/components.js` | `panel`, `viewHead`, `stat`, `badge`, `btn`, `goBtn`, `seg`, `toggle`, `field`, `table`, `meter`, `stackBar`, `bars`, `progressBar` + `setProgress`, `empty`, `alert`, `kv`, `list`, `rail`, `assure`, `toolLink` |
+| `ui/feedback.js` | `errorBox` (+ the `ERRORS` table), `toast`, `toastErr`, `modal`, `confirmBox`, `promptBox`, `browseBtn`, `openBtn` |
+| `ui/log.js` | `logLine`, `logView`, `lineLevel` |
+| `ui.js` | the same surface, re-exported (views import `../ui.js`) |
+| `registry.js` | views and panels as contributions (below) |
+| `theme.js` | `THEMES`, `setTheme`, `currentTheme` |
+| `progress.js` | `jobProgress(kind)`: the live job block (rail, counters, ticker, log) per job kind |
+| `views/*.js` | one module per view; each registers itself |
+
+Rules for views (the lint fails otherwise):
+
+- No `style:` props, no `.style.`, no `innerHTML`. Numeric visuals go through a component
+  (`meter`, `setProgress`, `stackBar`, `bars`) or `cssVar(el, name, value)`, which sets a CSS
+  custom property the theme reads (`--p`, `--w`, `--h`, `--i`, `--n`).
+- Visual state is a data attribute, never an ad-hoc class: `data-state` (idle, running, done,
+  fail, on, out, locked, flat, syncing...), `data-kind` (ok, warn, err, mute, live, hi, lo...),
+  `data-level` on log lines, `data-s` on rail stages, `data-type` on asset tags, `data-key` on
+  category parts, `data-reveal` for the entrance animation.
+- Class strings name components and layout helpers only (`panel`, `row`, `col`, `grid2`,
+  `mono`, `dim`, `small`, `note`, `lbl`...). A colour or size word in a class is a lint error.
+- Never `node.append(maybeNull)`: a null child renders the word "null". Use `h(...)` children,
+  `fill(node, ...)` or `add(node, ...)`, which drop null and false.
+
+## Style layer (`viwo/web/css/`)
+
+- `base.css`: structure only. Layout, spacing, sizes, grid templates, clip paths, visibility.
+  It must not contain colours, fonts, shadows or animations (lint).
+- `themes/<name>.css`: tokens (`--bg`, `--red`, `--text`, `--line`, `--f-head`, `--f-body`,
+  `--f-mono`...) plus every colour, font, glow, border, transition and keyframe. It must not
+  contain layout declarations (`display`, `grid-template*`, `position`).
+- Shipped themes: `wormhole` (the red terminal HUD) and `plain` (neutral, high contrast, no
+  motion). The active theme is `<html data-theme>` and the `#theme-link` stylesheet; the user
+  picks it in 11 SETTINGS > APPEARANCE (a browser preference, `pref("theme")`, not an ini key).
+
+To write a theme: copy `themes/plain.css`, change the `:root` tokens first (that alone restyles
+everything), then override component skins (`.panel`, `.btn`, `.badge[data-kind="ok"]`...).
+Keep layout out of it; the lint test checks every file under `themes/`.
+
+To add a component: put it in `ui/components.js` (or a new `ui/<area>.js` re-exported from
+`ui/index.js`), give it a class name and data attributes for its states, add its structure to
+`base.css` and its skin to every theme.
+
+## Add-ons: views and panels as contributions (`registry.js`)
+
+```js
+import { registerView, registerPanel } from "./registry.js";
+registerView({ id: "mygame", order: 75, title: "MY GAME", subtitle: "what it does", mount(root) {...}, show() {...}, hide() {...} });
+registerPanel("system", { id: "mygame-status", order: 10, render: (ctx) => panel("05.X", "MY GAME", null, ...) });
+```
+
+- `main.js` builds the rail and one `<section id="view-<id>">` per registered view, sorted by
+  `order` (core views use 10..110). A view that registers an existing id must pass
+  `{ override: true }`; the same holds for panels.
+- Views that accept panels call `addonPanels(viewId, ctx)` at mount and append the result.
+- Plugin UI modules: the server lists them at `GET /api/ui-modules` as `{modules: [{plugin,
+  url}]}`; `main.js` imports each module before building the shell and calls its
+  `default install({ registry, api, ui, plugin })`. A missing route or a broken module is logged
+  and skipped; the app always starts. A drop-in plugin ships its module as a static file in its
+  own folder; the server serves it under the URL it lists.
+
+## Tests
+
+- `tests/test_ui_lint.py` (L0, no browser): the rules above, on every view, `base.css` and
+  every theme.
+- `tests/test_ui_smoke.py` (L6): starts a server with a temp workspace and a synthetic game,
+  drives a headless browser through `tests/ui/smoke.mjs`, and asserts zero console errors on
+  every view, no literal null text, the toast at the bottom right, the 05 SYSTEM gap, the 11.E
+  table width, the theme switch, detect percentages without zero padding, the visible "skipped"
+  rail stage after an extraction, workspace-wide type counts in 03 SORT, and the cleanup scan as
+  a visible job. Skipped when no Chromium or Node is found; `VIWO_UI=0` disables it;
+  `VIWO_UI_OUT=<folder>` keeps the screenshots.

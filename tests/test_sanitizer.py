@@ -9,6 +9,7 @@ from pathlib import Path
 from tests.helpers import make_png, runtime, tree_hashes
 from viwo.api import app as app_module
 from viwo.api.handlers import POST
+from viwo.contracts import CancelToken, ViwoError
 from viwo.core import sanitizer
 
 
@@ -81,9 +82,29 @@ class SanitizerTests(unittest.TestCase):
                 ],
                 "invalid_request",
             )
-            self.assertEqual(
-                POST["/api/sanitizer/undo"](app, {"undoToken": done["undoToken"]})["restored"], 1
+            undone = POST["/api/sanitizer/undo"](app, {"undoToken": done["undoToken"]})
+            self.assertEqual(undone["restored"], 1)
+            kinds = [app.jobs.get(r["jobId"]).kind for r in (plan, done, undone)]
+            self.assertEqual(kinds, ["cleanup"] * 3)  # visible in 04 JOBS and the chips
+            lines = [e.message for e in app.jobs.get(plan["jobId"]).events]
+            self.assertTrue(any(m.startswith("Scanning files: ") for m in lines), lines)
+            self.assertTrue(any(m.startswith("Hashing files: ") for m in lines), lines)
+            self.assertIn(
+                "Applying actions: 1 / 1", [e.message for e in app.jobs.get(done["jobId"]).events]
             )
+            self.assertIn(
+                "Undoing actions: 1 / 1", [e.message for e in app.jobs.get(undone["jobId"]).events]
+            )
+
+    def test_cancel_stops_the_scan(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = make_workspace(Path(tmp))
+            cancel = CancelToken()
+            cancel.cancel()
+            with self.assertRaises(ViwoError) as err:
+                sanitizer.plan(ws, None, cancel)
+            self.assertEqual(err.exception.code, "cancelled")
+            self.assertFalse((ws / sanitizer.ROOT).exists())
 
 
 if __name__ == "__main__":

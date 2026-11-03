@@ -21,7 +21,7 @@ function mount(root) {
 }
 
 async function load() {
-  el.panel.classList.add("syncing");
+  el.panel.dataset.state = "syncing";
   try {
     const status = await (S.status ? api.status() : withSkeleton(el.body, "READING WORKSPACE…", api.status, 6));
     S.status = status;
@@ -31,7 +31,7 @@ async function load() {
   } catch (err) {
     el.body.replaceChildren(errorBox(err, "WORKSPACE UNAVAILABLE"));
   } finally {
-    el.panel.classList.remove("syncing");
+    delete el.panel.dataset.state;
   }
 }
 
@@ -111,4 +111,8 @@ async function clearTrash() {
   emit("workspace");
 }
 
-export default { mount, show: load };
+import { registerView } from "../registry.js";
+
+const VIEW = { mount, show: load };
+registerView({ id: "workspace", order: 20, title: "WORKSPACE", subtitle: "your files, by type", ...VIEW });
+export default VIEW;

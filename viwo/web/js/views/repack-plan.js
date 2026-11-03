@@ -36,7 +36,7 @@ export function planCard(item) {
 /** "path: reason" strings from the server, split for display. */
 export function issueList(title, lines, kind = "warn") {
   if (!lines?.length) return null;
-  return h("div", { class: `alert ${kind}` }, h("b", {}, `${title} (${lines.length})`),
+  return h("div", { class: "alert", "data-kind": kind }, h("b", {}, `${title} (${lines.length})`),
     h("ul", {}, lines.map((l) => {
       const at = l.indexOf(": ");
       return h("li", {}, at > 0 ? [h("code", { class: "mono" }, l.slice(0, at)), ` — ${l.slice(at + 2)}`] : l);

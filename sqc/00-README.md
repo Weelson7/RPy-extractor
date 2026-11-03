@@ -22,6 +22,20 @@ steps and exact expected results, so two testers get the same verdict.
 | 14-security.md | token, Host, JSON-only, preview containment, pinned downloads |
 | 15-release-package.md | portable zip, wheel |
 
+## Real games: `games.md` and the automated integration run
+
+`games.md` lists free titles per engine (verified store pages, sizes, what each exercises) and the
+`Test-games/<slug>/` folder to install each into. Once installed:
+
+```powershell
+python tools/integration_games.py                 # detect, survey, extract, repack plan, sanitize plan
+python tools/integration_games.py --deep          # survey with the carver
+python tools/integration_games.py --skip-extract  # detect + survey only
+```
+
+Every game folder is hashed before and after (a change fails the run); the report lands in
+`viwo-data/integration/report.md` and `report.json`. Attach it to a bug report with `viwo diag`.
+
 ## Conventions
 
 - **ID** `SQC-<AREA>-<NN>`; **priority** P0 (release blocker), P1 (must pass before a major),

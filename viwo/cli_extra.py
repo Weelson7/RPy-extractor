@@ -1,7 +1,8 @@
-"""`viwo replay`, `viwo unpack`, the tool commands and `viwo install` (doc 12.4)."""
+"""`viwo replay`, `viwo unpack`, the tool commands, `viwo install` and plugin add-on commands."""
 
 from __future__ import annotations
 
+import argparse
 import json
 import shutil
 import sys
@@ -20,6 +21,8 @@ from viwo.contracts.plugin import ExtractionContext
 from viwo.contracts.types import CancelToken, DetectionResult
 from viwo.core.pipeline.runner import SECRET
 from viwo.core.pipeline.unpack import unpack_all
+from viwo.core.wiring.boot import boot
+from viwo.core.wiring.registry import cli_commands
 
 
 def replay_request(
@@ -230,3 +233,34 @@ def _config(args) -> Envelope:
         hint = "; ".join(f"{f}: {p[0]}" for f, p in problems.items() if p)
         raise ViwoError("invalid_request", "config check failed", hint=hint)
     return Envelope.success({"checked": sorted(problems), "problems": problems})
+
+
+def boot_for_cli(argv: list[str]):
+    """Boot early so plugin add-on commands can join the parser (`--ini`/`--os` are read first).
+    A bad configuration returns None here; the command itself reports it."""
+    pre = argparse.ArgumentParser(add_help=False)
+    pre.add_argument("--ini", type=Path)
+    pre.add_argument("--os", dest="os_id")
+    known, _ = pre.parse_known_args(argv)
+    try:
+        return boot(known.ini, known.os_id)
+    except Exception:  # noqa: BLE001 (reported by the real boot in _run)
+        return None
+
+
+def add_plugin_commands(sub, common, rt) -> None:
+    """Plugin subcommands (contract CliCommand); an override replaces the core subparser."""
+    found, problems = cli_commands(rt.plugins, set(sub.choices))
+    rt.problems.extend(problems)
+    for name, (plugin_id, cmd) in found.items():
+        if name in sub.choices:  # override: drop the core parser and its help entry
+            sub.choices.pop(name)
+            sub._choices_actions = [a for a in sub._choices_actions if a.dest != name]
+        parser = sub.add_parser(name, parents=[common], help=f"{cmd.help} [{plugin_id}]")
+        cmd.build(parser)
+        parser.set_defaults(plugin_command=cmd)
+
+
+def run_plugin_command(rt, cmd, args) -> Envelope:
+    result = cmd.run(rt, args)
+    return result if isinstance(result, Envelope) else Envelope.success(result)

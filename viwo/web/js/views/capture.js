@@ -132,4 +132,8 @@ async function run() {
   }
 }
 
-export default { mount, show: bar };
+import { registerView } from "../registry.js";
+
+const VIEW = { mount, show: bar };
+registerView({ id: "capture", order: 100, title: "CAPTURE", subtitle: "frames from a running game", ...VIEW });
+export default VIEW;

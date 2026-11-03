@@ -4,7 +4,7 @@ import { h, fill, btn, panel, badge, viewHead, empty, errorBox, toast, toastErr,
 import { jobProgress } from "../progress.js";
 import { gameCard, categoryKey, dataBytes, coveredBytes, pct, covKind } from "./survey-card.js";
 
-const S = { games: null, deep: pref("surveyDeep") === "1", ranDeep: false, running: false };
+const S = { games: null, deep: pref("surveyDeep") === "1", ranDeep: false, running: false, reportId: "" };
 const el = {};
 
 function mount(root) {
@@ -15,6 +15,7 @@ function mount(root) {
   el.progPanel = panel("07.B", "SURVEY RUN", null, el.prog.el);
   el.progPanel.hidden = true;
   el.summary = h("div", { class: "sv-sum" });
+  el.reports = h("div", {});
   el.cards = h("div", { class: "sv-grid" });
   el.sum = h("div", { class: "ab-sum mono" });
   el.why = h("span", { class: "ab-why" });
@@ -28,10 +29,33 @@ function mount(root) {
       h("div", { class: "row policy" }, h("span", { class: "lbl" }, "DEPTH"), el.deep,
         h("span", { class: "dim", id: "survey-deep-note" }, "also try the carver on unknown files — slower")),
       h("p", { class: "note" }, "A folder that looks like a game is surveyed as one game; otherwise each sub-folder is one game.")),
-    el.progPanel, el.summary, el.cards,
+    el.progPanel, el.summary, el.cards, panel("07.D", "SURVEY REPORTS", btn("REFRESH", () => listReports(), "sm ghost"), el.reports),
     h("div", { class: "actionbar" }, el.sum, el.why, el.cancel, el.run));
   setDeep(S.deep);
   renderIdle();
+  listReports();
+}
+
+/** Stored reports (newest first): each survey is kept as a numbered file, never overwritten. */
+async function listReports() {
+  try {
+    const list = (await api.surveys()).reports || [];
+    fill(el.reports, list.length ? h("table", { class: "tbl" }, h("thead", {}, h("tr", {}, ["WHEN", "FOLDER", "GAMES", "DEPTH", ""].map((c) => h("th", {}, c)))),
+      h("tbody", {}, list.map((r) => h("tr", { "data-state": r.id === S.reportId ? "sel" : null }, h("td", { class: "mono small" }, r.when), h("td", { class: "mono small" }, r.folder),
+        h("td", { class: "mono" }, fmtNum(r.gameCount)), h("td", {}, r.deep ? "DEEP" : "QUICK"), h("td", {}, btn("OPEN", () => openReport(r.id), "sm ghost"))))))
+      : h("p", { class: "dim small" }, "No stored survey yet. Each survey run is saved as a report here."));
+  } catch { fill(el.reports, h("p", { class: "dim small" }, "Stored reports are not available on this server.")); }
+}
+
+async function openReport(id) {
+  try {
+    const res = await api.surveyReport(id);
+    S.games = res.report?.games || [];
+    S.ranDeep = Boolean(res.report?.deep);
+    S.reportId = id;
+    render();
+    listReports();
+  } catch (err) { toastErr(err, "Report not opened: "); }
 }
 
 function setDeep(on) {
@@ -78,10 +102,12 @@ async function run() {
   el.progPanel.scrollIntoView({ block: "nearest" });
   try {
     const res = await api.survey(folder, S.deep);
-    await el.prog.finish("ok", `${fmtNum(res.games.length)} GAME(S) SURVEYED`);
+    await el.prog.finish("ok", `${fmtNum(res.games.length)} GAME(S) SURVEYED${res.reportId ? ` · REPORT ${res.reportId}` : ""}`);
     S.games = res.games;
     S.ranDeep = S.deep;
+    S.reportId = res.reportId || "";
     render();
+    listReports();
   } catch (err) {
     await el.prog.finish(err.code === "cancelled" ? "cancel" : "fail", err.message);
     fill(el.cards, errorBox(err, err.code === "cancelled" ? "SURVEY CANCELLED" : "SURVEY FAILED", err.code === "not_found" ? "Check the folder path: pick a game folder or a folder that holds several games." : ""));
@@ -99,14 +125,13 @@ function render() {
   const covered = games.reduce((s, g) => s + coveredBytes(g), 0);
   const full = games.filter((g) => g.coverage >= 0.999).length;
   const locked = games.filter((g) => g.coverage < 0.5).length;
-  fill(el.summary, h("div", { class: "stats reveal" },
+  fill(el.summary, h("div", { class: "stats", "data-reveal": "1" },
     stat("GAMES", fmtNum(games.length), S.ranDeep ? "deep survey" : "quick survey"),
-    h("div", { class: `stat ${full === games.length ? "ok" : "warn"}` }, h("span", { class: "lbl" }, "FULLY COVERED"),
-      h("b", { class: "mono" }, `${full}/${games.length}`), h("small", {}, "games at 100%")),
+    stat("FULLY COVERED", `${full}/${games.length}`, "games at 100%", full === games.length ? "ok" : "warn"),
     stat("TOTAL DATA", fmtBytes(data), "code + tiny files excluded"),
-    h("div", { class: `stat ${covKind(data ? covered / data : 1) === "ok" ? "ok" : ""}` }, h("span", { class: "lbl" }, "COVERED"),
-      h("b", { class: "mono" }, pct(data ? covered / data : 1)), h("small", {}, `${fmtBytes(covered)} pullable`)),
-    stat("UNDER 50%", fmtNum(locked), "games that need work")));
+    stat("COVERED", pct(data ? covered / data : 1), `${fmtBytes(covered)} pullable`, covKind(data ? covered / data : 1) === "ok" ? "ok" : ""),
+    stat("UNDER 50%", fmtNum(locked), "games that need work"),
+    S.reportId ? stat("REPORT", S.reportId, "stored in viwo-data/surveys") : null));
   const onExtract = (path) => {
     pref("gamePath", path);
     bus.gamePath = path;
@@ -117,4 +142,8 @@ function render() {
     : empty("NO GAMES FOUND", "This folder holds no sub-folders or files to survey. Pick the game's own folder, or the folder that holds your games."));
 }
 
-export default { mount };
+import { registerView } from "../registry.js";
+
+const VIEW = { mount };
+registerView({ id: "survey", order: 70, title: "SURVEY", subtitle: "what can ViWo pull?", ...VIEW });
+export default VIEW;

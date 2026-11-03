@@ -1,7 +1,7 @@
 // Live job progress: stage rail, typed log ticker, counters parsed from events, job clock, warnings.
 // Everything shown comes from the job's own event stream (/api/jobs + /api/jobs/<id>/events).
 import { api } from "./api.js";
-import { h, fill, logLine, emit } from "./ui.js";
+import { h, fill, logLine, emit, cssVar, rail } from "./ui.js";
 
 const RM = window.matchMedia("(prefers-reduced-motion: reduce)");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -45,9 +45,19 @@ const KINDS = {
   },
   survey: {
     verb: "SURVEYING",
-    stageOf: (e) => (e.stage === "survey" ? e.message.replace(/^Surveying /, "") : ""),
-    counters: [["GAMES", /^Surveying /, add()]],
-    ongoing: true, // "(3/9)" = game 3 is being surveyed, so 2 of 9 are done
+    cycle: true, // the steps repeat for every game
+    stages: ["scan", "identify", "probe", "carve", "decode"],
+    stageOf: (e) => ({ Scanning: "scan", Identified: "identify", Probing: "probe", Carving: "carve", Decoders: "decode" })[e.message.split(" ")[0]] || "",
+    counters: [["GAMES", /^Surveying /, add()], ["FILES SCANNED", /^Scanning files: ([\d,]+)/, add((m) => num(m[1]))],
+      ["CONTAINERS", /^Identified containers: ([\d,]+)/, add((m) => num(m[1]))], ["ARCHIVES PROBED", /^Probing archives: ([\d,]+) \//, (m) => num(m[1])],
+      ["BLOBS CARVED", /^Carving unknown blobs: ([\d,]+) \//, (m) => num(m[1])]],
+  },
+  cleanup: {
+    verb: "CLEANING",
+    stages: ["scan", "hash", "apply", "undo"],
+    stageOf: (e) => ({ Scanning: "scan", Hashing: "hash", Applying: "apply", Undoing: "undo" })[e.message.split(" ")[0]] || e.stage,
+    counters: [["FILES SCANNED", /^Scanning files: ([\d,]+)/, (m) => num(m[1])], ["HASHED", /^Hashing files: ([\d,]+)/, (m) => num(m[1])],
+      ["APPLIED", /^Applying actions: ([\d,]+)/, (m) => num(m[1])], ["RESTORED", /^Undoing actions: ([\d,]+)/, (m) => num(m[1])]],
   },
   preflight: {
     verb: "CHECKING",
@@ -87,12 +97,12 @@ const KINDS = {
 export function jobProgress(kind, { logClass = "feed", onStatus = null } = {}) {
   const K = KINDS[kind];
   const el = {
-    verb: h("span", { class: "lbl live" }, K.verb),
+    verb: h("span", { class: "lbl", "data-state": "live" }, K.verb),
     stage: h("b", { class: "jp-stage" }),
     frac: h("span", { class: "jp-frac mono" }),
     quiet: h("span", { class: "jp-quiet" }),
     clock: h("span", { class: "jp-clock mono", title: "elapsed (job clock)" }, "00:00.0"),
-    rail: h("ol", { class: "jp-rail", "aria-label": "Stages" }),
+    rail: h("ol", { class: "rail-stages", "aria-label": "Stages" }),
     bar: h("div", { class: "scan-bar jp-bar", "aria-hidden": "true" }, h("i", {})),
     tick: h("div", { class: "jp-tick mono", "aria-hidden": "true" }),
     counts: h("div", { class: "jp-counts" }),
@@ -137,12 +147,8 @@ export function jobProgress(kind, { logClass = "feed", onStatus = null } = {}) {
   function paintRail() {
     const hide = Math.max(0, t.order.length - 10);
     const label = { on: "in progress", done: "done", skip: "no events reported", wait: "not reached", fail: "stopped here" };
-    fill(el.rail, hide ? h("li", { class: "more", "data-s": "done" }, h("i", {}), h("span", {}, `+${hide} EARLIER`)) : null,
-      t.order.slice(hide).map((s, j) => {
-        const st = railState(s, j + hide);
-        return h("li", { "data-s": st, style: `--i:${j}`, title: `${s}: ${label[st]}`, "aria-current": st === "on" ? "step" : null },
-          h("i", {}), h("span", {}, s), h("span", { class: "sr" }, ` (${label[st]})`));
-      }));
+    const nodes = rail(t.order.slice(hide).map((s, j) => ({ id: s, state: railState(s, j + hide) })));
+    fill(el.rail, hide ? h("li", { class: "more", "data-s": "done" }, h("i", {}), h("span", {}, `+${hide} EARLIER`)) : null, [...nodes.children]);
     el.stage.textContent = stageText();
   }
 
@@ -163,8 +169,8 @@ export function jobProgress(kind, { logClass = "feed", onStatus = null } = {}) {
   function paintBar() {
     const p = !t.ended && t.prog?.stage === t.cur ? t.prog : null;
     const pct = p?.total ? Math.min(100, Math.floor(((p.done - (K.ongoing ? 1 : 0)) / p.total) * 100)) : null;
-    el.bar.classList.toggle("is-det", pct !== null);
-    el.bar.style.setProperty("--p", `${pct ?? 0}%`);
+    el.bar.dataset.state = pct !== null ? "det" : "scan";
+    cssVar(el.bar, "p", `${pct ?? 0}%`);
     el.frac.textContent = !p || K.ongoing ? "" : pct !== null ? `${p.what ? `${p.what} · ` : ""}${fmt(p.done)} / ${fmt(p.total)} · ${pct}%` : p.text;
   }
 
@@ -178,11 +184,11 @@ export function jobProgress(kind, { logClass = "feed", onStatus = null } = {}) {
         el.counts.append(box);
       } else if (box.firstChild.textContent !== text) {
         box.firstChild.textContent = text;
-        box.classList.remove("bump");
+        delete box.dataset.state;
         void box.offsetWidth; // restart the flash
-        box.classList.add("bump");
+        box.dataset.state = "bump";
       }
-      box.classList.toggle("warn", label.includes("FAIL") || label === "WARNINGS" ? value > 0 : false);
+      box.dataset.kind = (label.includes("FAIL") || label === "WARNINGS") && value > 0 ? "warn" : "";
       box.title = text;
     }
   }
@@ -208,7 +214,7 @@ export function jobProgress(kind, { logClass = "feed", onStatus = null } = {}) {
     const last = events.slice(-3);
     t.lines = [...t.lines, ...last].slice(-3);
     fill(el.tick, t.lines.map((e, i) => i === t.lines.length - 1
-      ? h("span", { class: `jp-line now ${e.level === "warn" ? "l-warn" : ""}`, style: `--n:${Math.min(80, e.message.length)}` }, e.message)
+      ? cssVar(h("span", { class: "jp-line", "data-state": "now", "data-level": e.level === "warn" ? "warn" : null }, e.message), "n", Math.min(80, e.message.length))
       : h("span", { class: "jp-line" }, e.message)));
     const w = t.warns;
     fill(el.warns, w.slice(-4).map((m) => h("li", {}, m)), w.length > 4 ? h("li", { class: "more" }, `+${w.length - 4} earlier warning(s) in the log`) : null);
@@ -250,12 +256,12 @@ export function jobProgress(kind, { logClass = "feed", onStatus = null } = {}) {
       counts: Object.fromEntries(K.counters.map((c) => [c[0], c[3] ?? 0])), boxes: {}, warns: [], lines: [],
       t0: Date.now(), lastEv: Date.now(), said: 0, ended: false, busy: false, prog: null };
     root.dataset.state = "running";
-    el.verb.className = "lbl live";
+    el.verb.dataset.state = "live";
     el.verb.textContent = K.verb;
     fill(el.counts);
     fill(el.warns);
     fill(el.log);
-    fill(el.tick, h("span", { class: "jp-line now", style: "--n:24" }, "waiting for the job to start"));
+    fill(el.tick, cssVar(h("span", { class: "jp-line", "data-state": "now" }, "waiting for the job to start"), "n", 24));
     enter(K.first);
     paintRail();
     paintCounts();
@@ -275,7 +281,7 @@ export function jobProgress(kind, { logClass = "feed", onStatus = null } = {}) {
     t.ended = true;
     t.outcome = outcome;
     root.dataset.state = outcome === "ok" ? "done" : "fail";
-    el.verb.className = `lbl ${outcome === "ok" ? "done" : "bad"}`;
+    el.verb.dataset.state = outcome === "ok" ? "done" : "bad";
     el.verb.textContent = { ok: "COMPLETE", fail: "FAILED", cancel: "CANCELLED" }[outcome] || "STOPPED";
     paintRail();
     paintBar();
@@ -290,8 +296,8 @@ export function jobProgress(kind, { logClass = "feed", onStatus = null } = {}) {
 
 /** Skeleton placeholder with a scanline, for short waits (detect, view loads, previews). */
 export function skeleton(label, rows = 4) {
-  return h("div", { class: "skel", role: "status" }, h("span", { class: "lbl live" }, label),
-    Array.from({ length: rows }, (_, i) => h("i", { style: `--w:${[94, 72, 86, 58, 80][i % 5]}%` })));
+  return h("div", { class: "skel", role: "status" }, h("span", { class: "lbl", "data-state": "live" }, label),
+    Array.from({ length: rows }, (_, i) => cssVar(h("i", {}), "w", `${[94, 72, 86, 58, 80][i % 5]}%`)));
 }
 
 /** Run `work`; if it takes longer than 150 ms, show a skeleton in `host` meanwhile (no flash on fast loads). */

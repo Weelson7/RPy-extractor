@@ -17,7 +17,7 @@ export async function openWorkspaceDialog() {
   const path = res.text.trim();
   if (!res.value || !path || path === cur.path) return;
   const chip = document.getElementById("ws-btn"), label = document.getElementById("ws-path"), was = label.textContent;
-  chip.classList.add("loading");
+  chip.dataset.state = "loading";
   chip.setAttribute("aria-busy", "true");
   chip.querySelector(".ws-edit").textContent = "OPENING…";
   label.textContent = `\u200e${path}\u200e`;
@@ -29,7 +29,7 @@ export async function openWorkspaceDialog() {
     label.textContent = was;
     toastErr(err);
   } finally {
-    chip.classList.remove("loading");
+    delete chip.dataset.state;
     chip.querySelector(".ws-edit").textContent = "SWITCH";
     chip.removeAttribute("aria-busy");
   }

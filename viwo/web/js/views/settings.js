@@ -4,6 +4,8 @@ import { api } from "../api.js";
 import { h, fill, btn, panel, viewHead, toast, toastErr, busy, emit, errorBox } from "../ui.js";
 import { withSkeleton } from "../progress.js";
 import { featuresForm, pluginsForm, toolsForm, optionsForm, slotsTable } from "./settings-form.js";
+import { THEMES, setTheme, currentTheme } from "../theme.js";
+import { seg } from "../ui.js";
 
 const S = { data: null, form: null, plugins: [], busy: false };
 const el = {};
@@ -45,12 +47,20 @@ async function load() {
 function render() {
   const d = S.data, f = S.form;
   const touch = () => bar();
-  fill(el.features, featuresForm(f.startup, touch));
+  fill(el.features, featuresForm(f.startup, touch), themeRow());
   fill(el.plugins, pluginsForm(f.plugins, d.pluginInfo, d.effective, touch));
   fill(el.tools, toolsForm(f.tools, touch));
   fill(el.options, optionsForm(f.options, S.plugins.filter((p) => f.plugins[p.id] !== false), touch));
   fill(el.slots, slotsTable(d.effective.slots, d.slots));
   bar();
+}
+
+/** Appearance is a browser preference, not an ini setting: it applies at once. */
+function themeRow() {
+  return [h("h4", { class: "sub-h" }, "// APPEARANCE"),
+    h("div", { class: "theme-row", "data-role": "theme" }, h("span", { class: "lbl" }, "THEME"),
+      seg(Object.entries(THEMES), currentTheme(), (v) => { setTheme(v); toast(`Theme: ${THEMES[v]}`, "ok"); }, { "aria-label": "Theme" }),
+      h("span", { class: "dim small" }, "stored in this browser; the ini is not touched"))];
 }
 
 /** Only the keys that differ from what the server read. */
@@ -102,4 +112,8 @@ async function apply() {
   }
 }
 
-export default { mount, show: load };
+import { registerView } from "../registry.js";
+
+const VIEW = { mount, show: load };
+registerView({ id: "settings", order: 110, title: "SETTINGS", subtitle: "plugins, features, tools", ...VIEW });
+export default VIEW;

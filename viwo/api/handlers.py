@@ -152,7 +152,14 @@ def save_remaining(app: App, d: dict) -> dict:
 
 
 def assets_window(app: App, q: dict) -> dict:
-    return sorting.list_window(app.workspace, _int(q, "offset", 0), _int(q, "limit", 100))
+    """One page of files plus the type counts of the whole workspace (a cheap listing)."""
+    folder = app.workspace
+    window = sorting.list_window(folder, _int(q, "offset", 0), _int(q, "limit", 100))
+    counts: dict[str, int] = {}
+    for path in sorting.asset_files(folder) if folder.is_dir() else []:
+        kind = sorting.media_type(path.suffix.lower())
+        counts[kind] = counts.get(kind, 0) + 1
+    return {**window, "typeCounts": counts, "total": sum(counts.values())}
 
 
 def asset_preview(app: App, q: dict) -> dict:
@@ -281,11 +288,12 @@ POST: dict[str, Callable[[App, dict], Any]] = {
 
 
 from .handlers_capture import CAPTURE_GET, CAPTURE_POST  # noqa: E402
+from .handlers_plugins import PLUGINS_GET  # noqa: E402
 from .handlers_settings import SETTINGS_GET, SETTINGS_POST  # noqa: E402
 from .handlers_system import SYSTEM_GET, SYSTEM_POST  # noqa: E402
 from .handlers_tools import TOOL_GET, TOOL_POST  # noqa: E402  (tables merged last)
 
-for table in (TOOL_GET, CAPTURE_GET, SETTINGS_GET, SYSTEM_GET):
+for table in (TOOL_GET, CAPTURE_GET, SETTINGS_GET, SYSTEM_GET, PLUGINS_GET):
     GET.update(table)
 for table in (TOOL_POST, CAPTURE_POST, SETTINGS_POST, SYSTEM_POST):
     POST.update(table)

@@ -2,7 +2,7 @@
 // One line per check/install event as it arrives, a determinate bar from the "(i/N)" and
 // "X / Y" counts, a summary, then a hand-off into the app. Shown once per browser tab.
 import { api } from "./api.js";
-import { h, logLine, emit } from "./ui.js";
+import { h, logLine, emit, setProgress } from "./ui.js";
 
 const RM = window.matchMedia("(prefers-reduced-motion: reduce)");
 const FRAC = /(\d[\d,]*)\s*\/\s*(\d[\d,]*)/;
@@ -15,7 +15,7 @@ const store = (set) => { try { if (set) sessionStorage.setItem("viwo-landed", "1
 export const landingWanted = () => !store(false);
 
 function logo() {
-  const mark = document.querySelector(".brand .mark")?.cloneNode(true) || h("span", { class: "mark" }); // a real SVG node, not innerHTML
+  const mark = document.querySelector(".brand .mark")?.cloneNode(true) || h("span", { class: "mark" }); // a real SVG node, cloned
   return h("div", { class: "land-logo", "aria-hidden": "true" }, mark,
     h("span", { class: "word" }, "VIWO"), h("span", { class: "sub" }, "// VIDYA WORMHOLE"));
 }
@@ -49,7 +49,7 @@ export async function runLanding() {
   const el = {
     stage: h("b", { class: "land-stage" }, "STARTING"),
     frac: h("span", { class: "land-frac mono" }),
-    bar: h("div", { class: "land-bar", role: "progressbar", "aria-valuemin": "0", "aria-valuemax": "100", "aria-valuenow": "0" }, h("i", {})),
+    bar: h("div", { class: "bar land-bar", role: "progressbar", "aria-valuemin": "0", "aria-valuemax": "100", "aria-valuenow": "0" }, h("i", {})),
     lines: h("pre", { class: "land-lines log" }),
     sum: h("p", { class: "land-sum", "aria-live": "polite" }, "Checking the tools ViWo can use on this machine…"),
   };
@@ -65,9 +65,7 @@ export async function runLanding() {
   const paint = () => {
     el.stage.textContent = t.stage;
     el.frac.textContent = t.frac;
-    el.bar.classList.toggle("is-det", t.n > 0);
-    el.bar.style.setProperty("--p", `${Math.round(t.pct)}%`);
-    el.bar.setAttribute("aria-valuenow", String(Math.round(t.pct)));
+    setProgress(el.bar, t.n > 0 ? t.pct : null);
   };
   const poll = async () => {
     if (t.busy) return;
@@ -101,13 +99,13 @@ export async function runLanding() {
   } else {
     t.stage = "CHECK FAILED"; t.pct = 100;
     el.sum.textContent = `The startup check did not finish: ${failure?.message || "unknown error"}. ViWo still runs; 05 SYSTEM shows what is missing.`;
-    root.classList.add("bad");
+    root.dataset.state = "bad";
   }
   paint();
   await sleep(Math.max(0, MIN_HOLD - (Date.now() - t0)));
   store(true);
   emit("preflight", report);
-  root.classList.add("out");
+  root.dataset.state = "out";
   if (!RM.matches) await sleep(460);
   if (app) app.inert = false;
   root.remove();

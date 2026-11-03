@@ -36,7 +36,8 @@ async function load(keepIdx = false, last = false) {
     const pull = () => api.assets(S.offset, LIMIT);
     const res = await (S.loaded ? pull() : withSkeleton(el.stage, "INDEXING WORKSPACE ASSETS…", pull, 5));
     S.items = res.assets || [];
-    S.total = res.totalCount || 0;
+    S.total = res.totalCount || res.total || 0;
+    S.typeCounts = res.typeCounts || null;
     if (!S.items.length && S.offset > 0) { S.offset = Math.max(0, S.offset - LIMIT); return load(); }
     S.idx = last ? S.items.length - 1 : keepIdx ? Math.min(S.idx, Math.max(0, S.items.length - 1)) : 0;
     if (!shown().includes(S.idx)) S.idx = (last ? shown().pop() : shown()[0]) ?? 0;
@@ -67,12 +68,15 @@ function page(dir, last = false) {
 const shown = () => S.items.map((_, i) => i).filter((i) => !S.types.size || S.types.has(S.items[i].type));
 const row = (i) => el.list.querySelector(`[data-i="${i}"]`);
 
+/** Type filters: whole-workspace count (from the server) and the count on this page. */
 function renderFilters() {
   const counts = {};
   S.items.forEach((a) => { counts[a.type] = (counts[a.type] || 0) + 1; });
-  fill(el.filters, Object.keys(TAG).filter((t) => counts[t]).map((t) => h("button", { type: "button", class: "pick", "aria-pressed": String(S.types.has(t)),
+  const all = S.typeCounts || counts;
+  fill(el.filters, Object.keys(TAG).filter((t) => all[t] || counts[t]).map((t) => h("button", { type: "button", class: "pick", "aria-pressed": String(S.types.has(t)),
+    title: `${fmtNum(all[t] || 0)} in the workspace, ${counts[t] || 0} on this page`,
     onclick: () => { S.types.has(t) ? S.types.delete(t) : S.types.add(t); renderList(); if (!shown().includes(S.idx)) select(shown()[0] ?? -1); } },
-  TAG[t], h("small", {}, ` ${counts[t]}`))));
+  TAG[t], h("small", {}, ` ${fmtNum(all[t] || 0)}`, S.typeCounts ? h("span", { class: "dim" }, ` · ${counts[t] || 0} on this page`) : null))));
 }
 
 function renderReview() {
@@ -89,7 +93,7 @@ function renderList() {
   fill(el.list, shown().map((i) => {
     const a = S.items[i];
     return h("li", { role: "option", id: `asset-${i}`, "aria-selected": String(i === S.idx), class: S.kept.has(a.path) ? "kept" : "", "data-i": i, onclick: () => select(i) },
-      h("span", { class: `tag t-${a.type}` }, TAG[a.type] || "BIN"), h("span", { class: "nm", title: a.name }, a.name),
+      h("span", { class: "tag", "data-type": a.type }, TAG[a.type] || "BIN"), h("span", { class: "nm", title: a.name }, a.name),
       S.kept.has(a.path) ? h("span", { class: "ok-mark", title: "kept this session" }, "✓") : null, h("span", { class: "sz mono" }, fmtBytes(a.size)));
   }));
   el.list.setAttribute("aria-activedescendant", `asset-${S.idx}`);
@@ -127,7 +131,7 @@ async function preview() {
     return;
   }
   el.meta.replaceChildren(h("span", { class: "mono" }, `${pad(S.offset + S.idx + 1, 4)} / ${pad(S.total, 4)}`),
-    h("span", { class: `tag t-${a.type}` }, TAG[a.type]), h("span", { class: "mono dim" }, fmtBytes(a.size)));
+    h("span", { class: "tag", "data-type": a.type }, TAG[a.type]), h("span", { class: "mono dim" }, fmtBytes(a.size)));
   const slow = setTimeout(() => { if (seq === S.seq) el.stage.replaceChildren(skeleton("LOADING PREVIEW…", 3)); }, 150);
   try {
     const p = await api.preview(a.path);
@@ -256,4 +260,8 @@ function onKey(e) {
   fn();
 }
 
-export default { mount, show: () => load(S.loaded) };
+import { registerView } from "../registry.js";
+
+const VIEW = { mount, show: () => load(S.loaded) };
+registerView({ id: "sort", order: 30, title: "SORT", subtitle: "keep or trash, one by one", ...VIEW });
+export default VIEW;

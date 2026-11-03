@@ -1,6 +1,6 @@
 // Form renderers for 11 SETTINGS: switches, plugin toggles, tool paths, options, slots.
 import { api } from "../api.js";
-import { h, badge, browseBtn } from "../ui.js";
+import { h, add, badge, browseBtn, toggle } from "../ui.js";
 import { slotText } from "./system.js";
 
 const FEATURES = [
@@ -13,13 +13,6 @@ const STARTUP = [
   ["auto_install", "AUTO-INSTALL TOOLS", "missing pinned tools are downloaded into third_party/ at startup"],
   ["strict_preflight", "STRICT PREFLIGHT", "viwo serve exits (code 4) when a plugin format has no tool; the web UI ignores it"],
 ];
-
-/** A labelled switch: [checkbox] TITLE / hint. */
-export function toggle(id, title, hint, checked, onChange, locked = false) {
-  return h("label", { class: `switch ${locked ? "locked" : ""}`, for: id },
-    h("input", { type: "checkbox", id, checked, disabled: locked, onchange: (e) => onChange(e.target.checked) }),
-    h("span", { class: "sw" }), h("span", { class: "sw-text" }, h("b", {}, title), hint ? h("small", {}, hint) : null));
-}
 
 export function featuresForm(startup, touch) {
   const has = (f) => startup.features.includes(f);
@@ -42,7 +35,7 @@ export function pluginsForm(plugins, info, effective, touch) {
       const p = info?.[id] || { name: id };
       const hint = [p.engineType ? `engine ${p.engineType}` : "", p.custom ? "drop-in" : "", p.problem ? `problem: ${p.problem}` : ""].filter(Boolean).join(" · ");
       const row = toggle(`pl-${id}`, p.name || id, hint, id === "generic" ? true : plugins[id] !== false, (on) => { plugins[id] = on; touch(); }, id === "generic");
-      row.append(p.tosSensitive ? badge("TOS-SENSITIVE", "warn") : null, loaded.has(id) ? badge("LOADED", "ok") : badge("NOT LOADED", "mute"));
+      add(row, p.tosSensitive ? badge("TOS-SENSITIVE", "warn") : null, loaded.has(id) ? badge("LOADED", "ok") : badge("NOT LOADED", "mute"));
       return row;
     }),
   ];

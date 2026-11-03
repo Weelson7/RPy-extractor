@@ -42,6 +42,24 @@ then `README.md` ("Philosophy", "Legal and disclaimer"), then `docs/prototype-b/
   real-GPU RenderDoc checks.
 - **Audits applied:** web UI/UX (16 fixes), CLI UX, backend quality; see the commit messages.
 
+## 1.1 (owner's feedback batch, 2026-11-03)
+- **UI architecture:** component library `viwo/web/js/ui/` (views build semantic components only;
+  visual state through data attributes), CSS split into `css/base.css` (structure) and
+  `css/themes/*.css` (wormhole, plain); theme selector in 11 SETTINGS; `tests/test_ui_lint.py`
+  enforces the boundary; `tests/test_ui_smoke.py` drives headless Edge (skipped without a
+  Chromium binary). See `docs/ui.md`.
+- **Add-ons:** plugins ship CLI commands (`cli_commands()`, overrides) and UI modules
+  (`ui.js` registering views and panels through `js/registry.js`); served at `/plugins/<id>/`;
+  example in `examples/plugins/hello/`. See `docs/plugins.md`.
+- **Fixed with regression tests:** "null" text in 11.B, toasts at the bottom right, 05.A/05.B
+  gap, 11.E table width, skipped rail stages greyed with a label, "040%", engine options per
+  policy, SORT filters with workspace-wide counts, cleanup as a visible job, survey step events
+  with numbered persisted reports (`viwo-data/surveys/`, listed in 07.D), preview stream aborts
+  no longer trace.
+- **Test games:** `sqc/games.md` (verified free titles per engine) and
+  `python tools/integration_games.py --games Test-games` (detect, survey, extract, repack plan,
+  sanitize plan, game-folder hash check, report.md). Install the games, then run it.
+
 ## Release state
 - GitHub release **v1.0.0** is published (wheel, sdist, `ViWo-1.0.0-windows-x64.zip`, SHA256SUMS)
   by the release workflow on the tag push.

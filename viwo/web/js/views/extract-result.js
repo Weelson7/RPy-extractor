@@ -58,7 +58,7 @@ export function renderResult(host, res) {
     pathRow("WORKSPACE", res.assetPath),
     h("div", { class: "row next-row" }, h("span", { class: "lbl" }, "NEXT"), goBtn("#workspace", "02 BROWSE BY TYPE →", "sm"),
       goBtn("#sort", "03 SORT →", "sm"), goBtn("#cleanup", "08 CLEAN UP →", "sm"), goBtn("#merger", "06 MAKE A VIDEO →", "sm ghost")),
-    other.length ? h("div", { class: "alert warn" }, h("b", {}, "WARNINGS"), h("ul", {}, other.map((w) => h("li", {}, w)))) : null,
+    other.length ? h("div", { class: "alert", "data-kind": "warn" }, h("b", {}, "WARNINGS"), h("ul", {}, other.map((w) => h("li", {}, w)))) : null,
     [...warnings, ...plugins.flatMap((p) => [p.error, ...(p.warnings || [])])].some((w) => /unavailable|install/i.test(w || ""))
       ? toolLink("Some files were skipped because an optional tool is not installed.") : null,
     h("h4", { class: "sub-h" }, "// WHICH TOOL HANDLED THE FILES"),

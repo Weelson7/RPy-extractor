@@ -93,4 +93,7 @@ export const api = {
   updates: () => v1("GET", "/api/updates"),
   diag: () => v1("POST", "/api/diag", {}),
   updateIndexes: () => v1("POST", "/api/indexes/update", {}),
+  surveys: () => v1("GET", "/api/surveys"),
+  surveyReport: (id) => v1("GET", `/api/survey-report?id=${encodeURIComponent(id)}`),
+  uiModules: () => v1("GET", "/api/ui-modules"),
 };

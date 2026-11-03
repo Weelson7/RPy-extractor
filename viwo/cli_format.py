@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from typing import Any
 
 
@@ -148,6 +149,11 @@ def sanitize(data: dict) -> str:
         done = data["applied"]
         lines.append(f"Applied {done['applied']} action(s); undo with --undo {done['undoToken']}")
     return "\n".join(lines)
+
+
+def generic(data: Any) -> str:
+    """Plugin commands without a formatter: readable JSON."""
+    return json.dumps(data, indent=2, default=str)
 
 
 def error(err: dict) -> str:

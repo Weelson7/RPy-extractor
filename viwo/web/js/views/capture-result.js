@@ -8,12 +8,12 @@ const previewUrl = (rel) => `/preview/${String(rel).split("/").map(encodeURIComp
 export function beforeYouStart(info, confirmed, onConfirm) {
   const items = [];
   if (!info.enabled) {
-    items.push(h("div", { class: "alert warn" }, h("b", {}, "RUNTIME CAPTURE IS OFF"),
+    items.push(h("div", { class: "alert", "data-kind": "warn" }, h("b", {}, "RUNTIME CAPTURE IS OFF"),
       h("p", {}, "It is an opt-in. Turn it on in 11 SETTINGS → FEATURES; the change applies at once, no restart."),
       h("p", {}, h("a", { href: "#settings" }, "Open 11 SETTINGS →"))));
   }
   if (!info.backend) {
-    items.push(h("div", { class: "alert warn" }, h("b", {}, "RENDERDOC NOT INSTALLED"),
+    items.push(h("div", { class: "alert", "data-kind": "warn" }, h("b", {}, "RENDERDOC NOT INSTALLED"),
       h("p", {}, "The capture needs renderdoccmd and its Python. 05 SYSTEM installs the pinned release with one click."),
       h("p", {}, h("a", { href: "#system" }, "Open 05 SYSTEM →"))));
   }
@@ -45,7 +45,7 @@ export function renderResult(res) {
       stat("NEW VS STATIC", fmtNum(res.newVsStatic), "not found by extraction", res.newVsStatic ? "ok" : ""),
       stat("ALREADY STATIC", fmtNum(res.alreadyStatic), "dropped as duplicates"),
       stat("BACKEND", String(res.backend || "?").toUpperCase(), "capture tool")),
-    (res.warnings || []).length ? h("div", { class: "alert warn" }, h("b", {}, "NOTES"), h("ul", {}, res.warnings.map((w) => h("li", {}, w)))) : null,
+    (res.warnings || []).length ? h("div", { class: "alert", "data-kind": "warn" }, h("b", {}, "NOTES"), h("ul", {}, res.warnings.map((w) => h("li", {}, w)))) : null,
     h("h4", { class: "sub-h" }, `// NEW FILES (${fmtNum(files.length)}${files.length >= 200 ? "+, first 200 listed" : ""})`),
     thumbs(files),
     files.length ? h("details", { class: "reasons" }, h("summary", {}, "FULL LIST"), h("ul", { class: "mono small" }, files.map((f) => h("li", {}, f)))) : null,

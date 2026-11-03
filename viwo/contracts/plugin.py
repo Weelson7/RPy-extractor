@@ -6,11 +6,12 @@ ctx.staging / ctx.scratch; tools run through ctx.os; no print().
 
 from __future__ import annotations
 
+import inspect
 import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Protocol, Sequence
+from typing import Any, Callable, Iterable, Mapping, Protocol, Sequence
 
 from .os import OS
 from .slots import Backend, SlotDefinition
@@ -37,6 +38,18 @@ class PluginManifest:
     options: tuple[PluginOption, ...] = ()
     tos_sensitive: bool = False
     builtin: bool = True
+
+
+@dataclass(frozen=True)
+class CliCommand:
+    """A `viwo <name>` subcommand contributed by a plugin (add-ons, 1.1)."""
+
+    name: str
+    help: str
+    build: Callable[[Any], None]  # receives the argparse subparser: add arguments
+    run: Callable[[Any, Any], Any]  # (runtime, parsed args) -> envelope data (a dict)
+    override: bool = False  # replace a core command (or another plugin's) with this name
+    formatter: Callable[[dict], str] | None = None  # human output; default: readable JSON
 
 
 class GameProbe(Protocol):
@@ -95,6 +108,9 @@ class ExtractionContext:
 
 
 class EnginePlugin(ABC):
+    cli_enabled: bool = True  # drop-ins: only with "cli": true in plugin.json
+    ui_path: Path | None = None  # drop-ins: "ui" in plugin.json; default: ui.js next to the code
+
     @property
     @abstractmethod
     def manifest(self) -> PluginManifest: ...
@@ -133,3 +149,17 @@ class EnginePlugin(ABC):
     def verify(self, ctx: ExtractionContext, collected: int) -> Sequence[str]:
         """Return warnings."""
         return ()
+
+    def cli_commands(self) -> Sequence[CliCommand]:
+        """Subcommands this plugin adds to `viwo` (add-ons; overrides by name)."""
+        return ()
+
+    def ui_module(self) -> Path | None:
+        """ES module served as /plugins/<id>/ui.js (registers views and panels), or None."""
+        if self.ui_path is not None:
+            return self.ui_path if self.ui_path.is_file() else None
+        try:
+            folder = Path(inspect.getfile(type(self))).resolve().parent
+        except (TypeError, OSError):  # frozen build or a class without a file
+            return None
+        return folder / "ui.js" if (folder / "ui.js").is_file() else None

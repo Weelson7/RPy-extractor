@@ -8,7 +8,14 @@ import sys
 from pathlib import Path
 
 from viwo import cli_format
-from viwo.cli_extra import replay_request, unpack_one, workspace_command
+from viwo.cli_extra import (
+    add_plugin_commands,
+    boot_for_cli,
+    replay_request,
+    run_plugin_command,
+    unpack_one,
+    workspace_command,
+)
 from viwo.contracts.errors import Envelope, ViwoError
 from viwo.contracts.pipeline import (
     CarveMode,
@@ -36,7 +43,8 @@ containment) | 4 strict preflight failed | 130 cancelled (Ctrl+C). Errors print
 "viwo: <code>: <message>" and a hint; `--json` prints the envelope instead."""
 
 
-def _parser() -> argparse.ArgumentParser:
+def _parser(rt=None) -> argparse.ArgumentParser:
+    """Core subcommands, then the add-ons of the loaded plugins when a runtime is given."""
     ap = argparse.ArgumentParser(
         prog="viwo",
         description="ViWo // Vidya Wormhole: game reverse engineering, local only.",
@@ -75,6 +83,8 @@ def _parser() -> argparse.ArgumentParser:
     sv.add_argument("--host", help="override [server] host")
     sv.add_argument("--port", type=int, help="override [server] port")
     sv.add_argument("--no-browser", action="store_true", help="do not open the browser")
+    if rt is not None:
+        add_plugin_commands(sub, common, rt)
     return ap
 
 
@@ -176,8 +186,11 @@ def _request(args) -> ExtractionRequest:
     )
 
 
-def _run(args) -> Envelope:
-    rt = boot(args.ini, args.os_id)
+TOOL_COMMANDS = ("repack", "sanitize", "survey", "capture", "config", "install", "diag", "indexes")
+
+
+def _query(rt, args) -> Envelope:
+    """info, slots, detect: read-only answers from the runtime."""
     if args.command == "info":
         return Envelope.success(rt.info(), rt.problems)
     if args.command == "slots":
@@ -185,22 +198,20 @@ def _run(args) -> Envelope:
 
         deps = check(rt, lambda e: None)  # versions: pinned ones are free, others run once
         return Envelope.success({"bindings": rt.info()["slots"], "dependencies": deps}, rt.problems)
-    if args.command == "detect":
-        if not args.game.is_dir():
-            raise ViwoError("invalid_request", f"game folder not found: {args.game}")
-        found = detect_all(rt, FolderProbe(args.game))
-        return Envelope.success({k: v.to_legacy_dict() for k, v in found.items()})
-    tool_commands = (
-        "repack",
-        "sanitize",
-        "survey",
-        "capture",
-        "config",
-        "install",
-        "diag",
-        "indexes",
-    )
-    if args.command in tool_commands:
+    if not args.game.is_dir():
+        raise ViwoError("invalid_request", f"game folder not found: {args.game}")
+    found = detect_all(rt, FolderProbe(args.game))
+    return Envelope.success({k: v.to_legacy_dict() for k, v in found.items()})
+
+
+def _run(args, rt=None) -> Envelope:
+    rt = rt or boot(args.ini, args.os_id)
+    plugin_command = getattr(args, "plugin_command", None)
+    if plugin_command is not None:  # an add-on, possibly overriding a core command
+        return run_plugin_command(rt, plugin_command, args)
+    if args.command in ("info", "slots", "detect"):
+        return _query(rt, args)
+    if args.command in TOOL_COMMANDS:
         return workspace_command(rt, args)
     sink = None if args.json else (lambda e: print(e.legacy_line(), file=sys.stderr))
     if args.command == "unpack":
@@ -220,7 +231,9 @@ def _run(args) -> Envelope:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = _parser().parse_args(argv)
+    argv = list(sys.argv[1:] if argv is None else argv)
+    rt = boot_for_cli(argv) if argv else None  # add-ons need the runtime; bare `viwo` stays fast
+    args = _parser(rt).parse_args(argv)
     if args.command is None:
         print(cli_format.WELCOME)
         return 0
@@ -229,7 +242,7 @@ def main(argv: list[str] | None = None) -> int:
 
         return serve(args.ini, args.host, args.port, not args.no_browser)
     try:
-        envelope = _run(args)
+        envelope = _run(args, rt)
     except ViwoError as exc:
         envelope = Envelope.failure(exc)
     except KeyboardInterrupt:
@@ -247,8 +260,15 @@ def main(argv: list[str] | None = None) -> int:
     elif not envelope.ok:
         print(cli_format.error(envelope.error), file=sys.stderr)
     else:
-        print(cli_format.FORMATTERS[args.command](envelope.data))
+        print(_formatter(args)(envelope.data))
     return 0 if envelope.ok else EXIT.get(envelope.error["code"], 1)
+
+
+def _formatter(args):
+    cmd = getattr(args, "plugin_command", None)
+    if cmd is not None and cmd.formatter is not None:
+        return cmd.formatter
+    return cli_format.FORMATTERS.get(args.command, cli_format.generic)
 
 
 if __name__ == "__main__":

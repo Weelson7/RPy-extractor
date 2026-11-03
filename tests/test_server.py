@@ -3,15 +3,20 @@
 from __future__ import annotations
 
 import http.client
+import io
 import json
+import socket
 import tempfile
 import threading
+import time
 import unittest
+from contextlib import redirect_stderr
 from pathlib import Path
 
 from tests.helpers import make_game, write_ini
 from viwo.api import app as app_module
 from viwo.api.server import Handler, byte_range, make_server
+from viwo.core.curation.sorting import encode
 from viwo.core.wiring.boot import boot
 
 
@@ -41,6 +46,18 @@ class ServerTests(unittest.TestCase):
         app_module.reset_app()
         cls._tmp.cleanup()
 
+    def scratch_workspace(self) -> Path:
+        """A throwaway workspace for one test; the shared one is restored afterwards."""
+        keep = self.app.workspace
+        tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(tmp.cleanup)
+        self.addCleanup(lambda: self.app.set_workspace(keep))
+        ws = Path(tmp.name) / "ws"
+        ws.mkdir()
+        (ws / ".viwo-workspace").write_text("")
+        self.app.set_workspace(ws)
+        return ws
+
     def call(self, method: str, path: str, body=None, **headers: str) -> tuple[int, dict | str]:
         base = {
             "Host": f"127.0.0.1:{self.port}",
@@ -60,6 +77,43 @@ class ServerTests(unittest.TestCase):
             return resp.status, json.loads(raw)
         except json.JSONDecodeError:
             return resp.status, raw
+
+    def test_preview_abort_is_quiet_and_server_keeps_serving(self) -> None:
+        """A player that closes mid-stream (Windows: ConnectionAbortedError) is not an error."""
+        ws = self.scratch_workspace()
+        big = ws / "bin" / "large.bin"
+        big.parent.mkdir(parents=True, exist_ok=True)
+        big.write_bytes(b"\0" * (8 << 20))
+        err = io.StringIO()
+        with redirect_stderr(err):
+            for _ in range(3):
+                sock = socket.create_connection(("127.0.0.1", self.port), timeout=10)
+                sock.sendall(
+                    f"GET /preview/{encode(ws, big)} HTTP/1.1\r\n"
+                    f"Host: 127.0.0.1:{self.port}\r\n\r\n".encode()
+                )
+                sock.recv(1024)  # a few bytes, then gone
+                sock.setsockopt(
+                    socket.SOL_SOCKET, socket.SO_LINGER, b"\x01\x00\x00\x00\x00\x00\x00\x00"
+                )
+                sock.close()
+            time.sleep(0.5)
+            status, body = self.call("GET", "/api/logs")
+        self.assertEqual(status, 200)
+        self.assertNotIn("Traceback", err.getvalue())
+        self.assertNotIn("Exception occurred", err.getvalue())
+
+    def test_assets_window_counts_the_whole_workspace(self) -> None:
+        ws = self.scratch_workspace()
+        for name in ("one.png", "two.png", "song.ogg"):
+            (ws / name[-3:] / name).parent.mkdir(parents=True, exist_ok=True)
+            (ws / name[-3:] / name).write_bytes(b"x")
+        status, body = self.call("GET", "/api/assets-window?offset=0&limit=1")
+        self.assertEqual((status, body["indexedCount"]), (200, 1))
+        self.assertGreaterEqual(body["typeCounts"]["image"], 2)
+        self.assertGreaterEqual(body["typeCounts"]["audio"], 1)
+        self.assertEqual(body["total"], sum(body["typeCounts"].values()))
+        self.assertEqual(body["total"], body["totalCount"])
 
     def test_security_model(self) -> None:
         self.assertEqual(self.call("POST", "/api/logs/clear", {}, **{"X-VIWO-Token": None})[0], 403)

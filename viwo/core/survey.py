@@ -4,6 +4,7 @@ Per game: the engine, and every data file sorted into what would happen to it: a
 asset, a container with (or without) its tool, decoded by the engine's exporter, code, or
 unknown. Unknown blobs get a density estimate: dense data is encrypted or compressed and
 needs a key, a decoder or runtime capture; structured data is where the carver can help.
+Every step reports its counts as events (scan, identify, probe, carve, decode).
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ from .pipeline.carving import CODE, KNOWN, MIN_SIZE
 from .pipeline.identify import identify
 from .pipeline.probe import FolderProbe
 from .pipeline.runner import detect_all
+from .steps import Step
 
 COVERED = ("asset", "container", "engine", "carvable")
 SAMPLE = 1 << 16
@@ -73,53 +75,112 @@ def _engine(rt, game: Path) -> tuple[str, float, tuple[str, ...]]:
     return best.plugin_id, best.confidence, tuple(best.evidence)
 
 
-def _classify(rt, report: GameSurvey, path: Path, claimed: frozenset[str], deep, cancel) -> None:
+def _claimed(rt, report: GameSurvey, engine: str) -> frozenset[str]:
+    plugin = rt.plugins.get(engine)
+    if plugin is not None and plugin.export_slot():
+        binding = rt.bindings.get(plugin.export_slot())
+        if binding is not None and binding.bound:
+            return frozenset(s.lower() for s in plugin.claimed_suffixes())
+        report.missing.add(f"{plugin.export_slot()} exporter (see `viwo slots`)")
+    return frozenset()
+
+
+def _files(game: Path, cancel, sink) -> list[Path]:
+    step, out = Step(sink, "scan", "Scanning files:"), []
+    for dirpath, dirnames, filenames in os.walk(game):
+        dirnames[:] = sorted(d for d in dirnames if not d.startswith("."))
+        for name in sorted(filenames):
+            out.append(Path(dirpath) / name)
+            step.tick(cancel)
+    step.done()
+    return out
+
+
+def _sort(rt, report: GameSurvey, path: Path, claimed: frozenset[str]) -> tuple[str, int] | None:
+    """Sort one file now; containers (slot id) and unknown blobs ("") come back for later steps."""
     size, ext = path.stat().st_size, path.suffix.lower()
     match = identify(path, rt.slots.values()) if size else None
     if match is not None:
-        binding = rt.bindings.get(match.slot_id)
-        if binding is not None and binding.bound:
-            return report.add("container", size)
-        report.missing.add(f"{match.slot_id} (see `viwo slots`)")
-        return report.add("container-no-tool", size)
+        return match.slot_id, size
     if ext in KNOWN:
-        return report.add("asset", size)
-    if ext in claimed or path.name.lower() in claimed:
-        return report.add("engine", size)
-    if ext in CODE:
-        return report.add("code", size)
-    if size < MIN_SIZE:
-        return report.add("small", size)
-    if deep and count_embedded(path, cancel):
-        return report.add("carvable", size)
-    kind = "unknown-dense" if dense(path, size) else "unknown"
-    report.unknown.append({"file": path.name, "bytes": size, "dense": kind.endswith("dense")})
-    report.add(kind, size)
+        report.add("asset", size)
+    elif ext in claimed or path.name.lower() in claimed:
+        report.add("engine", size)
+    elif ext in CODE:
+        report.add("code", size)
+    elif size < MIN_SIZE:
+        report.add("small", size)
+    else:
+        return "", size
+    return None
+
+
+def _identify(rt, report: GameSurvey, files: list[Path], claimed, cancel, sink) -> tuple:
+    step = Step(sink, "identify", "Identifying files:", len(files))
+    containers: list[tuple[Path, str, int]] = []
+    blobs: list[tuple[Path, str, int]] = []
+    for path in files:
+        step.tick(cancel)
+        try:
+            found = _sort(rt, report, path, claimed)
+        except OSError:
+            report.add("unreadable", 0)
+            continue
+        if found is not None:
+            (containers if found[0] else blobs).append((path, *found))
+    step.done()
+    step.tell(f"Identified containers: {len(containers):,}")
+    return containers, blobs
+
+
+def _probe(rt, report: GameSurvey, containers: list, cancel, sink) -> None:
+    step = Step(sink, "probe", "Probing archives:", len(containers))
+    for _path, slot_id, size in containers:
+        step.tick(cancel)
+        binding = rt.bindings.get(slot_id)
+        if binding is not None and binding.bound:
+            report.add("container", size)
+        else:
+            report.missing.add(f"{slot_id} (see `viwo slots`)")
+            report.add("container-no-tool", size)
+    if containers:
+        step.done()
+
+
+def _examine(report: GameSurvey, blobs: list, deep: bool, cancel, sink) -> None:
+    step = Step(sink, "carve", "Carving unknown blobs:", len(blobs)) if deep else None
+    for path, _slot, size in blobs:
+        if step is not None:
+            step.tick(cancel)
+        elif cancel.cancelled:
+            raise ViwoError("cancelled", "survey cancelled")
+        try:
+            if deep and count_embedded(path, cancel):
+                report.add("carvable", size)
+                continue
+            kind = "unknown-dense" if dense(path, size) else "unknown"
+        except OSError:
+            report.add("unreadable", 0)
+            continue
+        report.unknown.append({"file": path.name, "bytes": size, "dense": kind.endswith("dense")})
+        report.add(kind, size)
+    if step is not None and blobs:
+        step.done()
 
 
 def survey_game(
-    rt, game: Path, deep: bool = False, cancel: CancelToken | None = None
+    rt, game: Path, deep: bool = False, cancel: CancelToken | None = None, sink=None
 ) -> GameSurvey:
     cancel = cancel or CancelToken()
     engine, confidence, evidence = _engine(rt, game)
     report = GameSurvey(str(game), engine, confidence, evidence)
-    plugin = rt.plugins.get(engine)
-    claimed: frozenset[str] = frozenset()
-    if plugin is not None and plugin.export_slot():
-        binding = rt.bindings.get(plugin.export_slot())
-        if binding is not None and binding.bound:
-            claimed = frozenset(s.lower() for s in plugin.claimed_suffixes())
-        else:
-            report.missing.add(f"{plugin.export_slot()} exporter (see `viwo slots`)")
-    for dirpath, dirnames, filenames in os.walk(game):
-        dirnames[:] = sorted(d for d in dirnames if not d.startswith("."))
-        for name in sorted(filenames):
-            if cancel.cancelled:
-                raise ViwoError("cancelled", "survey cancelled")
-            try:
-                _classify(rt, report, Path(dirpath) / name, claimed, deep, cancel)
-            except OSError:
-                report.add("unreadable", 0)
+    claimed = _claimed(rt, report, engine)
+    files = _files(game, cancel, sink)
+    containers, blobs = _identify(rt, report, files, claimed, cancel, sink)
+    _probe(rt, report, containers, cancel, sink)
+    _examine(report, blobs, deep, cancel, sink)
+    decoders = sum(1 for sid, b in rt.bindings.items() if sid.startswith("decode.") and b.bound)
+    Step(sink, "decode", "Decoders available:").tell(f"Decoders available: {decoders}")
     return report
 
 
@@ -133,12 +194,12 @@ def games_in(root: Path, rt) -> list[Path]:
     return subs if subs and all(p.is_dir() for p in entries) else [root]
 
 
-def survey(rt, root: Path, deep: bool = False, progress=None, cancel=None) -> list[dict]:
+def survey(rt, root: Path, deep=False, progress=None, cancel=None, sink=None) -> list[dict]:
     results, games = [], games_in(root, rt)
     for index, game in enumerate(games, 1):
         if cancel is not None and cancel.cancelled:
             raise ViwoError("cancelled", "survey cancelled")
         if progress:
             progress(game, index, len(games))
-        results.append(survey_game(rt, game, deep, cancel).to_dict())
+        results.append(survey_game(rt, game, deep, cancel, sink).to_dict())
     return results

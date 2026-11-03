@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import io
+import json
+import shutil
 import tempfile
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
-from tests.helpers import write_ini
+from tests.helpers import make_zip, write_ini
 from viwo import cli, cli_format
 
 
@@ -140,6 +142,90 @@ class SlotsFormatTests(unittest.TestCase):
         self.assertIn("pinned: viwo install unrar", text)
         self.assertIn("manual", text)
         self.assertIn("0.2.3", text)
+
+
+HELLO = Path(__file__).resolve().parent.parent / "examples" / "plugins" / "hello"
+PLUGIN_SRC = """
+from viwo.contracts.plugin import CliCommand, EnginePlugin, PluginManifest
+from viwo.contracts.types import DetectionResult
+
+MANIFEST = PluginManifest("{id}", "{id}", "0.1.0", engine_type="{id}", builtin=False)
+
+
+class Plugin(EnginePlugin):
+    manifest = property(lambda self: MANIFEST)
+
+    def detect(self, probe):
+        return DetectionResult("{id}", 0.0, (), "{id}")
+
+    def cli_commands(self):
+        return (
+            CliCommand(
+                "detect",
+                "overridden detect",
+                lambda p: p.add_argument("game"),
+                lambda rt, a: {{"who": "{id}"}},
+                override={override},
+            ),
+        )
+"""
+
+
+def dropin(root: Path, plugin_id: str, override: bool) -> Path:
+    folder = root / "user_plugins" / plugin_id
+    folder.mkdir(parents=True)
+    (folder / "__init__.py").write_text(PLUGIN_SRC.format(id=plugin_id, override=override))
+    meta = {"id": plugin_id, "module": "__init__", "class": "Plugin", "cli": True, "enabled": True}
+    (folder / "plugin.json").write_text(json.dumps(meta))
+    return folder.parent
+
+
+class PluginCommandTests(unittest.TestCase):
+    def test_plugin_command_in_help_runs_and_json(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            custom = root / "user_plugins"
+            shutil.copytree(HELLO, custom / "hello")
+            ini = str(
+                write_ini(root, f"[plugins]\ncustom_dirs = {custom.as_posix()}\nhello = on\n")
+            )
+            archive = make_zip(root / "x.hello", {"a.txt": b"a", "b/c.txt": b"c"})
+            with mock.patch.object(cli.sys, "argv", ["viwo", "--ini", ini]):
+                self.assertIn(
+                    "hello-list", cli._parser(cli.boot_for_cli(["--ini", ini])).format_help()
+                )
+            code, out, _ = run(["--ini", ini, "hello-list", str(archive)])
+            self.assertEqual((code, out.strip().splitlines()), (0, ["a.txt", "b/c.txt"]))
+            code, out, _ = run(["--ini", ini, "--json", "hello-list", str(archive)])
+            self.assertEqual(code, 0)
+            self.assertEqual(json.loads(out)["data"]["members"], ["a.txt", "b/c.txt"])
+            code, _, err = run(["--ini", ini, "hello-list", str(root / "missing.hello")])
+            self.assertEqual(code, 1)
+            self.assertIn("viwo: not_found", err)
+
+    def test_core_command_clash_and_override(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            game = root / "game"
+            game.mkdir()
+            custom = dropin(root / "a", "clasher", override=False)
+            ini = str(write_ini(root / "a", f"[plugins]\ncustom_dirs = {custom.as_posix()}\n"))
+            code, out, _ = run(["--ini", ini, "--json", "info"])
+            self.assertEqual(code, 0)
+            self.assertTrue(
+                any("command 'detect' exists" in w for w in json.loads(out)["warnings"])
+            )
+            code, out, _ = run(["--ini", ini, "--json", "detect", str(game)])
+            self.assertEqual(code, 0)
+            self.assertIn("generic", json.loads(out)["data"])  # the core command still runs
+            custom = dropin(root / "b", "overrider", override=True)
+            ini = str(write_ini(root / "b", f"[plugins]\ncustom_dirs = {custom.as_posix()}\n"))
+            code, out, _ = run(["--ini", ini, "--json", "detect", str(game)])
+            self.assertEqual((code, json.loads(out)["data"]), (0, {"who": "overrider"}))
+            self.assertIn(
+                "overridden detect [overrider]",
+                cli._parser(cli.boot_for_cli(["--ini", ini])).format_help(),
+            )
 
 
 if __name__ == "__main__":

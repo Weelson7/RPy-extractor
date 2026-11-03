@@ -1,12 +1,13 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="wormhole">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="dark">
+  <meta name="color-scheme" content="dark light">
   <title>ViWo // Vidya Wormhole</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M2 2h12v9l-3 3H2z' fill='%230a0607' stroke='%23ff3b3b'/%3E%3Cpath d='M5 5l3 6 3-6' fill='none' stroke='%23ff3b3b' stroke-width='1.5'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="viwo.css">
+  <link rel="stylesheet" href="css/base.css">
+  <link rel="stylesheet" href="css/themes/wormhole.css" id="theme-link">
   <script type="module" src="js/main.js"></script>
 </head>
 <body>
@@ -28,37 +29,13 @@
     </header>
 
     <nav class="rail" aria-label="Modules">
-      <ol class="mods">
-        <li><a href="#extract" data-view="extract"><b>01</b><span>EXTRACT<small>pull assets from a game</small></span></a></li>
-        <li><a href="#workspace" data-view="workspace"><b>02</b><span>WORKSPACE<small>your files, by type</small></span></a></li>
-        <li><a href="#sort" data-view="sort"><b>03</b><span>SORT<small>keep or trash, one by one</small></span></a></li>
-        <li><a href="#jobs" data-view="jobs"><b>04</b><span>JOBS<small>runs and their logs</small></span></a></li>
-        <li><a href="#system" data-view="system"><b>05</b><span>SYSTEM<small>tools and formats</small></span></a></li>
-        <li><a href="#merger" data-view="merger"><b>06</b><span>MERGER<small>frames → video</small></span></a></li>
-        <li><a href="#survey" data-view="survey"><b>07</b><span>SURVEY<small>what can ViWo pull?</small></span></a></li>
-        <li><a href="#cleanup" data-view="cleanup"><b>08</b><span>CLEANUP<small>junk, dupes, misnamed</small></span></a></li>
-        <li><a href="#repack" data-view="repack"><b>09</b><span>PATCHED COPY<small>your edits → the game</small></span></a></li>
-        <li><a href="#capture" data-view="capture"><b>10</b><span>CAPTURE<small>frames from a running game</small></span></a></li>
-        <li><a href="#settings" data-view="settings"><b>11</b><span>SETTINGS<small>plugins, features, tools</small></span></a></li>
-      </ol>
+      <ol class="mods" id="mods"></ol>
       <div class="rail-foot">
         <p class="ver mono" id="ver">LOCAL-FIRST // 127.0.0.1</p>
       </div>
     </nav>
 
-    <main id="main" tabindex="-1">
-      <section class="view" id="view-extract" hidden></section>
-      <section class="view" id="view-workspace" hidden></section>
-      <section class="view" id="view-sort" hidden></section>
-      <section class="view" id="view-jobs" hidden></section>
-      <section class="view" id="view-system" hidden></section>
-      <section class="view" id="view-merger" hidden></section>
-      <section class="view" id="view-survey" hidden></section>
-      <section class="view" id="view-cleanup" hidden></section>
-      <section class="view" id="view-repack" hidden></section>
-      <section class="view" id="view-capture" hidden></section>
-      <section class="view" id="view-settings" hidden></section>
-    </main>
+    <main id="main" tabindex="-1"></main>
 
     <aside class="dock" id="dock" aria-label="Activity console">
       <div class="dock-h">

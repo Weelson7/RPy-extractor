@@ -107,7 +107,7 @@ async function build() {
     const res = await api.mergerBuild({ ...O, namingPattern: ctx.pattern(), selectedCandidates: selected });
     await el.prog.finish("ok", `${res.builtCount ?? 1} VIDEO(S) BUILT${res.partial ? " · SOME FAILED" : ""}`);
     renderResults(res);
-    el.results.firstElementChild?.classList.add("reveal");
+    if (el.results.firstElementChild) el.results.firstElementChild.dataset.reveal = "1";
     toast(`Built ${res.builtCount ?? 1} video(s).`, res.partial ? "warn" : "ok", res.partial ? "Some candidates failed." : "");
     if (O.trashAfterBuild) emit("workspace");
   } catch (err) {
@@ -122,7 +122,7 @@ async function build() {
   }
 }
 
-const failures = (list) => (list?.length ? h("div", { class: "alert warn" }, h("b", {}, "GROUPS THAT FAILED"),
+const failures = (list) => (list?.length ? h("div", { class: "alert", "data-kind": "warn" }, h("b", {}, "GROUPS THAT FAILED"),
   h("ul", {}, list.map((f) => h("li", {}, h("b", {}, f.candidateName), ": ", f.error)))) : null);
 
 const folderOf = (p) => p.replace(/[\\/][^\\/]*$/, "") || p;

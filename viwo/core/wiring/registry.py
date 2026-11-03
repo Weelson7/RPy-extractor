@@ -21,8 +21,9 @@ from typing import Callable, Iterable
 
 import viwo.plugins as _builtins
 from viwo import __version__
-from viwo.contracts.plugin import EnginePlugin
+from viwo.contracts.plugin import CliCommand, EnginePlugin
 from viwo.contracts.slots import Backend, SlotDefinition
+from viwo.contracts.workspace import safe_member
 
 ALWAYS_ON = "generic"
 ENTRY_POINT_GROUP = "viwo.plugins"
@@ -106,6 +107,9 @@ def read_manifest(folder: Path) -> dict:
     for name, requirement in dict(meta.get("requires", {})).items():
         if name == "viwo" and not version_ok(str(requirement)):
             raise ValueError(f"needs viwo {requirement}, this is {__version__}")
+    ui = meta.get("ui")
+    if ui is not None and (not isinstance(ui, str) or safe_member(ui) is None):
+        raise ValueError("'ui' must be a relative file inside the plugin folder")
     return meta
 
 
@@ -126,6 +130,9 @@ def load_dropin(folder: Path, meta: dict) -> EnginePlugin:
         raise TypeError(f"{meta['class']} is not an EnginePlugin")
     if plugin.manifest.plugin_id != meta["id"]:
         raise ValueError(f"manifest id '{plugin.manifest.plugin_id}' differs from '{meta['id']}'")
+    plugin.cli_enabled = bool(meta.get("cli", False))  # CLI add-ons are an explicit opt-in
+    if meta.get("ui"):
+        plugin.ui_path = folder / str(meta["ui"])
     return plugin
 
 
@@ -183,6 +190,26 @@ def load_enabled(
         if name not in BUILTIN_PLUGINS and name not in external:
             problems.append(f"unknown plugin '{plugin_id}' in [plugins] ignored")
     return plugins, problems
+
+
+def cli_commands(
+    plugins: dict[str, EnginePlugin], core: Iterable[str]
+) -> tuple[dict[str, tuple[str, CliCommand]], list[str]]:
+    """name -> (plugin id, command) for every plugin add-on; a clash needs `override`."""
+    taken, found, problems = set(core), {}, []
+    for plugin_id, plugin in sorted(plugins.items()):
+        commands = list(plugin.cli_commands())
+        if commands and not plugin.cli_enabled:
+            problems.append(f'plugin {plugin_id}: CLI commands ignored (set "cli": true)')
+            continue
+        for cmd in commands:
+            if (cmd.name in taken or cmd.name in found) and not cmd.override:
+                problems.append(
+                    f"plugin {plugin_id}: command '{cmd.name}' exists; set override to replace it"
+                )
+                continue
+            found[cmd.name] = (plugin_id, cmd)
+    return found, problems
 
 
 def known_ids(custom_dirs: Iterable[Path] = ()) -> set[str]:

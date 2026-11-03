@@ -6,7 +6,7 @@ const STATE_KIND = { running: "live", queued: "warn", succeeded: "ok", failed: "
 /** Job kind -> [name shown to people, view that runs it]. */
 export const KIND = { extract: ["EXTRACTION", "#extract", "01"], survey: ["SURVEY", "#survey", "07"], merge: ["MERGER BUILD", "#merger", "06"],
   repack: ["PATCHED COPY", "#repack", "09"], preflight: ["STARTUP CHECK", "#system", "05"], install: ["TOOL INSTALL", "#system", "05"],
-  capture: ["CAPTURE", "#capture", "10"], indexes: ["INDEXES UPDATE", "#system", "05"] };
+  capture: ["CAPTURE", "#capture", "10"], indexes: ["INDEXES UPDATE", "#system", "05"], cleanup: ["CLEANUP", "#cleanup", "08"] };
 const kindName = (k) => KIND[k]?.[0] || String(k).toUpperCase();
 const when = (j) => `${new Date(j.started * 1000).toLocaleTimeString()} · ${Number(j.elapsed || 0).toFixed(1)} s`;
 const human = (k) => k.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase();
@@ -123,4 +123,8 @@ function hide() {
   clearInterval(S.timer);
 }
 
-export default { mount, show, hide };
+import { registerView } from "../registry.js";
+
+const VIEW = { mount, show, hide };
+registerView({ id: "jobs", order: 40, title: "JOBS", subtitle: "runs and their logs", ...VIEW });
+export default VIEW;

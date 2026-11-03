@@ -96,3 +96,60 @@ folder. `tests/test_registry.py` shows the end-to-end case for the example plugi
 
 `viwo config check startup.ini` knows every id from the built-ins, the `custom_dirs` manifests
 and the entry points, so `[plugins] hello = on` is valid as soon as the folder exists.
+
+## Add-ons: CLI commands and UI components (1.1)
+
+A plugin, built-in or drop-in, can ship its own `viwo` subcommands and its own web UI pieces.
+Nothing is hardcoded: the registry collects them at boot, and ids allow overrides.
+
+### CLI commands
+
+```python
+from viwo.contracts.plugin import CliCommand
+
+def build(parser):                      # the argparse subparser: add arguments
+    parser.add_argument("archive", type=Path, help="a .hello archive")
+
+def run(rt, args) -> dict:              # the runtime and the parsed args; return envelope data
+    return {"members": [...]}
+
+class HelloPlugin(EnginePlugin):
+    def cli_commands(self):
+        return (CliCommand("hello-list", "list the members", build, run,
+                           formatter=lambda d: "\n".join(d["members"])),)
+```
+
+- `viwo hello-list x.hello` runs it; `--json` prints the usual envelope; without a `formatter`
+  the human output is readable JSON. Errors raise `ViwoError` like core commands (same exit codes).
+- Drop-ins must opt in with `"cli": true` in `plugin.json` (a command runs with your rights);
+  built-ins and installed packages (entry points) are trusted.
+- A name that already exists (a core command, or another plugin's) is refused and reported in
+  the startup notes, unless the command sets `override=True`: then it replaces the original.
+- `viwo -h` lists add-ons with the plugin id in brackets. The runtime boots before parsing so
+  the add-ons are known; bare `viwo` (no arguments) stays fast.
+
+### UI components
+
+A plugin declares one ES module, served as `/plugins/<id>/ui.js` (`"ui": "ui.js"` in
+`plugin.json`, or `EnginePlugin.ui_module()`; the default is a `ui.js` next to the plugin's
+code). Extra files (styles, images) are served only from the `ui/` folder next to that module:
+`/plugins/<id>/ui/<file>`, with strict path containment. The web app loads every module listed
+by `GET /api/ui-modules` after its own views and calls the default export:
+
+```js
+export default function install({ registry, api, ui }) {
+  registry.registerPanel("system", { id: "hello", order: 900, render: (host) => { ... } });
+  registry.registerView({ id: "hello", order: 200, title: "HELLO", subtitle: "example add-on",
+    mount(root) { ... }, show() {}, hide() {} });
+}
+```
+
+- `registry.registerView(view, { override })` adds a view to the rail (ordered by `order`);
+  `registry.registerPanel(viewId, panel, { override })` adds a panel inside an existing view.
+  An existing id is refused unless `override: true`, then the add-on replaces it.
+- `ui` is the component library (`h`, `panel`, `btn`, `badge`, `table`...), `api` the API client.
+  Use only components from `ui`: styling belongs to the theme layer, never to add-on code.
+- Trust: a UI module runs in the page with the API token. Load only what you trust.
+
+`examples/plugins/hello/` shows both: `viwo hello-list` and `ui.js` (a panel in 05 SYSTEM and a
+HELLO view), with `ui/hello.css` as an extra asset.

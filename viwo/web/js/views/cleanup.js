@@ -1,7 +1,7 @@
 // 08 CLEANUP: asset sanitizer, phase 1. Scan (read-only), tick findings, apply moves/renames, undo.
 import { api } from "../api.js";
 import { h, fill, btn, panel, badge, viewHead, assure, empty, errorBox, toast, toastErr, confirmBox, pref, fmtNum, bus, emit, stat, goBtn } from "../ui.js";
-import { withSkeleton } from "../progress.js";
+import { jobProgress } from "../progress.js";
 
 /** Rule -> [title, action label, badge kind, what it means]. Object order = display order. */
 const RULES = {
@@ -23,6 +23,8 @@ function mount(root) {
   el.find = h("div", { class: "fgroups" });
   el.count = h("span", { class: "mono dim" });
   el.done = h("div", {});
+  el.prog = jobProgress("cleanup", { logClass: "short" });
+  el.progHost = h("div", { class: "job-host", hidden: true }, el.prog.el);
   el.sum = h("div", { class: "ab-sum mono" });
   el.why = h("span", { class: "ab-why" });
   el.apply = btn("APPLY SELECTED", apply, "primary lg");
@@ -32,7 +34,7 @@ function mount(root) {
       ["NOTHING LOSSY", "no file content is rewritten: only moves and renames"],
       ["UNDO", "every apply is journaled and can be reversed"]]),
     h("div", { class: "tool-grid" },
-      h("div", { class: "col" }, panel("08.A", "SCAN", el.scan, el.recipe, el.stats, ruleKey()), el.done),
+      h("div", { class: "col" }, panel("08.A", "SCAN", el.scan, el.recipe, el.stats, el.progHost, ruleKey()), el.done),
       panel("08.B", "FINDINGS", el.count, el.find)),
     h("div", { class: "actionbar" }, el.sum, el.why, el.apply));
   loadRecipe();
@@ -75,7 +77,7 @@ async function scan() {
   S.busy = true;
   bar();
   try {
-    const plan = await withSkeleton(el.find, "READING + HASHING WORKSPACE FILES…", () => api.sanitize("plan", {}), 6);
+    const plan = await asJob(() => api.sanitize("plan", {}), (r) => `${fmtNum(r.findings.length)} FINDING(S)`);
     Object.assign(S, { plan, done: null, files: plan.scanned });
     store(null);
     S.applied.clear();
@@ -87,6 +89,22 @@ async function scan() {
     S.busy = false;
     render();
     S.err = null;
+  }
+}
+
+/** Run a sanitizer call as a visible job (kind "cleanup"): the rail and chips show it while it runs. */
+async function asJob(work, note) {
+  el.progHost.hidden = false;
+  await el.prog.start();
+  try {
+    const res = await work();
+    await el.prog.finish("ok", note(res));
+    emit("jobs");
+    return res;
+  } catch (err) {
+    await el.prog.finish(err.code === "cancelled" ? "cancel" : "fail", err.message);
+    emit("jobs");
+    throw err;
   }
 }
 
@@ -107,7 +125,7 @@ function sync() {
   const f = S.plan?.findings || [];
   el.find.querySelectorAll(".frow[data-i]").forEach((li) => {
     const i = Number(li.dataset.i), on = S.sel.has(i) && !S.applied.has(i);
-    li.classList.toggle("on", on);
+    li.dataset.state = on ? "on" : S.applied.has(Number(li.dataset.i)) ? "done" : "";
     const box = li.querySelector("input");
     if (box) box.checked = on;
   });
@@ -140,7 +158,7 @@ function group(rule, items) {
     onchange: (e) => { open.forEach((i) => (e.target.checked ? S.sel.add(i) : S.sel.delete(i))); sync(); } }) : h("span", { class: "nochk", "aria-hidden": "true" }, "—");
   const tick = h("span", { class: "mono dim small" });
   if (open.length) S.groups.push({ open, all, tick });
-  return h("section", { class: `fgroup ${act === "REPORT ONLY" ? "report" : ""}`, "aria-label": title, title: `rule ${rule}` },
+  return h("section", { class: "fgroup", "data-kind": act === "REPORT ONLY" ? "report" : null, "aria-label": title, title: `rule ${rule}` },
     h("header", {}, all, h("b", {}, title), badge(`${fmtNum(items.length)} FILE${items.length === 1 ? "" : "S"}`, "mute"), badge(act, kind), open.length ? tick : null),
     h("p", { class: "note" }, why),
     h("ol", { class: "flist" }, items.slice(0, 500).map(row)),
@@ -152,7 +170,7 @@ function row({ f, i }) {
   const id = `cf-${i}`;
   const pick = f.action === "none" ? h("span", { class: "nochk", title: "report only: nothing to apply" }, "·")
     : h("input", { type: "checkbox", id, disabled: done, onchange: (e) => { e.target.checked ? S.sel.add(i) : S.sel.delete(i); sync(); } });
-  return h("li", { class: `frow ${done ? "done" : ""}`, "data-i": i }, pick,
+  return h("li", { class: "frow", "data-state": done ? "done" : null, "data-i": i }, pick,
     h(f.action === "none" ? "span" : "label", { class: "fpath mono", for: f.action === "none" ? null : id, title: f.path }, f.path),
     h("span", { class: "fmsg" }, f.message, f.to ? h("b", { class: "mono" }, ` → ${f.to}`) : null),
     done ? badge(f.action === "rename" ? "RENAMED" : "IN TRASH", "ok") : previewLink(f.path));
@@ -195,7 +213,7 @@ async function apply() {
   S.busy = true;
   bar();
   try {
-    const res = await api.sanitize("apply", { planId: S.plan.planId, accept: idx });
+    const res = await asJob(() => api.sanitize("apply", { planId: S.plan.planId, accept: idx }), (r) => `${fmtNum(r.applied)} APPLIED`);
     const failed = new Set((res.failed || []).map((x) => x.split(": ")[0]));
     const real = new Set((res.moved || []).map((m) => m.from)); // what the server actually moved
     const ok = idx.filter((i) => (res.moved ? real.has(S.plan.findings[i].path) : !failed.has(S.plan.findings[i].path)));
@@ -218,7 +236,7 @@ async function undo(e) {
   S.busy = true;
   e.currentTarget.disabled = true;
   try {
-    const res = await api.sanitize("undo", { undoToken: S.done.token });
+    const res = await asJob(() => api.sanitize("undo", { undoToken: S.done.token }), (r) => `${fmtNum(r.restored)} RESTORED`);
     toast(`Undo: ${fmtNum(res.restored)} file(s) back where they were.`, "ok");
     S.done = null;
     S.applied.clear();
@@ -241,9 +259,13 @@ function renderDone() {
       stat("TO TRASH", fmtNum(trash), "recoverable"), stat("RENAMED", fmtNum(d.moved.length - trash)), stat("FAILED", fmtNum(d.failed.length))),
     h("ol", { class: "moved mono" }, d.moved.map((m) => h("li", {}, h("b", {}, m.a === "trash" ? "TRASH" : "RENAME"), h("span", { title: m.p }, m.p),
       h("i", {}, m.a === "trash" ? "→ workspace trash" : `→ ${m.to}`))), d.more ? h("li", { class: "dim" }, `+${fmtNum(d.more)} more`) : null),
-    d.failed.length ? h("div", { class: "alert warn" }, h("b", {}, "NOT APPLIED"), h("ul", {}, d.failed.map((x) => h("li", {}, x)))) : null,
+    d.failed.length ? h("div", { class: "alert", "data-kind": "warn" }, h("b", {}, "NOT APPLIED"), h("ul", {}, d.failed.map((x) => h("li", {}, x)))) : null,
     h("div", { class: "row" }, btn("UNDO THIS CLEANUP", undo, "primary"), goBtn("#workspace", "SEE TRASH IN 02 WORKSPACE →", "ghost")),
     h("p", { class: "note" }, "UNDO stays available until your next SCAN.")));
 }
 
-export default { mount, show };
+import { registerView } from "../registry.js";
+
+const VIEW = { mount, show };
+registerView({ id: "cleanup", order: 80, title: "CLEANUP", subtitle: "junk, dupes, misnamed", ...VIEW });
+export default VIEW;

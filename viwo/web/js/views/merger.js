@@ -33,7 +33,7 @@ async function load() {
   try {
     await withSkeleton(el.list, "INDEXING WORKSPACE MEDIA…", async () => { S.st = await api.mergerState(); applyState(S.st); await list(); }, 6);
     fill(el.banner,
-      S.st.encoder ? null : h("div", { class: "alert err", role: "alert" }, h("b", {}, "FFMPEG NOT INSTALLED // BUILD DISABLED"),
+      S.st.encoder ? null : h("div", { class: "alert", "data-kind": "err", role: "alert" }, h("b", {}, "FFMPEG NOT INSTALLED // BUILD DISABLED"),
         h("p", {}, "The merger needs ffmpeg (with ffprobe) to make videos. You can still pick groups; BUILD unlocks once ffmpeg is found."),
         h("p", { class: "next" }, h("b", {}, "NEXT"), "Install ffmpeg with one click in 05 SYSTEM (pinned build, into third_party/), then press REFRESH here. ",
           h("a", { href: "#system" }, "Open 05 SYSTEM →"))),
@@ -168,4 +168,8 @@ function conflictList(spec, index, focusAt = -1) {
   return ol;
 }
 
-export default { mount, show: load };
+import { registerView } from "../registry.js";
+
+const VIEW = { mount, show: load };
+registerView({ id: "merger", order: 60, title: "MERGER", subtitle: "frames → video", ...VIEW });
+export default VIEW;

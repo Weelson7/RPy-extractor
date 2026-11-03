@@ -22,6 +22,7 @@ from .carve import SIGNATURES
 from .carve import formats2 as g
 from .curation import trash
 from .pipeline.collect import sha256
+from .steps import Step
 from .workspace import write_atomic
 
 ROOT = ".sanitizer"
@@ -93,15 +94,19 @@ def _inspect(path: Path, workspace: Path) -> list[dict]:
 
 
 def _duplicates(
-    files: list[Path], workspace: Path, renames: set[str], flagged: set[str]
+    files: list[Path], workspace: Path, renames: set[str], flagged: set[str], sink=None, cancel=None
 ) -> list[dict]:
     """Identical files: keep the cleanest copy (no __N suffix, right extension, first path)."""
     by_size: dict[int, list[Path]] = {}
     for path in files:
         by_size.setdefault(path.stat().st_size, []).append(path)
-    by_hash: dict[str, list[Path]] = {}
-    for path in (p for same in by_size.values() if len(same) > 1 for p in same):
+    todo = [p for same in by_size.values() if len(same) > 1 for p in same]
+    step, by_hash = Step(sink, "hash", "Hashing files:", len(todo)), {}
+    for path in todo:
+        step.tick(cancel)
         by_hash.setdefault(sha256(path), []).append(path)
+    if todo:
+        step.done()
     out = []
     for same in (s for s in by_hash.values() if len(s) > 1):
         rel = {p: p.relative_to(workspace).as_posix() for p in same}
@@ -117,12 +122,16 @@ def _duplicates(
     return out
 
 
-def plan(workspace: Path) -> dict:
-    files = _asset_files(workspace)
-    findings = [f for p in files for f in _inspect(p, workspace)]
+def plan(workspace: Path, sink=None, cancel=None) -> dict:
+    files, findings = _asset_files(workspace), []
+    step = Step(sink, "scan", "Scanning files:", len(files))
+    for path in files:
+        step.tick(cancel)
+        findings += _inspect(path, workspace)
+    step.done()
     flagged = {f["path"] for f in findings if f["action"] == "trash"}
     renames = {f["path"] for f in findings if f["action"] == "rename"}
-    dupes = _duplicates(files, workspace, renames, flagged)
+    dupes = _duplicates(files, workspace, renames, flagged, sink, cancel)
     gone = {f["path"] for f in dupes}
     findings = [f for f in findings if f["path"] not in gone] + dupes
     for finding in findings:  # remembered so that a stale plan is never applied
@@ -174,12 +183,8 @@ def _act(workspace: Path, finding: dict) -> str:
     return _move(src, dest).relative_to(workspace).as_posix()
 
 
-def apply(workspace: Path, plan_id: str, accept: list[int] | str = "all-safe") -> dict:
-    plan_id = _plan_id(plan_id)
-    path = workspace / ROOT / "plans" / f"{plan_id}.json"
-    if not path.is_file():
-        raise ViwoError("not_found", f"no sanitizer plan {plan_id}")
-    findings = json.loads(path.read_text(encoding="utf-8"))["findings"]
+def _chosen(workspace: Path, findings: list[dict], accept) -> list[dict]:
+    """The accepted findings of a plan, refused when a file changed since the scan."""
     try:
         picked = range(len(findings)) if accept == "all-safe" else sorted({int(i) for i in accept})
     except (TypeError, ValueError):
@@ -191,13 +196,26 @@ def apply(workspace: Path, plan_id: str, accept: list[int] | str = "all-safe") -
             raise ViwoError(
                 "invalid_request", f"plan is stale: {finding['path']} changed; scan again"
             )
+    return chosen
+
+
+def apply(workspace: Path, plan_id: str, accept="all-safe", sink=None, cancel=None) -> dict:
+    plan_id = _plan_id(plan_id)
+    path = workspace / ROOT / "plans" / f"{plan_id}.json"
+    if not path.is_file():
+        raise ViwoError("not_found", f"no sanitizer plan {plan_id}")
+    chosen = _chosen(workspace, json.loads(path.read_text(encoding="utf-8"))["findings"], accept)
     journal, failed = [], []
+    step = Step(sink, "apply", "Applying actions:", len(chosen))
     for finding in chosen:
+        step.tick(cancel)
         if finding["action"] in ("trash", "rename"):
             try:
                 journal.append([_act(workspace, finding), finding["path"]])
             except OSError as exc:
                 failed.append(f"{finding['path']}: {exc}")
+    if chosen:
+        step.done()
     folder = workspace / ROOT / "journal"
     folder.mkdir(parents=True, exist_ok=True)
     record = folder / f"{plan_id}.json"  # several applies of one plan add up
@@ -214,16 +232,21 @@ def apply(workspace: Path, plan_id: str, accept: list[int] | str = "all-safe") -
     }
 
 
-def undo(workspace: Path, token: str) -> dict:
+def undo(workspace: Path, token: str, sink=None, cancel=None) -> dict:
     path = workspace / ROOT / "journal" / f"{_plan_id(token)}.json"
     if not path.is_file():
         raise ViwoError("not_found", f"nothing to undo for {token}")
     restored, back = 0, {}
-    for now, before in reversed(json.loads(path.read_text(encoding="utf-8"))):
+    entries = json.loads(path.read_text(encoding="utf-8"))
+    step = Step(sink, "undo", "Undoing actions:", len(entries))
+    for now, before in reversed(entries):
+        step.tick(cancel)
         src, dest = _ws_file(workspace, now), _ws_file(workspace, before)
         if src is not None and dest is not None and src.is_file():
             back[now] = _move(src, dest).relative_to(workspace).as_posix()
             restored += 1
+    if entries:
+        step.done()
     provenance.rewrite(workspace, back)
     path.unlink()
     return {"restored": restored}

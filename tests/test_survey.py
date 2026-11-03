@@ -14,8 +14,10 @@ from tests.helpers import make_zip, runtime, tree_hashes, write_ini
 from tests.test_carve import blob
 from tests.test_doom import make_wad
 from viwo.api import app as app_module
-from viwo.api.handlers_tools import survey_library
+from viwo.api.handlers_tools import TOOL_GET, survey_library
 from viwo.cli import main
+from viwo.contracts import ViwoError
+from viwo.core import surveys
 from viwo.core.survey import games_in, survey
 
 
@@ -66,12 +68,51 @@ class SurveyTests(unittest.TestCase):
                 self.assertEqual(main(["--ini", str(ini), "survey", str(lib), "--json"]), 0)
             self.assertEqual(len(json.loads(out.getvalue())["data"]["games"]), 2)
             app = app_module.App(runtime(Path(tmp)))
-            result = survey_library(app, {"folder": str(lib)})
+            result = survey_library(app, {"folder": str(lib), "deep": True})
             self.assertTrue(result["success"] and result["jobId"], result)
             self.assertEqual(
                 survey_library(app, {"folder": str(lib / "nope")})["code"], "not_found"
             )
             self.assertEqual(app.jobs.get(result["jobId"]).kind, "survey")
+            lines = [e.message for e in app.jobs.get(result["jobId"]).events]
+            for head in (
+                "Surveying Doomish (1/2)",
+                "Scanning files: ",
+                "Identifying files: ",
+                "Identified containers: ",
+                "Probing archives: ",
+                "Carving unknown blobs: ",
+                "Decoders available: ",
+                "Report saved: ",
+            ):
+                self.assertTrue(any(m.startswith(head) for m in lines), (head, lines))
+            self.assertTrue(Path(result["reportPath"]).is_file())
+            again = survey_library(app, {"folder": str(lib)})
+            self.assertNotEqual(again["reportId"], result["reportId"])  # never overwritten
+            listed = TOOL_GET["/api/surveys"](app, {})["reports"]
+            self.assertEqual([r["id"] for r in listed][:2], [again["reportId"], result["reportId"]])
+            self.assertEqual(listed[0]["gameCount"], 2)
+            report = TOOL_GET["/api/survey-report"](app, {"id": [result["reportId"]]})["report"]
+            self.assertEqual(len(report["games"]), 2)
+            self.assertTrue(report["deep"])
+            self.assertEqual(
+                TOOL_GET["/api/survey-report"](app, {"id": ["../x"]})["code"], "invalid_request"
+            )
+
+    def test_reports_are_numbered_and_contained(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "surveys"
+            first = surveys.save(root, Path("C:/Games/My Game!"), False, [{"path": "a"}])
+            second = surveys.save(root, Path("C:/Games/My Game!"), False, [])
+            self.assertTrue(first["id"].endswith("-My_Game"))
+            self.assertEqual(second["id"], first["id"] + "-2")
+            ids = [r["id"] for r in surveys.list_reports(root)]
+            self.assertEqual(ids, [second["id"], first["id"]])
+            self.assertEqual(surveys.load(root, first["id"])["gameCount"], 1)
+            for bad in ("../../etc/passwd", "20260101-000000-x/../y", "nope"):
+                with self.assertRaises(ViwoError):
+                    surveys.load(root, bad)
+            self.assertEqual(surveys.list_reports(Path(tmp) / "missing"), [])
 
 
 if __name__ == "__main__":

@@ -1,12 +1,14 @@
-"""Handlers for the platform tools: survey, sanitizer, round trip (repack)."""
+"""Handlers for the platform tools: survey (+ saved reports), sanitizer (as the "cleanup"
+job), round trip (repack), preflight and installs."""
 
 from __future__ import annotations
 
 from pathlib import Path
 from typing import Any, Callable
 
+from viwo.contracts.errors import ViwoError
 from viwo.contracts.types import ProgressEvent
-from viwo.core import sanitizer
+from viwo.core import sanitizer, surveys
 from viwo.core.preflight import install, preflight
 from viwo.core.roundtrip import repack
 from viwo.core.survey import survey
@@ -20,14 +22,18 @@ def survey_library(app: App, d: dict) -> dict:
     if not str(folder) or not folder.is_dir():
         return {"success": False, "error": f"Folder not found: {folder}", "code": "not_found"}
 
+    reports, deep = _reports_dir(app), bool(d.get("deep"))
+
     def run(jid, sink, cancel) -> dict:
         def note(game: Path, index: int, total: int) -> None:
             sink(
                 ProgressEvent(f"Surveying {game.name} ({index}/{total})", "info", "core", "survey")
             )
 
-        games = survey(app.rt, folder, bool(d.get("deep")), note, cancel)
-        return {"success": True, "games": games}
+        games = survey(app.rt, folder, deep, note, cancel, sink)
+        saved = surveys.save(reports, folder, deep, games)
+        sink(ProgressEvent(f"Report saved: {saved['path']}", "info", "core", "report"))
+        return {"success": True, "games": games, "reportId": saved["id"], **_meta(saved)}
 
     job = app.jobs.submit_with_listener(
         lambda e: app.log(e.legacy_line()), "survey", run, background=False
@@ -35,6 +41,27 @@ def survey_library(app: App, d: dict) -> dict:
     if job.error:
         return {"success": False, "error": job.error["message"], "code": job.error["code"]}
     return {**job.result, "jobId": job.job_id}
+
+
+def _reports_dir(app: App) -> Path:
+    return app.server.logs.parent / "surveys"
+
+
+def _meta(saved: dict) -> dict:
+    return {"reportPath": saved["path"], "when": saved["when"]}
+
+
+def survey_reports(app: App, q: dict) -> dict:
+    """Every saved survey report (header only), newest first."""
+    return {"success": True, "reports": surveys.list_reports(_reports_dir(app))}
+
+
+def survey_report(app: App, q: dict) -> dict:
+    try:
+        report = surveys.load(_reports_dir(app), (q.get("id") or [""])[0])
+    except ViwoError as exc:
+        return {"success": False, "error": exc.message, "code": exc.code}
+    return {"success": True, "report": report}
 
 
 RECIPES = [
@@ -51,18 +78,17 @@ def _sanitize(op: str) -> Callable[[App, dict], dict]:
     def handler(app: App, d: dict) -> dict:
         folder = app.workspace  # read once: the workspace can be switched meanwhile
 
-        def run() -> dict:
+        def run(sink, cancel) -> dict:  # a "cleanup" job: visible in 04 JOBS and the chips
             if op == "plan":
-                return {"success": True, **sanitizer.plan(folder)}
+                return {"success": True, **sanitizer.plan(folder, sink, cancel)}
             if op == "apply":
                 accept = d.get("accept") or "all-safe"
-                return {
-                    "success": True,
-                    **sanitizer.apply(folder, str(d.get("planId", "")), accept),
-                }
-            return {"success": True, **sanitizer.undo(folder, str(d.get("undoToken", "")))}
+                plan_id = str(d.get("planId", ""))
+                return {"success": True, **sanitizer.apply(folder, plan_id, accept, sink, cancel)}
+            token = str(d.get("undoToken", ""))
+            return {"success": True, **sanitizer.undo(folder, token, sink, cancel)}
 
-        return app.locked(run, folder)
+        return app.locked_job("cleanup", folder, run)
 
     return handler
 
@@ -127,6 +153,8 @@ def _job(app: App, kind: str, run) -> dict:
 
 TOOL_GET: dict[str, Callable[[App, dict], Any]] = {
     "/api/sanitizer/recipes": lambda app, q: {"success": True, "recipes": RECIPES},
+    "/api/surveys": survey_reports,
+    "/api/survey-report": survey_report,
 }
 TOOL_POST: dict[str, Callable[[App, dict], Any]] = {
     "/api/preflight": run_preflight,

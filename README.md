@@ -249,5 +249,7 @@ into `third_party/` and nowhere else.
 
 GPL tools only run as separate processes.
 
-Author of ViWo: Weelson. Contributors: the community.
+Original author of ViWo: Weelson. 
+
+Special thanks: the **currently non-existent** community.
 

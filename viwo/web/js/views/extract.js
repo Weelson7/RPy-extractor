@@ -1,6 +1,6 @@
 // 01 EXTRACT: target, detection, mode, plugin options, filter, run + live feed.
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, meter, viewHead, toast, toastErr, pref, logLine, emit, modal, errorBox, pad, fmtNum, bus, browseBtn } from "../ui.js";
+import { h, fill, btn, panel, badge, meter, viewHead, toast, toastErr, pref, logLine, emit, modal, errorBox, pct, fmtNum, bus, browseBtn } from "../ui.js";
 import { slotText } from "./system.js";
 import { jobProgress, withSkeleton } from "../progress.js";
 import { renderResult, renderFailure, renderIdle } from "./extract-result.js";
@@ -79,7 +79,7 @@ function missingTools() {
   const gaps = pluginsInPlay().flatMap((p) => p.slots.filter((s) => slots[s] && !slots[s].main).map((s) => [p.name, s]));
   if (!gaps.length) return null;
   const how = [...new Set(gaps.flatMap(([, s]) => slots[s].reasons.map((r) => r.replace(/^[^(]*\(|\)$/g, ""))))];
-  return h("div", { class: "alert warn" }, h("b", {}, "OPTIONAL TOOLS NOT INSTALLED"),
+  return h("div", { class: "alert", "data-kind": "warn" }, h("b", {}, "OPTIONAL TOOLS NOT INSTALLED"),
     h("p", {}, `${gaps.map(([n, s]) => `${n}: ${slotText(s)}`).join(" · ")}. Extraction still runs and copies everything else.`),
     h("ul", { class: "small" }, how.map((x) => h("li", {}, x))),
     h("p", {}, h("a", { href: "#system" }, "Open 05 SYSTEM to install them (one click) →")));
@@ -92,9 +92,9 @@ function renderDetect() {
   el.detect.replaceChildren(missingTools() || "", ...rows.map(([id, d]) => {
     const auto = S.detect.auto.includes(id);
     const kind = d.confidence >= 0.7 ? "hi" : d.confidence >= 0.35 ? "mid" : "lo";
-    return h("div", { class: `det ${auto ? "auto" : ""}` },
+    return h("div", { class: "det", "data-state": auto ? "auto" : null },
       h("div", { class: "det-h" }, h("b", {}, name(id)), auto ? badge("AUTO PICK", "red") : null,
-        h("span", { class: "mono pct" }, `${pad(Math.round(d.confidence * 100), 3)}%`)),
+        h("span", { class: "mono pct" }, pct(d.confidence))),
       meter(d.confidence, kind),
       h("ul", { class: "evidence mono" }, d.evidence.length ? d.evidence.map((e) => h("li", {}, e)) : h("li", { class: "dim" }, "no signature found")));
   }), all.length > rows.length ? h("p", { class: "dim small det" }, `${all.length - rows.length} other engine plugins found no match.`) : "");
@@ -134,8 +134,11 @@ function renderMode() {
   updateBar();
 }
 
+/** The plugins that will run under the current mode and policy (their options are shown). */
 function pluginsInPlay() {
   if (S.mode === "single") return S.plugins.filter((p) => p.id === S.single);
+  if (S.mode === "mixed" && S.policy === "all") return S.plugins;
+  if (S.mode === "mixed" && S.policy === "detected") return S.plugins.filter((p) => (S.detect?.detections?.[p.id]?.confidence || 0) > 0);
   if (S.mode === "mixed") return S.plugins.filter((p) => S.mixed.has(p.id));
   return S.plugins.filter((p) => S.detect?.auto?.includes(p.id));
 }
@@ -298,7 +301,7 @@ async function run(onExisting) {
 }
 
 function reveal() {
-  el.result.firstElementChild?.classList.add("reveal");
+  if (el.result.firstElementChild) el.result.firstElementChild.dataset.reveal = "1";
   el.result.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
 }
 
@@ -321,4 +324,8 @@ async function loadPlugins() {
   }
 }
 
-export default { mount, show };
+import { registerView } from "../registry.js";
+
+const VIEW = { mount, show };
+registerView({ id: "extract", order: 10, title: "EXTRACT", subtitle: "pull assets from a game", ...VIEW });
+export default VIEW;

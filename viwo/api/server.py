@@ -7,6 +7,7 @@ import json
 import mimetypes
 import re
 import secrets
+import sys
 import threading
 import webbrowser
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -16,13 +17,15 @@ from urllib.parse import parse_qs, unquote, urlparse
 from viwo.contracts.errors import ViwoError
 from viwo.core.curation.sorting import resolve
 
-from . import routes
+from . import plugin_assets, routes
 from .app import App, get_app
 from .handlers import GET, POST
 
 WEB_ROOT = Path(__file__).resolve().parent.parent / "web"
 TOKEN_HEADER = "X-VIWO-Token"
 RANGE = re.compile(r"bytes=(\d*)-(\d*)")
+# The player seeked away or the tab closed mid-stream: normal, never worth a traceback.
+ABORTED = (BrokenPipeError, ConnectionResetError, ConnectionAbortedError)
 MAX_BODY = 16 << 20  # JSON requests only; anything bigger is not a ViWo request
 
 
@@ -108,6 +111,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._api(GET, routes.handle_get, path, parse_qs(url.query))
         if path.startswith("/preview/"):  # resolve() decodes once: pass the raw path
             return self._preview(url.path[len("/preview/") :])
+        if plugin_assets.serve(self, path):  # plugin UI add-ons: /plugins/<id>/ui.js
+            return
         self._static(path)
 
     def do_POST(self) -> None:
@@ -143,6 +148,12 @@ class Handler(BaseHTTPRequestHandler):
             path = resolve(self.app.workspace, rel)
         except ViwoError:
             return self.send_error(404)
+        try:
+            self._stream(path, head)
+        except ABORTED:
+            pass
+
+    def _stream(self, path: Path, head: bool) -> None:
         size = path.stat().st_size
         span = byte_range(str(self.headers.get("Range", "")), size)
         if span == (-1, -1):
@@ -183,14 +194,22 @@ def _copy(src, dst, remaining: int) -> None:
                 return
             dst.write(chunk)
             remaining -= len(chunk)
-    except (BrokenPipeError, ConnectionResetError):  # the player seeked away; that is normal
+    except ABORTED:
         pass
+
+
+class QuietServer(ThreadingHTTPServer):
+    """socketserver prints every handler exception; a client that went away is not one."""
+
+    def handle_error(self, request, client_address) -> None:
+        if not isinstance(sys.exc_info()[1], ABORTED):
+            super().handle_error(request, client_address)
 
 
 def make_server(app: App, host: str | None = None, port: int | None = None) -> ThreadingHTTPServer:
     Handler.app = app
     Handler.token = secrets.token_urlsafe(32)
-    return ThreadingHTTPServer(
+    return QuietServer(
         (host or app.server.host, app.server.port if port is None else port), Handler
     )
 

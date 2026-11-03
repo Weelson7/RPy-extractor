@@ -7,5 +7,7 @@
   "class": "HelloPlugin",
   "requires": { "viwo": ">=0.2" },
   "enabled": false,
-  "override": false
+  "override": false,
+  "cli": true,
+  "ui": "ui.js"
 }

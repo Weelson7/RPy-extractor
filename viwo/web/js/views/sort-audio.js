@@ -1,5 +1,5 @@
 // SORT audio stage: themed player (play/pause, scrub, time) + real waveform via the Web Audio API.
-import { h, fill } from "../ui.js";
+import { h, fill, cssVar, bars } from "../ui.js";
 
 const BARS = 64;
 const MAX_BYTES = 20 * 1024 * 1024; // larger files keep the flat line instead of being decoded
@@ -27,7 +27,7 @@ async function peaks(url) {
 
 export function audioStage(url, cap) {
   const audio = h("audio", { src: url, preload: "metadata" });
-  const wave = h("div", { class: "wave flat", role: "img", "aria-label": "Waveform loading" });
+  const wave = h("div", { class: "wave", "data-state": "flat", role: "img", "aria-label": "Waveform loading" });
   const play = h("button", { type: "button", class: "btn primary play", "aria-label": "Play" }, "▶");
   const scrub = h("input", { type: "range", class: "scrub", min: 0, max: 1000, value: 0, "aria-label": "Seek" });
   const time = h("span", { class: "mono time" }, "0:00 / 0:00");
@@ -36,7 +36,7 @@ export function audioStage(url, cap) {
     const p = d ? audio.currentTime / d : 0;
     time.textContent = `${clock(audio.currentTime)} / ${clock(d)}`;
     if (document.activeElement !== scrub) scrub.value = String(Math.round(p * 1000));
-    wave.style.setProperty("--p", `${p * 100}%`);
+    cssVar(wave, "p", `${p * 100}%`);
   };
   const state = () => {
     play.textContent = audio.paused ? "▶" : "❚❚";
@@ -49,9 +49,9 @@ export function audioStage(url, cap) {
   ["timeupdate", "loadedmetadata", "seeked"].forEach((ev) => audio.addEventListener(ev, sync));
   ["play", "pause", "ended"].forEach((ev) => audio.addEventListener(ev, state));
   peaks(url).then((list) => {
-    wave.classList.remove("flat");
+    delete wave.dataset.state;
     wave.setAttribute("aria-label", "Waveform");
-    fill(wave, list.map((v) => h("i", { style: `height:${Math.max(3, Math.round(v * 100))}%` })));
+    fill(wave, bars(list));
   }, () => wave.setAttribute("aria-label", "Waveform unavailable for this file"));
   return h("figure", { class: "media aud" }, wave, h("div", { class: "player" }, play, scrub, time), audio, cap);
 }

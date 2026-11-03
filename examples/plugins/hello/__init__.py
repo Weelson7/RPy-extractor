@@ -1,6 +1,8 @@
 """Example drop-in plugin (docs/plugins.md): a `.hello` archive is a zip with another name.
 
 Drop this folder into a folder listed in `[plugins] custom_dirs`, then `[plugins] hello = on`.
+It also ships a CLI add-on (`viwo hello-list <archive>`, plugin.json "cli": true) and a UI
+add-on (`ui.js`: a panel in 05 SYSTEM and a HELLO view).
 """
 
 from __future__ import annotations
@@ -8,7 +10,8 @@ from __future__ import annotations
 import zipfile
 from pathlib import Path
 
-from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest
+from viwo.contracts.errors import ViwoError
+from viwo.contracts.plugin import CliCommand, EnginePlugin, GameProbe, PluginManifest
 from viwo.contracts.slots import SlotDefinition, Unarchiver
 from viwo.contracts.types import DetectionResult, Outcome, OutcomeKind
 from viwo.contracts.workspace import safe_member
@@ -38,6 +41,27 @@ class HelloUnarchiver(Unarchiver):
         return Outcome(OutcomeKind.OK, written)
 
 
+def _list_build(parser) -> None:
+    parser.add_argument("archive", type=Path, help="a .hello archive (a zip)")
+
+
+def _list_run(rt, args) -> dict:
+    if not args.archive.is_file():
+        raise ViwoError("not_found", f"archive not found: {args.archive}")
+    with zipfile.ZipFile(args.archive) as zf:
+        members = zf.namelist()
+    return {"archive": str(args.archive), "members": members}
+
+
+LIST = CliCommand(
+    "hello-list",
+    "list the members of a .hello archive",
+    _list_build,
+    _list_run,
+    formatter=lambda d: "\n".join(d["members"]) or "(empty)",
+)
+
+
 class HelloPlugin(EnginePlugin):
     @property
     def manifest(self) -> PluginManifest:
@@ -63,3 +87,6 @@ class HelloPlugin(EnginePlugin):
 
     def backends(self):
         return (HelloUnarchiver(),)
+
+    def cli_commands(self):
+        return (LIST,)

@@ -180,4 +180,8 @@ function startup(d) {
       h("ul", { class: "problems mono" }, d.problems.map((p) => h("li", {}, p)))] : h("p", { class: "ok-text" }, "No startup notes."));
 }
 
-export default { mount, show: load };
+import { registerView } from "../registry.js";
+
+const VIEW = { mount, show: load };
+registerView({ id: "system", order: 50, title: "SYSTEM", subtitle: "tools and formats", ...VIEW });
+export default VIEW;

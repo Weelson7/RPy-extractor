@@ -145,7 +145,11 @@ async function build() {
     bar();
     emit("jobs");
   }
-  el.result.firstElementChild?.classList.add("reveal");
+  if (el.result.firstElementChild) el.result.firstElementChild.dataset.reveal = "1";
 }
 
-export default { mount, show };
+import { registerView } from "../registry.js";
+
+const VIEW = { mount, show };
+registerView({ id: "repack", order: 90, title: "PATCHED COPY", subtitle: "your edits → the game", ...VIEW });
+export default VIEW;
