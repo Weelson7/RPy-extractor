@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "slug": "total-war-rome-2",
+  "game_version": "any",
+  "title": "Total War: Rome II",
+  "engine": "warscape",
+  "detect": [
+    "Rome2.exe",
+    "data/data.pack"
+  ],
+  "plugins": [
+    "warscape"
+  ],
+  "tools": [],
+  "notes": "Warscape PFH4/PFH5 packs (data, local_en, models, sound, terrain, movies): db tables, .loc text, rigid_model_v2, DDS, Lua, Wwise .wem; the game is 36 GB, pick the packs you need.",
+  "source": "own testing (530 members out of data.pack; sqc/ctf.json pass-total-war-rome-ii)",
+  "options": {},
+  "scripts": []
+}

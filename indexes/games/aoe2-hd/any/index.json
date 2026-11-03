@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "slug": "aoe2-hd",
+  "game_version": "any",
+  "title": "Age of Empires II HD",
+  "engine": "genie",
+  "detect": [
+    "AoK HD.exe",
+    "resources/_common/drs/graphics.drs"
+  ],
+  "plugins": [
+    "genie"
+  ],
+  "tools": [],
+  "notes": "Genie DRS containers (graphics, terrain, sounds, interfac, gamedata): SLP sprites, WAV, BINA and the empires2_x1_p1.dat data file come out typed by the DRS tables (1.3.3). SLP to PNG is a roadmap decoder.",
+  "source": "own testing (404 members out of graphics.drs; sqc/ctf.json pass-aoe)",
+  "options": {},
+  "scripts": []
+}

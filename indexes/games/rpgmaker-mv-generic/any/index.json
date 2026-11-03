@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "slug": "rpgmaker-mv-generic",
+  "game_version": "any",
+  "title": "RPG Maker MV / MZ (any title)",
+  "engine": "rpgmaker",
+  "detect": [
+    "Game.exe",
+    "www/data/System.json"
+  ],
+  "plugins": [
+    "rpgmaker"
+  ],
+  "tools": [],
+  "notes": "NW.js runtime; encrypted .rpgmvp/.rpgmvo/.rpgmvm are decoded with the key the game's System.json carries (D18: the key comes from the game's own file, never from ViWo).",
+  "source": "own testing (rpgmv-first fixture; sqc/games.md)",
+  "options": {},
+  "scripts": []
+}

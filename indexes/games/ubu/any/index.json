@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "slug": "ubu",
+  "game_version": "any",
+  "title": "Ubu",
+  "engine": "kirikiri",
+  "detect": [
+    "Ubu.exe",
+    "data.xp3"
+  ],
+  "plugins": [
+    "kirikiri"
+  ],
+  "tools": [],
+  "notes": "KiriKiri XP3 (data, imageviewer, movieplayer): 1984 files out of three archives.",
+  "source": "own testing (sqc/games.md; CTF 5/5)",
+  "options": {},
+  "scripts": []
+}

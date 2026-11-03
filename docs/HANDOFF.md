@@ -226,6 +226,16 @@ so `progress.js` stops parsing message text, let `list_window` return the type c
   Easy for every executable. The generic plugin proposes executables up to two folders down
   (`bin/Win64_Shipping_Client/Bannerlord.exe`).
 
+## 1.4.3 (the index grows with the engines, 2026-11-03)
+- Owner's remark: the game index had not grown with the four new engines. `indexes/games/` now
+  holds 23 entries: the six starters plus one per verified title (the eleven free titles, the
+  library's AoE II HD, Rome II, Cyberpunk 2077, Bannerlord, Approximately Up, Schedule I,
+  Returning to Mia, Team Fortress 2) and `unity-generic` / `rpgmaker-mv-generic`; detect markers
+  taken from the real folders, notes record what ViWo verified and what stays roadmap.
+- Team Fortress 2 (steamapps, 32 GB) joins the library pass with a 0.9 GB VPK subset
+  (`pass-team-fortress-2` in `sqc/ctf.json`): missing numbered parts are skipped by the VPK
+  backend, so a `_dir.vpk` with its first archives extracts what those archives hold.
+
 ## Morning deliverable (owner, 2026-11-04)
 A PDF presentation of the project status, the sqc suite and the CTF flags (`sqc/ctf.json`,
 `sqc/17-ctf.md`: five basic objectives per game plus one per GB), with no known limitation or

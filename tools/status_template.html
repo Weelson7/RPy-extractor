@@ -38,7 +38,9 @@ responsibility with the user.</p>
 zero defects), the static analysis arm shipped and verified on a real binary, four container
 plugins for the owner's library, four simplicity-and-boundary review batches applied, CTF flags in
 the integration runner, every installed game run, unattended RenderDoc capture (one frame, textures and
-shaders, nothing pressed) verified on a real GPU game, and the minimal-prompt rule: ViWo pre-answers
+shaders, nothing pressed) verified on a real GPU game, the managed-code analyzers (ilspycmd, Cpp2IL,
+unluac) and Detect It Easy identification verified on real binaries, library-game flags rebuilt as
+baselines plus specifics with analysis objectives, and the minimal-prompt rule: ViWo pre-answers
 every third-party prompt it can.</p>
 </section>
 
@@ -55,7 +57,7 @@ handoff.native.</p>
 <table><tr><th>File</th><th>Area</th><th>Checks</th><th>P0</th></tr>{{sqc}}</table>
 <p>The CLI- and API-driven checks ran through the integration runner tonight; every GUI view has
 its frame captured in <code>viwo-data/ui-frames/</code> with zero console errors; the OPERATOR
-checks (Overwatch, RenderDoc on a GPU game) belong to the independent operator by design.</p>
+checks (Overwatch, RenderDoc on an anti-cheat title) belong to the independent operator by design.</p>
 </section>
 
 <section>
@@ -75,6 +77,22 @@ read-only guarantee holding on real data.</p>
 <section>
 <h2>Commits tonight</h2>
 <ul>{{commits}}</ul>
+</section>
+
+<section>
+<h2>The RE orchestrator ladder (docs/contract/16-roadmap.md, 16.2b)</h2>
+<table><tr><th>Arm</th><th>Rung</th><th>Slots</th><th>Tools</th><th>State</th></tr>
+<tr><td>Static</td><td>A1</td><td><code>analysis.native</code>, <code>handoff.native</code></td><td>Ghidra 12.2 headless + GUI, Temurin JDK 25</td><td class="pass">shipped 1.3.0, verified on ULTRAKILL.exe</td></tr>
+<tr><td>Static</td><td>A2</td><td><code>analysis.dotnet / il2cpp / script</code></td><td>ilspycmd 11.2, Cpp2IL 2022.1, unluac</td><td class="pass">shipped 1.4.0, verified (646 C# files; 80 IL2CPP stubs)</td></tr>
+<tr><td>Static</td><td>A3</td><td><code>analysis.protector</code> (+ FID inside Ghidra)</td><td>Detect It Easy 3.21</td><td class="pass">protector id shipped 1.4.1; diff open (BinDiff not pinnable)</td></tr>
+<tr><td>Static</td><td>A4</td><td><code>analysis.emulate / symbolic</code></td><td>Unicorn, angr</td><td>roadmap</td></tr>
+<tr><td>Dynamic</td><td>D1</td><td><code>capture.gpu</code> unattended, shader disassembly</td><td>RenderDoc 1.47</td><td class="pass">shipped 1.3.6, verified on ULTRAKILL (89 textures, 30 shaders)</td></tr>
+<tr><td>Dynamic</td><td>D2</td><td><code>runtime.&lt;engine&gt;</code>, <code>capture.audio</code></td><td>BepInEx, UE4SS, Frida</td><td>roadmap</td></tr>
+<tr><td>Dynamic</td><td>D3</td><td><code>debug.* / trace.* / memory.*</code> + handoffs</td><td>x64dbg, Frida, Cheat Engine</td><td>roadmap</td></tr>
+<tr><td>Transform</td><td>T1-T2</td><td>patch sets, mod packaging</td><td>-</td><td>roadmap</td></tr>
+</table>
+<p class="sub">Minimal-prompt rule (owner, 2026-11-03): every third-party prompt that can be pre-answered is
+pre-answered by ViWo (qrenderdoc analytics and tips, Ghidra's user agreement); capture is unattended by default.</p>
 </section>
 
 <section>

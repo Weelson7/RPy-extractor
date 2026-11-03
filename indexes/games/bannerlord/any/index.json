@@ -1,0 +1,21 @@
+{
+  "schema": 1,
+  "slug": "bannerlord",
+  "game_version": "any",
+  "title": "Mount & Blade II: Bannerlord",
+  "engine": "taleworlds",
+  "detect": [
+    "bin/Win64_Shipping_Client/Bannerlord.exe",
+    "Modules/Native/AssetPackages/*.tpac"
+  ],
+  "plugins": [
+    "taleworlds"
+  ],
+  "tools": [
+    "lz4"
+  ],
+  "notes": "TaleWorlds TPAC packages: segments named after their asset, LZ4-block ones inflated through the lz4 pin; .0.bin are meshes, .1.bin texture pixel data (typed decoders are roadmap). Module XML (items, strings, SubModule) is loose. The managed game code is TaleWorlds.*.dll next to Bannerlord.exe (analysis.dotnet).",
+  "source": "own testing (42 segments out of spawners.tpac; sqc/ctf.json pass-mount-blade-2-bannerlord)",
+  "options": {},
+  "scripts": []
+}

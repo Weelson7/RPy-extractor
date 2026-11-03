@@ -9,7 +9,7 @@ compatible). Validated by `tools/validate.py` and by ViWo (`viwo.core.indexes.va
 | `slug` | string | yes | equals the folder name: `^[a-z0-9][a-z0-9-]{0,63}$` |
 | `game_version` | string | yes | equals the folder name: `any` or `^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$` |
 | `title` | string | yes | the game's name as people know it |
-| `engine` | string | yes | ViWo plugin id (`renpy`, `unity`, `godot`, `unreal`, `doom`, `rpgmaker`, `kirikiri`, `electron`, `source`, `bethesda`, `overwatch`, `quickbms`) or `unknown` |
+| `engine` | string | yes | ViWo plugin id (`renpy`, `unity`, `godot`, `unreal`, `doom`, `rpgmaker`, `kirikiri`, `electron`, `source`, `bethesda`, `overwatch`, `quickbms`, `genie`, `warscape`, `redengine`, `taleworlds`, `gamemaker`, `tyrano`, `love2d`, `wolf`, `xna`, `ags`, `defold`) or `unknown` |
 | `detect` | list of strings | yes, non-empty | relative paths or globs (Python `Path.glob` syntax); **all** must match for the entry to apply |
 | `plugins` | list of strings | no | plugin ids to enable for this game (defaults to `[engine]`) |
 | `options` | object | no | `{plugin: {key: value}}`; keys matching `key`, `secret`, `password` are rejected |

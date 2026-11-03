@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "slug": "ddlc",
+  "game_version": "any",
+  "title": "Doki Doki Literature Club!",
+  "engine": "renpy",
+  "detect": [
+    "DDLC.exe",
+    "DDLC.py",
+    "game/*.rpa"
+  ],
+  "plugins": [
+    "renpy"
+  ],
+  "tools": [],
+  "notes": "Ren'Py 6.99: eight RPA archives, round trip (RPA rebuild) verified on this title.",
+  "source": "own testing (sqc/games.md; CTF 5/5)",
+  "options": {},
+  "scripts": []
+}

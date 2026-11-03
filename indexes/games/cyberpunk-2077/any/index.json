@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "slug": "cyberpunk-2077",
+  "game_version": "any",
+  "title": "Cyberpunk 2077",
+  "engine": "redengine",
+  "detect": [
+    "bin/x64/Cyberpunk2077.exe",
+    "archive/pc/content/*.archive"
+  ],
+  "plugins": [
+    "redengine"
+  ],
+  "tools": [],
+  "notes": "REDengine RDAR archives; Kraken (Oodle) segments are inflated through the game's own bin/x64/oo2ext_*_win64.dll (never shipped by ViWo), members are typed by their CR2W root class (xbm, mesh, ent, questphase, mi, anims, inkwidget...). Names come from a community hash list (roadmap); 86 GB, extract one archive at a time.",
+  "source": "own testing (308 members out of basegame_2_mainmenu.archive; sqc/ctf.json pass-cyberpunk-2077)",
+  "options": {},
+  "scripts": []
+}

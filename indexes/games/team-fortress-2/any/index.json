@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "slug": "team-fortress-2",
+  "game_version": "any",
+  "title": "Team Fortress 2",
+  "engine": "source",
+  "detect": [
+    "tf_win64.exe",
+    "tf/tf2_misc_dir.vpk"
+  ],
+  "plugins": [
+    "source"
+  ],
+  "tools": [],
+  "notes": "Source VPK v2: tf2_misc, tf2_textures, tf2_sound_misc and tf2_sound_vo_<lang> each have a _dir.vpk index and numbered archives; copy the index with the archives you want. VTF textures, MDL models, VMT materials, WAV/MP3 sounds, scripts and localization text. An online VAC title: static extraction only touches a copy.",
+  "source": "own testing (sqc/ctf.json pass-team-fortress-2); Valve Developer Community VPK page",
+  "options": {},
+  "scripts": []
+}

@@ -811,5 +811,68 @@
     "min": 1
    }
   ]
+ },
+ "pass-team-fortress-2": {
+  "title": "Team Fortress 2 (Source VPK; 32 GB, subset 0.9 GB: 5 + 1)",
+  "subset": [
+   "tf_win64.exe",
+   "tf/tf2_misc_dir.vpk",
+   "tf/tf2_misc_000.vpk",
+   "tf/tf2_misc_001.vpk",
+   "tf/tf2_textures_dir.vpk",
+   "tf/tf2_textures_000.vpk",
+   "tf/tf2_textures_001.vpk",
+   "tf/tf2_sound_misc_dir.vpk",
+   "tf/tf2_sound_misc_000.vpk"
+  ],
+  "flags": [
+   {
+    "name": "baseline: the run record names the source plugin",
+    "glob": ".extraction_metadata/runs/*.json",
+    "min": 1
+   },
+   {
+    "name": "baseline: a provenance line per file",
+    "glob": ".extraction_metadata/provenance.jsonl",
+    "min": 1
+   },
+   {
+    "name": "baseline: the executable collected for analysis",
+    "glob": "exe/tf_win64.exe",
+    "min": 1
+   },
+   {
+    "name": "materials (VMT) and textures (VTF) out of tf2_textures and tf2_misc",
+    "glob": "vtf/*.vtf",
+    "min": 100
+   },
+   {
+    "name": "models (MDL + VVD/VTX) out of tf2_misc",
+    "glob": "mdl/*.mdl",
+    "min": 50
+   },
+   {
+    "name": "sounds (WAV or MP3) out of tf2_sound_misc",
+    "glob": "**/*.wav",
+    "min": 50
+   },
+   {
+    "name": "game scripts and resource text (txt/res/cfg)",
+    "glob": "txt/*.txt",
+    "min": 20
+   },
+   {
+    "name": "the English localization (tf_english.txt or resource/*.txt)",
+    "glob": "**/tf_english.txt",
+    "min": 0
+   },
+   {
+    "name": "Detect It Easy identifies the executable (tf-win64-exe)",
+    "analyze": "tf-win64-exe",
+    "slot": "analysis.protector",
+    "glob": ".analysis/die/tf-win64-exe/identify.txt",
+    "min": 1
+   }
+  ]
  }
 }

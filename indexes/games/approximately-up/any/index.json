@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "slug": "approximately-up",
+  "game_version": "any",
+  "title": "Approximately Up",
+  "engine": "unity",
+  "detect": [
+    "ApproximatelyUp.exe",
+    "GameAssembly.dll",
+    "ApproximatelyUp_Data/il2cpp_data/Metadata/global-metadata.dat"
+  ],
+  "plugins": [
+    "unity"
+  ],
+  "tools": [],
+  "notes": "Unity 6000.4 IL2CPP: assets through UnityPy; GameAssembly.dll + global-metadata.dat are an analysis.il2cpp target (Cpp2IL stub assemblies, then ilspycmd). BepInEx IL2CPP plugins ship next to it. Online-fix DLLs in some installs are held by Windows Defender: ViWo reports them as unreadable and goes on.",
+  "source": "own testing (sqc/ctf.json pass-approximately-up-build-25884550)",
+  "options": {},
+  "scripts": []
+}

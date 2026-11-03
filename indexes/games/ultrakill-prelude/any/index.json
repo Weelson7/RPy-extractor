@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "slug": "ultrakill-prelude",
+  "game_version": "any",
+  "title": "ULTRAKILL Prelude",
+  "engine": "unity",
+  "detect": [
+    "ULTRAKILL.exe",
+    "ULTRAKILL_Data",
+    "MonoBleedingEdge"
+  ],
+  "plugins": [
+    "unity"
+  ],
+  "tools": [],
+  "notes": "Unity Mono (2 GB): 5481 files extracted; Assembly-CSharp.dll is an analysis.dotnet target; ULTRAKILL.exe went through Ghidra headless, Detect It Easy and the unattended RenderDoc capture (D3D11).",
+  "source": "own testing (sqc/games.md; CTF 5/5; STATUS evidence)",
+  "options": {},
+  "scripts": []
+}

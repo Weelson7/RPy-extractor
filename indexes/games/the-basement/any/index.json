@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "slug": "the-basement",
+  "game_version": "any",
+  "title": "The Basement",
+  "engine": "unreal",
+  "detect": [
+    "UE5Project/Content/Paks",
+    "Manifest_UFSFiles_Win64.txt"
+  ],
+  "plugins": [
+    "unreal"
+  ],
+  "tools": [],
+  "notes": "UE5 IoStore + pak: 2623 files; the shipping executable is a native_binary target (Detect It Easy: MSVC, Authenticode).",
+  "source": "own testing (sqc/games.md; CTF 5/5)",
+  "options": {},
+  "scripts": []
+}

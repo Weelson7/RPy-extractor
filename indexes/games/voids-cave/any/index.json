@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "slug": "voids-cave",
+  "game_version": "any",
+  "title": "Void's Cave",
+  "engine": "unreal",
+  "detect": [
+    "Void's Cave.exe",
+    "GameJamProject1/Content/Paks"
+  ],
+  "plugins": [
+    "unreal"
+  ],
+  "tools": [],
+  "notes": "UE5 IoStore (.utoc/.ucas) through retoc, plus .pak through repak: 5312 files.",
+  "source": "own testing (sqc/games.md; CTF 5/5)",
+  "options": {},
+  "scripts": []
+}

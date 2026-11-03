@@ -38,6 +38,6 @@ second analyzer such as `analysis.protector`): the runner runs that analysis onc
 
 | ID | Result | Version | Notes |
 |----|--------|---------|-------|
-| SQC-CTF-01 | | | |
+| SQC-CTF-01 | PASS | 1.3.7 | agent, 2026-11-03: 55/55 flags over the eleven titles (viwo-data/integration/report.md) |
 | SQC-CTF-02 | | | |
 | SQC-CTF-03 | | | |

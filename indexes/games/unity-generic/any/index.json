@@ -1,0 +1,18 @@
+{
+  "schema": 1,
+  "slug": "unity-generic",
+  "game_version": "any",
+  "title": "Unity (any title)",
+  "engine": "unity",
+  "detect": [
+    "*_Data/globalgamemanagers"
+  ],
+  "plugins": [
+    "unity"
+  ],
+  "tools": [],
+  "notes": "Mono builds carry Managed/Assembly-CSharp.dll (analysis.dotnet); IL2CPP builds carry GameAssembly.dll + il2cpp_data/Metadata/global-metadata.dat (analysis.il2cpp). Assets through UnityPy (textures to PNG, audio to WAV, meshes to OBJ, text assets).",
+  "source": "own testing on five Unity titles",
+  "options": {},
+  "scripts": []
+}

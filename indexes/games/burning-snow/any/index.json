@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "slug": "burning-snow",
+  "game_version": "any",
+  "title": "Burning Snow",
+  "engine": "unity",
+  "detect": [
+    "BURNING SNOW_Data",
+    "MonoBleedingEdge"
+  ],
+  "plugins": [
+    "unity"
+  ],
+  "tools": [],
+  "notes": "Unity Mono: the Unity round trip (TextAsset / Texture2D write-back into a patched copy) was verified on this title.",
+  "source": "own testing (sqc/games.md; CTF 5/5)",
+  "options": {},
+  "scripts": []
+}

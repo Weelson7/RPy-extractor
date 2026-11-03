@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "slug": "baldis-basics-cr",
+  "game_version": "any",
+  "title": "Baldi's Basics Classic Remastered",
+  "engine": "unity",
+  "detect": [
+    "BALDI.exe",
+    "BALDI_Data"
+  ],
+  "plugins": [
+    "unity"
+  ],
+  "tools": [],
+  "notes": "Unity Mono: 1761 files; Assembly-CSharp.dll decompiles to 646 C# files through ilspycmd (analysis.dotnet).",
+  "source": "own testing (sqc/games.md; CTF 5/5)",
+  "options": {},
+  "scripts": []
+}

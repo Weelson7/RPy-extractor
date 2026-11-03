@@ -23,8 +23,11 @@ needs, what to know before extracting. ViWo stays small; coverage grows by addin
 - Validation: `python indexes/tools/validate.py` (stdlib only, usable in the indexes repository's
   own CI) and `tests/test_indexes.py` in ViWo (shipped entries must validate).
 
-Starter entries: `freedoom`, `renpy-generic`, `godot-generic`, `unreal-generic`, `skyrim-se`,
-`overwatch`, all `game_version = any`, no scripts yet (none could be verified from a trusted HTTPS
+Entries (1.4.3): the six starters (`freedoom`, `renpy-generic`, `godot-generic`, `unreal-generic`,
+`skyrim-se`, `overwatch`) plus one per title ViWo was verified on (the eleven free titles and the
+owner's library: `aoe2-hd`, `total-war-rome-2`, `cyberpunk-2077`, `bannerlord`, `team-fortress-2`,
+`approximately-up`, `schedule-i`, `returning-to-mia`) and `unity-generic` / `rpgmaker-mv-generic`;
+all `game_version = any`, no scripts yet (none could be verified from a trusted HTTPS
 source with a checksum tonight; `notes` says so where relevant).
 
 ## Splitting it into the `vidya_wormhole_indexes` repository (owner)

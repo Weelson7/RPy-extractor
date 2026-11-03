@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "slug": "schedule-i",
+  "game_version": "any",
+  "title": "Schedule I",
+  "engine": "unity",
+  "detect": [
+    "Schedule I.exe",
+    "Schedule I_Data/il2cpp_data/Metadata/global-metadata.dat"
+  ],
+  "plugins": [
+    "unity"
+  ],
+  "tools": [],
+  "notes": "Unity IL2CPP (7.4 GB): assets through UnityPy, StreamingAssets copied; GameAssembly.dll + metadata as the analysis.il2cpp target.",
+  "source": "own testing (sqc/ctf.json pass-schedule-i)",
+  "options": {},
+  "scripts": []
+}

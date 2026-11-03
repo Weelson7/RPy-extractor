@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "slug": "returning-to-mia",
+  "game_version": "any",
+  "title": "Returning to Mia",
+  "engine": "renpy",
+  "detect": [
+    "ReturningToMia.exe",
+    "ReturningToMia.py",
+    "game"
+  ],
+  "plugins": [
+    "renpy"
+  ],
+  "tools": [],
+  "notes": "Ren'Py (GOG build; the data shipped zipped in the owner's library): RPA archives under game/, scripts as .rpyc (analysis.python is roadmap; unrpyc is pinned for the decompile).",
+  "source": "own testing (sqc/ctf.json pass-zipped-game-data)",
+  "options": {},
+  "scripts": []
+}
