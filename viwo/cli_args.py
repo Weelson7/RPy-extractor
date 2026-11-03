@@ -89,6 +89,9 @@ def tool_commands(command) -> None:
     rk.add_argument("--plan", action="store_true", help="only show what would be written")
     capture_command(command)
     analysis_command(command)
+    diff_command(command)
+    patch_command(command)
+    mod_command(command)
     sz = command("sanitize", "find empty, junk, duplicate, mislabeled or broken files")
     sz.add_argument("workspace", type=Path, help="a ViWo workspace")
     sz.add_argument("--apply", action="store_true", help="apply every safe action of the plan")
@@ -106,6 +109,37 @@ def tool_commands(command) -> None:
     dg.add_argument("--out", type=Path, help="zip path (default: in the logs folder)")
     ix = command("indexes", "per-game indexes: update to the latest release for this version")
     ix.add_argument("action", choices=["update"], help="update: fetch the latest indexes release")
+
+
+def patch_command(command) -> None:
+    """viwo patch (T1): byte and AOB patches into a marked patched copy."""
+    pt = command("patch", "apply a patch set (*.patch.json) to a patched copy of the game (T1)")
+    pt.add_argument("game", type=Path, help="the game folder (read-only)")
+    pt.add_argument("patchset", type=Path, help="the patch set file")
+    pt.add_argument(
+        "--out", type=Path, help="the patched copy (an existing one is patched in place)"
+    )
+    pt.add_argument("--plan", action="store_true", help="only check where each patch lands")
+
+
+def mod_command(command) -> None:
+    """viwo mod (T2): a patched copy's changes as a distributable zip, checked and applied."""
+    md = command("mod", "package a patched copy as a mod, check it, or apply it to a copy (T2)")
+    md.add_argument("action", choices=["pack", "check", "apply"], help="what to do with the mod")
+    md.add_argument("game", type=Path, help="the game folder (read-only)")
+    md.add_argument("mod", type=Path, help="the mod zip (written by pack)")
+    md.add_argument("--copy", type=Path, help="pack: the patched copy; apply: the copy to write")
+    md.add_argument("--name", default="", help="pack: the mod's name (default: the zip name)")
+
+
+def diff_command(command) -> None:
+    """viwo diff (A3): two Ghidra exports of one binary from two game versions."""
+    df = command("diff", "compare two analyses of a binary, function by function (A3)")
+    df.add_argument("old", type=Path, help=".analysis/ghidra-headless/<key> of the older version")
+    df.add_argument("new", type=Path, help="the same folder for the newer version")
+    df.add_argument(
+        "--out", type=Path, help="where diff.json and diff.txt go (default: beside new)"
+    )
 
 
 def analysis_command(command) -> None:

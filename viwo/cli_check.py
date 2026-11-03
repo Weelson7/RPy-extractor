@@ -130,3 +130,15 @@ def analyze_command(rt, args) -> Envelope:
         wait_for(opened["pid"])  # the tool is ViWo's child: it would die with this process
         return Envelope.success(opened)
     return Envelope.success(analyze(rt, req, printer(args)))
+
+
+def diff_command(args) -> Envelope:
+    """viwo diff OLD NEW: the A3 report beside the newer analysis unless --out says where."""
+    from viwo.core.analysis import diff
+
+    report = diff.diff(args.old, args.new)
+    out = diff.write(
+        report,
+        args.out or args.new.parent.parent / "diff" / f"{args.old.name}--{args.new.name}",
+    )
+    return Envelope.success({"summary": report["summary"], "outputDir": str(out)})

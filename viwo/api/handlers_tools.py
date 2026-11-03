@@ -14,7 +14,7 @@ from viwo.core.roundtrip import repack
 from viwo.core.sanitizer_rules import collect_rules
 from viwo.core.survey import survey
 
-from .app import App
+from .app import App, failure
 
 
 def survey_library(app: App, d: dict) -> dict:
@@ -99,6 +99,50 @@ def repack_workspace(app: App, d: dict) -> dict:
         return {"success": True, **repack(app.rt, folder, Path(out), sink, cancel)}
 
     return app.locked_job("repack", folder, run)
+
+
+def apply_patch_set(app: App, d: dict) -> dict:
+    """POST /api/patch {gamePath, patchSet, out, plan}: check (plan) or apply a T1 patch set
+    into a patched copy (job kind patch)."""
+    from viwo.core import patchsets
+
+    game, set_path = Path(str(d.get("gamePath", ""))), Path(str(d.get("patchSet", "")))
+    out = str(d.get("out", "")).strip()
+    if not game.is_dir() or not set_path.is_file():
+        return failure(ViwoError("not_found", "give an existing gamePath and patchSet file"))
+    try:
+        if d.get("plan") or not out:
+            return {"success": True, **patchsets.plan(game, patchsets.load(set_path))}
+    except ViwoError as exc:
+        return failure(exc)
+
+    def run(sink, cancel) -> dict:
+        return {"success": True, **patchsets.apply(app.rt, game, set_path, Path(out), sink)}
+
+    return app.locked_job("patch", Path(out), run)
+
+
+def mod_package(app: App, d: dict) -> dict:
+    """POST /api/mod {action: pack|check|apply, gamePath, mod, copy, name}: T2 mod packages
+    (pack and apply run as job kind mod)."""
+    from viwo.core import mods
+
+    action, game = str(d.get("action", "")), Path(str(d.get("gamePath", "")))
+    mod, copy = Path(str(d.get("mod", ""))), Path(str(d.get("copy", "") or "."))
+    if action not in ("pack", "check", "apply") or not game.is_dir():
+        return failure(ViwoError("invalid_request", "give action pack|check|apply and a gamePath"))
+    if action == "check":
+        try:
+            return {"success": True, **mods.check(game, mod)}
+        except ViwoError as exc:
+            return failure(exc)
+
+    def run(sink, cancel) -> dict:
+        if action == "pack":
+            return {"success": True, **mods.pack(game, copy, mod, str(d.get("name", "")))}
+        return {"success": True, **mods.apply(app.rt, game, mod, copy)}
+
+    return app.locked_job("mod", copy, run)
 
 
 def run_preflight(app: App, d: dict) -> dict:

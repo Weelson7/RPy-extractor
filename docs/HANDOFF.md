@@ -236,6 +236,48 @@ so `progress.js` stops parsing message text, let `list_window` return the type c
   (`pass-team-fortress-2` in `sqc/ctf.json`): missing numbered parts are skipped by the VPK
   backend, so a `_dir.vpk` with its first archives extracts what those archives hold.
 
+## 1.4.4 (review batch 5, antivirus exclusions, A2 complete, 2026-11-03)
+- Review of the 1.3.6-1.4.3 additions (one sub-agent, 13 findings, all applied): analysis
+  output emptied before a rerun and listed where it was written; `captureAfter` validated;
+  only the source read is "unreadable" (workspace errors raise); a user's RenderDoc update
+  choice kept; the trigger takes the newest RenderDoc target; one `run_tool` / `failed` for all
+  analyzers (`analysis/_process.py`); per-user config and data homes on the OS layer
+  (`config_home`, `data_home`; RenderDoc's Linux UI.config is under the data home); the pumps
+  of `run()` wait 1 s, not 10; tests for a grandchild holding the pipes, blocked files and the
+  slot step of the runner; both RenderDoc helpers read argv first, then the environment.
+- Temporary antivirus exclusions (owner's suggestion): `viwo/core/scan_exclusions.py` excludes
+  the job's workspace, source and temp folders for the duration of an extraction, a capture or
+  an analysis and removes exactly what it added; a journal per process undoes a crash at the
+  next job. OS layer: `exclude_from_scan` / `include_in_scan` (Windows Defender through its own
+  cmdlets when ViWo runs elevated, otherwise one note and scanning stays on; a no-op on Linux).
+  `[startup] av_exclusions = on` (default) / `off`, also in 11 SETTINGS.
+- A2 complete: `analysis.python` = unrpyc in the Ren'Py plugin (DDLC: 44/44 scripts in 1 s),
+  `analysis.gdscript` = GDRE Tools in the Godot plugin (`viwo/plugins/godot/gdscript.py`:
+  bytecode from the option, the executable's engine version, or the `.gdc` header; a GDRE
+  compiled 4.3 script decompiled back to its source). Engine-specific analyzers live in their
+  plugin next to the tool they reuse.
+- Detect It Easy pinned for Linux too (portable tarball, `diec.sh`).
+
+## 1.4.5 (A3 diff, T1 patch sets, T2 mod packages, 2026-11-03)
+- A3 version diff (`viwo/core/analysis/diff.py`, `viwo diff OLD NEW`, `POST /api/analysis/diff`):
+  the Ghidra export writes a mnemonic fingerprint per function (`functions.csv` gains a column);
+  unique names pair first, unique fingerprints pair the unnamed and overloaded ones across
+  relocation; `diff.txt` lists every function that is not `same`. BinDiff has no pinnable
+  release, so the diff is ViWo's own. Real run: Unity's crash handler from two Unity versions
+  (Baldi's and ULTRAKILL's), 2,463 and 2,580 functions: 981 same, 393 changed.
+- T1 patch sets (`viwo/core/patchsets.py`, `viwo patch GAME SET --plan|--out`, `POST /api/patch`,
+  job kind `patch`): offset patches check their original bytes, AOB patterns (`??` wildcards)
+  must match exactly once and are found again once applied (`already`), every write is read
+  back, an existing patched copy is patched in place so edits and patches stack.
+- T2 mod packages (`viwo/core/mods.py`, `viwo mod pack|check|apply`, `POST /api/mod`, job kind
+  `mod`): a patched copy's changed and added files as one zip with `viwo-mod.json` (original and
+  new hashes); `check` says fits / new / installed / differs; `apply` writes into a patched copy.
+- The patching arm's CLI handlers live in `viwo/cli_patch.py`; the CLI dispatcher is one table.
+- Real end to end on ULTRAKILL: an AOB patch set flipped `hdr-display-enabled` in `boot.config`
+  (offset 60) into a patched copy, `mod pack` made a one-file mod, `mod check` said `fits` on the
+  untouched install, `mod apply` wrote a second copy, and the patched copy then ran under the
+  unattended RenderDoc capture (frame 53710, 116 textures and shaders).
+
 ## Morning deliverable (owner, 2026-11-04)
 A PDF presentation of the project status, the sqc suite and the CTF flags (`sqc/ctf.json`,
 `sqc/17-ctf.md`: five basic objectives per game plus one per GB), with no known limitation or

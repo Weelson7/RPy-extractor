@@ -9,7 +9,9 @@ from .app import App
 from .handlers_analysis import run_analysis
 from .handlers_capture import run_capture
 from .handlers_tools import (
+    apply_patch_set,
     install_dependency,
+    mod_package,
     repack_workspace,
     run_preflight,
     sanitize_handler,
@@ -20,6 +22,8 @@ KINDS: dict[str, Callable[[App, dict], dict]] = {
     "extract": lambda app, params: app.extract(params),
     "survey": survey_library,
     "repack": repack_workspace,
+    "patch": apply_patch_set,
+    "mod": mod_package,
     "preflight": run_preflight,
     "install": install_dependency,
     "capture": run_capture,

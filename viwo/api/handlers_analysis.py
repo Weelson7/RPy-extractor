@@ -82,8 +82,23 @@ def open_handoff(app: App, d: dict) -> dict:
     return {"success": True, **open_in(app.rt, req, str(d.get("handoff", "")))}
 
 
+def diff_analyses(app: App, d: dict) -> dict:
+    """POST /api/analysis/diff {old, new}: two analysis folders, the report under
+    <workspace>/.analysis/diff/<old>--<new>/ (quick: no job)."""
+    from viwo.core.analysis import diff
+
+    old, new = Path(str(d.get("old", ""))), Path(str(d.get("new", "")))
+    try:
+        report = diff.diff(old, new)
+    except ViwoError as exc:
+        return failure(exc)
+    out = diff.write(report, app.workspace / ".analysis" / "diff" / f"{old.name}--{new.name}")
+    return {"success": True, "summary": report["summary"], "outputDir": str(out)}
+
+
 ANALYSIS_GET: dict[str, Callable[[App, dict], Any]] = {"/api/analysis/targets": analysis_targets}
 ANALYSIS_POST: dict[str, Callable[[App, dict], Any]] = {
     "/api/analysis/run": run_analysis,
     "/api/analysis/open": open_handoff,
+    "/api/analysis/diff": diff_analyses,
 }

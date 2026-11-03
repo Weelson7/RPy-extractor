@@ -55,6 +55,8 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(
             set(KINDS),
             {
+                "patch",
+                "mod",
                 "extract",
                 "survey",
                 "repack",

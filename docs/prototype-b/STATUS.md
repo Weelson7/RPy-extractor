@@ -128,6 +128,17 @@ dotnet target. unluac is wired and fake-tested; no game in the library ships Lua
 compiler (MSVC 2017), `Library: Unity Engine`, debug records, no packer or protector (the note);
 the Unreal shipping executable of the-basement adds Authenticode and the DirectX libraries.
 
+**Script bytecode (1.4.4, 2026-11-03):** `viwo analyze Test-games/DDLC-1.1.1-pc --target rpyc`
+decompiled the 44 loose `.rpyc` of Ren'Py's common library (unrpyc, one run, 1 s); a GDScript
+compiled to `.gdc` by GDRE Tools (`--bytecode=4.3.0`) came back through `--target gdscript`
+as its original source, the bytecode revision found from the file header alone.
+
+**Version diff and the patching arm (1.4.5, 2026-11-03):** Ghidra headless on the
+UnityCrashHandler64.exe of two Unity versions, then `viwo diff`: 981 functions same (most of
+them relocated), 393 changed, 1,089 removed, 1,361 added. On ULTRAKILL: `viwo patch` with an AOB
+pattern into a patched copy, `viwo mod pack / check / apply`, and the patched copy launched and
+captured unattended (116 files); the install was only read.
+
 ## Rules that hold everywhere
 
 - The game folder is only read: extraction copies, repack writes a separate marked copy, capture

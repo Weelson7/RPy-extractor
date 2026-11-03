@@ -6,9 +6,12 @@ import ghidra.app.decompiler.DecompileResults;
 import ghidra.app.script.GhidraScript;
 import ghidra.program.model.listing.Data;
 import ghidra.program.model.listing.Function;
+import ghidra.program.model.listing.InstructionIterator;
 import ghidra.program.model.symbol.Symbol;
 import java.io.File;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
 
 public class ViwoExport extends GhidraScript {
     @Override
@@ -27,12 +30,13 @@ public class ViwoExport extends GhidraScript {
         decomp.openProgram(currentProgram);
         try (PrintWriter f = new PrintWriter(new File(out, "functions.csv"), "UTF-8");
              PrintWriter c = new PrintWriter(new File(out, "decompiled.c"), "UTF-8")) {
-            f.println("address,name,size");
+            f.println("address,name,size,fingerprint");
             for (Function fn : currentProgram.getFunctionManager().getFunctions(true)) {
                 if (monitor.isCancelled()) {
                     break;
                 }
-                f.println(fn.getEntryPoint() + "," + fn.getName() + "," + fn.getBody().getNumAddresses());
+                f.println(fn.getEntryPoint() + "," + fn.getName() + "," + fn.getBody().getNumAddresses()
+                    + "," + fingerprint(fn));
                 DecompileResults r = decomp.decompileFunction(fn, 60, monitor);
                 if (r != null && r.decompileCompleted()) {
                     c.println("// " + fn.getEntryPoint() + " " + fn.getName());
@@ -42,6 +46,22 @@ public class ViwoExport extends GhidraScript {
         } finally {
             decomp.dispose();
         }
+    }
+
+    // Instruction mnemonics only (operands, addresses and immediates left out): the same code
+    // relocated or relinked in another build keeps its fingerprint (the A3 diff pairs on it).
+    private String fingerprint(Function fn) throws Exception {
+        StringBuilder sb = new StringBuilder();
+        InstructionIterator it = currentProgram.getListing().getInstructions(fn.getBody(), true);
+        while (it.hasNext()) {
+            sb.append(it.next().getMnemonicString()).append(' ');
+        }
+        byte[] hash = MessageDigest.getInstance("SHA-1").digest(sb.toString().getBytes(StandardCharsets.UTF_8));
+        StringBuilder hex = new StringBuilder();
+        for (int i = 0; i < 8; i++) {
+            hex.append(String.format("%02x", hash[i]));
+        }
+        return hex.toString();
     }
 
     private void strings(File out) throws Exception {

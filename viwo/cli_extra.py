@@ -103,52 +103,83 @@ def unpack_one(rt, archive: Path, out: Path, options: dict, sink) -> dict:
     }
 
 
+def patch_command(rt, args) -> Envelope:
+    from .cli_patch import patch
+
+    return patch(rt, args, event_printer(args))
+
+
+def mod_command(rt, args) -> Envelope:
+    from .cli_patch import mod
+
+    return mod(rt, args)
+
+
+def _repack(rt, args) -> Envelope:
+    from viwo.core.roundtrip import repack
+
+    if not args.plan and args.out is None:
+        raise ViwoError("invalid_request", "give --out <folder> (or --plan)")
+    note = event_printer(args)
+    return Envelope.success(repack(rt, args.workspace, args.out, note, apply=not args.plan))
+
+
+def _sanitize(rt, args) -> Envelope:
+    from viwo.core import sanitizer
+    from viwo.core.sanitizer_rules import collect_rules
+
+    if not args.workspace.is_dir():
+        raise ViwoError("not_found", f"workspace not found: {args.workspace}")
+    if args.undo:
+        return Envelope.success(sanitizer.undo(args.workspace, args.undo))
+    result = sanitizer.plan(args.workspace, rules=collect_rules(rt))
+    if args.apply:
+        result["applied"] = sanitizer.apply(args.workspace, result["planId"])
+    return Envelope.success(result)
+
+
+def _survey(rt, args) -> Envelope:
+    from viwo.core.survey import survey
+
+    if not args.folder.is_dir():
+        raise ViwoError("not_found", f"folder not found: {args.folder}")
+    quiet = args.json or getattr(args, "quiet", False)
+    note = None if quiet else (lambda g, i, n: print(f"[SURVEY] {i}/{n} {g}", file=sys.stderr))
+    return Envelope.success({"games": survey(rt, args.folder, args.deep, note)})
+
+
+def _diff(rt, args) -> Envelope:
+    from .cli_check import diff_command
+
+    return diff_command(args)
+
+
+def _analyze(rt, args) -> Envelope:
+    from .cli_check import analyze_command  # cli_check imports this module
+
+    return analyze_command(rt, args)
+
+
 def workspace_command(rt, args) -> Envelope:
-    """survey, repack and sanitize: commands that read or write a workspace / library."""
-    if args.command == "repack":
-        from viwo.core.roundtrip import repack
-
-        if not args.plan and args.out is None:
-            raise ViwoError("invalid_request", "give --out <folder> (or --plan)")
-        note = event_printer(args)
-        return Envelope.success(repack(rt, args.workspace, args.out, note, apply=not args.plan))
-    if args.command == "sanitize":
-        from viwo.core import sanitizer
-
-        if not args.workspace.is_dir():
-            raise ViwoError("not_found", f"workspace not found: {args.workspace}")
-        if args.undo:
-            return Envelope.success(sanitizer.undo(args.workspace, args.undo))
-        from viwo.core.sanitizer_rules import collect_rules
-
-        result = sanitizer.plan(args.workspace, rules=collect_rules(rt))
-        if args.apply:
-            result["applied"] = sanitizer.apply(args.workspace, result["planId"])
-        return Envelope.success(result)
-    if args.command == "survey":
-        from viwo.core.survey import survey
-
-        if not args.folder.is_dir():
-            raise ViwoError("not_found", f"folder not found: {args.folder}")
-        note = (
-            None
-            if args.json or getattr(args, "quiet", False)
-            else (lambda g, i, n: print(f"[SURVEY] {i}/{n} {g}", file=sys.stderr))
-        )
-        return Envelope.success({"games": survey(rt, args.folder, args.deep, note)})
-    if args.command == "capture":
-        return _capture(rt, args)
-    if args.command == "analyze":
-        from .cli_check import analyze_command  # cli_check imports this module
-
-        return analyze_command(rt, args)
-    if args.command == "config":
-        return _config(args)
-    if args.command == "install":
-        return _install(rt, args)
-    if args.command in ("diag", "indexes"):
-        return _system(rt, args)
-    raise ViwoError("invalid_request", f"unknown command {args.command}")
+    """The tool commands (survey, repack, sanitize, capture, analyze, diff, config, install,
+    diag, indexes): one handler each."""
+    handlers = {
+        "repack": _repack,
+        "sanitize": _sanitize,
+        "survey": _survey,
+        "capture": _capture,
+        "analyze": _analyze,
+        "diff": _diff,
+        "patch": patch_command,
+        "mod": mod_command,
+        "config": lambda _rt, a: _config(a),
+        "install": _install,
+        "diag": _system,
+        "indexes": _system,
+    }
+    if args.command not in handlers:
+        raise ViwoError("invalid_request", f"unknown command {args.command}")
+    return handlers[args.command](rt, args)
 
 
 def event_printer(args):

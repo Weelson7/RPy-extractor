@@ -107,7 +107,8 @@ def _reminders(rt, items: list[PlanItem]) -> list[str]:
     return []
 
 
-def _prepare(game: Path, target: Path, temp: Path, say=None) -> None:
+def prepare_copy(game: Path, target: Path, temp: Path, say=None) -> None:
+    """The patched copy (doc 18): a full copy of the game, marked, never a link into it."""
     refuse_writes_inside(game, workspace=target, temp_folder=temp)
     ticker = Ticker(say, "Copied game files:")
 
@@ -249,7 +250,7 @@ def _build(rt, game: Path, target: Path, items: list[PlanItem], report: dict, co
     work = Path(tempfile.mkdtemp(prefix="viwo-repack-", dir=rt.temp_root))
     try:
         say(ProgressEvent(f"Copying the game to {target}", "info", "core", "repack"))
-        _prepare(game, target, rt.temp_root, teller(say, "repack") or (lambda m: None))
+        prepare_copy(game, target, rt.temp_root, teller(say, "repack") or (lambda m: None))
         ctx = _ctx(rt, target, work, sink, cancel)
         (work / "scratch").mkdir(parents=True, exist_ok=True)
         report["results"] = []

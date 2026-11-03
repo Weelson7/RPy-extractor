@@ -63,6 +63,13 @@ Preconditions: `viwo install die` (25 MB).
    Themida/VMProtect/Denuvo-wrapped executable the notes name the protector and the run record
    keeps it (`notes`). `--slot analysis.script` on the same target answers `unavailable`.
 
+## SQC-AN-08 (P1) Ren'Py and GDScript bytecode
+1. `viwo analyze Test-games\DDLC-1.1.1-pc --workspace C:\sqc\_ws\an --target rpyc`: backend
+   `unrpyc-analyze`, `.analysis\unrpyc-analyze\rpyc\` holds 44 `.rpy`, the note `44/44 scripts`.
+2. Make a `.gdc`: `third_party\gdre\gdre_tools.exe --headless --compile=main.gd --bytecode=4.3.0
+   --output=C:\sqc\gd`, then `viwo analyze C:\sqc\gd --workspace C:\sqc\_ws\an --target gdscript`:
+   backend `gdre-decompile`, `main.gd` equals the source, the note names `bytecode 4.3.0`.
+
 | ID | Result | Version | Notes |
 |----|--------|---------|-------|
 | SQC-AN-01 | | | |
@@ -71,4 +78,5 @@ Preconditions: `viwo install die` (25 MB).
 | SQC-AN-04 | | | |
 | SQC-AN-05 | PASS | 1.4.0 | agent, 2026-11-03: Baldi 646 .cs in 3 s; library IL2CPP title 80 stubs in 8 s; chain listed |
 | SQC-AN-06 | | | fake-tool test only (no Lua-bytecode game in the library) |
+| SQC-AN-08 | PASS | 1.4.4 | agent, 2026-11-03: DDLC 44/44; GDRE 4.3 round trip |
 | SQC-AN-07 | PASS | 1.4.1 | agent, 2026-11-03: ULTRAKILL.exe (MSVC 2017, Unity Engine, no protector) and the Unreal shipping exe (Authenticode) |
