@@ -29,7 +29,12 @@ class CaptureApiTests(unittest.TestCase):
         rdpy = script(
             root,
             "fake_rdpy",
-            FAKE_RDPY.format(python=sys.executable, known=str(self.known), fresh=str(self.fresh)),
+            FAKE_RDPY.format(
+                python=sys.executable,
+                known=str(self.known),
+                fresh=str(self.fresh),
+                marker=str(root / "trigger.ran"),
+            ),
         )
         ini = write_ini(
             root,

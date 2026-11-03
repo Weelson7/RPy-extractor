@@ -14,6 +14,8 @@ function mount(root) {
     spellcheck: "false", oninput: () => bar(), onkeydown: (e) => e.key === "Enter" && check() });
   el.exe = h("input", { class: "input mono grow", id: "cap-exe", placeholder: "/path/to/game/Game.exe", value: pref("capExe") || "",
     spellcheck: "false", oninput: () => { pref("capExe", el.exe.value.trim()); bar(); } });
+  el.auto = h("input", { class: "input mono", id: "cap-auto", type: "number", min: "0", step: "5", value: pref("capAuto") || "0",
+    oninput: () => pref("capAuto", el.auto.value) });
   el.before = h("div", {});
   el.checkBtn = btn("CHECK", (e) => busy(e.currentTarget, check), "");
   el.prog = jobProgress("capture", { logClass: "mini", onStatus: (t) => { if (S.running && t) el.sum.textContent = t; } });
@@ -48,6 +50,8 @@ function targetPanel() {
     h("div", { class: "row" }, el.game, browseGame),
     h("label", { class: "lbl", for: "cap-exe" }, "EXECUTABLE TO LAUNCH (INSIDE THAT FOLDER)"),
     h("div", { class: "row" }, el.exe, browseExe),
+    h("label", { class: "lbl", for: "cap-auto" }, "AUTO-CAPTURE AFTER (SECONDS; 0 = PRESS F12 YOURSELF)"),
+    h("div", { class: "row" }, el.auto, h("span", { class: "dim small" }, "unattended: one frame is captured, then the game is stopped")),
     h("p", { class: "note" }, "The captures go to the active workspace: ", (el.wsNote = h("code", { class: "mono" }, S.ws || "—")), ". Switch it in the top bar if you want them elsewhere."));
 }
 
@@ -113,7 +117,7 @@ async function run() {
   el.prog.log.append(logLine(`// CAPTURE :: ${exePath} → ${S.ws}`));
   el.progPanel.scrollIntoView({ block: "nearest" });
   try {
-    const res = await api.capture({ gamePath, exePath, confirmed: true });
+    const res = await api.capture({ gamePath, exePath, confirmed: true, captureAfter: Number(el.auto.value) || 0 });
     await el.prog.finish("ok", `${res.gathered} FILES · ${res.newVsStatic} NEW VS STATIC`);
     fill(el.result, renderResult(res));
     toast(`Captured ${res.gathered} file(s), ${res.newVsStatic} not seen by static extraction.`, "ok");

@@ -54,6 +54,27 @@ def core_commands(command) -> None:
     tool_commands(command)
 
 
+def capture_command(command) -> None:
+    """capture: attended (F12) or unattended (--auto SECONDS: one frame, then the game stops)."""
+    cp = command("capture", "runtime GPU capture with RenderDoc (opt-in; see --help)")
+    cp.description = (
+        "Runs the game under RenderDoc and harvests every capture you take (F12) into the "
+        "workspace. Opt-in: add `capture` to [startup] features in the ini and pass --confirm "
+        "once per game. Anti-cheat and online titles only produce warnings; you are responsible."
+    )
+    cp.add_argument("game", type=Path, help="the game folder")
+    cp.add_argument("--exe", type=Path, required=True, help="the game executable to launch")
+    cp.add_argument("--workspace", type=Path, required=True, help="where captures are gathered")
+    cp.add_argument("--confirm", action="store_true", help=f"I confirm: {CONFIRMATION}")
+    cp.add_argument(
+        "--auto",
+        type=float,
+        default=0,
+        metavar="SECONDS",
+        help="unattended: capture one frame after SECONDS, then stop the game",
+    )
+
+
 def tool_commands(command) -> None:
     """survey, repack, capture, sanitize, config, install, diag, indexes."""
     cf = command("config", "generate the distro config files, or check config files strictly")
@@ -66,16 +87,7 @@ def tool_commands(command) -> None:
     rk.add_argument("workspace", type=Path, help="the workspace holding your edited files")
     rk.add_argument("--out", type=Path, help="target folder for the patched copy")
     rk.add_argument("--plan", action="store_true", help="only show what would be written")
-    cp = command("capture", "runtime GPU capture with RenderDoc (opt-in; see --help)")
-    cp.description = (
-        "Runs the game under RenderDoc and harvests every capture you take (F12) into the "
-        "workspace. Opt-in: add `capture` to [startup] features in the ini and pass --confirm "
-        "once per game. Anti-cheat and online titles only produce warnings; you are responsible."
-    )
-    cp.add_argument("game", type=Path, help="the game folder")
-    cp.add_argument("--exe", type=Path, required=True, help="the game executable to launch")
-    cp.add_argument("--workspace", type=Path, required=True, help="where captures are gathered")
-    cp.add_argument("--confirm", action="store_true", help=f"I confirm: {CONFIRMATION}")
+    capture_command(command)
     analysis_command(command)
     sz = command("sanitize", "find empty, junk, duplicate, mislabeled or broken files")
     sz.add_argument("workspace", type=Path, help="a ViWo workspace")

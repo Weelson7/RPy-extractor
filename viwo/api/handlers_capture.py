@@ -56,7 +56,8 @@ def run_capture(app: App, d: dict) -> dict:
     workspace = app.workspace
     if not workspace.exists() or not any(workspace.iterdir()):
         claim(workspace)  # the lock file lands inside it before capture() looks at it
-    request = CaptureRequest(game, exe, workspace, bool(d.get("confirmed")))
+    after = float(d.get("captureAfter") or 0)
+    request = CaptureRequest(game, exe, workspace, bool(d.get("confirmed")), after)
 
     def run(sink, cancel) -> dict:
         return {"success": True, **capture(app.rt, request, sink, cancel)}

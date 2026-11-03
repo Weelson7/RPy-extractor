@@ -4,13 +4,47 @@ the module. Runs as a separate process; not imported by ViWo.
 
 Usage: python rd_harvest.py <capture.rdc> <output folder>
        (or VIWO_RD_CAPTURE / VIWO_RD_OUT in the environment, since qrenderdoc passes no argv)
-Writes every texture of the capture as tex_<resource id>.png.
+Writes every texture of the capture as tex_<resource id>.png and the disassembly of every
+shader the frame used as shader_<resource id>_<stage>.txt.
 """
 
 import os
 import sys
 
 import renderdoc as rd  # type: ignore  # provided by the RenderDoc install
+
+STAGES = ("Vertex", "Hull", "Domain", "Geometry", "Pixel", "Compute")
+
+
+def actions(roots):
+    for action in roots:
+        yield action
+        yield from actions(action.children)
+
+
+def shaders(controller, out: str) -> None:
+    """One disassembly per shader object, in the API's own target (DXBC, SPIR-V, GLSL)."""
+    seen = set()
+    for action in actions(controller.GetRootActions()):
+        if not action.flags & (rd.ActionFlags.Drawcall | rd.ActionFlags.Dispatch):
+            continue
+        controller.SetFrameEvent(action.eventId, False)
+        state = controller.GetPipelineState()
+        for name in STAGES:
+            stage = getattr(rd.ShaderStage, name)
+            refl = state.GetShaderReflection(stage)
+            if refl is None or refl.resourceId in seen:
+                continue
+            seen.add(refl.resourceId)
+            compute = name == "Compute"
+            pipe = (
+                state.GetComputePipelineObject() if compute else state.GetGraphicsPipelineObject()
+            )
+            target = controller.GetDisassemblyTargets(True)[0]
+            text = controller.DisassembleShader(pipe, refl, target)
+            path = os.path.join(out, f"shader_{int(refl.resourceId)}_{name.lower()}.txt")
+            with open(path, "w", encoding="utf-8") as fh:
+                fh.write(text)
 
 
 def main(capture: str, out: str) -> int:
@@ -30,6 +64,7 @@ def main(capture: str, out: str) -> int:
         save.mip = 0
         save.alpha = rd.AlphaMapping.Preserve
         controller.SaveTexture(save, os.path.join(out, f"tex_{int(tex.resourceId)}.png"))
+    shaders(controller, out)
     controller.Shutdown()
     cap.Shutdown()
     rd.ShutdownReplay()

@@ -2,30 +2,39 @@
 
 from __future__ import annotations
 
+import json
+import os
 import stat
 import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from tests.helpers import make_png, runtime, tree_hashes
 from viwo.contracts import CancelToken, ExtractionRequest, ViwoError
-from viwo.core.capture import CaptureRequest, capture
+from viwo.core.capture import CaptureRequest, capture, renderdoc
 from viwo.core.capture.journal import Journal, pending
 from viwo.core.capture.policy import check
+from viwo.core.capture.renderdoc import quiet_ui
 from viwo.core.pipeline.runner import extract
 
 FAKE_RDCMD = """#!{python}
 import sys
 from pathlib import Path
 args = sys.argv[1:]
-assert args[:2] == ["capture", "-w"], args
+assert args[:2] == ["capture", "-w"], args  # -w in both modes: the game is in the tree
 template = Path(args[args.index("-c") + 1])
 Path(str(template) + "_frame120.rdc").write_bytes(b"RDOC")
 """
 FAKE_RDPY = """#!{python}
-import sys, shutil
+import os, sys, shutil, time
 from pathlib import Path
+if sys.argv[1].endswith("rd_trigger.py"):  # unattended: the trigger asks for the frame
+    assert sys.argv[2] == os.environ["VIWO_RD_DELAY"], sys.argv
+    Path({marker!r}).write_text("ran")
+    time.sleep(0.5)
+    sys.exit(0)
 helper, rdc, out = sys.argv[1:4]
 assert helper.endswith("rd_harvest.py")
 Path(out).mkdir(parents=True, exist_ok=True)
@@ -43,6 +52,21 @@ def script(folder: Path, name: str, body: str) -> Path:
         wrapper.write_text(f'@"{sys.executable}" "{path}" %*\r\n')
         return wrapper
     return path
+
+
+class QuietUiTests(unittest.TestCase):
+    def test_first_run_prompts_answered_once_user_choice_kept(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {"APPDATA": tmp}):
+            quiet_ui()
+            cfg = json.loads(renderdoc.ui_config().read_text(encoding="utf-8"))
+            self.assertTrue(cfg["Analytics_ManualCheck"] and cfg["Tips_HasSeenFirst"])
+            cfg.update({"Analytics_TotalOptOut": False, "Tips_HasSeenFirst": False})
+            renderdoc.ui_config().write_text(json.dumps(cfg), encoding="utf-8")
+            quiet_ui()
+            cfg = json.loads(renderdoc.ui_config().read_text(encoding="utf-8"))
+            self.assertEqual(
+                (cfg["Analytics_TotalOptOut"], cfg["Tips_HasSeenFirst"]), (False, True)
+            )
 
 
 class PolicyTests(unittest.TestCase):
@@ -129,7 +153,12 @@ class CaptureRunTests(unittest.TestCase):
             rdpy = script(
                 root,
                 "fake_rdpy",
-                FAKE_RDPY.format(python=sys.executable, known=str(known), fresh=str(fresh)),
+                FAKE_RDPY.format(
+                    python=sys.executable,
+                    known=str(known),
+                    fresh=str(fresh),
+                    marker=str(root / "trigger.ran"),
+                ),
             )
             ini = "[startup]\nfeatures = extraction, capture\n"
             ini += f"[tools]\nrenderdoccmd = {rdcmd}\nrdpython = {rdpy}\n"
@@ -143,6 +172,9 @@ class CaptureRunTests(unittest.TestCase):
             )  # tex_1 = title.png
             self.assertEqual(report["new"], ["png/tex_2.png"])
             self.assertEqual(tree_hashes(game), before)
+            auto = CaptureRequest(game, game / "Game.exe", ws, True, capture_after=0.2)
+            self.assertEqual(capture(rt, auto)["alreadyStatic"], 2)  # unattended: trigger + stop
+            self.assertTrue((root / "trigger.ran").is_file())
             foreign = root / "foreign"
             foreign.mkdir()
             (foreign / "mine.txt").write_text("x")

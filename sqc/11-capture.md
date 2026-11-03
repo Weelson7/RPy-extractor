@@ -4,7 +4,8 @@ Area code `CAP`. Philosophy: no policy boundaries. The only gate is the `capture
 in the ini and one confirmation; anti-cheat markers, online titles and terms-of-service-sensitive
 plugins produce **warnings, never refusals**. Fixture: `capture` (`clean\`, `anticheat\`,
 `Apex Legends\`, `outside.exe`) and `C:\sqc\ini\capture-on.ini`. RenderDoc from
-`third_party\renderdoccmd\` (1.47): `renderdoccmd` launches, `qrenderdoc --py` harvests.
+`third_party\renderdoccmd\` (1.47): `renderdoccmd` launches, `qrenderdoc --py` triggers
+(`--auto`) and harvests; its first-run prompts are pre-answered by ViWo (minimal-prompt rule).
 
 ## SQC-CAP-01 (P0) Feature switch off: refused with the hint
 
@@ -62,20 +63,22 @@ Expected: warnings include `online/competitive title: Overwatch (online only)` a
 `terms-of-service-sensitive plugin: overwatch`; the launch happens (and fails on the fake exe with
 `no capture was taken`); code never `refused`.
 
-## SQC-CAP-06 (P1, OPERATOR) Real capture and harvest on a GPU game
+## SQC-CAP-06 (P1) Unattended capture and harvest on a GPU game
 
-Preconditions: a desktop with a GPU, a game you own that uses D3D11/12 or Vulkan (an offline
-single-player title), `capture` in `[startup] features`, the pinned RenderDoc installed.
+Preconditions: a desktop with a GPU, a D3D11/12 or Vulkan title (ULTRAKILL Prelude in
+`Test-games\ultrakill-prelude`), `capture` in `[startup] features`, the pinned RenderDoc installed,
+a pristine `%APPDATA%\qrenderdoc\UI.config` (delete it to check the pre-answering).
 
 Steps:
-1. `viwo capture "<game>" --exe "<game>\<Game>.exe" --workspace C:\sqc\_ws\real --confirm`
-2. In the game press F12 (or PrtScn) twice at different scenes, quit the game.
+1. `viwo --ini capture.ini capture Test-games\ultrakill-prelude --exe Test-games\ultrakill-prelude\ULTRAKILL.exe --workspace C:\sqc\_ws\real --confirm --auto 45`
+2. Do nothing: no F12, no dialog, no quitting.
 
-Expected: `renderdoccmd capture -w -d <game> -c <captures>\viwo <exe>` is what runs (activity
-log); two `.rdc` files; for each: `Harvested <name>.rdc: ok` through `qrenderdoc.exe --py
-rd_harvest.py` with `VIWO_RD_CAPTURE` / `VIWO_RD_OUT` in the environment; PNG textures land in
-`png\` with provenance `capture`; the report prints `Captured N file(s) with renderdoc; M not
-found by static extraction`; the game install is unchanged.
+Expected: `Launching ULTRAKILL.exe under RenderDoc; one frame captured after 45 s`, then
+`Trigger helper exit 0; stopped ULTRAKILL.exe` (the game is gone from the process list), one
+`Harvested viwo_frame<N>.rdc: ok`, PNG textures in `png\` and `shader_<id>_<stage>.txt`
+disassemblies in `txt\`, all with provenance `capture`; `Captured N file(s) with renderdoc; M not
+found by static extraction`; `UI.config` now holds `Analytics_ManualCheck: true`; the game install
+is unchanged. The attended variant (no `--auto`, press F12, quit) harvests the same way.
 
 ## SQC-CAP-07 (P1, OPERATOR) Real capture on a game with anti-cheat, offline
 
@@ -96,5 +99,5 @@ refusal). Record the outcome in the notes.
 | SQC-CAP-03 | | | | |
 | SQC-CAP-04 | | | | |
 | SQC-CAP-05 | | | | |
-| SQC-CAP-06 | | OPERATOR | | |
+| SQC-CAP-06 | PASS | 1.3.6: 89 textures + 30 shaders from ULTRAKILL, frame 7056, nothing pressed | agent | 2026-11-03 |
 | SQC-CAP-07 | | OPERATOR | | |

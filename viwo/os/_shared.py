@@ -84,20 +84,12 @@ class SubprocessRunner(ProcessRunner):
         )
 
     def run(self, argv, cwd=None, timeout=None, cancel=None, env=None, on_line=None):
+        """Output is read by pump threads and the call returns when the process exits: a
+        grandchild that keeps the pipes open (the adb server qrenderdoc leaves behind) cannot
+        hang it the way `communicate()` would."""
         proc = self._popen(argv, cwd, env)
         deadline = time.monotonic() + timeout if timeout else None
-        if on_line is not None:
-            return self._stream(proc, deadline, cancel, on_line)
-        while True:
-            try:
-                out, err = proc.communicate(timeout=0.2)
-                return ProcessResult(proc.returncode, out or "", err or "")
-            except subprocess.TimeoutExpired:
-                expired = deadline is not None and time.monotonic() > deadline
-                if expired or (cancel is not None and cancel.cancelled):
-                    self._kill_tree(proc)
-                    out, err = proc.communicate()
-                    return ProcessResult(-9, out or "", err or "", timed_out=True)
+        return self._stream(proc, deadline, cancel, on_line or (lambda line: None))
 
     def _stream(self, proc, deadline, cancel, on_line) -> ProcessResult:
         """Capture stdout/stderr while handing every line to on_line as it arrives."""

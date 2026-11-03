@@ -37,7 +37,9 @@ responsibility with the user.</p>
 <p>{{commit_count}} commits from v1.2.1 to v{{version}}: contract conformance closed (592 clauses,
 zero defects), the static analysis arm shipped and verified on a real binary, four container
 plugins for the owner's library, four simplicity-and-boundary review batches applied, CTF flags in
-the integration runner, every installed game run.</p>
+the integration runner, every installed game run, unattended RenderDoc capture (one frame, textures and
+shaders, nothing pressed) verified on a real GPU game, and the minimal-prompt rule: ViWo pre-answers
+every third-party prompt it can.</p>
 </section>
 
 <section>
@@ -84,7 +86,7 @@ not a gap.</p>
 <ul>
 <li>A2: ilspycmd, Cpp2IL and unluac analyzers behind <code>analysis.dotnet / il2cpp / script</code>.</li>
 <li>A3: library signatures, BinDiff version diffing, protector identification.</li>
-<li>D1-D3: RenderDoc on a desktop GPU game, engine agents, debugger and Cheat Engine handoffs.</li>
+<li>D2-D3: engine runtime agents, debugger and Cheat Engine handoffs (D1 shipped: unattended RenderDoc capture with shader disassembly, verified on ULTRAKILL).</li>
 <li>T1-T2: byte and AOB patch sets, mod packaging.</li>
 <li>Typed decoders for the new containers (SLP to PNG, TPAC textures, CR2W names from a community hash list).</li>
 </ul>

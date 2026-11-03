@@ -60,6 +60,7 @@ class CaptureRequest:
     exe: Path
     workspace: Path
     confirmed: bool = False
+    capture_after: float = 0.0  # seconds; > 0 = unattended: one frame, then the game is stopped
 
 
 def _restore_pending(rt, say) -> None:
@@ -97,6 +98,7 @@ def _run(rt, req: CaptureRequest, known: set[str], sink, cancel) -> tuple:
         ctx = core_context(rt, "capture", req.game, work, sink, cancel)
         ctx.staging.mkdir(parents=True)
         spec = {"exe": str(req.exe), "workdir": str(req.exe.parent), "args": []}
+        spec["capture_after"] = req.capture_after
         outcome, used = run_with_failover(
             binding, rt.backends, lambda b: b.capture(spec, ctx.staging, ctx)
         )

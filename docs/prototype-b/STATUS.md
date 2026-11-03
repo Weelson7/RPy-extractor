@@ -11,7 +11,7 @@ This file records what Prototype B delivered, what is verified and how, and what
 | M8 | custom-engine showcase: Doom WAD (Freedoom on CI); Overwatch via DataTool (tos-sensitive, operator-tested); QuickBMS bridge for any scripted format | done |
 | M9 | round trip into a verified patched copy: loose override, Ren'Py RPA rebuild, Godot PCK, Unreal `_P.pak`, zip, Unity (TextAsset / Texture2D), RPG Maker MV/MZ | done |
 | M10 | mixed mode over every plugin pair; sanitizer phase 1 (plan / apply safe / undo) | done |
-| M11 | runtime capture pilot: warnings policy (no refusals), journaled overlay, RenderDoc capture + harvest, diff vs static | done (RenderDoc itself not run, see below) |
+| M11 | runtime capture pilot: warnings policy (no refusals), journaled overlay, RenderDoc capture + harvest, diff vs static | done; RenderDoc verified unattended on ULTRAKILL (1.3.6, below) |
 | D21 | coverage ladder: carver, zlib/gzip streams, decoders, survey, more engines | done |
 
 Engines added in B: Unreal, Doom engine, RPG Maker (XP/VX/VX Ace archives, MV/MZ media), KiriKiri
@@ -69,11 +69,7 @@ noise), streams, survey, sanitizer, round trip, capture policy, the journal with
 
 | Item | Why | How it gets verified |
 |------|-----|----------------------|
-| Unity round trip on a real Unity file | no redistributable Unity fixture; tested with a stateful fake UnityPy | real-game check (D20) |
-| RenderDoc capture / harvest | no GPU on CI; tested with fake `renderdoccmd` and fake RenderDoc Python | operator run on a desktop |
-| QuickBMS flags (`-o -Y script input output`) | binary host not reachable from this environment | first real use / CI if a mirror is allowed |
 | DataTool modes on a real install | Overwatch is tos-sensitive | independent operator (doc 17.4b) |
-| Ghidra GUI handoff on a real project | the headless run is verified (below); the GUI launch is tested with a fake `ghidraRun` | 12 ANALYSIS > CONTINUE IN GHIDRA on a desktop (sqc 16) |
 | Real commercial games end to end | D20: after Prototype B; eleven free titles verified on 2026-11-03 (below) | the operator for tos-sensitive titles |
 
 ## Real-game evidence (2026-11-03, `tools/integration_games.py`, Windows 11)
@@ -91,6 +87,15 @@ ran on each; 11/11 passed (`viwo-data/integration/report.md`, not committed).
 | Ubu 2.0b | KiriKiri 90 % | 3/3 XP3, 1,984 files |
 | GodotOne, "MAD game" | Godot 60 % | bare export templates: the PE `pck` section is empty and no `.pck` is beside the exe; reported as "no PCK data" (1.2.2) |
 
+Round trip on real games (2026-11-03): Burning Snow (Unity): one texture edited in the workspace,
+`viwo repack` rebuilt `globalgamemanagers.assets` through UnityPy into a patched copy, verified
+(edited object re-read, the rest kept by the in-place save). Ghidra GUI handoff: the JVM started
+as ViWo's child on the ULTRAKILL project, alive after 40 s, gone after `kill()`; the owner saw the
+window and accepted Ghidra's licence dialog.
+
+QuickBMS 0.12 (pinned): `quickbms -o -Y <script> <archive> <out>` ran on a zip with a one-line
+script and wrote the member (2026-11-03); the flags row left "not verified".
+
 Static analysis (1.3, Ghidra 12.2 + Temurin 25 installed by `viwo install ghidra`):
 `viwo analyze Test-games/ultrakill-prelude --target ultrakill-exe` ran headless in about a minute
 and wrote `functions.csv` (324 functions), `decompiled.c` (11,473 lines), `strings.txt`,
@@ -100,6 +105,17 @@ Found on the way: `cmd /c` drops the quotes of a batch path with spaces (`call` 
 
 retoc on real UE5 IoStore data and the Unreal `.pak` path are verified by the two UE5 titles;
 the Godot PCK path still waits for a title that ships its data (`sqc/games.md`).
+
+**Runtime capture, unattended (1.3.6, 2026-11-03, RTX 4060 laptop):** `viwo capture
+Test-games/ultrakill-prelude --exe ULTRAKILL.exe --workspace viwo-data/cap-ws --confirm --auto 45`
+launched the game under `renderdoccmd capture -w`, `rd_trigger.py` (through `qrenderdoc --py`)
+found the target-control port, asked for one frame after 45 s (`viwo_frame7056.rdc`), the game was
+stopped by the tree kill, and the harvest wrote 89 textures (PNG) plus 30 shader disassemblies
+(`txt/shader_<id>_<stage>.txt`, DXBC `vs_4_0` / `ps_4_0`): 119 files, none seen by static
+extraction. Found on the way: qrenderdoc's first-run analytics prompt is a modal that blocks
+`--py` forever (pre-answered by `quiet_ui`, the minimal-prompt rule), and the adb server
+qrenderdoc leaves behind keeps the output pipes open (the OS layer now reads through pump threads
+and returns on exit). The attended path (F12) uses the same launch and harvest.
 
 ## Rules that hold everywhere
 

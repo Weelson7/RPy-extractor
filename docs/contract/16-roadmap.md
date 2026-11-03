@@ -87,7 +87,7 @@ time.
 | Static | A2 | managed/bytecode: `analysis.dotnet`, `analysis.il2cpp`, `analysis.script` | ilspycmd, Cpp2IL, unluac | §5, §13 |
 | Static | A3 | `analysis.signatures`, `analysis.diff` (update resilience), `analysis.protector` | Ghidra FID, BinDiff, DIE | §4, §14, §16 |
 | Static | A4 | `analysis.emulate`, `analysis.symbolic` (isolated routines) | Unicorn/Qiling, angr | §15 |
-| Dynamic | D1 | capture pilot hardened to a real GPU; shader disasm | RenderDoc | §11 |
+| Dynamic | D1 (**shipped 1.3.6**: `--auto` unattended trigger, shader disassembly, verified on ULTRAKILL) | capture pilot hardened to a real GPU; shader disasm | RenderDoc | §11 |
 | Dynamic | D2 | `runtime.<engine>` agents feeding static extraction; `capture.audio` | BepInEx, UE4SS, Frida | §5, §11 |
 | Dynamic | D3 | `debug.*`, `trace.*`, `memory.*` headless backends + handoffs | x64dbg, Frida, Cheat Engine | §6, §7, §8 |
 | Dynamic | D4 | `hook.inject` loader + hot-reload; `net.*` own-traffic tooling; `profile.*` | our loader, tshark, Tracy | §9, §10, §20 |

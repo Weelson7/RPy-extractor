@@ -3,6 +3,8 @@ captures with RenderDoc's in-game hotkey (F12 / PrtScn); every capture is harves
 
 from __future__ import annotations
 
+import json
+import os
 from pathlib import Path
 
 from viwo.contracts.slots import Backend
@@ -23,10 +25,32 @@ RD_PYTHON = DependencySpec(
     hint="set [tools] rdpython = the Python that can import RenderDoc's renderdoc module",
 )
 HELPER = Path(__file__).with_name("rd_harvest.py")
+TRIGGER = Path(__file__).with_name("rd_trigger.py")
 
 
 OFFLINE_ENV = {"VIWO_OFFLINE": "1"}  # doc 11.6: the hint runtime agents read; RenderDoc itself
 # makes no network use (network = "none")
+
+
+def ui_config() -> Path:
+    base = os.environ.get("APPDATA") or os.environ.get("XDG_CONFIG_HOME") or "~/.config"
+    return Path(base).expanduser() / "qrenderdoc" / "UI.config"
+
+
+def quiet_ui() -> None:
+    """Answer qrenderdoc's first-run prompts (analytics, tips, update check) once: they are
+    modal and would block `qrenderdoc --py` forever in an unattended run. A choice the user
+    already made about analytics is kept."""
+    path = ui_config()
+    try:
+        cfg = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+        if not cfg.get("Analytics_ManualCheck"):
+            cfg["Analytics_ManualCheck"] = cfg["Analytics_TotalOptOut"] = True
+        cfg["Tips_HasSeenFirst"], cfg["CheckUpdate_AllowChecks"] = True, False
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(cfg, indent=4), encoding="utf-8")
+    except (OSError, ValueError):
+        pass  # the prompt may then block; the trigger timeout reports it
 
 
 class RenderDocCapture(Backend):
@@ -43,6 +67,7 @@ class RenderDocCapture(Backend):
         cmd, py = ctx.os.tools.locate(RENDERDOCCMD), ctx.os.tools.locate(RD_PYTHON)
         if cmd is None or py is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=RENDERDOCCMD.hint)
+        quiet_ui()
         captures = staging.parent / "captures"
         captures.mkdir(parents=True, exist_ok=True)
         argv = [
@@ -54,22 +79,46 @@ class RenderDocCapture(Backend):
             "-c",
             str(captures / "viwo"),
         ]
-        ctx.log(
-            f"Launching {Path(spec['exe']).name} under RenderDoc: capture with F12 / PrtScn, "
-            "then quit the game",
-            stage="capture",
-        )
-        run = ctx.os.process.run(
-            argv + [spec["exe"], *spec.get("args", [])],
-            timeout=12 * 3600,
-            cancel=ctx.cancel,
-            env={**OFFLINE_ENV, **spec.get("env", {})},
-        )
+        argv += [spec["exe"], *spec.get("args", [])]
+        env = {**OFFLINE_ENV, **spec.get("env", {})}
+        after = float(spec.get("capture_after") or 0)
+        if after > 0:
+            error = self._auto(argv, env, after, py, ctx)
+        else:
+            ctx.log(
+                f"Launching {Path(spec['exe']).name} under RenderDoc: capture with F12 / PrtScn, "
+                "then quit the game",
+                stage="capture",
+            )
+            run = ctx.os.process.run(argv, timeout=12 * 3600, cancel=ctx.cancel, env=env)
+            error = (run.stderr or "no capture was taken")[-300:]
         files = sorted(captures.glob("*.rdc"))
         if not files:
-            return Outcome(OutcomeKind.FAILED, error=(run.stderr or "no capture was taken")[-300:])
+            return Outcome(OutcomeKind.FAILED, error=error)
         harvested = self._harvest(py, files, staging, ctx)
         return Outcome(OutcomeKind.OK, harvested, notes=(f"{len(files)} capture(s)",))
+
+    @staticmethod
+    def _auto(argv: list[str], env: dict, after: float, py, ctx) -> str:
+        """Unattended: the game runs as a tracked child, the trigger helper asks RenderDoc for
+        one frame after `after` seconds, then the child is stopped (tree kill)."""
+        exe = Path(argv[-1]).name if argv else "the game"
+        ctx.log(
+            f"Launching {exe} under RenderDoc; one frame captured after {after:.0f} s",
+            stage="capture",
+        )
+        child = ctx.os.process.launch(argv, env=env)
+        try:
+            done = ctx.os.process.run(
+                [*py.argv_prefix, str(TRIGGER), str(after), str(after + 120)],
+                timeout=after + 180,
+                cancel=ctx.cancel,
+                env={"VIWO_RD_DELAY": str(after), "VIWO_RD_TIMEOUT": str(after + 120)},
+            )
+        finally:
+            child.kill()
+        ctx.log(f"Trigger helper exit {done.returncode}; stopped {exe}", stage="capture")
+        return (done.stderr or done.stdout or "the trigger helper took no capture")[-300:]
 
     @staticmethod
     def _harvest(py, files: list[Path], staging: Path, ctx) -> int:

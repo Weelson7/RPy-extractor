@@ -49,6 +49,22 @@ def project_dir(staging: Path) -> Path:
     return workspace.parent / f"{workspace.name}.ghidra" / staging.name
 
 
+def quiet_gui(root: Path) -> None:
+    """Pre-answer the GUI's first-run prompts (user agreement, tip of the day) in Ghidra's
+    per-version preferences: an unattended handoff must not wait on a dialog. The ViWo
+    disclaimer covers the agreement; a user who answered already is left alone."""
+    base = os.environ.get("APPDATA") or os.environ.get("XDG_CONFIG_HOME") or "~/.config"
+    path = Path(base).expanduser() / "ghidra" / root.name / "preferences"
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines() if path.is_file() else []
+        keep = [ln for ln in lines if not ln.startswith(("USER_AGREEMENT=", "SHOW_TIPS="))]
+        path.parent.mkdir(parents=True, exist_ok=True)
+        text = "\n".join([*keep, "USER_AGREEMENT=ACCEPT", "SHOW_TIPS=false", ""])
+        path.write_text(text, encoding="utf-8")
+    except OSError:
+        pass  # the dialog may then show; the handoff still launches
+
+
 def _gui_argv(headless: Path, java: Path, gpr: Path) -> list[str] | None:
     """The GUI's JVM command (what ghidraRun's batch file ends up starting, minus the
     detaching `start`): a direct child, so ViWo can track and stop it (doc 8.3a)."""
@@ -130,4 +146,5 @@ class GhidraGui(Handoff):
         argv = _gui_argv(Path(tool.path), Path(java.path), gpr) if java else None
         if argv is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error="Ghidra's Utility.jar not found")
+        quiet_gui(Path(tool.path).resolve().parent.parent)
         return LaunchSpec(tuple(argv), gpr.parent, env)

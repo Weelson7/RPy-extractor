@@ -168,7 +168,7 @@ def _capture(rt, args) -> Envelope:
     if note:
         for warning in warnings(rt, args.game):
             print(f"[CAPTURE:WARN] {warning}", file=sys.stderr)
-    req = CaptureRequest(args.game, args.exe, args.workspace, args.confirm)
+    req = CaptureRequest(args.game, args.exe, args.workspace, args.confirm, args.auto)
     return Envelope.success(capture(rt, req, note))
 
 

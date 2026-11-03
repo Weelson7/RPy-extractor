@@ -4,16 +4,18 @@ fake analyzeHeadless, the record, the feature switch, and the GUI handoff as a t
 from __future__ import annotations
 
 import json
+import os
 import stat
 import sys
 import tempfile
 import time
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from tests.helpers import runtime, tree_hashes
 from viwo.contracts import ViwoError
-from viwo.core.analysis import AnalysisRequest, analyze, open_in, targets_for
+from viwo.core.analysis import AnalysisRequest, analyze, ghidra, open_in, targets_for
 
 FAKE_HEADLESS = """#!{python}
 import sys
@@ -145,6 +147,15 @@ class AnalyzeTests(unittest.TestCase):
                 break
             time.sleep(0.1)
         self.assertFalse(tracked.alive())
+
+    def test_gui_prompts_pre_answered_other_preferences_kept(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {"APPDATA": tmp}):
+            prefs = Path(tmp) / "ghidra" / "ghidra_12.2_PUBLIC" / "preferences"
+            prefs.parent.mkdir(parents=True)
+            prefs.write_text("Theme=x\nSHOW_TIPS=true\n", encoding="utf-8")
+            ghidra.quiet_gui(Path("/opt/ghidra_12.2_PUBLIC"))
+            lines = prefs.read_text(encoding="utf-8").splitlines()
+            self.assertEqual(lines, ["Theme=x", "USER_AGREEMENT=ACCEPT", "SHOW_TIPS=false"])
 
     def test_switch_off_unknown_target_and_handoff_without_project(self) -> None:
         with self.assertRaises(ViwoError) as err:
