@@ -63,6 +63,7 @@ function renderTargets() {
     state: t.analyzer ? badge(t.analyzer, "ok") : badge("NO ANALYZER YET", "mute"),
     act: h("div", { class: "row" },
       btn("ANALYZE", () => run(t), "sm primary", { disabled: !t.analyzer || !S.enabled || S.running }),
+      ...(t.extras || []).map((x) => btn(x.label.toUpperCase(), () => run(t, x.slot), "sm", { disabled: !S.enabled || S.running })),
       ...(t.handoffs || []).map((hd) => btn(hd.label.toUpperCase(), () => open(t, hd), "sm ghost", { disabled: !S.enabled }))),
   }));
   el.targets.append(table([{ key: "label", label: "TARGET" }, { key: "kind", label: "KIND" }, { key: "owner", label: "PLUGIN" }, { key: "state", label: "ANALYZER" }, { key: "act", label: "" }], rows, { caption: "Analysis targets" }));
@@ -80,7 +81,7 @@ async function cancelJob() {
   try { await api.cancel(id); toast("Cancellation requested.", "warn"); } catch (err) { toastErr(err); }
 }
 
-async function run(t) {
+async function run(t, slot = "") {
   S.running = true; S.key = t.key;
   bar(); renderTargets();
   fill(el.result);
@@ -88,10 +89,10 @@ async function run(t) {
   await el.prog.start();
   el.prog.log.append(logLine(`// ANALYZE :: ${t.label} → ${S.ws}/.analysis`));
   try {
-    const res = await api.analyze({ gamePath: el.game.value.trim(), targetKey: t.key });
+    const res = await api.analyze({ gamePath: el.game.value.trim(), targetKey: t.key, slot });
     await el.prog.finish("ok", `${res.artifacts.length} ARTIFACT(S) · ${res.backend}`);
     fill(el.result, panel("12.D", "RESULT", btn("OPEN FOLDER", () => api.openFolder(res.outputDir).catch(toastErr), "sm ghost"),
-      kv("TARGET", res.target.label), kv("BACKEND", res.backend), kv("OUTPUT", h("code", { class: "mono" }, res.outputDir)),
+      kv("TARGET", res.target.label), kv("BACKEND", res.backend), kv("NOTES", (res.notes || []).join("; ") || "-"), kv("OUTPUT", h("code", { class: "mono" }, res.outputDir)),
       h("ul", { class: "plain mono small" }, res.artifacts.map((a) => h("li", {}, a)))));
     toast(`Analysis done: ${res.artifacts.length} artifact(s).`, "ok");
   } catch (err) {

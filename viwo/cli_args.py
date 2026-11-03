@@ -123,6 +123,9 @@ def analysis_command(command) -> None:
     an.add_argument("--list", action="store_true", help="only list the targets")
     an.add_argument("--open", metavar="HANDOFF", nargs="?", const="", help="continue in the GUI")
     an.add_argument("--timeout", type=int, default=0, help="seconds (default 4 h)")
+    an.add_argument(
+        "--slot", default="", help="another analyzer for the target (see --list extras)"
+    )
 
 
 def extract_args(ex: argparse.ArgumentParser) -> None:

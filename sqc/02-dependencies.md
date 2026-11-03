@@ -24,6 +24,7 @@ Pinned tools (version / kind / how it runs), for the checks below:
 | ilspycmd | 11.2.0.10050 | zip (NuGet nupkg) | `tools\any\win-x64\ilspycmd.exe` |
 | cpp2il | 2022.1.0-pre-release.21 | raw | `Cpp2IL.exe`, self-contained |
 | unluac | 2025-12-23 | raw | `unluac.jar`, run as `java -jar` on the pinned JDK |
+| die | 3.21 | zip | `diec.exe` (console) next to the GUI `die.exe` and the signature `db\` |
 | unitypy, py7zr, unrpa, lz4 | pinned | python | `pip --target third_party\python` |
 
 ## SQC-DEP-01 (P0) Every pinned tool binds and answers

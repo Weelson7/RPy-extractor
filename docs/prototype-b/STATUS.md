@@ -123,6 +123,11 @@ assembly-csharp` wrote 646 C# files (ilspycmd, project mode) in 3 s; `viwo analy
 `dummydll`) in 8 s, and `--list` on that output proposes the stub `Assembly-CSharp.dll` as a
 dotnet target. unluac is wired and fake-tested; no game in the library ships Lua bytecode.
 
+**Protector identification (1.4.1, 2026-11-03):** `viwo analyze Test-games/ultrakill-prelude
+--target ultrakill-exe --slot analysis.protector` ran Detect It Easy 3.21 in 18 s: linker and
+compiler (MSVC 2017), `Library: Unity Engine`, debug records, no packer or protector (the note);
+the Unreal shipping executable of the-basement adds Authenticode and the DirectX libraries.
+
 ## Rules that hold everywhere
 
 - The game folder is only read: extraction copies, repack writes a separate marked copy, capture

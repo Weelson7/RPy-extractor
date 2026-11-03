@@ -207,7 +207,14 @@ so `progress.js` stops parsing message text, let `list_window` return the type c
 - Verified for real: Baldi's `Assembly-CSharp.dll` to 646 C# files in 3 s; the IL2CPP game of
   the owner's library (Unity 6000.4, 93 MB binary) to 80 stub assemblies in 8 s. unluac has
   fake-tool coverage only (no Lua-bytecode game in the library).
-- Roadmap: A3 (signatures, BinDiff, protector id), A4, D2-D3, T1-T2 remain.
+- A3, protector identification (1.4.1): `analysis.protector` = Detect It Easy 3.21 `diec`
+  (`viwo/core/analysis/identify.py`): compiler, linker, libraries, packers and protectors as
+  `identify.json` + `identify.txt`, the wrapper findings in the notes ("no packer or protector
+  detected" otherwise). A second analyzer per kind: `AnalysisRequest.slot`, `extras_for`
+  (listed as `extras` by `--list` and the API, one button per extra in 12 ANALYSIS, CLI
+  `--slot analysis.protector`). Ghidra's own FID signatures already run inside the headless
+  analysis; BinDiff is not pinnable (no HTTPS asset with a checksum), so A3 "diff" stays open.
+- Roadmap: A3 diff, A4, D2-D3, T1-T2 remain.
 
 ## Morning deliverable (owner, 2026-11-04)
 A PDF presentation of the project status, the sqc suite and the CTF flags (`sqc/ctf.json`,

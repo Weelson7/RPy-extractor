@@ -53,6 +53,16 @@ chunks (`\x1bLua` header; `luac -o init.luac init.lua` makes one).
    chunk(s)"); `--target lua-bytecode` writes `<name>.lua` per chunk under
    `.analysis\unluac\lua-bytecode\`; the note counts `done/total chunks`.
 
+## SQC-AN-07 (P1) Identify the binary before decompiling it (Detect It Easy)
+Preconditions: `viwo install die` (25 MB).
+1. `viwo analyze Test-games\ultrakill-prelude --list`: the `ultrakill-exe` row lists
+   `extras: [analysis.protector / die]`; 12 ANALYSIS shows a DETECT IT EASY button next to ANALYZE.
+2. `viwo analyze Test-games\ultrakill-prelude --workspace C:\sqc\_ws\an --target ultrakill-exe --slot analysis.protector`
+3. Expected: `.analysis\die\ultrakill-exe\identify.txt` lists the linker, compiler (MSVC),
+   `Library: Unity Engine` and the tool; the notes say `no packer or protector detected`; on a
+   Themida/VMProtect/Denuvo-wrapped executable the notes name the protector and the run record
+   keeps it (`notes`). `--slot analysis.script` on the same target answers `unavailable`.
+
 | ID | Result | Version | Notes |
 |----|--------|---------|-------|
 | SQC-AN-01 | | | |
@@ -61,3 +71,4 @@ chunks (`\x1bLua` header; `luac -o init.luac init.lua` makes one).
 | SQC-AN-04 | | | |
 | SQC-AN-05 | PASS | 1.4.0 | agent, 2026-11-03: Baldi 646 .cs in 3 s; library IL2CPP title 80 stubs in 8 s; chain listed |
 | SQC-AN-06 | | | fake-tool test only (no Lua-bytecode game in the library) |
+| SQC-AN-07 | PASS | 1.4.1 | agent, 2026-11-03: ULTRAKILL.exe (MSVC 2017, Unity Engine, no protector) and the Unreal shipping exe (Authenticode) |

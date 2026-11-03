@@ -100,6 +100,7 @@ def analyze_command(rt, args) -> Envelope:
     from viwo.core.analysis import (
         AnalysisRequest,
         analyze,
+        extras_for,
         handoffs_for,
         open_in,
         targets_for,
@@ -110,12 +111,15 @@ def analyze_command(rt, args) -> Envelope:
         raise ViwoError("not_found", f"game folder not found: {args.game}")
     if args.list or not args.target:
         found = targets_for(rt, args.game)
-        targets = [{**t.to_dict(), "handoffs": handoffs_for(rt, t.kind)} for t in found]
+        targets = [
+            {**t.to_dict(), "handoffs": handoffs_for(rt, t.kind), "extras": extras_for(rt, t.kind)}
+            for t in found
+        ]
         return Envelope.success({"targets": targets})
     if args.workspace is None:
         raise ViwoError("invalid_request", "give --workspace <folder>")
     options = {"timeout_s": args.timeout} if args.timeout else {}
-    req = AnalysisRequest(args.game, args.workspace, args.target, options)
+    req = AnalysisRequest(args.game, args.workspace, args.target, options, args.slot)
     if args.open is not None:
         opened = open_in(rt, req, args.open)
         if not args.json:

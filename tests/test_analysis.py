@@ -15,7 +15,7 @@ from unittest import mock
 
 from tests.helpers import runtime, tree_hashes
 from viwo.contracts import ViwoError
-from viwo.core.analysis import AnalysisRequest, analyze, ghidra, open_in, targets_for
+from viwo.core.analysis import AnalysisRequest, analyze, extras_for, ghidra, open_in, targets_for
 
 FAKE_HEADLESS = """#!{python}
 import sys
@@ -58,6 +58,15 @@ assert (game / "G_Data" / "il2cpp_data" / "Metadata" / "global-metadata.dat").is
 out.mkdir(parents=True, exist_ok=True)
 (out / "Assembly-CSharp.dll").write_bytes(b"MZ")
 print("[Info] [Program] Done.")
+"""
+FAKE_DIEC = """#!{python}
+import json, sys
+from pathlib import Path
+args = sys.argv[1:]
+assert args[:2] == ["-j", "-d"] and Path(args[2]).read_bytes().startswith(b"MZ"), args
+print(json.dumps({{"detects": [{{"filetype": "PE64", "parentfilepart": "Header", "values": [
+    {{"type": "compiler", "name": "MSVC", "string": "Compiler: MSVC(19)"}},
+    {{"type": "protector", "name": "Themida", "string": "Protector: Themida(3.x)"}}]}}]}}))
 """
 FAKE_UNLUAC = """#!{python}
 import sys
@@ -147,9 +156,10 @@ class AnalyzeTests(unittest.TestCase):
         ilspy = script(self.root / "ilspy", "ilspycmd", FAKE_ILSPY.format(python=sys.executable))
         cpp2il = script(self.root / "cpp2il", "Cpp2IL", FAKE_CPP2IL.format(python=sys.executable))
         unluac = script(self.root / "unluac", "unluac", FAKE_UNLUAC.format(python=sys.executable))
+        diec = script(self.root / "die", "diec", FAKE_DIEC.format(python=sys.executable))
         ini = "[startup]\nfeatures = extraction, analysis\n[plugins]\nunity = on\n"
         ini += f"[tools]\nghidra = {self.headless}\njdk = {java}\ndotnet = {java}\n"
-        ini += f"ilspycmd = {ilspy}\ncpp2il = {cpp2il}\nunluac = {unluac}\n"
+        ini += f"ilspycmd = {ilspy}\ncpp2il = {cpp2il}\nunluac = {unluac}\ndie = {diec}\n"
         self.rt = runtime(self.root, ini)
         self.ws = self.root / "ws"
 
@@ -195,6 +205,20 @@ class AnalyzeTests(unittest.TestCase):
             self.assertEqual(report["backend"], backend, key)
             self.assertIn(artifact, report["artifacts"], key)
             self.assertTrue((self.ws / ".analysis" / backend / key / "record.json").is_file())
+
+    def test_protector_identification_as_a_second_analyzer(self) -> None:
+        extras = extras_for(self.rt, "native_binary")
+        self.assertEqual(
+            [(x["slot"], x["backend"]) for x in extras], [("analysis.protector", "die")]
+        )
+        req = AnalysisRequest(self.unity, self.ws, "g-exe", slot="analysis.protector")
+        report = analyze(self.rt, req)
+        self.assertEqual(report["backend"], "die")
+        self.assertEqual(set(report["artifacts"]), {"identify.json", "identify.txt"})
+        self.assertEqual(report["notes"], ["Protector: Themida(3.x)"])
+        with self.assertRaises(ViwoError) as err:  # unluac does not take a native binary
+            analyze(self.rt, AnalysisRequest(self.unity, self.ws, "g-exe", slot="analysis.script"))
+        self.assertEqual(err.exception.code, "unavailable")
 
     def test_gui_prompts_pre_answered_other_preferences_kept(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {"APPDATA": tmp}):

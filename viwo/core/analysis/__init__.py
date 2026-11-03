@@ -22,6 +22,7 @@ from ..pipeline.probe import FolderProbe
 from ..records import record_context
 from ..workspace import write_atomic
 from .ghidra import GhidraGui, GhidraHeadless
+from .identify import DetectItEasy
 from .managed import Cpp2Il, IlSpy, Unluac
 
 
@@ -40,11 +41,12 @@ SLOTS = (
     SlotDefinition("analysis.dotnet", "analysis", "core", "ilspycmd"),
     SlotDefinition("analysis.il2cpp", "analysis", "core", "cpp2il"),
     SlotDefinition("analysis.script", "analysis", "core", "unluac"),
+    SlotDefinition("analysis.protector", "analysis", "core", "die"),
 )
 
 
 def backends() -> list:
-    return [GhidraHeadless(), GhidraGui(), IlSpy(), Cpp2Il(), Unluac()]
+    return [GhidraHeadless(), GhidraGui(), IlSpy(), Cpp2Il(), Unluac(), DetectItEasy()]
 
 
 @dataclass
@@ -53,6 +55,7 @@ class AnalysisRequest:
     workspace: Path
     target_key: str
     options: dict = field(default_factory=dict)  # timeout_s, analyzer-specific keys
+    slot: str = ""  # an analysis slot other than the kind's own (extras_for), e.g. protector
 
 
 def targets_for(rt, game: Path, problems: list[str] | None = None) -> list[AnalysisTarget]:
@@ -92,10 +95,34 @@ def _pick(rt, req: AnalysisRequest) -> tuple[AnalysisTarget, str]:
             hint="targets: " + ", ".join(sorted(targets)) if targets else "no target proposed",
         )
     target = targets[req.target_key]
-    slot = slot_for(target.kind)
-    if slot not in rt.bindings:
+    slot = req.slot or slot_for(target.kind)
+    if slot not in rt.bindings or (req.slot and not _accepts(rt, slot, target.kind)):
         raise ViwoError("unavailable", f"no analyzer slot for {target.kind} targets yet")
     return target, slot
+
+
+def _accepts(rt, slot: str, kind: str) -> bool:
+    binding = rt.bindings.get(slot)
+    backend = rt.backends.get(binding.main) if binding is not None and binding.bound else None
+    return backend is not None and kind in getattr(backend, "kinds", ())
+
+
+def _label(backend) -> str:
+    return getattr(backend, "label", None) or backend.backend_id.replace("-", " ")
+
+
+def extras_for(rt, kind: str) -> list[dict]:
+    """The other bound analyzers that take this kind (doc 16.2b A3: identify before decompile)."""
+    own = slot_for(kind)
+    return [
+        {
+            "slot": slot,
+            "backend": rt.bindings[slot].main,
+            "label": _label(rt.backends[rt.bindings[slot].main]),
+        }
+        for slot in sorted(rt.bindings)
+        if slot.startswith("analysis.") and slot != own and _accepts(rt, slot, kind)
+    ]
 
 
 def _context(rt, req: AnalysisRequest, out: Path, scratch: Path, sink, cancel):
@@ -205,6 +232,7 @@ def open_in(rt, req: AnalysisRequest, handoff_id: str = "") -> dict:
 
 __all__ = [
     "AnalysisRequest",
+    "extras_for",
     "LaunchSpec",
     "SLOTS",
     "analyze",

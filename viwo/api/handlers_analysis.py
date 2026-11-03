@@ -10,6 +10,7 @@ from viwo.contracts.errors import ViwoError
 from viwo.core.analysis import (
     AnalysisRequest,
     analyze,
+    extras_for,
     handoffs_for,
     open_in,
     slot_for,
@@ -41,6 +42,7 @@ def analysis_targets(app: App, q: dict) -> dict:
                 **t.to_dict(),
                 "analyzer": binding.main if binding is not None and binding.bound else "",
                 "handoffs": handoffs_for(rt, t.kind),
+                "extras": extras_for(rt, t.kind),
             }
         )
     enabled = "analysis" in rt.config.features
@@ -55,7 +57,7 @@ def _request(app: App, d: dict) -> AnalysisRequest | dict:
     if not key:
         return failure(ViwoError("invalid_request", "targetKey is required"))
     options = d.get("options") if isinstance(d.get("options"), dict) else {}
-    return AnalysisRequest(game, app.workspace, key, dict(options))
+    return AnalysisRequest(game, app.workspace, key, dict(options), str(d.get("slot", "")))
 
 
 def run_analysis(app: App, d: dict) -> dict:

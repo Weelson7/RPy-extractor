@@ -85,7 +85,7 @@ time.
 |-----|------|---------------|---------------------|---------|
 | Static | A1 (**shipped 1.3**: `viwo/core/analysis/`, fake-tool tests; Ghidra 12.2 + Temurin JDK 25 pinned, installed on demand) | `analysis.native` + Ghidra GUI handoff; `.analysis/` output; `analysis` flag | Ghidra headless, JDK 25 | §1–4 |
 | Static | A2 (**shipped 1.4.0**: `viwo/core/analysis/managed.py`, three pins, verified on Baldi and the library's IL2CPP title) | managed/bytecode: `analysis.dotnet`, `analysis.il2cpp`, `analysis.script` | ilspycmd, Cpp2IL, unluac | §5, §13 |
-| Static | A3 | `analysis.signatures`, `analysis.diff` (update resilience), `analysis.protector` | Ghidra FID, BinDiff, DIE | §4, §14, §16 |
+| Static | A3 (protector **shipped 1.4.1**: DIE `diec` in `analysis.protector`, a second analyzer per kind; FID runs inside the Ghidra headless pass; diff open) | `analysis.signatures`, `analysis.diff` (update resilience), `analysis.protector` | Ghidra FID, BinDiff, DIE | §4, §14, §16 |
 | Static | A4 | `analysis.emulate`, `analysis.symbolic` (isolated routines) | Unicorn/Qiling, angr | §15 |
 | Dynamic | D1 (**shipped 1.3.6**: `--auto` unattended trigger, shader disassembly, verified on ULTRAKILL) | capture pilot hardened to a real GPU; shader disasm | RenderDoc | §11 |
 | Dynamic | D2 | `runtime.<engine>` agents feeding static extraction; `capture.audio` | BepInEx, UE4SS, Frida | §5, §11 |
