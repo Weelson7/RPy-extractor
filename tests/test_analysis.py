@@ -105,8 +105,11 @@ class AnalyzeTests(unittest.TestCase):
         self.headless = script(
             tools, "analyzeHeadless", FAKE_HEADLESS.format(python=sys.executable)
         )
+        jar = tools.parent / "Ghidra" / "Framework" / "Utility" / "lib" / "Utility.jar"
+        jar.parent.mkdir(parents=True)
+        jar.write_bytes(b"PK")
         self.gui = script(tools.parent, "ghidraRun", FAKE_GUI.format(python=sys.executable))
-        java = script(self.root / "jdk" / "bin", "java", "import sys\nprint('21')\n")
+        java = script(self.root / "jdk" / "bin", "java", FAKE_GUI.format(python=sys.executable))
         ini = "[startup]\nfeatures = extraction, analysis\n[plugins]\nunity = on\n"
         ini += f"[tools]\nghidra = {self.headless}\njdk = {java}\n"
         self.rt = runtime(self.root, ini)

@@ -49,9 +49,24 @@ def project_dir(staging: Path) -> Path:
     return workspace.parent / f"{workspace.name}.ghidra" / staging.name
 
 
-def _launcher(headless: Path, name: str) -> Path:
-    """ghidraRun next to support/analyzeHeadless, with the platform's suffix."""
-    return headless.resolve().parent.parent / (name + headless.suffix)
+def _gui_argv(headless: Path, java: Path, gpr: Path) -> list[str] | None:
+    """The GUI's JVM command (what ghidraRun's batch file ends up starting, minus the
+    detaching `start`): a direct child, so ViWo can track and stop it (doc 8.3a)."""
+    root = headless.resolve().parent.parent
+    utility = root / "Ghidra" / "Framework" / "Utility" / "lib" / "Utility.jar"
+    if not utility.is_file():
+        return None
+    return [
+        str(java),
+        "-Djava.system.class.loader=ghidra.GhidraClassLoader",
+        "-Dfile.encoding=UTF8",
+        "-Dsun.java2d.d3d=false",
+        "-cp",
+        str(utility),
+        "ghidra.Ghidra",
+        "ghidra.GhidraRun",
+        str(gpr),
+    ]
 
 
 class GhidraHeadless(Analyzer):
@@ -111,9 +126,8 @@ class GhidraGui(Handoff):
             return Outcome(
                 OutcomeKind.FAILED, error="no Ghidra project yet: run the analysis first"
             )
-        launcher = _launcher(Path(tool.path), "ghidraRun")
-        if not launcher.is_file():
-            return Outcome(
-                OutcomeKind.UNAVAILABLE, error=f"{launcher.name} not found beside Ghidra"
-            )
-        return LaunchSpec((str(launcher), str(gpr)), gpr.parent, env)
+        java = ctx.os.tools.locate(JDK)
+        argv = _gui_argv(Path(tool.path), Path(java.path), gpr) if java else None
+        if argv is None:
+            return Outcome(OutcomeKind.UNAVAILABLE, error="Ghidra's Utility.jar not found")
+        return LaunchSpec(tuple(argv), gpr.parent, env)

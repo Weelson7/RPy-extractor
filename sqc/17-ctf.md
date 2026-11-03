@@ -1,6 +1,7 @@
 # 17 CTF flags: one asset per game, reached simply or not at all
 
-Each installed game in `Test-games/` carries flags in `sqc/ctf.json`: a specific asset a reverse
+Each installed game in `Test-games/` carries flags in `sqc/ctf.json`: five basic objectives plus
+up to one more per GB of game data (the owner's sizing rule), each a specific asset a reverse
 engineer would want (the music out of the RPA, the meshes of a Unity level, a texture out of a UE5
 IoStore container). A flag passes when one plain extraction (`viwo extract <game> --workspace W`,
 no options, no scripts written by hand) leaves the asset in the workspace, or when ViWo says
@@ -18,9 +19,10 @@ CR, Burning Snow, Void's Cave, The Basement, RPG Maker MV, Ubu, GodotOne, MAD ga
 ## SQC-CTF-02 (P1) The owner's installed games
 `powershell -File tools/games_pass.ps1` copies each game under `C:\Users\<you>\Games` into
 `Test-games/pass-<slug>`, runs it, keeps the report under `viwo-data/games-pass/<slug>/` and
-deletes the copy. Flags for those slugs live in `ctf.json` too; a failing flag names the engine
-that still needs a plugin or a QuickBMS script (Cyberpunk `.archive`, Bannerlord `.tpac`, Rome II
-`.pack`, AoE II `.drs`).
+deletes the copy. A game too large to copy whole carries a `subset` (the files copied: a few
+archives plus the executable and, for Cyberpunk, the game's own Oodle DLL); its flags describe
+that subset. Every engine in the owner's library has a plugin since 1.3.3 (Cyberpunk `.archive`,
+Bannerlord `.tpac`, Rome II `.pack`, AoE II `.drs`).
 
 ## SQC-CTF-03 (P1) Adding a flag
 Add the slug and a flag `{"name", "glob", "min"}` (or `{"name", "warning"}`) to `ctf.json`;

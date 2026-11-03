@@ -12,6 +12,8 @@ from viwo.contracts import CancelToken, ExtractionRequest
 from viwo.core.pipeline.runner import extract
 from viwo.plugins.genie import HEADER as DRS_HEADER
 from viwo.plugins.genie import MAGIC as DRS_MAGIC
+from viwo.plugins.taleworlds import HEADER as TPAC_HEADER
+from viwo.plugins.taleworlds import MAGIC as MAGIC_TPAC
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"\0" * 40
 
@@ -41,6 +43,36 @@ def pack(files: dict[str, bytes], magic: bytes = b"PFH4", stamps: bool = False) 
     kind = 2 | (0x10 if stamps else 0)
     head = magic + struct.pack("<6I", kind, 0, 0, len(files), len(index), 1533548507)
     return head + index + b"".join(files.values())
+
+
+def tpac(items: dict[str, list[bytes]]) -> bytes:
+    """A version-2 TPAC whose segments are stored raw (format 0)."""
+    import uuid
+
+    body, data, segs_total = b"", b"", 0
+    for name, parts in items.items():
+        segs_total += len(parts)
+
+    # index first (sizes known up front), data after it
+    def index_size():
+        size = 0
+        for name, parts in items.items():
+            size += 16 + 16 + 4 + 4 + len(name.encode()) + 8 + 8 + 4 + 69 * len(parts) + 4
+        return size
+
+    data_at = TPAC_HEADER + index_size()
+    for name, parts in items.items():
+        body += uuid.uuid4().bytes + uuid.uuid4().bytes + struct.pack("<I", 0)
+        body += struct.pack("<i", len(name.encode())) + name.encode()
+        body += struct.pack("<Q", 0) + struct.pack("<q", 0) + struct.pack("<i", len(parts))
+        for part in parts:
+            body += struct.pack("<QQQ", data_at + len(data), len(part), len(part))
+            body += bytes(32) + bytes(12) + bytes([0])
+            data += part
+        body += struct.pack("<i", 0)
+    head = MAGIC_TPAC + struct.pack("<I", 2) + uuid.uuid4().bytes
+    head += struct.pack("<III", len(items), len(body), 0)
+    return head + body + data
 
 
 class ContainerTests(unittest.TestCase):
@@ -86,6 +118,19 @@ class ContainerTests(unittest.TestCase):
                 self.assertEqual((ws / "png" / "a.png").read_bytes(), PNG)
                 self.assertEqual((ws / "noext" / "data").read_bytes(), b"table")
                 self.assertFalse((root / "escape.txt").exists())
+
+    def test_tpac_segments_come_out_per_asset(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            package = tpac({"icon_sword": [PNG, b"meta"], "shaders/sky": [b"shader-bytes"]})
+            files = {
+                "Modules/Native/AssetPackages/core.tpac": package,
+                "bin/Win64_Shipping_Client/Bannerlord.exe": b"MZ",
+            }
+            result, ws = self.run_game(Path(tmp), "mb2", files)
+            self.assertEqual(result.runs[0].plugin_id, "taleworlds")
+            self.assertEqual((ws / "bin" / "icon_sword.0.bin").read_bytes(), PNG)
+            self.assertEqual((ws / "bin" / "icon_sword.1.bin").read_bytes(), b"meta")
+            self.assertEqual((ws / "bin" / "sky.0.bin").read_bytes(), b"shader-bytes")
 
 
 if __name__ == "__main__":

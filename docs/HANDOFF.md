@@ -152,7 +152,9 @@ Three flat-container plugins from the Games-folder pass: `genie` (AoE DRS: 404 m
 `interfac.drs`), `warscape` (Total War PFH4/5 packs: 530 out of `blood_rome2.pack`), `redengine`
 (Cyberpunk 2077 RDAR: 308 out of `basegame_2_mainmenu.archive`, Kraken inflated through the
 game's own Oodle DLL found beside the archive; members named by hash with the CR2W root class
-as extension). Bannerlord `.tpac` is next (format from TpacTool, not pinned down yet).
+as extension), `taleworlds` (Bannerlord TPAC from the TpacTool layout: 42 segments out of
+`spawners.tpac`, LZ4 block through the `lz4` pin). Ghidra's GUI handoff now starts the JVM
+directly so the window is a tracked child (the batch launcher detached it).
 
 ## Morning deliverable (owner, 2026-11-04)
 A PDF presentation of the project status, the sqc suite and the CTF flags (`sqc/ctf.json`,

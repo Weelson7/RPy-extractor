@@ -143,8 +143,9 @@ def check_flags(record: dict, ws: Path | None, flags: list[dict]) -> None:
     the run's warnings. Without an extraction, glob flags are left undecided (ok = None)."""
     out = []
     for flag in flags:
-        if "warning" in flag:
-            ok = any(flag["warning"] in w for w in record["warnings"])
+        if "warning" in flag:  # "" means: the run reported no warning at all
+            text = flag["warning"]
+            ok = not record["warnings"] if not text else any(text in w for w in record["warnings"])
             out.append({**flag, "ok": ok, "found": int(ok)})
         elif ws is None or not ws.is_dir():
             out.append({**flag, "ok": None, "found": 0})

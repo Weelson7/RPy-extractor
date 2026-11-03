@@ -30,6 +30,7 @@ the store's download sizes. "none verified" means no free title could be confirm
 | Genie (`genie`) | Age of Empires II HD (owner's copy; any AoE I/II install) | | 5.5 GB | `.drs` resource archives: SLP graphics, WAV, BINA | `pass-aoe` |
 | Warscape (`warscape`) | Total War: Rome II (owner's copy; Empire through Warhammer share PFH4/PFH5) | | 36 GB | `data/*.pack`: db tables, textures, models, scripts, loc | `pass-total-war-rome-ii` |
 | REDengine 4 (`redengine`) | Cyberpunk 2077 (owner's copy) | | 86 GB | `archive/pc/content/*.archive` (RDAR): Kraken segments inflated with the game's own `oo2ext_7_win64.dll`; members by name hash with the CR2W type as extension | `pass-cyberpunk-2077` |
+| TaleWorlds (`taleworlds`) | Mount & Blade II: Bannerlord (owner's copy) | | 92 GB | `Modules/*/AssetPackages/*.tpac`: LZ4 segments per asset (`lz4` pin), raw ones without it | `pass-mount-blade-2-bannerlord` |
 | QuickBMS (`quickbms`) | no title of its own: it serves any archive with a `<ext>.bms` script in `third_party/quickbms/scripts` (indexes supply them per game) | | | script bridge | any |
 | Overwatch (`overwatch`, OPERATOR) | Overwatch 2 (Blizzard), free to play via Battle.net; terms-of-service-sensitive: **warnings expected**, real-game run by the operator | https://overwatch.blizzard.com | 50 GB+ | CASC data through DataTool (Windows only), explicit or auto-selected with the reminder | `overwatch` |
 

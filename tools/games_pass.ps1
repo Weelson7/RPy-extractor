@@ -14,6 +14,7 @@ $games = Join-Path $root "Test-games"
 $reports = Join-Path $root "viwo-data\games-pass"
 New-Item -ItemType Directory -Force $reports | Out-Null
 $log = Join-Path $reports "pass.log"
+$ctf = Get-Content (Join-Path $root "sqc\ctf.json") -Raw | ConvertFrom-Json
 
 function Say($text) { $line = "{0} {1}" -f (Get-Date -Format "HH:mm:ss"), $text; $line | Tee-Object -FilePath $log -Append }
 
@@ -28,10 +29,24 @@ foreach ($dir in Get-ChildItem $Source -Directory) {
     $slug = ("pass-" + ($dir.Name -replace "[^A-Za-z0-9]+", "-").Trim("-")).ToLower()
     $size = (Get-ChildItem $src -Recurse -File -ErrorAction SilentlyContinue | Measure-Object Length -Sum).Sum / 1GB
     $free = (Get-PSDrive C).Free / 1GB
-    if ($size * 1.1 -gt $free) { Say "$slug needs $([math]::Round($size,1)) GB, only $([math]::Round($free,1)) GB free: skipped"; continue }
+    if ($size * 1.1 -gt $free -and -not ($ctf.PSObject.Properties.Name -contains $slug -and $ctf.$slug.subset)) { Say "$slug needs $([math]::Round($size,1)) GB, only $([math]::Round($free,1)) GB free: skipped"; continue }
     $copy = Join-Path $games $slug
-    Say "copy $($dir.Name) ($([math]::Round($size,1)) GB) -> $slug"
-    robocopy $src $copy /E /NFL /NDL /NJH /NJS /NP /R:1 /W:1 | Out-Null
+    $subset = $null
+    if ($ctf.PSObject.Properties.Name -contains $slug) { $subset = $ctf.$slug.subset }
+    if ($subset) {
+        Say "copy $($dir.Name): $($subset.Count) listed files -> $slug (sqc/ctf.json subset)"
+        foreach ($rel in $subset) {
+            $from = Join-Path $src $rel
+            if (-not (Test-Path $from)) { Say "  missing in the game: $rel"; continue }
+            $to = Join-Path $copy $rel
+            New-Item -ItemType Directory -Force (Split-Path -Parent $to) | Out-Null
+            Copy-Item $from $to
+        }
+        $size = (Get-ChildItem $copy -Recurse -File | Measure-Object Length -Sum).Sum / 1GB
+    } else {
+        Say "copy $($dir.Name) ($([math]::Round($size,1)) GB) -> $slug"
+        robocopy $src $copy /E /NFL /NDL /NJH /NJS /NP /R:1 /W:1 | Out-Null
+    }
     $out = Join-Path $reports $slug
     $extra = @()
     if ($size -gt $SkipExtractOverGB) { $extra = @("--skip-extract") }
