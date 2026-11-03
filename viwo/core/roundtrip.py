@@ -26,6 +26,7 @@ from .pipeline.identify import identify
 from .pipeline.ticker import Ticker
 from .records import record_context
 from .roundtrip_edits import Edit, edit_set, original_hashes
+from .steps import teller
 from .workspace import workspace_lock, write_atomic
 
 UNVERIFIED = (
@@ -248,9 +249,7 @@ def _build(rt, game: Path, target: Path, items: list[PlanItem], report: dict, co
     work = Path(tempfile.mkdtemp(prefix="viwo-repack-", dir=rt.temp_root))
     try:
         say(ProgressEvent(f"Copying the game to {target}", "info", "core", "repack"))
-        _prepare(
-            game, target, rt.temp_root, lambda m: say(ProgressEvent(m, "info", "core", "repack"))
-        )
+        _prepare(game, target, rt.temp_root, teller(say, "repack") or (lambda m: None))
         ctx = _ctx(rt, target, work, sink, cancel)
         (work / "scratch").mkdir(parents=True, exist_ok=True)
         report["results"] = []

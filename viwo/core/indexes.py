@@ -18,9 +18,9 @@ import tempfile
 from pathlib import Path
 
 from viwo.contracts.errors import ViwoError
-from viwo.contracts.types import ProgressEvent
 
 from . import thirdparty
+from .steps import teller
 from .wiring.boot import DEFAULT_INI
 
 SCHEMA = 1
@@ -153,7 +153,7 @@ def install_game(rt, root: Path, slug: str, version: str = "any", sink=None, can
     from .preflight import install
 
     entry = load_index(root, slug, version)
-    say = (lambda m: sink(ProgressEvent(m, "info", "core", "index"))) if sink else None
+    say = teller(sink, "index")
     scripts_dir = thirdparty.home_of(rt.config) / "third_party" / "quickbms" / "scripts"
     tools, scripts, failed = [], {}, {}
     available = {i["id"] for i in rt.dependency_report() if i["available"]}
@@ -217,7 +217,7 @@ def update_indexes(home: Path, major: int, sink=None, cancel=None, fetch=None) -
     """Latest vidya_wormhole_indexes release of the v<major>.* line into <home>/indexes."""
     from .diag import github_json
 
-    say = (lambda m: sink(ProgressEvent(m, "info", "core", "indexes"))) if sink else None
+    say = teller(sink, "indexes")
     tag, assets = _release_assets(major, fetch or github_json)
     name = f"indexes-{tag}.zip"
     home.mkdir(parents=True, exist_ok=True)

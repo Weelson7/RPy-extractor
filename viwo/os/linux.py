@@ -91,6 +91,16 @@ class LinuxOS(OS):
     def is_supported_host(self) -> bool:
         return sys.platform.startswith("linux")
 
+    @staticmethod
+    def pid_alive(pid: int) -> bool:
+        try:
+            os.kill(pid, 0)
+        except ProcessLookupError:
+            return False
+        except PermissionError:
+            return True
+        return True
+
     @property
     def process(self) -> SubprocessRunner:
         return self._process

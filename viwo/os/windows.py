@@ -127,6 +127,19 @@ class WindowsOS(OS):
     def is_supported_host(self) -> bool:
         return sys.platform == "win32"
 
+    @staticmethod
+    def pid_alive(pid: int) -> bool:
+        import ctypes  # os.kill(pid, 0) would TERMINATE the process on Windows
+
+        kernel = ctypes.windll.kernel32
+        handle = kernel.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+        if not handle:
+            return False
+        code = ctypes.c_ulong()
+        alive = kernel.GetExitCodeProcess(handle, ctypes.byref(code)) and code.value == 259
+        kernel.CloseHandle(handle)
+        return bool(alive)
+
     @property
     def process(self) -> SubprocessRunner:
         return self._process

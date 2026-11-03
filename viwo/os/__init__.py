@@ -14,6 +14,11 @@ from .windows import WindowsOS
 OS_LAYERS = {"linux": LinuxOS, "windows": WindowsOS}
 
 
+def pid_alive(pid: int) -> bool:
+    """Whether a process id still runs on this host (the workspace lock's owner check)."""
+    return WindowsOS.pid_alive(pid) if host_os_id() == "windows" else LinuxOS.pid_alive(pid)
+
+
 def host_os_id() -> str:
     return "windows" if sys.platform == "win32" else "linux"
 

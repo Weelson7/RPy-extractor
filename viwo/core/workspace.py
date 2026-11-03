@@ -12,7 +12,6 @@ import json
 import logging
 import os
 import shutil
-import sys
 import threading
 import time
 import uuid
@@ -23,6 +22,7 @@ from viwo import CONTRACT_VERSION, __version__
 from viwo.contracts import workspace as ws
 from viwo.contracts.errors import ViwoError
 from viwo.contracts.pipeline import OnExisting
+from viwo.os import pid_alive
 
 _LOCKS: dict[str, threading.Lock] = {}
 _LOCKS_GUARD = threading.Lock()
@@ -118,27 +118,6 @@ def resolve_target(folder: Path, policy: OnExisting, default: Path | None = None
     if not folder.exists() or not _has_content(folder):
         return claim(folder)
     return _new_sibling(folder) if policy is OnExisting.NEW else _replace_groups(folder)
-
-
-def pid_alive(pid: int) -> bool:
-    if sys.platform == "win32":  # os.kill(pid, 0) would TERMINATE the process on Windows
-        import ctypes
-
-        kernel = ctypes.windll.kernel32
-        handle = kernel.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
-        if not handle:
-            return False
-        code = ctypes.c_ulong()
-        alive = kernel.GetExitCodeProcess(handle, ctypes.byref(code)) and code.value == 259
-        kernel.CloseHandle(handle)
-        return bool(alive)
-    try:
-        os.kill(pid, 0)
-    except ProcessLookupError:
-        return False
-    except PermissionError:
-        return True
-    return True
 
 
 def _stale(path: Path) -> str:

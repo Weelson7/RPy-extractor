@@ -15,36 +15,10 @@ from viwo.contracts.errors import ViwoError
 from viwo.contracts.os import FileSystemPolicy
 
 from .. import provenance
+from ..media import IMAGE, TEXT, media_type  # noqa: F401  (the sort filters use the sets)
 from .trash import area
 
-IMAGE = {".png", ".jpg", ".jpeg", ".webp", ".bmp", ".gif", ".svg", ".ico"}
-AUDIO = {".mp3", ".ogg", ".wav", ".m4a", ".aac", ".opus", ".flac"}
-VIDEO = {".mp4", ".webm", ".mov", ".m4v", ".mpeg", ".mpg", ".avi", ".mkv"}
-TEXT = {
-    ".txt",
-    ".json",
-    ".xml",
-    ".csv",
-    ".md",
-    ".rpy",
-    ".rpym",
-    ".ini",
-    ".log",
-    ".py",
-    ".js",
-    ".css",
-    ".html",
-}
-
-
 TEXT_BYTES = frozenset(range(32, 127)) | {9, 10, 13} | frozenset(range(128, 256))  # UTF-8
-
-
-def media_type(ext: str) -> str:
-    for kind, exts in (("image", IMAGE), ("audio", AUDIO), ("video", VIDEO), ("text", TEXT)):
-        if ext in exts:
-            return kind
-    return "binary"
 
 
 def encode(workspace: Path, path: Path) -> str:

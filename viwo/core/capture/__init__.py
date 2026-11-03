@@ -22,6 +22,7 @@ from ..pipeline.guard import refuse_writes_inside
 from ..pipeline.probe import FolderProbe
 from ..pipeline.runner import detect_all
 from ..records import record_context
+from ..steps import teller
 from ..workspace import claim, write_atomic
 from .journal import pending
 from .policy import check, warnings_for
@@ -62,7 +63,7 @@ class CaptureRequest:
 
 
 def _restore_pending(rt, say) -> None:
-    warn = lambda m: say(ProgressEvent(m, "warn", "core", "restore"))  # noqa: E731
+    warn = teller(say, "restore", "warn") or (lambda m: None)
     for journal in pending(rt.temp_root.parent / "capture", warn):
         say(
             ProgressEvent(

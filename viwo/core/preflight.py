@@ -11,6 +11,7 @@ from viwo.contracts.errors import ViwoError
 from viwo.contracts.types import ProgressEvent
 
 from . import thirdparty
+from .steps import teller
 
 NO_RUN = {"rdpython", "datatool"}  # a GUI host or a slow start: never run just for a version
 
@@ -57,7 +58,7 @@ def check(rt, say) -> list[dict]:
 
 def install(rt, dep_id: str, sink=None, cancel=None) -> dict:
     """Install one dependency into third_party/ (automated; nothing is asked of the user)."""
-    say = (lambda m: sink(ProgressEvent(m, "info", "core", "install"))) if sink else None
+    say = teller(sink, "install")
     item = next((i for i in rt.dependency_report() if i["id"] == dep_id), None)
     if item is None or not thirdparty.installable(dep_id, item["kind"]):
         raise ViwoError("unavailable", f"{dep_id} has no automatic install on this platform")

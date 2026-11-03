@@ -18,13 +18,14 @@ def ini_path(app: App) -> Path:
 
 
 def _plugin_info(app: App) -> dict[str, dict]:
-    """Every known plugin (enabled or not): name, engine type, TOS flag, non-secret options."""
+    """Every known plugin (built-in or drop-in, loaded or not): name, engine type, TOS flag,
+    non-secret options; a broken one is listed with its problem, never hidden."""
     out: dict[str, dict] = {}
-    for plugin_id, entry in sorted(BUILTIN_PLUGINS.items()):
+    for plugin_id in sorted(set(BUILTIN_PLUGINS) | set(app.rt.plugins)):
         try:
-            plugin = app.rt.plugins.get(plugin_id) or load_plugin(entry)
+            plugin = app.rt.plugins.get(plugin_id) or load_plugin(BUILTIN_PLUGINS[plugin_id])
             m = plugin.manifest
-        except Exception as exc:  # a broken plugin is listed with its problem, never hidden
+        except Exception as exc:  # noqa: BLE001
             out[plugin_id] = {"name": plugin_id, "problem": str(exc), "options": []}
             continue
         out[plugin_id] = {
@@ -32,17 +33,8 @@ def _plugin_info(app: App) -> dict[str, dict]:
             "engineType": m.engine_type,
             "tosSensitive": m.tos_sensitive,
             "options": [o.__dict__ for o in m.options if o.kind != "secret"],
+            "custom": plugin_id not in BUILTIN_PLUGINS,
         }
-    for plugin_id, plugin in app.rt.plugins.items():  # drop-in plugins not in the built-in table
-        if plugin_id not in out:
-            m = plugin.manifest
-            out[plugin_id] = {
-                "name": m.name,
-                "engineType": m.engine_type,
-                "tosSensitive": m.tos_sensitive,
-                "options": [o.__dict__ for o in m.options if o.kind != "secret"],
-                "custom": True,
-            }
     return out
 
 

@@ -6,67 +6,14 @@ import re
 from pathlib import Path
 from typing import Any
 
-IMAGE = {
-    ".png",
-    ".jpg",
-    ".jpeg",
-    ".webp",
-    ".bmp",
-    ".gif",
-    ".svg",
-    ".ico",
-    ".tif",
-    ".tiff",
-    ".heic",
-    ".avif",
-}
-VIDEO = {
-    ".mp4",
-    ".webm",
-    ".mov",
-    ".m4v",
-    ".mpeg",
-    ".mpg",
-    ".avi",
-    ".mkv",
-    ".flv",
-    ".3gp",
-    ".ts",
-    ".m2ts",
-}
-AUDIO = {
-    ".mp3",
-    ".ogg",
-    ".wav",
-    ".m4a",
-    ".aac",
-    ".opus",
-    ".flac",
-    ".wma",
-    ".aiff",
-    ".aif",
-    ".mid",
-    ".midi",
-}
+from ..media import AUDIO, IMAGE, VIDEO, media_type  # noqa: F401
+
 TIMELINE = IMAGE | VIDEO
 PATTERNS = ("number-to-name", "name-to-number")
 
 
 def natural(value: str) -> list[Any]:
     return [int(c) if c.isdigit() else c.lower() for c in re.split(r"(\d+)", value)]
-
-
-def media_type(ext: str) -> str:
-    ext = ext.lower()
-    return (
-        "image"
-        if ext in IMAGE
-        else "video"
-        if ext in VIDEO
-        else "audio"
-        if ext in AUDIO
-        else "other"
-    )
 
 
 def split_name(stem: str, pattern: str) -> tuple[str, str]:

@@ -38,6 +38,7 @@ class RuleContext:
 
     workspace: Path
     cancel: object = None
+    sink: object = None  # batch rules report their own step through it
 
     def finding(self, rule: str, path: Path, message: str, action: str, **extra) -> dict:
         rel = path.relative_to(self.workspace).as_posix()
@@ -154,7 +155,7 @@ class Duplicates(BatchRule):
         for path in files:
             by_size.setdefault(path.stat().st_size, []).append(path)
         todo = [p for same in by_size.values() if len(same) > 1 for p in same]
-        step, by_hash = Step(getattr(ctx, "sink", None), "hash", "Hashing files:", len(todo)), {}
+        step, by_hash = Step(ctx.sink, "hash", "Hashing files:", len(todo)), {}
         for path in todo:
             step.tick(ctx.cancel)
             by_hash.setdefault(sha256(path), []).append(path)

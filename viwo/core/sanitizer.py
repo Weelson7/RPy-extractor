@@ -69,8 +69,7 @@ def plan(workspace: Path, sink=None, cancel=None, **opts) -> dict:
         raise ViwoError(
             "invalid_request", f"path is not a folder inside the workspace: {opts.get('path')}"
         )
-    ctx = RuleContext(workspace, cancel)
-    ctx.sink = sink  # type: ignore[attr-defined]  # batch rules report their own step
+    ctx = RuleContext(workspace, cancel, sink)
     files, findings = _asset_files(workspace, under), []
     step = Step(sink, "scan", "Scanning files:", len(files))
     per_file = [r for r in rules if not isinstance(r, BatchRule)]
