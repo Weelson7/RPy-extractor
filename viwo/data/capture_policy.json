@@ -1,5 +1,5 @@
 {
-  "_comment": "Runtime capture warnings list (doc 11.1, revised: warnings, never refusals). Data, not code: extend by pull request. Names are matched case-insensitively against file and folder names anywhere in the game folder. 'verified' marks names confirmed from a source; the rest are common names still to confirm.",
+  "_comment": "Runtime capture warnings list (doc 11.1, revised: warnings, never refusals). Data, not code: extend by pull request. 'anti_cheat_markers' are matched case-insensitively against file and folder names anywhere in the game folder; 'anti_cheat_services' against the image names of running processes (best effort). 'verified' marks names confirmed from a source; the rest are common names still to confirm.",
   "anti_cheat_markers": {
     "neacloader.exe": "NetEase anti-cheat (verified: DataTool checks for it)",
     "easyanticheat": "Easy Anti-Cheat",
@@ -12,6 +12,18 @@
     "nprotect": "nProtect GameGuard",
     "gameguard": "nProtect GameGuard",
     "eac_launcher.exe": "Easy Anti-Cheat launcher"
+  },
+  "anti_cheat_services": {
+    "beservice.exe": "BattlEye service",
+    "easyanticheat.exe": "Easy Anti-Cheat service",
+    "easyanticheat_eos.exe": "Easy Anti-Cheat (Epic Online Services)",
+    "vgc.exe": "Riot Vanguard service",
+    "vgtray.exe": "Riot Vanguard tray",
+    "pnkbstra.exe": "PunkBuster service",
+    "pnkbstrb.exe": "PunkBuster service",
+    "gamemon.des": "nProtect GameGuard",
+    "faceitservice.exe": "FACEIT anti-cheat",
+    "neacsafe64.exe": "NetEase anti-cheat (common name, unverified)"
   },
   "online_titles": {
     "overwatch": "Overwatch (online only)",

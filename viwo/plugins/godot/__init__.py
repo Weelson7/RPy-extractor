@@ -6,7 +6,15 @@ from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest, Plugi
 from viwo.contracts.slots import SlotDefinition
 from viwo.contracts.types import DetectionResult
 
-from .pck import MAGIC, GdreTools, GodotPckPacker, GodotPckTool, embedded_chunk, identify_pck
+from .pck import (
+    MAGIC,
+    GdreRecover,
+    GdreTools,
+    GodotPckPacker,
+    GodotPckTool,
+    embedded_chunk,
+    identify_pck,
+)
 
 MANIFEST = PluginManifest(
     "godot",
@@ -14,8 +22,21 @@ MANIFEST = PluginManifest(
     "0.1.0",
     engine_type="godot",
     priority=15,
-    options=(PluginOption("encryption_key", "PCK encryption key (64 hex chars)", "secret"),),
+    options=(
+        PluginOption("encryption_key", "PCK encryption key (64 hex chars)", "secret"),
+        PluginOption(
+            "recover",
+            "Recover the project with GDRE Tools (scripts, scenes) during EXPORT",
+            "bool",
+            False,
+            help="[options.godot] recover = on; needs GDRE Tools; slow on big games",
+        ),
+    ),
+    description="Godot 3/4 games: PCK archives, embedded PCKs, encrypted PCKs with a key",
+    capabilities=("detect", "unpack", "export", "pack"),
+    dependencies=("gdre", "godotpcktool"),
 )
+EXPORT_SLOT = SlotDefinition("export.godot", "export", "godot", "gdre-recover")
 PCK_SLOT = SlotDefinition(
     "unarchive.pck",
     "unarchive",
@@ -33,9 +54,18 @@ PLUGIN = "GodotPlugin"  # discovered by viwo.core.wiring.registry
 
 
 class GodotPlugin(EnginePlugin):
+    def __init__(self) -> None:
+        self._recover = False
+
     @property
     def manifest(self) -> PluginManifest:
         return MANIFEST
+
+    def configure(self, options) -> None:
+        self._recover = str(options.get("recover", "off")).lower() in ("on", "true", "1", "yes")
+
+    def export_slot(self) -> str:
+        return "export.godot" if self._recover else ""
 
     def detect(self, probe: GameProbe) -> DetectionResult:
         evidence = []
@@ -50,10 +80,14 @@ class GodotPlugin(EnginePlugin):
         return DetectionResult("godot", score, tuple(evidence), "godot")
 
     def slot_definitions(self):
-        return (PCK_SLOT, SlotDefinition("pack.pck", "pack", "godot", "godotpcktool-pack"))
+        return (
+            PCK_SLOT,
+            EXPORT_SLOT,
+            SlotDefinition("pack.pck", "pack", "godot", "godotpcktool-pack"),
+        )
 
     def backends(self):
-        return (GdreTools(), GodotPckTool(), GodotPckPacker())
+        return (GdreTools(), GodotPckTool(), GodotPckPacker(), GdreRecover())
 
     def pack_slot(self, unarchive_slot: str) -> str:
         return "pack.pck" if unarchive_slot == "unarchive.pck" else ""

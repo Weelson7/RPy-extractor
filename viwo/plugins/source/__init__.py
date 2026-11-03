@@ -53,6 +53,7 @@ def identify_vpk(path: Path, head: bytes, tail: bytes) -> Match | None:
 
 class VpkBuiltin(Unarchiver):
     backend_id, owner, license = "vpk-builtin", "source", "MIT"
+    parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
     def extract(self, archive: Path, dest: Path, ctx) -> Outcome:
         stem, written, handles = archive.name[: -len("_dir.vpk")], 0, {}

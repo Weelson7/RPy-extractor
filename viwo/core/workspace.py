@@ -15,9 +15,11 @@ import shutil
 import sys
 import threading
 import time
+import uuid
 from contextlib import contextmanager
 from pathlib import Path
 
+from viwo import CONTRACT_VERSION, __version__
 from viwo.contracts import workspace as ws
 from viwo.contracts.errors import ViwoError
 from viwo.contracts.pipeline import OnExisting
@@ -36,9 +38,28 @@ def write_atomic(path: Path, text: str) -> None:
     os.replace(tmp, path)
 
 
+def marker_data(folder: Path) -> dict:
+    """The ownership marker's JSON (doc 4.3); older or empty markers read as {}."""
+    try:
+        data = json.loads((folder / ws.MARKER).read_text(encoding="utf-8") or "{}")
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
 def claim(folder: Path) -> Path:
+    """Write the ownership marker: workspace id (kept across re-claims), who created it, and
+    the contract version."""
     folder.mkdir(parents=True, exist_ok=True)
-    (folder / ws.MARKER).write_text(json.dumps({"app": "viwo"}) + "\n", encoding="utf-8")
+    old = marker_data(folder)
+    data = {
+        "app": "viwo",
+        "id": old.get("id") or uuid.uuid4().hex,
+        "created_by": old.get("created_by") or f"viwo {__version__}",
+        "created": old.get("created") or time.strftime("%Y-%m-%dT%H:%M:%S"),
+        "contract": CONTRACT_VERSION,
+    }
+    (folder / ws.MARKER).write_text(json.dumps(data) + "\n", encoding="utf-8")
     return folder
 
 

@@ -6,7 +6,7 @@ import struct
 import tempfile
 from pathlib import Path
 
-from viwo.contracts.slots import Match, Packer, Unarchiver
+from viwo.contracts.slots import Exporter, Match, Packer, Unarchiver
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 
 MAGIC = b"GDPC"
@@ -99,6 +99,47 @@ class GdreTools(_PckCli):
     def argv(self, archive: Path, dest: Path, key: str) -> list[str]:
         args = ["--headless", f"--extract={archive}", f"--output={dest}"]
         return args + ([f"--key={key}"] if key else [])
+
+
+class GdreRecover(Exporter):
+    """export.godot (doc 8.4): GDRE Tools recovers the project (scripts, scenes, resources)
+    from the first PCK or the embedded PCK of the executable, into the plugin staging."""
+
+    backend_id, owner, license, isolation = "gdre-recover", "godot", "MIT", "subprocess"
+
+    def dependencies(self):
+        return (GDRE,)
+
+    def export(self, ctx) -> Outcome:
+        tool = ctx.os.tools.locate(GDRE)
+        if tool is None:
+            return Outcome(OutcomeKind.UNAVAILABLE, error=GDRE.hint)
+        target = _recover_target(ctx.game_root)
+        if target is None:
+            return Outcome(OutcomeKind.OK, 0, notes=("no PCK to recover",))
+        argv = [*tool.argv_prefix, "--headless", f"--recover={target}", f"--output={ctx.staging}"]
+        result = ctx.os.process.run(
+            argv, timeout=3600, cancel=ctx.cancel, on_line=ctx.tool_output("export")
+        )
+        files = _files(ctx.staging)
+        if not result.ok and not files:
+            return Outcome(OutcomeKind.FAILED, error=(result.stderr or result.stdout)[-300:])
+        return Outcome(OutcomeKind.OK, files)
+
+
+def _recover_target(root: Path) -> Path | None:
+    for path in sorted(root.rglob("*")):
+        if not path.is_file():
+            continue
+        if path.suffix.lower() == ".pck":
+            return path
+        with open(path, "rb") as fh:
+            fh.seek(0, 2)
+            size = fh.tell()
+            fh.seek(max(0, size - 64))
+            if embedded_chunk(path, fh.read(64)):
+                return path
+    return None
 
 
 class GodotPckTool(_PckCli):

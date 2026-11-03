@@ -56,6 +56,7 @@ def write_rpa(original: Path, members: dict[str, Path], target: Path) -> int:
 
 class RpaWriter(Packer):
     backend_id, owner, license = "rpa-writer", "renpy", "MIT"
+    parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
     def pack(self, container, members, ctx) -> Outcome:
         temp = container.with_name(container.name + ".viwo-tmp")

@@ -4,7 +4,8 @@
 > and the media merger need were re-implemented in `viwo/api/` with the same JSON shapes;
 > the rest (`/api/state`, `/api/session`, `/api/resume`, `/api/scan`, `/api/extensions`,
 > `/api/detected-extensions`, `/api/assets-preview`, `/api/open-log-dir`, `/api/logs/load`)
-> were dropped. The "v1" names below describe where each shape came from.
+> were dropped (normative: they do not come back). The "v1" names below describe where each
+> shape came from.
 
 These are the parts the current UI (`web/app.js`) and saved workspaces
 depend on. They stay as they are; any change here bumps the contract's
@@ -38,14 +39,15 @@ returns 404.
 |-------|---------|
 | `GET /api/distro` | effective startup configuration (ini + sources), OS layer, contract version, features |
 | `GET /api/plugins` | plugins with manifest, options schema, capabilities, load errors, dependency status |
-| `POST /api/detect` | dry run: `{gamePath}` → every plugin's detection plus the selection for each mode |
+| `POST /api/detect` | dry run: `{gamePath}` → every plugin's detection (`detections`), the auto pick (`auto`) and the selection for each mode (`modes.auto`, `modes.single` candidates, `modes.mixed.{detected,all,selected}`) |
 | `POST /api/sanitizer/plan`, `/apply`, `/undo`; `GET /api/sanitizer/recipes` | doc 5 |
-| `GET /api/analysis/targets`, `POST /api/analysis/run`, `GET /api/analysis/jobs` | doc 6 |
-| `POST /api/jobs`, `GET /api/jobs/<id>`, `GET /api/jobs/<id>/events?from=N`, `POST /api/jobs/<id>/cancel` | jobs (doc 12.5). The only cancellation route |
+| `GET /api/analysis/targets`, `POST /api/analysis/run`, `GET /api/analysis/jobs` | doc 6: reserved for the analysis slot family (1.x); not served in 1.1 |
+| `POST /api/jobs` `{kind, params}`, `GET /api/jobs`, `GET /api/jobs/<id>`, `GET /api/jobs/<id>/events?from=N`, `POST /api/jobs/<id>/cancel` | jobs (doc 12.5): generic submit onto the kind's own handler (extract, survey, repack, preflight, install, capture, cleanup); the kind-specific routes stay. The only cancellation route |
 
 New *optional* fields on `/api/extract`: `extractionType` (already accepted
-in v1 but never sent), `plugins`, `mixedPolicy`, `pluginOptions`,
-`sanitizeRecipe`, `sanitizeAutoApply`.
+in v1 but never sent), `plugins`, `mixedPolicy`, `pluginOptions`, `onExisting`, `carve`.
+Curated error convention: legacy-shaped routes answer HTTP 200 with `success: false` and a
+`code`; envelope routes map the code to an HTTP status (`busy` → 409).
 
 **Security model (overrides v1; H3 in doc 7).** Keeping v1's routes doesn't mean keeping their holes:
 
@@ -79,7 +81,8 @@ change is safe.
 
 ```
 <workspace>/
-  .viwo-workspace            ownership marker (JSON: workspace id, created by, contract version)
+  .viwo-workspace            ownership marker (JSON: app, id, created_by, created, contract; an
+                             older empty or `{"app": "viwo"}` marker still counts as owned)
   <ext>/...                  files grouped by lowercased extension, no dot
   noext/...                  files without an extension
   .trash/groups/<ext>[_N]/   trashed extension groups ("group trash")
@@ -90,19 +93,19 @@ change is safe.
   .analysis/<analyzer>/<target>/
 ```
 
-- **Ownership (fixes H2):** the framework only ever **clears or replaces** content inside a folder that holds a `.viwo-workspace` marker it wrote. Pointing Step 2 at an arbitrary folder makes it a *read/curate* target only; extracting into it is refused unless it's empty, in which case the marker is created.
+- **Ownership (fixes H2):** the framework only ever **clears or replaces** content inside a folder that holds a `.viwo-workspace` marker it wrote. Pointing Step 2 at an arbitrary folder makes it a *read/curate* target only; extracting into it is refused unless it's empty, in which case the marker is created. The configured default workspace (`[server] workspace`) is owned by configuration and is claimed without the check.
 - **Re-extraction policy (decided: ask every time).** When the target workspace is owned and not empty, the user chooses: **new** (a new workspace folder `<name>-<n>`), **replace** (replace the extension groups, keep `.extraction_metadata/runs/`, `.sanitizer/journal/` and `.trash/`), or **cancel**. HTTP: `/api/extract` takes an optional `onExisting: new|replace|cancel`. Without it, the response is `{success:false, needsDecision:true, options:[...]}` and the UI shows a dialog (a small v1 UI addition in M3). CLI: `--on-existing` is required in that situation; without it the command exits with code 2 and an explanation.
 - **Three trash layouts, made explicit** (fixes F18): `groups/`, `items/`, `merger/`. v1 trees with the old layout are migrated once, on first open.
 - **All top-level folders starting with `.` are reserved:** never listed, counted, sorted, merged, or trashed by "keep selected" (fixes F3).
 - Collision naming stays as it is: `name__N.ext`; undo uses `name__undoN.ext`; group trash copies `<ext>_N`; restored groups `<ext>__N`.
 - COLLECT dedupe: same size **and** same content hash means the file is skipped (v1 used mtime instead: F6).
-- The active workspace is still the session's `assetPath`, falling back to `<tempPath>/<outputDir>`.
+- The active workspace starts as `[server] workspace` from the startup ini and follows `POST /api/workspace` (and the workspace of the last extraction) for the server's lifetime.
 
 ## 4.4 Progress and log format
 
-- Plugins and core send `ProgressEvent { message, level, source, stage, current, total }`.
+- Plugins and core send `ProgressEvent { message, level, source, stage }`. Counts travel inside the message as `done / total` ("Scanned files: 1,200 / 4,100") or as a running count ("Scanned files: 12,400"); the web progress component parses both (`web/js/progress.js`).
 - These are shown in the v1 UI as `[SOURCE:STAGE] message`, for example `[UNITY:EXPORT] UnityPy exported 120 asset(s)`. That matches lines v1 already prints, such as `[UNITY:DISCOVERY]` and `[PHASE 1]`.
-- Lines are still added to the session log (`/api/logs`, which the UI polls) and to the daily log file `rpy-extractor-YYYY-MM-DD.log`.
+- Lines are still added to the session log (`/api/logs`, which the UI polls) and to the daily log file `viwo-YYYY-MM-DD.log` under `[server] logs`.
 - `secret` option values are masked before anything is sent.
 
 ## 4.5 Configuration: one file

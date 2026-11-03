@@ -25,9 +25,15 @@ RD_PYTHON = DependencySpec(
 HELPER = Path(__file__).with_name("rd_harvest.py")
 
 
+OFFLINE_ENV = {"VIWO_OFFLINE": "1"}  # doc 11.6: the hint runtime agents read; RenderDoc itself
+# makes no network use (network = "none")
+
+
 class RenderDocCapture(Backend):
     backend_id, license, isolation = "renderdoc", "MIT", "subprocess"
+    self_check_args = ("--help",)  # renderdoccmd answers; qrenderdoc (rdpython) is never run here
     families = frozenset({"capture"})
+    network = "none"  # doc 11.6 declaration: nothing is fetched or reported
 
     def dependencies(self):
         return (RENDERDOCCMD, RD_PYTHON)
@@ -54,11 +60,20 @@ class RenderDocCapture(Backend):
             stage="capture",
         )
         run = ctx.os.process.run(
-            argv + [spec["exe"], *spec.get("args", [])], timeout=12 * 3600, cancel=ctx.cancel
+            argv + [spec["exe"], *spec.get("args", [])],
+            timeout=12 * 3600,
+            cancel=ctx.cancel,
+            env={**OFFLINE_ENV, **spec.get("env", {})},
         )
         files = sorted(captures.glob("*.rdc"))
         if not files:
             return Outcome(OutcomeKind.FAILED, error=(run.stderr or "no capture was taken")[-300:])
+        harvested = self._harvest(py, files, staging, ctx)
+        return Outcome(OutcomeKind.OK, harvested, notes=(f"{len(files)} capture(s)",))
+
+    @staticmethod
+    def _harvest(py, files: list[Path], staging: Path, ctx) -> int:
+        """Every capture through the harvest helper; returns the PNG count."""
         harvested = 0
         for rdc in files:
             out = staging / rdc.stem
@@ -70,4 +85,4 @@ class RenderDocCapture(Backend):
             )
             harvested += sum(1 for _ in out.glob("*.png")) if done.ok else 0
             ctx.log(f"Harvested {rdc.name}: {'ok' if done.ok else 'failed'}", stage="harvest")
-        return Outcome(OutcomeKind.OK, harvested, notes=(f"{len(files)} capture(s)",))
+        return harvested

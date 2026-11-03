@@ -145,6 +145,7 @@ class SignatureCarver(Carver):
     gzip streams, inflated and carved in turn."""
 
     backend_id, license = "signature-carver", "MIT"
+    parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
     def carve(self, path: Path, dest: Path, ctx) -> Outcome:
         try:

@@ -96,3 +96,22 @@ then `README.md` ("Philosophy", "Legal and disclaimer"), then `docs/prototype-b/
 - `viwo config generate` after changing plugins or slots, or the drift test fails.
 - Owner's rules: fully automated (no manual tool steps), every third-party tool under
   `third_party/`, no policy boundaries in code (README "Philosophy").
+
+## 1.2 (contract conformance batch, 2026-11-03)
+Four implementers worked the defect and gap list of `docs/contract/CONFORMANCE.md`; they were cut
+off by the usage limit before rewriting the conformance tables, so the tables still show the
+pre-batch audit. What landed and passes the suite: contract types (`network` and
+`parses_untrusted_in_process` on every backend, `self_check`, per-OS executables, `runtime` kind,
+manifest fields, option types, `verify` 4-arg shim, `inventory`), OS known dirs and `long_path`,
+ini `contract` key with the major check, one `base =` level, value sources, default fallback on
+unknown ids, slot lookup order, `unarchive.upak` spare, `media.probe` / `image.convert` slots,
+`export.godot`, conformance kit (`tests/test_conformance_kit.py`), L0 static tests (import
+direction, GPL isolation, network declarations, caps-ini schema), L5 tests through the runtime,
+zstd/LZ4 stream rung, coverage check in CI, `[exceptions]` with expiry, run-record context
+(`viwo/core/records.py`), `viwo slots --check`, `unpack --slot/--backend`, `--quiet/--verbose`,
+JobHandle fields, anti-cheat service and network warnings, offline hints, round-trip untouched
+hash check + same-format rule + `_added/` files, `plugins[].error`, marker fields, doc 3.5 keys,
+`POST /api/jobs`, per-mode detect answer, wrapper re-detection, sanitizer rule providers and
+paging, property test; doc revisions for the documented deviations.
+**Next:** re-run the clause audit in-session and update CONFORMANCE.md; the agents' own status
+rewrite never happened.

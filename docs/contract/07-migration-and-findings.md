@@ -39,26 +39,26 @@ right away (roadmap M1), before any refactor.**
 - F17: every unarchive backend gets a traversal test (doc 17.3).
 - F18: the three trash layouts become explicit (doc 0, doc 4.3).
 
-## 7.2 Where each v1 file goes (proposed)
+## 7.2 Where each v1 file went (as built)
 
 | v1 | Target |
 |----|--------|
 | `Start.py` | thin wrapper for `viwo serve`, passing its flags through (doc 12.4) |
 | `extract.py` (config, Handler, routes) | **done:** `viwo/api/server.py`, `handlers.py`, `routes.py`, `app.py`; config → `[server]` in the startup ini |
-| `models.py` | value types → `contracts/`; state → `core/state.py`; extension sets → `core/media_types.py` |
+| `models.py` | value types → `contracts/`; server state → `api/app.py` (`App`); extension sets → `core/curation/sorting.py` |
 | `startup.py` | tool location → `os/*`; dependency registry and boot → `core/wiring/` |
-| `logging_utils.py` | `core/logging.py` |
-| `extraction_core/runtime.py` | `os/*/process.py` |
+| `logging_utils.py` | `api/app.py` `App.log` + `contracts/types.py` `ProgressEvent` |
+| `extraction_core/runtime.py` | `os/_shared.py` `SubprocessRunner` (tree kill per OS in `os/linux.py`, `os/windows.py`) |
 | `extraction_core/archive.py` | unpack loop → `core/pipeline/unpack.py`; zip/tar/7z/rar → `backends/`; rpa → `plugins/renpy`; unitypackage → `plugins/unity` |
-| `extraction_core/file_ops.py` | `core/pipeline/collect.py` (copy from game, move from staging) + `core/workspace/` |
+| `extraction_core/file_ops.py` | `core/pipeline/collect.py` (copy from game, move from staging) + `core/workspace.py` |
 | `extraction_core/pipeline.py`, `extraction_types/{base,registry,orchestrator,detector}.py` | `contracts/` + `core/pipeline/` + `core/wiring/registry.py`; markers move into plugins |
 | `extraction_types/renpy_extractor.py` | `plugins/renpy/` |
 | `extraction_types/unity*` | `plugins/unity/` |
-| `sorting.py`, `api/sorting_handlers.py` | `core/workspace/curation/` + thin API |
+| `sorting.py`, `api/sorting_handlers.py` | `core/curation/` (sorting, trash, groups) + thin API (`api/handlers.py`) |
 | `media_merger/*` | `core/merger/` + thin API; ffmpeg via `media.*` slots; merger build becomes a job |
-| `api/common.py` | `core/workspace/`; explorer → OS layer shell |
-| — (new) | `cli/`, `core/jobs/`, later `core/sanitizer/`, `core/capture/` |
-| `web/*` | unchanged, except the security token (doc 4.1) |
+| `api/common.py` | `core/workspace.py`; explorer → OS layer shell |
+| — (new) | `cli.py` + `cli_extra.py` + `cli_format.py`, `core/jobs.py`, `core/sanitizer.py` + `core/sanitizer_rules.py`, `core/capture/` |
+| `web/*` | rewritten as `viwo/web/` (plain ES modules, component library + themes, doc `docs/ui.md`); the security token stays (doc 4.1) |
 
 ## 7.3 Order of work
 

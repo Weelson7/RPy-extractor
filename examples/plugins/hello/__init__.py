@@ -70,7 +70,7 @@ class HelloPlugin(EnginePlugin):
     def detect(self, probe: GameProbe) -> DetectionResult:
         hits = probe.with_suffix(".hello")
         if not hits:
-            return DetectionResult("hello", 0.0, (), "hello")
+            return DetectionResult(MANIFEST.engine_type, 0.0, (), MANIFEST.plugin_id)
         return DetectionResult("hello", 0.9, (f"{len(hits)} .hello archive(s)",), "hello")
 
     def slot_definitions(self):

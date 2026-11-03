@@ -9,7 +9,7 @@ from pathlib import Path
 
 from viwo import CONTRACT_VERSION
 from viwo.contracts.errors import Envelope, ViwoError
-from viwo.contracts.pipeline import ExtractionRequest
+from viwo.contracts.pipeline import ExtractionMode, ExtractionRequest, MixedPolicy
 from viwo.core.pipeline.probe import FolderProbe
 from viwo.core.pipeline.runner import detect_all
 from viwo.core.pipeline.select import select_plugins
@@ -52,14 +52,34 @@ def _plugins() -> list[dict]:
 
 
 def _detect(data: dict) -> dict:
+    """Dry run (doc 4.1): every plugin's detection plus the selection for each mode."""
     game = Path(str(data.get("gamePath", "")))
     if not game.is_dir():
         raise ViwoError("invalid_request", f"game folder not found: {game}")
     rt = get_app().rt
     found = detect_all(rt, FolderProbe(game))
     priorities = {pid: p.manifest.priority for pid, p in rt.plugins.items()}
-    chosen = select_plugins(ExtractionRequest(str(game)), list(found.values()), priorities)
-    return {"detections": {k: v.to_legacy_dict() for k, v in found.items()}, "auto": list(chosen)}
+    ranked = list(found.values())
+
+    def pick(mode: ExtractionMode, policy: MixedPolicy = MixedPolicy.DETECTED) -> list[str]:
+        req = ExtractionRequest(str(game), mode=mode, mixed_policy=policy)
+        return list(select_plugins(req, ranked, priorities))
+
+    candidates = sorted(
+        (d for d in ranked if d.confidence > 0),
+        key=lambda d: (-d.confidence, -priorities.get(d.plugin_id, 0), d.plugin_id),
+    )
+    modes = {
+        "auto": pick(ExtractionMode.AUTO),
+        "single": [d.plugin_id for d in candidates],
+        "mixed": {
+            "detected": pick(ExtractionMode.MIXED, MixedPolicy.DETECTED),
+            "all": pick(ExtractionMode.MIXED, MixedPolicy.ALL),
+            "selected": [d.plugin_id for d in candidates],
+        },
+    }
+    detections = {k: v.to_legacy_dict() for k, v in found.items()}
+    return {"detections": detections, "auto": modes["auto"], "modes": modes}
 
 
 def _job(job_id: str, query: dict) -> dict:

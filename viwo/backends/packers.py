@@ -11,6 +11,7 @@ from viwo.contracts.types import Outcome, OutcomeKind
 
 class ZipPacker(Packer):
     backend_id, license = "zip-packer", "PSF-2.0"
+    parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
     def pack(self, container, members, ctx) -> Outcome:
         temp = container.with_name(container.name + ".viwo-tmp")

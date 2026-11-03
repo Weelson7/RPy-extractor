@@ -6,7 +6,7 @@ import json
 import shutil
 import tempfile
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from viwo import __version__
@@ -48,12 +48,12 @@ class Run:
     def log(self, message: str, stage: str, level: str = "info") -> None:
         self.emit(ProgressEvent(message, level, "core", stage))
 
-    def ctx(self, owner: str) -> ExtractionContext:
+    def ctx(self, owner: str, game: Path | None = None) -> ExtractionContext:
         options = {**self.rt.owner_options(owner), **self.request.plugin_options.get(owner, {})}
         detection = self.detections.get(owner) or DetectionResult(owner, 0.0, (), owner)
         return ExtractionContext(
             self.job_id,
-            self.game,
+            game or self.game,
             self.work / "staging" / owner,
             self.work / "scratch",
             self.rt.os,
@@ -64,6 +64,10 @@ class Run:
             self.cancel,
             "core" if owner == "core" else f"plugin:{owner}",
         )
+
+
+from .checks import _verify  # noqa: E402
+from .rewrap import _kinds, _rewrap  # noqa: E402  (rewrap imports the runner lazily)
 
 
 def detect_all(rt, probe: FolderProbe) -> dict[str, DetectionResult]:
@@ -132,6 +136,7 @@ def _stages(run: Run, workspace: Path) -> ExtractionResult:
     run.log(f"Scanning {len(game_files)} game file(s) for containers", "unpack")
     unpacked = unpack_all(rt, game_files, run.work / "unpack", run.ctx)
     runs = [_export(run, pid) for pid in chosen]
+    runs += _rewrap(run, chosen, unpacked)
     carved, unpacked = _carve(run, runs, game_files, unpacked)
     sources = sources_for(run, chosen, {**unpacked.origins, **carved.origins}, runs)
     collected = _collect(run, workspace, sources, skip)
@@ -141,9 +146,8 @@ def _stages(run: Run, workspace: Path) -> ExtractionResult:
     touched = changes(before, snapshot(run.game))
     if touched:  # ViWo never writes there; a running game may (saves, logs)
         warnings.append(f"GAME FOLDER CHANGED during extraction: {', '.join(touched[:10])}")
-    warnings += [
-        w for pid in chosen for w in rt.plugins[pid].verify(run.ctx(pid), collected.collected)
-    ]
+    runs = _verified(run, runs, collected.collected)
+    warnings += [w[8:] for r in runs for w in r.warnings if w.startswith("verify: ")]
     result = ExtractionResult(
         True,
         run.request.mode,
@@ -202,30 +206,42 @@ def _carve(run: Run, runs, game_files, unpacked):
     return carved, unpacked
 
 
-def _export(run: Run, plugin_id: str) -> PluginRun:
+def _export(run: Run, plugin_id: str, game: Path | None = None) -> PluginRun:
     plugin, detection = run.rt.plugins[plugin_id], run.detections[plugin_id]
     slot_id = plugin.export_slot()
     if not slot_id:
         return PluginRun(plugin_id, detection)
-    ctx = run.ctx(plugin_id)
+    ctx = run.ctx(plugin_id, game)
     ctx.staging.mkdir(parents=True, exist_ok=True)
     run.log(f"Exporting {plugin.manifest.name} assets ({slot_id})", "export")
     outcome, used = run_with_failover(
         run.rt.bindings[slot_id], run.rt.backends, lambda backend: backend.export(ctx)
     )
-    warnings = () if outcome.ok else (f"{slot_id}: {outcome.kind.value}: {outcome.error}",)
-    return PluginRun(plugin_id, detection, outcome.files, used if outcome.ok else "", warnings)
+    error = "" if outcome.ok else f"{slot_id}: {outcome.kind.value}: {outcome.error}"
+    return PluginRun(
+        plugin_id,
+        detection,
+        outcome.files,
+        used if outcome.ok else "",
+        warnings=(error,) if error else (),
+        error=error,
+        exported_by_kind=_kinds(ctx.staging),
+    )
 
 
-def _verify(unpacked, collected) -> list[str]:
-    warnings = []
-    if unpacked.found and not unpacked.extracted:
-        warnings.append("Archives were discovered but none extracted successfully.")
-    if collected.scanned == 0:
-        warnings.append("No files were scanned from source roots.")
-    if collected.collected == 0:
-        warnings.append("No files were copied into the output folder.")
-    return warnings
+def _verified(run: Run, runs: list[PluginRun], collected: int) -> list[PluginRun]:
+    """Plugin `verify()` warnings land on the plugin's own entry (doc 3.4 failure isolation)."""
+    out = []
+    for r in runs:
+        plugin = run.rt.plugins[r.plugin_id]
+        try:
+            found = tuple(f"verify: {w}" for w in plugin.verify(run.ctx(r.plugin_id), collected))
+            error = r.error
+        except Exception as exc:  # one plugin's verify never takes the run down
+            found = (f"verify: {type(exc).__name__}: {exc}",)
+            error = r.error or found[0]
+        out.append(replace(r, warnings=(*r.warnings, *found), error=error, verify_passed=not found))
+    return out
 
 
 def _masked_options(run: Run) -> dict[str, dict[str, str]]:

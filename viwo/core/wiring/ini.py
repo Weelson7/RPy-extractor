@@ -1,4 +1,4 @@
-"""Startup ini parsing (doc 9, flat prototype form)."""
+"""Startup ini parsing (doc 9): one flat file, one optional `base =` layer, strict checks."""
 
 from __future__ import annotations
 
@@ -6,11 +6,13 @@ import configparser
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from viwo import CONTRACT_VERSION
 from viwo.contracts.errors import ViwoError
 
 KNOWN_SECTIONS = {"startup", "plugins", "slots", "tools", "server"}
-STARTUP_KEYS = {"os", "profile", "features", "auto_install", "strict_preflight", "base"}
-MAX_LAYERS = 4
+STARTUP_KEYS = {"os", "profile", "features", "auto_install", "strict_preflight", "base", "contract"}
+SERVER_KEYS = {"host", "port", "workspace", "merged", "logs", "temp"}
+MAX_LAYERS = 2  # doc 9.1: the ini and at most one base file
 SECRET_WORDS = ("key", "secret", "password", "token")
 
 
@@ -27,6 +29,8 @@ class StartupConfig:
     tools: dict[str, str] = field(default_factory=dict)
     options: dict[str, dict[str, str]] = field(default_factory=dict)
     source: str = "defaults"
+    contract: str = CONTRACT_VERSION
+    sources: dict[str, str] = field(default_factory=dict)  # "section.key" -> default|base|ini|cli
     problems: list[str] = field(default_factory=list)
     server: "ServerConfig" = field(default_factory=lambda: ServerConfig.under(Path.cwd()))
 
@@ -56,6 +60,13 @@ def _split(value: str) -> list[str]:
 
 def _read_startup(cfg: configparser.ConfigParser, out: StartupConfig) -> None:
     sec = cfg["startup"] if cfg.has_section("startup") else {}
+    out.contract = str(sec.get("contract", CONTRACT_VERSION)).strip()
+    if out.contract.split(".")[0] != CONTRACT_VERSION.split(".")[0]:
+        raise ViwoError(
+            "invalid_request",
+            f"[startup] contract = {out.contract}: this ViWo implements contract "
+            f"{CONTRACT_VERSION} (major versions must match)",
+        )
     out.os_id = str(sec.get("os", out.os_id)).lower()
     out.profile = str(sec.get("profile", out.profile)).lower()
     if "features" in sec:
@@ -114,7 +125,9 @@ def layers(path: Path) -> list[Path]:
     chain, current = [], path.resolve()
     while current is not None:
         if current in chain or len(chain) >= MAX_LAYERS:
-            raise ViwoError("invalid_request", f"{path}: base chain loops or is too deep")
+            raise ViwoError(
+                "invalid_request", f"{path}: base chain loops or has more than one level"
+            )
         chain.append(current)
         cfg = _parser()
         cfg.read(current, encoding="utf-8-sig")
@@ -126,10 +139,25 @@ def layers(path: Path) -> list[Path]:
 
 
 def _unknown_keys(cfg: configparser.ConfigParser, out: StartupConfig) -> None:
-    if cfg.has_section("startup"):
-        for key in cfg["startup"]:
-            if key not in STARTUP_KEYS:
-                out.problems.append(f"[startup] {key}: unknown key ignored")
+    for section, known in (("startup", STARTUP_KEYS), ("server", SERVER_KEYS)):
+        if cfg.has_section(section):
+            for key in cfg[section]:
+                if key not in known:
+                    out.problems.append(f"[{section}] {key}: unknown key ignored")
+
+
+def _sources(files: list[Path], out: StartupConfig) -> None:
+    """Doc 9.1: where every effective value comes from (default, base, ini); cli is added by
+    boot. Keys are "section.key"; [startup] fields absent from every file read "default"."""
+    for name in ("os", "profile", "features", "auto_install", "strict_preflight", "contract"):
+        out.sources[f"startup.{name}"] = "default"
+    for index, file in enumerate(files):
+        origin = "ini" if index == len(files) - 1 else "base"
+        cfg = _parser()
+        cfg.read(file, encoding="utf-8-sig")
+        for section in cfg.sections():
+            for key in cfg[section]:
+                out.sources[f"{section}.{key}"] = origin
 
 
 def load_ini(path: Path | None) -> StartupConfig:
@@ -142,6 +170,7 @@ def load_ini(path: Path | None) -> StartupConfig:
         files = layers(path)
         cfg.read(files, encoding="utf-8-sig")  # later files override earlier ones
         _unknown_keys(cfg, out)
+        _sources(files, out)
         _read_startup(cfg, out)
         _read_tables(cfg, out, path.parent)
         _read_options(cfg, out)

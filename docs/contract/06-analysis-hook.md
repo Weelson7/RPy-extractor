@@ -1,7 +1,11 @@
 # 6. Code analysis hook (Ghidra first)
 
-**Status: contract hook only.** No analyzer ships in contract 1.0 or in the prototype (unrpyc included; it comes with the first analysis milestone). This doc
-fixes the shape now so Ghidra can be added later without breaking changes.
+**Status (normative, 1.1): a 1.x slot family, not shipped in 1.1.** No `analysis.*` slot, no
+`analysis_targets()` hook, no `Stage.ANALYZE`, no `analysis` feature value and no `/api/analysis/*`
+route exists in 1.1; the shapes below are the normative future shape so Ghidra and friends can be
+added without breaking changes. Decompilers that only turn one file into a readable one (unrpyc for
+Ren'Py `.rpyc`) ship as DECODE slots (`decode.rpyc`, doc 8) and run inside extraction; the
+analysis hook is for whole-binary analysis (Ghidra, IL2CPP) that is never part of an extraction.
 
 ## 6.1 Split: what vs how
 

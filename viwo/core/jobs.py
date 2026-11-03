@@ -25,21 +25,26 @@ class Job:
     error: dict | None = None
     cancel: CancelToken = field(default_factory=CancelToken)
     done: threading.Event = field(default_factory=threading.Event)
-    started: float = field(default_factory=time.time)
+    created: float = field(default_factory=time.time)  # JobHandle (doc 12.3)
+    started: float = 0.0  # when the function began running (0 while queued)
     finished: float = 0.0
 
     def emit(self, event: ProgressEvent) -> None:
         self.events.append(event)
 
     def summary(self) -> dict:
+        """JobHandle {id, kind, state, created, started, finished} plus counts (doc 12.3)."""
+        begun = self.started or self.created
         return {
             "id": self.job_id,
             "kind": self.kind,
             "state": self.state,
             "events": len(self.events),
             "error": self.error,
-            "started": self.started,
-            "elapsed": round((self.finished or time.time()) - self.started, 2),
+            "created": self.created,
+            "started": begun,
+            "finished": self.finished or None,
+            "elapsed": round((self.finished or time.time()) - begun, 2),
         }
 
 
@@ -75,7 +80,7 @@ class JobRunner:
         return sink
 
     def _run(self, job: Job, fn: JobFn, listener: ProgressSink | None = None) -> None:
-        job.state = "running"
+        job.state, job.started = "running", time.time()
         try:
             job.result = fn(job.job_id, self._sink(job, listener), job.cancel)
             job.state = "cancelled" if job.cancel.cancelled else "succeeded"

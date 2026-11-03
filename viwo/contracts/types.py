@@ -5,7 +5,7 @@ from __future__ import annotations
 import threading
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Callable
+from typing import Callable, Mapping
 
 
 @dataclass(frozen=True)
@@ -70,17 +70,28 @@ class Requirement(str, Enum):
 
 @dataclass(frozen=True)
 class DependencySpec:
-    """A tool a backend needs. `executables` are bare names; the OS layer adds suffixes."""
+    """A tool a backend needs (doc 2.6). `executables` are bare names (the OS layer adds the
+    suffixes), either one tuple for every OS layer or a mapping `{os_id: names}`. `packages`
+    names the dependency in package managers (informational: ViWo installs from its own pins)."""
 
     dep_id: str
     label: str
-    kind: str = "executable"  # "executable" | "python"
+    kind: str = "executable"  # "executable" | "python" | "runtime"
     requirement: Requirement = Requirement.OPTIONAL
     import_name: str = ""
-    executables: tuple[str, ...] = ()
+    executables: tuple[str, ...] | Mapping[str, tuple[str, ...]] = ()
     install_dirs: tuple[str, ...] = ()  # folder names searched under known install roots
     env_var: str = ""
     hint: str = ""
+    packages: tuple[tuple[str, str], ...] = ()  # (manager, package), e.g. ("winget", "7zip.7zip")
+
+    def executables_for(self, os_id: str) -> tuple[str, ...]:
+        if isinstance(self.executables, Mapping):
+            return tuple(self.executables.get(os_id, ()))
+        return tuple(self.executables)
+
+    def package_map(self) -> dict[str, str]:
+        return dict(self.packages)
 
 
 @dataclass(frozen=True)

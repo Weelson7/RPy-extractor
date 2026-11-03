@@ -217,3 +217,56 @@ class CarvePipelineTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class OptionalStreamTests(unittest.TestCase):
+    """Ladder rung 4 (doc 16.0b): LZ4 and zstd frames are inflated when their modules exist,
+    and silently skipped (never a crash) when they do not."""
+
+    def test_lz4_frame_is_inflated_when_the_module_is_present(self) -> None:
+        try:
+            import lz4.frame
+        except ImportError:
+            self.skipTest("lz4 not installed")
+        from viwo.core.carve import streams
+
+        self.assertIn(("lz4"), [k for _, k in streams.heads()])
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            png = make_png(root / "p.png", 8, 8).read_bytes()
+            text = b"spoken line\n" * 20
+            pack = b"PAK4" + lz4.frame.compress(png) + b"\0" * 7 + lz4.frame.compress(text)
+            (root / "data.bin").write_bytes(pack)
+            # the inflated PNG and text, plus the PNG bytes LZ4 stored literally (also real)
+            self.assertGreaterEqual(carve_file(root / "data.bin", root / "out", CancelToken()), 2)
+            found = sorted(p.suffix for p in (root / "out").iterdir())
+            self.assertIn(".txt", found)
+            self.assertIn(".png", found)
+            self.assertIn(text, [p.read_bytes() for p in (root / "out").iterdir()])
+
+    def test_zstd_frame_is_inflated_when_the_module_is_present(self) -> None:
+        try:
+            import zstandard
+        except ImportError:
+            self.skipTest("zstandard not installed")
+        from viwo.core.carve import streams
+
+        self.assertIn("zstd", [k for _, k in streams.heads()])
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            text = b"zstd stored text\n" * 30
+            (root / "data.bin").write_bytes(b"\xff" * 9 + zstandard.compress(text))
+            self.assertEqual(carve_file(root / "data.bin", root / "out", CancelToken()), 1)
+
+    def test_missing_optional_module_only_drops_that_kind(self) -> None:
+        from unittest import mock
+
+        from viwo.core.carve import streams
+
+        with mock.patch.object(
+            streams, "decoder", lambda kind: None if kind == "lz4" else object()
+        ):
+            kinds = [k for _, k in streams.heads()]
+            self.assertNotIn("lz4", kinds)
+            self.assertIn(15, kinds)
+        self.assertIsNone(streams.inflate(b"\x04\x22\x4d\x18" + b"\0" * 64, 0, 68, "nope"))

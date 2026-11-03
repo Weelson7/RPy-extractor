@@ -103,9 +103,21 @@ Ranked by popularity among indie and visual-novel games × tool maturity × low 
 
 This suggests one more structural point: **wrapper plugins**. A wrapper
 plugin such as Electron/NW.js unwraps the outer container, and then
-detection runs again on what's inside. That fits the recursive unpack loop:
-after unpacking, the probe should be rebuilt and detection rerun at most
-once ❓.
+detection runs again on what's inside. **1.1:** the unpack loop does exactly that: after an
+outer wrapper (asar, `package.nw`) is unpacked, the probe is rebuilt over the unwrapped tree and
+detection reruns once (doc 14.2 #3; `tests/test_conformance_kit.py`, `tests/test_mixed.py`).
+
+### Coverage shipped in 1.1 (against the tables above)
+
+| Area | Shipped | Not shipped (roadmap, doc 16) |
+|------|---------|-------------------------------|
+| Ren'Py | safe RPA reader (main), unrpa (spare, GPL, subprocess), **unrpyc** pinned as `decode.rpyc` | rpycdec spare |
+| Unity | UnityPy (main), AssetStudioModCLI (spare, on the pinned .NET runtime), meshes to OBJ | UABEA, AssetRipper project rebuild, Cpp2IL / Il2CppDumper (analysis rung) |
+| Unreal | repak (`.pak`, verified AES keys per D18), retoc (IoStore), `_P.pak` round trip | CUE4Parse wrapper, UAssetGUI, locres |
+| Godot | GDRE Tools (main), GodotPckTool (spare), embedded PCK carving, PCK rebuild | — |
+| Custom engines | Doom WAD, RPG Maker (XP/VX/VX Ace, MV/MZ), KiriKiri XP3, Electron/NW.js (`.nw` as zip), Source VPK, Bethesda BSA/BA2 (**lz4** pinned), Overwatch via **DataTool** (pinned) | GameMaker, TyranoScript, Love2D, Wolf, XNA, AGS, Defold |
+| Anything else | signature carver, zlib/gzip/zstd/LZ4 stream inflation, **QuickBMS** pinned with scripts from the indexes, **RenderDoc** pinned for runtime capture | Kaitai declarative formats |
+| Code RE | — | Ghidra, ilspycmd (analysis rung, 13.4) |
 
 ## 13.4 Code RE tools (doc 6 updates)
 

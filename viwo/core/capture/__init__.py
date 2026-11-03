@@ -21,6 +21,7 @@ from ..pipeline.failover import run_with_failover
 from ..pipeline.guard import refuse_writes_inside
 from ..pipeline.probe import FolderProbe
 from ..pipeline.runner import detect_all
+from ..records import record_context
 from ..workspace import claim, write_atomic
 from .journal import pending
 from .policy import check
@@ -136,6 +137,7 @@ def capture(rt, req: CaptureRequest, sink=None, cancel=None) -> dict:
         "newVsStatic": len(new),
         "new": [p["path"] for p in new][:200],
         "warnings": warnings,
+        "context": record_context(rt),  # effective ini, bindings, tool versions (doc 12.3)
     }
     (req.workspace / ws.RUNS_DIR).mkdir(parents=True, exist_ok=True)
     record = req.workspace / ws.RUNS_DIR / f"capture-{job}.json"

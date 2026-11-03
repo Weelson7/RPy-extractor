@@ -181,6 +181,7 @@ def _export_group(ctx, unitypy, files: list[Path], mapping: dict) -> tuple[int, 
 
 class UnityPyExporter(Exporter):
     backend_id, owner, license = "unitypy", "unity", "MIT"
+    parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
     def dependencies(self):
         return (UNITYPY,)

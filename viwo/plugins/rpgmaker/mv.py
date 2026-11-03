@@ -61,6 +61,7 @@ def decrypt(data: bytes, key: bytes) -> bytes | None:
 
 class RpgMvExporter(Exporter):
     backend_id, owner, license = "rpgmv-builtin", "rpgmaker", "MIT"
+    parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
     def export(self, ctx) -> Outcome:
         files = [p for p in sorted(ctx.game_root.rglob("*")) if p.suffix.lower() in SUFFIXES]
@@ -91,6 +92,7 @@ class RpgMvPacker(Packer):
     """Round trip: re-encrypt the edited image/audio over its encrypted original."""
 
     backend_id, owner, license = "rpgmv-pack", "rpgmaker", "MIT"
+    parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
     def pack(self, container, members, ctx) -> Outcome:
         key = system_key(ctx.game_root) or png_key([container])

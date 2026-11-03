@@ -42,6 +42,7 @@ SLOTS = (  # identified by footer / magic only: ".pak" is used by many engines
         "unarchive",
         "unreal",
         "repak-cli",
+        "quickbms-cli",  # doc 8.4: a .pak script in the QuickBMS scripts folder is the spare
         identify=identify_unreal,
     ),
     SlotDefinition("unarchive.utoc", "unarchive", "unreal", "retoc-legacy", "retoc-unpack"),

@@ -1,15 +1,15 @@
 """Asset sanitizer, phase 1 (doc 5): zero-byte files, wrong extensions, exact duplicates,
 engine junk, and health checks. Plan first (read-only), then apply only accepted safe
 actions; every apply is journaled under .sanitizer/ and can be undone. Nothing lossy.
+
+Rules are providers (`sanitizer_rules.SanitizerRule`, core and plugins) run in cost order.
 """
 
 from __future__ import annotations
 
 import json
-import mmap
 import re
 import shutil
-import struct
 import time
 import uuid
 from pathlib import Path
@@ -18,131 +18,89 @@ from viwo.contracts import workspace as ws
 from viwo.contracts.errors import ViwoError
 
 from . import provenance
-from .carve import SIGNATURES
-from .carve import formats2 as g
 from .curation import trash
-from .pipeline.collect import sha256
+from .sanitizer_rules import BatchRule, RuleContext, collect_rules, contained, rule_ids, sniff
 from .steps import Step
 from .workspace import write_atomic
 
 ROOT = ".sanitizer"
-JUNK = {".import", ".meta", ".tmp", ".bak"}
-JUNK_NAMES = {"thumbs.db", "desktop.ini", ".ds_store"}
-SAME = {".jpeg": ".jpg", ".midi": ".mid", ".tif": ".tiff"}
-NEEDLE_EXT = {
-    b"\x89PNG\r\n\x1a\n": ".png",
-    b"\xff\xd8\xff": ".jpg",
-    b"GIF8": ".gif",
-    b"OggS": ".ogg",
-}
-NEEDLE_EXT |= {b"MThd": ".mid", b"DDS |": ".dds", b"glTF": ".glb", b"7z\xbc\xaf\x27\x1c": ".7z"}
+RECIPES = [
+    {
+        "id": "phase1-safe",
+        "name": "Safe cleanup",
+        "lossy": False,
+        "rules": ["core.zero_byte", "core.junk", "core.extension", "core.duplicate", "core.health"],
+    }
+]
+__all__ = ["ROOT", "RECIPES", "plan", "apply", "undo", "sniff"]
 
 
-def sniff(path: Path) -> tuple[str, int] | None:
-    """(suffix, size) of the format this file starts with, from the carver's sizers;
-    size -1 when the file starts with a signature but its structure does not walk."""
-    size = path.stat().st_size
-    if size < 16:
-        return None
-    with open(path, "rb") as fh, mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ) as m:
-        for needle, delta, sizer in SIGNATURES:
-            if m[-delta : -delta + len(needle)] != needle:  # needle sits at -delta in the file
-                continue
-            try:
-                found = sizer(m, 0, size, {}) if sizer is g.zip_file else sizer(m, 0, size)
-            except (IndexError, ValueError, OverflowError, struct.error):
-                found = None
-            if found:
-                return found[1], found[0]
-            if path.suffix.lower() == NEEDLE_EXT.get(needle):
-                return path.suffix.lower(), -1
-    return None
+def recipes(rules=None) -> list[dict]:
+    """Built-in recipes; the safe recipe lists every enabled, non-lossy rule in play."""
+    active = [r for r in (rules or collect_rules()) if r.default_enabled and not r.lossy]
+    return [{**RECIPES[0], "rules": rule_ids(active)}]
 
 
-def _asset_files(workspace: Path) -> list[Path]:
+def _asset_files(workspace: Path, under: Path) -> list[Path]:
+    groups = [under] if under != workspace else sorted(workspace.iterdir())
     return [
         p
-        for group in sorted(workspace.iterdir())
+        for group in groups
         if group.is_dir() and not ws.is_reserved(group.name)
         for p in sorted(group.rglob("*"))
         if p.is_file()
     ]
 
 
-def _finding(rule: str, path: Path, workspace: Path, message: str, action: str, **extra) -> dict:
-    rel = path.relative_to(workspace).as_posix()
-    return {"rule": rule, "path": rel, "message": message, "action": action, **extra}
+def _recipe_rules(recipe: str, rules) -> list:
+    known = {r["id"] for r in RECIPES}
+    if recipe not in known:
+        raise ViwoError("invalid_request", f"unknown sanitizer recipe {recipe!r}")
+    return [r for r in rules if r.default_enabled and not r.lossy]  # phase 1: never lossy
 
 
-def _inspect(path: Path, workspace: Path) -> list[dict]:
-    ext, size, name = path.suffix.lower(), path.stat().st_size, path.name.lower()
-    if size == 0:
-        return [_finding("core.zero_byte", path, workspace, "empty file", "trash")]
-    if ext in JUNK or name in JUNK_NAMES:
-        return [_finding("core.junk", path, workspace, f"engine/OS junk ({ext or name})", "trash")]
-    found = sniff(path)
-    if found is None:
-        return []
-    real, length = found
-    if length != size:
-        what = "truncated or corrupt" if length < 0 else f"{size - length} bytes of trailing data"
-        return [_finding("core.health", path, workspace, f"{real[1:]} {what}", "none")]
-    if SAME.get(ext, ext) != real and not (ext == ".wav" and real == ".wem"):
-        new = path.with_suffix(real).name
-        return [_finding("core.extension", path, workspace, f"is really {real}", "rename", to=new)]
-    return []
-
-
-def _duplicates(
-    files: list[Path], workspace: Path, renames: set[str], flagged: set[str], sink=None, cancel=None
-) -> list[dict]:
-    """Identical files: keep the cleanest copy (no __N suffix, right extension, first path)."""
-    by_size: dict[int, list[Path]] = {}
-    for path in files:
-        by_size.setdefault(path.stat().st_size, []).append(path)
-    todo = [p for same in by_size.values() if len(same) > 1 for p in same]
-    step, by_hash = Step(sink, "hash", "Hashing files:", len(todo)), {}
-    for path in todo:
-        step.tick(cancel)
-        by_hash.setdefault(sha256(path), []).append(path)
-    if todo:
-        step.done()
-    out = []
-    for same in (s for s in by_hash.values() if len(s) > 1):
-        rel = {p: p.relative_to(workspace).as_posix() for p in same}
-        candidates = [p for p in same if rel[p] not in flagged]  # never trash the last copy
-        if len(candidates) < 2:
-            continue
-        keep = min(candidates, key=lambda p: ("__" in p.stem, rel[p] in renames, rel[p]))
-        out += [
-            _finding("core.duplicate", p, workspace, f"same bytes as {rel[keep]}", "trash")
-            for p in candidates
-            if p != keep
-        ]
-    return out
-
-
-def plan(workspace: Path, sink=None, cancel=None) -> dict:
-    files, findings = _asset_files(workspace), []
+def plan(workspace: Path, sink=None, cancel=None, **opts) -> dict:
+    """opts: rules (providers), recipe id, path (sub-folder), offset/limit (paging)."""
+    rules = _recipe_rules(
+        opts.get("recipe") or RECIPES[0]["id"], opts.get("rules") or collect_rules()
+    )
+    under = contained(workspace, str(opts.get("path") or ""))
+    if under is None or not under.is_dir():
+        raise ViwoError(
+            "invalid_request", f"path is not a folder inside the workspace: {opts.get('path')}"
+        )
+    ctx = RuleContext(workspace, cancel)
+    ctx.sink = sink  # type: ignore[attr-defined]  # batch rules report their own step
+    files, findings = _asset_files(workspace, under), []
     step = Step(sink, "scan", "Scanning files:", len(files))
+    per_file = [r for r in rules if not isinstance(r, BatchRule)]
     for path in files:
         step.tick(cancel)
-        findings += _inspect(path, workspace)
+        for rule in per_file:
+            if rule.applies_to(path) and (found := rule.inspect(path, ctx)):
+                findings += found
+                break  # one verdict per file, cheapest rule first
     step.done()
-    flagged = {f["path"] for f in findings if f["action"] == "trash"}
-    renames = {f["path"] for f in findings if f["action"] == "rename"}
-    dupes = _duplicates(files, workspace, renames, flagged, sink, cancel)
-    gone = {f["path"] for f in dupes}
-    findings = [f for f in findings if f["path"] not in gone] + dupes
+    for rule in (r for r in rules if isinstance(r, BatchRule)):
+        more = rule.inspect_all(files, ctx, findings)
+        gone = {f["path"] for f in more}
+        findings = [f for f in findings if f["path"] not in gone] + more
+    return _save_plan(workspace, files, findings, opts)
+
+
+def _save_plan(workspace: Path, files: list[Path], findings: list[dict], opts: dict) -> dict:
     for finding in findings:  # remembered so that a stale plan is never applied
         file = workspace.joinpath(*Path(finding["path"]).parts)
         finding["size"] = file.stat().st_size if file.is_file() else -1
     plan_id = f"{time.strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:6]}"
-    result = {"planId": plan_id, "scanned": len(files), "findings": findings}
+    recipe = opts.get("recipe") or RECIPES[0]["id"]
+    result = {"planId": plan_id, "recipeId": recipe, "scanned": len(files), "findings": findings}
     folder = workspace / ROOT / "plans"
     folder.mkdir(parents=True, exist_ok=True)
     write_atomic(folder / f"{plan_id}.json", json.dumps(result, indent=1))
-    return result
+    offset, limit = max(0, int(opts.get("offset") or 0)), int(opts.get("limit") or 0)
+    page = findings[offset : offset + limit] if limit > 0 else findings[offset:]
+    return {**result, "findings": page, "total": len(findings), "offset": offset, "limit": limit}
 
 
 def _move(src: Path, dest: Path) -> Path:
@@ -227,6 +185,7 @@ def apply(workspace: Path, plan_id: str, accept="all-safe", sink=None, cancel=No
         "planId": plan_id,
         "applied": len(journal),
         "moved": moved,
+        "trashed": sum(1 for f in chosen if f["action"] == "trash") - len(failed),
         "failed": failed,
         "undoToken": plan_id,
     }

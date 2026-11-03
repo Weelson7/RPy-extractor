@@ -32,8 +32,15 @@ jobs:
           ruff format --check viwo tests tools
           ruff check viwo tests tools
           python tools/loc_count.py --report
-      - name: L1-L4, L6 (fakes and synthetic fixtures)
-        run: python -m unittest discover -s tests -t . -v
+      - name: L1-L4, L6 (fakes and synthetic fixtures) under coverage
+        env:
+          VIWO_UI: "0"
+        run: |
+          python -m pip install coverage
+          python -m coverage run --source=viwo -m unittest discover -s tests -t . -v
+          python -m coverage json -o coverage.json
+      - name: Coverage floors (doc 17.5)
+        run: python tools/coverage_check.py coverage.json
 
   real-tools:
     # L5: real third-party tools at pinned versions (major releases / by hand).

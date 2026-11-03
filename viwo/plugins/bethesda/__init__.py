@@ -41,6 +41,7 @@ def _mapped(archive: Path, read):
 
 class BsaBuiltin(Unarchiver):
     backend_id, owner, license = "bsa-builtin", "bethesda", "MIT"
+    parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
     def dependencies(self):
         return (LZ4,)
@@ -72,6 +73,7 @@ class BsaBuiltin(Unarchiver):
 
 class Ba2Builtin(Unarchiver):
     backend_id, owner, license = "ba2-builtin", "bethesda", "MIT"
+    parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
     def extract(self, archive: Path, dest: Path, ctx) -> Outcome:
         def read(blob) -> int:

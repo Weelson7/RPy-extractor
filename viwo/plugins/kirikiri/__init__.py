@@ -79,6 +79,7 @@ def _segment(fh, compressed: bool, offset: int, size: int, packed: int) -> bytes
 
 class Xp3Builtin(Unarchiver):
     backend_id, owner, license = "xp3-builtin", "kirikiri", "MIT"
+    parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
     def extract(self, archive: Path, dest: Path, ctx) -> Outcome:
         written, locked = 0, 0

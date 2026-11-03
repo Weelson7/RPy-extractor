@@ -27,13 +27,13 @@ Where game assets differ from Tdarr, and the risks:
 4. **Running cost.** A full decode or transcode over 100k files is slow. Rules declare a `cost`, plans run in cost order, and every rule checks the cancel token.
 5. **Undo.** v1 sorting undo is kept in memory per session. A sanitizer batch can touch thousands of files, so its undo must be saved to disk (a JSON journal in `.sanitizer/`) and survive a restart.
 
-**Proposed scope:**
+**Scope (normative since 1.1):**
 
 - **Phase 1 (safe, cheap):** zero-byte files, extension fixes from magic bytes, exact duplicates by hash, junk files (engine `.import` stubs, `.meta`, thumbnails), and decode health checks (report only).
-- **Phase 2:** lossless conversions to open formats (`.ctex`→`.png`, `.dds`→`.png`, `.bytes`→`.wav`/`.ogg` once the real format is identified).
-- **Phase 3:** opt-in transcode presets (for example a "web" preset: video to mp4/h264, audio to ogg/opus) and merger-friendly renumbering.
+- **Phase 2 (1.x, not shipped in 1.1):** lossless conversions to open formats (`.ctex`→`.png`, `.dds`→`.png`, `.bytes`→`.wav`/`.ogg` once the real format is identified); `fix` writes into `.sanitizer/cache/` and core commits `replace`.
+- **Phase 3 (1.x, not shipped in 1.1):** opt-in transcode presets (for example a "web" preset: video to mp4/h264, audio to ogg/opus) and merger-friendly renumbering.
 
-## 5.2 Contract
+## 5.2 Contract (implemented: `viwo/core/sanitizer_rules.py`, `EnginePlugin.sanitizer_rules()`)
 
 ```text
 SanitizerRule                         (provider: core or plugin, via sanitizer_rules())
@@ -48,17 +48,20 @@ SanitizerRule                         (provider: core or plugin, via sanitizer_r
 BatchRule (dedupe, numbering): inspect_all(assets, ctx) -> [Finding]
 
 AssetRef  { path, rel, ext, size, head }
-Finding   { rule_id, asset, severity info|warn|error, message, action, group }
-Action    { kind none|rename|replace|add|trash, target, lossy, params }
-Recipe    { recipe_id, name, rule_ids[], rule_options{}, max_workers }
-SanitizePlan   { plan_id, recipe_id, findings[], scanned, skipped }
-SanitizeReport { plan_id, applied, failed[], trashed, undo_token }
+Finding   { rule, path, severity info|warn|error, message, action none|rename|trash, to?, size }
+Recipe    { id, name, lossy, rules[] }            (1.1: one built-in recipe, phase1-safe)
+SanitizePlan   { planId, recipeId, scanned, findings[] (page), total, offset, limit }
+SanitizeReport { planId, applied, moved[], trashed, failed[], undoToken }
+(JSON keys are camelCase on the wire, like every v1-shaped route; `replace`/`add` actions and
+`.sanitizer/cache/` arrive with phase 2.)
 ```
 
-Rules (proposed):
+Rules:
 
 - `inspect` never writes anything.
-- `fix` writes only into `.sanitizer/cache/`. **Core** commits the result: `replace` moves the original to `.trash` and the cached file into its place, `rename` uses the v1 collision rule (`__N`), and `trash` moves the file to `.trash`.
+- `fix` writes only into `.sanitizer/cache/` (phase 2). **Core** commits the result: `replace` (phase 2) moves the original to `.trash` and the cached file into its place, `rename` uses the v1 collision rule (`__N`), and `trash` moves the file to `.trash/items/<rel>`.
+- Rules run in `cost` order; per-file rules stop at the first verdict for a file; batch rules (dedupe) run last and see the earlier findings so the last copy of a file is never trashed. Every rule checks the cancel token through the scan step.
+- A plan remembers each file's size; `apply` refuses a stale plan (`plan is stale`) when a file changed since the scan.
 - A recipe that contains a lossy rule can't be a default recipe and can't run automatically after extraction.
 - Each apply writes a journal at `.sanitizer/journal/<plan_id>.json`. Undo follows it in reverse.
 - Rules use media and image backends **through slots** (doc 8), never by calling tools directly.
@@ -68,10 +71,9 @@ Rules (proposed):
 | Route | Body / result |
 |-------|---------------|
 | `GET /api/sanitizer/recipes` | built-in recipes + saved custom recipes, each listing its rules and whether they are lossy |
-| `POST /api/sanitizer/plan` | `{recipeId, path?}` → `SanitizePlan` (paged findings) |
+| `POST /api/sanitizer/plan` | `{recipeId?, path?, offset?, limit?}` → `SanitizePlan` (`path` = sub-folder of the workspace, contained; `findings` is the page, `total` the count) |
 | `POST /api/sanitizer/apply` | `{planId, accept: [findingIndex] \| "all-safe"}` → `SanitizeReport` |
 | `POST /api/sanitizer/undo` | `{undoToken}` |
 
-UI: a new workspace panel next to the Sorting Window and Media Merger
-(plan table → accept → apply). This is the first new UI piece, and the
-existing panels don't change.
+UI: 08 CLEANUP (plan table → accept → apply → undo), run as a job of kind `cleanup` so 04 JOBS
+and the status chips show it.

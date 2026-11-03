@@ -56,6 +56,9 @@ class Backend(ABC):
     families: frozenset[str] = frozenset()
     license: str = ""  # SPDX
     isolation: str = "inprocess"  # "inprocess" | "subprocess" (GPL/AGPL must be subprocess)
+    network: str = "none"  # "none" | "download" | "any": what the backend may reach (doc 8.4)
+    parses_untrusted_in_process: bool = False  # reads game/archive bytes in the ViWo process
+    self_check_args: tuple[str, ...] = ("--version",)  # how self_check() pokes a CLI tool
 
     def dependencies(self) -> Sequence[DependencySpec]:
         return ()
@@ -65,6 +68,21 @@ class Backend(ABC):
         for spec in self.dependencies():
             if os.tools.locate(spec) is None:
                 return False, spec.hint or f"{spec.label} not found"
+        return True, ""
+
+    def self_check(self, os: "OS") -> tuple[bool, str]:
+        """`viwo slots --check`: available(), plus a real run of every CLI tool (doc 8.6).
+        A tool passes when it starts and answers within 8 s; its exit code does not matter."""
+        ok, reason = self.available(os)
+        if not ok or self.isolation != "subprocess":
+            return ok, reason
+        for spec in self.dependencies():
+            tool = os.tools.locate(spec)
+            if tool is None or spec.kind != "executable":
+                continue
+            result = os.process.run([*tool.argv_prefix, *self.self_check_args], timeout=8)
+            if result.timed_out or not (result.stdout or result.stderr):
+                return False, f"{spec.label}: did not answer {' '.join(self.self_check_args)}"
         return True, ""
 
 
@@ -100,6 +118,25 @@ class Decoder(Backend):
     @abstractmethod
     def decode(self, path: Path, dest: Path, ctx: "ExtractionContext") -> Outcome:
         """Write viewable/playable versions of path (WAV, PNG, MP4) into the empty dest."""
+
+
+class Prober(Backend):
+    """media.probe (doc 8.3): what a media file is (format, duration, size), never rewritten."""
+
+    families = frozenset({"probe"})
+
+    @abstractmethod
+    def probe(self, path: Path, ctx: "ExtractionContext") -> Outcome:
+        """Outcome.notes carry the facts ("format=png", "width=640", "duration=1.5")."""
+
+
+class Converter(Backend):
+    """image.convert (doc 8.3): one image into a standard format inside the empty dest."""
+
+    families = frozenset({"convert"})
+
+    @abstractmethod
+    def convert(self, path: Path, dest: Path, ctx: "ExtractionContext") -> Outcome: ...
 
 
 class Packer(Backend):

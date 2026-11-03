@@ -2,7 +2,13 @@
 
 from __future__ import annotations
 
-from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest, PluginOption
+from viwo.contracts.plugin import (
+    EnginePlugin,
+    GameProbe,
+    PluginManifest,
+    PluginOption,
+    VerifyReport,
+)
 from viwo.contracts.slots import SlotDefinition
 from viwo.contracts.types import DetectionResult
 
@@ -85,5 +91,7 @@ class UnityPlugin(EnginePlugin):
     def export_slot(self) -> str:
         return "export.unity"
 
-    def verify(self, ctx, collected: int):
-        return () if collected else ("Unity detected but nothing was collected",)
+    def verify_report(self, ctx, inventory, export, collected: int) -> VerifyReport:
+        if collected:
+            return VerifyReport(True, ())
+        return VerifyReport(False, ("Unity detected but nothing was collected",))

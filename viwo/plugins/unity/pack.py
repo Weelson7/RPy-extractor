@@ -49,6 +49,7 @@ def _same(obj, source: Path) -> bool:
 
 class UnityPyPacker(Packer):
     backend_id, owner, license = "unitypy-pack", "unity", "MIT"
+    parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
     def dependencies(self):
         return (UNITYPY,)

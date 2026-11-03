@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 
 from tests.helpers import make_game, write_ini
+from viwo import CONTRACT_VERSION
 from viwo.api import app as app_module
 from viwo.api.routes import handle_get, handle_post
 from viwo.core.wiring.boot import boot
@@ -27,7 +28,9 @@ class RouteTests(unittest.TestCase):
 
     def test_distro_plugins_detect(self) -> None:
         body, status = handle_get("/api/distro", {})
-        self.assertEqual((status, body["ok"], body["data"]["contract"]), (200, True, "1.0"))
+        self.assertEqual(
+            (status, body["ok"], body["data"]["contract"]), (200, True, CONTRACT_VERSION)
+        )
         body, _ = handle_get("/api/plugins", {})
         godot = next(p for p in body["data"] if p["id"] == "godot")
         self.assertEqual(godot["options"][0]["kind"], "secret")

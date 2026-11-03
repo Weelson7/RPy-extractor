@@ -79,6 +79,7 @@ def _target(dest: Path, name: str) -> Path | None:
 
 class RpaSafe(Unarchiver):
     backend_id, owner, license = "rpa-safe", "renpy", "MIT"
+    parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
     def extract(self, archive, dest, ctx) -> Outcome:
         try:

@@ -1,7 +1,7 @@
 """OS layer contract (doc 1): the only place for OS-specific behavior.
 
-Prototype A scope: process running, tool location, filesystem rules and the
-minimal desktop shell. The package installer comes after Prototype A.
+Process running, tool location, filesystem rules and the minimal desktop shell. Tool
+installation is not an OS-layer concern: pinned downloads live in core (doc 10, 1.0).
 """
 
 from __future__ import annotations
@@ -63,6 +63,11 @@ class FileSystemPolicy(ABC):
     @abstractmethod
     def is_valid_filename(self, name: str) -> bool: ...
 
+    def long_path(self, path: Path) -> Path:
+        """The form of `path` safe for deep trees (Windows: extended-length prefix); identity
+        elsewhere."""
+        return path
+
 
 class DesktopShell(ABC):
     """May return False/None on headless hosts; callers fall back to text input."""
@@ -83,6 +88,7 @@ class OS(ABC):
     """Host OS adapter. One instance per process."""
 
     os_id: str = ""
+    display_name: str = ""  # shown to people: "Windows", "Linux"
 
     @abstractmethod
     def is_supported_host(self) -> bool: ...

@@ -123,6 +123,7 @@ class WadBuiltin(Unarchiver):
     """Pure-Python WAD reader: every lump out, pictures/flats to PNG, DMX sounds to WAV."""
 
     backend_id, owner, license = "wad-builtin", "doom", "MIT"
+    parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
     def extract(self, archive, dest, ctx) -> Outcome:
         try:

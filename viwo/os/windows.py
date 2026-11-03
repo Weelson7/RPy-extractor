@@ -52,6 +52,15 @@ class WindowsFs(FileSystemPolicy):
             return False
         return name.split(".")[0].lower() not in _RESERVED
 
+    def long_path(self, path: Path) -> Path:
+        text = str(path)
+        if len(text) < LONG_PATH_LIMIT or text.startswith(("\\\\?\\", "\\\\.\\")):
+            return path
+        absolute = os.path.abspath(text)
+        if absolute.startswith("\\\\"):  # UNC share
+            return Path("\\\\?\\UNC\\" + absolute.lstrip("\\"))
+        return Path("\\\\?\\" + absolute)
+
 
 class WindowsShell(DesktopShell):
     def open_folder(self, path: Path) -> tuple[bool, str]:
@@ -70,21 +79,37 @@ class WindowsShell(DesktopShell):
         return tk_pick_file(title, initial, patterns)
 
 
+LONG_PATH_LIMIT = 248  # MAX_PATH minus room for a file name: beyond it, extended-length form
+
+
 def _install_roots() -> list[Path]:
-    names = ("ProgramFiles", "ProgramFiles(x86)", "LOCALAPPDATA", "ProgramData")
-    roots = [Path(os.environ[n]) for n in names if os.environ.get(n)]
+    """Doc 1.2: Program Files (both), LOCALAPPDATA\\Programs, scoop apps, chocolatey tools."""
+    env = os.environ
+    roots = [Path(env[n]) for n in ("ProgramFiles", "ProgramFiles(x86)") if env.get(n)]
+    if env.get("LOCALAPPDATA"):
+        roots += [Path(env["LOCALAPPDATA"]) / "Programs", Path(env["LOCALAPPDATA"])]
+    if env.get("ProgramData"):
+        roots.append(Path(env["ProgramData"]))
     home = Path.home()
-    return roots + [home / "scoop" / "shims", Path("C:/ProgramData/chocolatey/bin")]
+    scoop = Path(env.get("SCOOP", home / "scoop"))
+    choco = Path(env.get("ChocolateyInstall", "C:/ProgramData/chocolatey"))
+    return roots + [
+        scoop / "apps" / "*" / "current",
+        scoop / "shims",
+        choco / "lib" / "*" / "tools",
+        choco / "bin",
+    ]
 
 
 class WindowsOS(OS):
     os_id = "windows"
+    display_name = "Windows"
 
     def __init__(self, tool_overrides: Mapping[str, str | Sequence[str]] | None = None) -> None:
         flags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
         self._process = SubprocessRunner(32767, {"creationflags": flags}, _kill_tree)
         suffixes = [".exe", ".bat", ".cmd", ""]
-        self._tools = Locator(tool_overrides or {}, _install_roots(), suffixes, _wrap)
+        self._tools = Locator(tool_overrides or {}, _install_roots(), suffixes, _wrap, "windows")
         self._fs = WindowsFs()
         self._shell = WindowsShell()
 

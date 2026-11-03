@@ -51,16 +51,32 @@ class LinuxShell(DesktopShell):
         return tk_pick_file(title, initial, patterns)
 
 
+def _install_roots() -> list[Path]:
+    """Doc 1.2: /usr/bin, /usr/local/bin, /opt/*, ~/.local/bin, flatpak exports."""
+    home = Path.home()
+    return [
+        Path("/usr/local/bin"),
+        Path("/usr/bin"),
+        home / ".local/bin",
+        Path("/opt/*"),
+        Path("/opt"),
+        Path("/var/lib/flatpak/exports/bin"),
+        home / ".local/share/flatpak/exports/bin",
+    ]
+
+
 class LinuxOS(OS):
     os_id = "linux"
+    display_name = "Linux"
 
     def __init__(self, tool_overrides: Mapping[str, str | Sequence[str]] | None = None) -> None:
         arg_max = os.sysconf("SC_ARG_MAX") if hasattr(os, "sysconf") else 131072
         self._process = SubprocessRunner(
             max(4096, arg_max // 2), {"start_new_session": True}, _kill_group
         )
-        roots = [Path("/usr/local/bin"), Path("/usr/bin"), Path.home() / ".local/bin", Path("/opt")]
-        self._tools = Locator(tool_overrides or {}, roots, [""], lambda p: (str(p),))
+        self._tools = Locator(
+            tool_overrides or {}, _install_roots(), [""], lambda p: (str(p),), "linux"
+        )
         self._fs = PosixFs()
         self._shell = LinuxShell()
 

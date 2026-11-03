@@ -1,18 +1,23 @@
 # 3. Pipeline, routing and mixed mode
 
-## 3.1 Stages (proposed order)
+## 3.1 Stages (normative since 1.1)
+
+> **History.** Draft 3 proposed INVENTORY/CATALOG and an in-pipeline SANITIZE stage. Decision
+> (D12, 1.1): there is no INVENTORY stage; UNPACK identification plus the EXPORT stage cover it,
+> and `plugins[].inventoryCount` reports what each export saw. The sanitizer is a separate tool
+> (doc 5: `viwo sanitize`, 08 CLEANUP), never a stage of an extraction. The table below is the
+> implemented order (`contracts/pipeline.py` `Stage`).
 
 | Stage | Owner | What happens | v1 equivalent |
 |-------|-------|--------------|---------------|
 | PREPARE | core | resolve the target workspace by the **ownership rule** (doc 4.3): never clear a folder without the workspace marker; create `staging/<plugin_id>/` and `scratch/` | PHASE 0 (v1 `rmtree`s whatever the session points at: H2) |
 | PROBE | core | build one GameProbe | — (was an rglob per marker set) |
 | DETECT | core + plugins | call `detect()` on every enabled plugin, then `select_plugins()` | `detector.detect_engine` + `orchestrator` |
-| INVENTORY / CATALOG | plugins | `inventory()` for the selected plugins. Draft 2: optionally a browsable **catalog** the user or CLI selects from, for huge games (CASC, big Unreal) ❓ D12 | Unity discovery phase |
-| UNPACK | core + `unarchive.*` slots | identify (head + tail, carving embedded containers), then recursive unpack. After an outer *wrapper* (Electron/NW.js) is unpacked, detection runs once more; each file goes to the matching slot's main, then spare (doc 8) | PHASE 1 `extract_archives` |
+| UNPACK | core + `unarchive.*` slots | identify (head + tail, carving embedded containers), then recursive unpack. After an outer *wrapper* (`.asar`, `.nw`) is unpacked, detection runs once more on its content and the strongest engine found there (confidence ≥ `mixed_threshold`, not already selected) exports from it (one pass, never nested); each file goes to the matching slot's main, then spare (doc 8) | PHASE 1 `extract_archives` |
+| CARVE | core | signature carver over unknown blobs (D21), then the archives it finds are unpacked | — |
 | EXPORT | plugins | `export()` for each selected plugin, into its own staging folder | Unity export phase |
-| COLLECT | core | **copy** from game-folder source roots and **move** only from staging, into the `<ext>/` layout, filtered by `selected_exts`, with v1 collision naming. Dedupe: same size **and** same content hash → skip (fixes F6). Also writes the **provenance map** (doc 18.2) | PHASE 2 (v1 *moves* out of the game folder: H1) |
+| COLLECT | core | **copy** from game-folder source roots and **move** only from staging, into the `<ext>/` layout, filtered by `selected_exts`, with v1 collision naming. Dedupe: same size **and** same content hash → skip (fixes F6). Also writes the **provenance map** (doc 18.2). DECODE (viewable copies through the `decode.*` slots) runs inside COLLECT | PHASE 2 (v1 *moves* out of the game folder: H1) |
 | VERIFY | core + plugins | `logic_check_summary` warnings, then `verify()` | PHASE 3 + Unity verification phase |
-| SANITIZE | core + rules | optional recipe; only plans, unless the request asks to apply automatically | — (doc 5) |
 | REPORT | core | write manifests to `.extraction_metadata/` and build the result | Unity manifest phase |
 
 ANALYZE (decompilers) is **never** part of an extraction. It runs as a
@@ -32,8 +37,8 @@ ExtractionRequest
   mixed_policy        selected | detected | all
   mixed_threshold     default 0.50
   plugin_options      { plugin_id: { key: value } }
-  sanitize_recipe     "" = skip
-  sanitize_auto_apply false
+  on_existing         ask | new | replace | cancel   (doc 4.3)
+  carve               unknown | all | off            (D21)
 ```
 
 How the v1 payload maps onto it (v1 always sends `{gamePath, selectedExts: null}`):
@@ -64,9 +69,9 @@ matches, generic runs.
 
 - **Unpack:** the `unarchive.*` slots of all chosen plugins are combined. If two plugins claim the same suffix, the ini decides; if the ini says nothing, it's reported as a configuration problem at boot ❓ (open: should magic-byte sniffing break the tie instead?).
 - **Export:** each plugin exports into its own `staging/<id>/`, so plugins can't overwrite each other's output.
-- **Collect:** core collects once from all source roots and all staging folders, de-duplicating source roots that overlap (using `os.fs.path_key`). Duplicate files are resolved with the v1 rule (same size and mtime means skip; otherwise `name__N.ext`).
-- **Failure isolation:** if one plugin fails during export or verify, it's recorded in `plugins[i].error` and the other plugins still run. The run counts as successful if COLLECT completes.
-- **Result:** `extractorType: "mixed"`, `detection` comes from the first plugin in run order, and each plugin gets its own entry in `plugins[]`. Plugin-specific top-level keys (such as Unity's `qualityGatePass`) are **only** merged into the top level in single or auto mode.
+- **Collect:** core collects once from all source roots and all staging folders, de-duplicating source roots that overlap (using `os.fs.path_key`). Duplicate files are resolved by content: same size **and** same hash means skip; otherwise `name__N.ext` (doc 4.3, F6).
+- **Failure isolation:** if one plugin fails during export or verify, it's recorded in `plugins[i].error` (and repeated in its `warnings`) and the other plugins still run; `plugins[i].verifyPassed` is false when its `verify()` returned warnings. The run counts as successful if COLLECT completes.
+- **Result:** `extractorType: "mixed"`, `detection` comes from the first plugin in run order, and each plugin gets its own entry in `plugins[]`. There are no plugin-specific top-level keys (the v1 Unity extras were removed with the fake completeness gate, F11).
 
 ## 3.5 Result payload
 
@@ -75,11 +80,10 @@ matches, generic runs.
 ```text
 v1 (kept):    success archivesFound archivesExtracted scannedFiles copiedFiles
               copiedByExt checks{ok,warnings} logs extractorType detection{type,confidence,evidence}
-v1 Unity extras (single/auto only): discoveredCount extractedCount unresolvedCount
-              unresolvedByReason qualityGatePass completenessReport manifestsPath
-              unityExportedCount unityExportedByType
-new:          contractVersion mode manifestsPath
-              plugins[] { id detection exported exportedByKind exportedByTool
+removed (F11): the v1 Unity extras (discoveredCount, qualityGatePass, completenessReport, ...)
+new:          contractVersion mode manifestsPath (= <workspace>/.extraction_metadata)
+              workspace runRecord byBackend carvedFiles
+              plugins[] { id detection exported exportedByKind exportedByTool backend
                           inventoryCount verifyPassed warnings error }
 ```
 

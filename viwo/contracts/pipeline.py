@@ -6,7 +6,11 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Mapping
 
+from .legacy import run_to_legacy
 from .types import DetectionResult
+from .workspace import METADATA_DIR
+
+CONTRACT_VERSION = "1.0"  # mirrored in viwo/__init__.py (contracts import nothing from the app)
 
 GENERIC_PLUGIN_ID = "generic"
 
@@ -104,6 +108,10 @@ class PluginRun:
     backend: str = ""
     warnings: tuple[str, ...] = ()
     error: str = ""
+    exported_by_kind: Mapping[str, int] = field(default_factory=dict)  # doc 3.5 exportedByKind
+    verify_passed: bool = True  # doc 3.5: false when the plugin's verify() returned warnings
+    inventory_items: int = 0  # doc 0.4: items the plugin's inventory() listed (0 = no claim)
+    inventory_found: int = 0
 
 
 @dataclass(frozen=True)
@@ -144,17 +152,12 @@ class ExtractionResult:
             "runRecord": self.run_record,
             "workspace": self.workspace,
             "carvedFiles": self.carved_files,
-            "plugins": [
-                {
-                    "id": r.plugin_id,
-                    "detection": r.detection.to_legacy_dict(),
-                    "exported": r.exported,
-                    "backend": r.backend,
-                    "warnings": list(r.warnings),
-                    "error": r.error,
-                }
-                for r in self.runs
-            ],
+            "movedFiles": 0,  # doc 0.4: nothing is ever moved out of a game (copiedFiles counts)
+            "inventoryItems": sum(r.inventory_items for r in self.runs),
+            "collectedFromInventory": sum(r.inventory_found for r in self.runs),
+            "contractVersion": CONTRACT_VERSION,
+            "manifestsPath": f"{self.workspace}/{METADATA_DIR}" if self.workspace else "",
+            "plugins": [run_to_legacy(r) for r in self.runs],
         }
         if self.error:
             payload["error"] = self.error
@@ -162,16 +165,6 @@ class ExtractionResult:
 
 
 LEGACY_RESULT_KEYS = frozenset(
-    {
-        "success",
-        "archivesFound",
-        "archivesExtracted",
-        "scannedFiles",
-        "copiedFiles",
-        "copiedByExt",
-        "checks",
-        "logs",
-        "extractorType",
-        "detection",
-    }
+    "success archivesFound archivesExtracted scannedFiles copiedFiles copiedByExt checks "
+    "logs extractorType detection".split()
 )

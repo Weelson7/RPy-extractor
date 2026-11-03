@@ -13,10 +13,10 @@ import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
-from viwo.contracts.slots import Decoder, SlotDefinition
+from viwo.contracts.slots import Converter, Decoder, Prober, SlotDefinition
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 
-from .merger.ffmpeg import FFMPEG
+from .merger.ffmpeg import FFMPEG, FFPROBE
 from .pipeline.collect import Source, collect
 from .pipeline.failover import run_with_failover
 from .pipeline.ticker import Ticker
@@ -29,6 +29,21 @@ SLOTS = (
     ),
     SlotDefinition("decode.image", "decode", "core", "ffmpeg-image", suffixes=(".dds",)),
     SlotDefinition("decode.video", "decode", "core", "ffmpeg-video", suffixes=(".bik",)),
+    SlotDefinition("media.probe", "probe", "core", "ffprobe-probe", "pillow-probe"),
+    SlotDefinition("image.convert", "convert", "core", "pillow-convert", "imagemagick-convert"),
+)
+PILLOW = DependencySpec(
+    "pillow", "Pillow", kind="python", import_name="PIL", hint="pip install pillow"
+)
+IMAGEMAGICK = DependencySpec(
+    "imagemagick",
+    "ImageMagick",
+    executables={
+        "windows": ("magick",),
+        "linux": ("magick", "convert"),
+    },  # Windows has its own convert.exe
+    install_dirs=("ImageMagick",),
+    hint="install ImageMagick (Apache-2.0)",
 )
 VGMSTREAM = DependencySpec(
     "vgmstream",
@@ -95,8 +110,97 @@ class FfmpegVideo(FfmpegDecode):
     backend_id, suffix = "ffmpeg-video", ".mp4"
 
 
-def decoders() -> list[Decoder]:
-    return [VgmstreamCli(), FfmpegDecode(), FfmpegImage(), FfmpegVideo()]
+class FfprobeProbe(Prober):
+    """media.probe main: ffprobe reports the stream facts (doc 8.3)."""
+
+    backend_id, license, isolation = "ffprobe-probe", "LGPL-2.1-or-later", "subprocess"
+    self_check_args = ("-version",)
+
+    def dependencies(self):
+        return (FFPROBE,)
+
+    def probe(self, path, ctx) -> Outcome:
+        tool = ctx.os.tools.locate(FFPROBE)
+        if tool is None:
+            return Outcome(OutcomeKind.UNAVAILABLE, error=FFPROBE.hint)
+        argv = [*tool.argv_prefix, "-v", "error", "-show_entries", "format=format_name,duration"]
+        result = ctx.os.process.run(argv + ["-of", "default=nw=1", str(path)], timeout=60)
+        if not result.ok:
+            return Outcome(OutcomeKind.FAILED, error=(result.stderr or "")[-300:])
+        facts = tuple(line.strip() for line in result.stdout.splitlines() if "=" in line)
+        return Outcome(OutcomeKind.OK, 1, notes=facts)
+
+
+class PillowProbe(Prober):
+    """media.probe spare: Pillow opens images only (format, width, height)."""
+
+    backend_id, license, parses_untrusted_in_process = "pillow-probe", "HPND", True
+
+    def dependencies(self):
+        return (PILLOW,)
+
+    def probe(self, path, ctx) -> Outcome:
+        from PIL import Image
+
+        try:
+            with Image.open(path) as image:
+                facts = (f"format={image.format}", f"width={image.width}", f"height={image.height}")
+        except Exception as exc:  # noqa: BLE001  (any unreadable image)
+            return Outcome(OutcomeKind.FAILED, error=str(exc)[-200:])
+        return Outcome(OutcomeKind.OK, 1, notes=facts)
+
+
+class PillowConvert(Converter):
+    """image.convert main: any image Pillow reads becomes <name>.png in dest."""
+
+    backend_id, license, parses_untrusted_in_process = "pillow-convert", "HPND", True
+
+    def dependencies(self):
+        return (PILLOW,)
+
+    def convert(self, path, dest, ctx) -> Outcome:
+        from PIL import Image
+
+        try:
+            with Image.open(path) as image:
+                image.save(dest / f"{path.stem}.png")
+        except Exception as exc:  # noqa: BLE001
+            return Outcome(OutcomeKind.FAILED, error=str(exc)[-200:])
+        return Outcome(OutcomeKind.OK, 1)
+
+
+class ImagemagickConvert(Converter):
+    """image.convert spare: ImageMagick (`magick` or the older `convert`)."""
+
+    backend_id, license, isolation = "imagemagick-convert", "Apache-2.0", "subprocess"
+    self_check_args = ("-version",)
+
+    def dependencies(self):
+        return (IMAGEMAGICK,)
+
+    def convert(self, path, dest, ctx) -> Outcome:
+        tool = ctx.os.tools.locate(IMAGEMAGICK)
+        if tool is None:
+            return Outcome(OutcomeKind.UNAVAILABLE, error=IMAGEMAGICK.hint)
+        argv = [*tool.argv_prefix, str(path), str(dest / f"{path.stem}.png")]
+        result = ctx.os.process.run(argv, timeout=300, cancel=ctx.cancel)
+        if not result.ok or not _count(dest):
+            return Outcome(OutcomeKind.FAILED, error=(result.stderr or result.stdout)[-300:])
+        return Outcome(OutcomeKind.OK, _count(dest))
+
+
+def decoders() -> list:
+    """Every core decode/probe/convert backend (doc 8.4)."""
+    return [
+        VgmstreamCli(),
+        FfmpegDecode(),
+        FfmpegImage(),
+        FfmpegVideo(),
+        FfprobeProbe(),
+        PillowProbe(),
+        PillowConvert(),
+        ImagemagickConvert(),
+    ]
 
 
 def _wanted(run, options: dict) -> dict[str, str]:

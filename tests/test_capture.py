@@ -60,11 +60,14 @@ class PolicyTests(unittest.TestCase):
             with self.assertRaises(ViwoError) as err:
                 check(rt, game, False, [])
             self.assertEqual(err.exception.code, "needs_decision")
-            self.assertEqual(len(check(rt, game, True, [])), 1)
+            plain = [w for w in check(rt, game, True, []) if "network" not in w]
+            self.assertEqual(len(plain), 1)  # the offline advice; the network probe may add one
             (game / "EasyAntiCheat").mkdir()
             (root / "Overwatch").mkdir()
             self.assertIn("anti-cheat", check(rt, game, True, [])[0])
-            warned = check(rt, root / "Overwatch", True, ["overwatch"])
+            warned = [
+                w for w in check(rt, root / "Overwatch", True, ["overwatch"]) if "network" not in w
+            ]
             self.assertEqual(len(warned), 3)  # online title, sensitive plugin, offline advice
             self.assertIn("online", warned[0])
 

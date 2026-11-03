@@ -142,7 +142,8 @@ class IdentifyTests(unittest.TestCase):
             (root / "game.exe").write_bytes(b"HEADabcEND")
             self.assertEqual(identify(root / "a.tar.gz", slots).slot_id, "unarchive.tar")
             self.assertEqual(identify(root / "noext", slots).slot_id, "unarchive.zip")
-            self.assertIsNone(identify(root / "doc.docx", slots))
+            # doc 2.5: no slot claims .docx, so the PK head bytes decide (longest suffix first)
+            self.assertEqual(identify(root / "doc.docx", slots).slot_id, "unarchive.zip")
             match = identify(root / "game.exe", slots)
             self.assertEqual(carve(match, root / "scratch").read_bytes(), b"abc")
 

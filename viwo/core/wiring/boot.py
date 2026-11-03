@@ -67,10 +67,24 @@ class Runtime:
     def info(self) -> dict:
         return {
             "os": self.os.os_id,
+            "osName": self.os.display_name,
             "ini": self.config.source,
+            "contract": self.config.contract,
+            "sources": dict(self.config.sources),  # doc 9.1: provenance of every value
             "plugins": sorted(self.plugins),
             "slots": {sid: b.__dict__ for sid, b in sorted(self.bindings.items())},
             "problems": list(self.problems),
+        }
+
+    def self_checks(self) -> dict[str, tuple[bool, str]]:
+        """`viwo slots --check` (doc 14.6): every bound backend's own self test."""
+        wanted = {b.main for b in self.bindings.values()} | {
+            b.spare for b in self.bindings.values()
+        }
+        return {
+            bid: self.backends[bid].self_check(self.os)
+            for bid in sorted(wanted)
+            if bid in self.backends
         }
 
 
@@ -87,7 +101,9 @@ def boot(
     if scripts.is_dir() and not config.options.get("quickbms", {}).get("scripts"):
         config.options.setdefault("quickbms", {})["scripts"] = str(scripts)
     layer = select_os(os_id or config.os_id, tools)
-    plugins, problems = load_enabled(config.plugins, config.custom_dirs)
+    if os_id:
+        config.sources["startup.os"] = "cli"
+    plugins, problems = load_enabled(config.plugins, config.custom_dirs, layer.os_id)
     for plugin_id, plugin in plugins.items():
         try:
             plugin.configure(config.options.get(plugin_id, {}))

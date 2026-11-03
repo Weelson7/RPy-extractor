@@ -17,18 +17,25 @@ from .os import OS
 from .slots import Backend, SlotDefinition
 from .types import CancelToken, DetectionResult, ProgressEvent, ProgressSink
 
+OPTION_KINDS = ("string", "secret", "bool", "int", "float", "choice", "path")
+
 
 @dataclass(frozen=True)
 class PluginOption:
     key: str
     label: str
-    kind: str = "string"  # string | secret | bool | int | choice | path
+    kind: str = "string"  # one of OPTION_KINDS (doc 2.1)
     default: Any = None
     choices: tuple[str, ...] = ()
+    help: str = ""
 
 
 @dataclass(frozen=True)
 class PluginManifest:
+    """Doc 2.1. `capabilities` names what the plugin can do ("detect", "unpack", "export",
+    "pack", "decode"); `dependencies` lists dependency ids for people (backends declare the
+    real specs); `os_layers` restricts the plugin to hosts (empty = every OS layer)."""
+
     plugin_id: str
     name: str
     version: str
@@ -38,6 +45,21 @@ class PluginManifest:
     options: tuple[PluginOption, ...] = ()
     tos_sensitive: bool = False
     builtin: bool = True
+    description: str = ""
+    capabilities: tuple[str, ...] = ()
+    dependencies: tuple[str, ...] = ()
+    os_layers: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class VerifyReport:
+    """Doc 2.2: the plugin's own verdict after COLLECT. `expected`/`found` count inventory
+    items when the plugin keeps one (0 = no completeness claim, doc 0.4)."""
+
+    ok: bool = True
+    warnings: tuple[str, ...] = ()
+    expected: int = 0
+    found: int = 0
 
 
 @dataclass(frozen=True)
@@ -84,6 +106,7 @@ class ExtractionContext:
     progress: ProgressSink | None = None
     cancel: CancelToken = field(default_factory=CancelToken)
     source: str = "core"
+    probe: GameProbe | None = None  # the shared folder index (doc 2.3); None in tool contexts
 
     def log(self, message: str, level: str = "info", stage: str = "") -> None:
         if self.progress:
@@ -146,8 +169,28 @@ class EnginePlugin(ABC):
         """Slot id run in the EXPORT stage, "" for none."""
         return ""
 
+    def inventory(self, ctx: ExtractionContext) -> Sequence[str]:
+        """Doc 2.2: what the plugin expects to produce (relative paths or names); empty = no
+        completeness claim is ever made for this plugin (doc 0.4)."""
+        return ()
+
+    def verify_report(
+        self, ctx: ExtractionContext, inventory: Sequence[str], export: Any, collected: int
+    ) -> VerifyReport:
+        """Doc 2.2 `verify(ctx, inventory, export, collected) -> VerifyReport`. `export` is the
+        EXPORT stage outcome when the core has one, else None."""
+        return VerifyReport(True, (), len(inventory), collected if inventory else 0)
+
     def verify(self, ctx: ExtractionContext, collected: int) -> Sequence[str]:
-        """Return warnings."""
+        """The core's call (1.0 signature). Adapts to verify_report(); a plugin written against
+        1.0 may still override this method directly."""
+        report = self.verify_report(ctx, self.inventory(ctx), None, collected)
+        if report.ok:
+            return tuple(report.warnings)
+        return tuple(report.warnings) or (f"{self.manifest.name}: verification failed",)
+
+    def sanitizer_rules(self) -> Sequence[object]:
+        """Sanitizer rule providers (doc 5.2); ids must start with "<plugin id>."."""
         return ()
 
     def cli_commands(self) -> Sequence[CliCommand]:

@@ -110,7 +110,7 @@ def workspace_command(rt, args) -> Envelope:
 
         if not args.plan and args.out is None:
             raise ViwoError("invalid_request", "give --out <folder> (or --plan)")
-        note = None if args.json else (lambda e: print(e.legacy_line(), file=sys.stderr))
+        note = _note(args)
         return Envelope.success(repack(rt, args.workspace, args.out, note, apply=not args.plan))
     if args.command == "sanitize":
         from viwo.core import sanitizer
@@ -129,7 +129,9 @@ def workspace_command(rt, args) -> Envelope:
         if not args.folder.is_dir():
             raise ViwoError("not_found", f"folder not found: {args.folder}")
         note = (
-            None if args.json else (lambda g, i, n: print(f"[SURVEY] {i}/{n} {g}", file=sys.stderr))
+            None
+            if args.json or getattr(args, "quiet", False)
+            else (lambda g, i, n: print(f"[SURVEY] {i}/{n} {g}", file=sys.stderr))
         )
         return Envelope.success({"games": survey(rt, args.folder, args.deep, note)})
     if args.command == "capture":
@@ -143,16 +145,23 @@ def workspace_command(rt, args) -> Envelope:
     raise ViwoError("invalid_request", f"unknown command {args.command}")
 
 
+def _note(args):
+    """Event printer for the tool commands: silent with --json or --quiet (doc 12.4)."""
+    if args.json or getattr(args, "quiet", False):
+        return None
+    return lambda e: print(e.legacy_line(), file=sys.stderr)
+
+
 def _capture(rt, args) -> Envelope:
     """viwo capture: the warnings are printed before anything launches (never refusals)."""
     from viwo.core.capture import CaptureRequest, _sensitive, capture
     from viwo.core.capture.policy import warnings_for
 
-    note = None if args.json else (lambda e: print(e.legacy_line(), file=sys.stderr))
+    note = _note(args)
     if not args.game.is_dir():
         raise ViwoError("not_found", f"game folder not found: {args.game}")
     if note:
-        for warning in warnings_for(args.game, _sensitive(rt, args.game)):
+        for warning in warnings_for(args.game, _sensitive(rt, args.game), rt):
             print(f"[CAPTURE:WARN] {warning}", file=sys.stderr)
     req = CaptureRequest(args.game, args.exe, args.workspace, args.confirm)
     return Envelope.success(capture(rt, req, note))
@@ -168,7 +177,7 @@ def _system(rt, args) -> Envelope:
     from viwo.core.indexes import update_indexes
     from viwo.core.thirdparty import home_of
 
-    note = None if args.json else (lambda e: print(e.legacy_line(), file=sys.stderr))
+    note = _note(args)
     return Envelope.success(
         update_indexes(home_of(rt.config), int(__version__.split(".")[0]), note)
     )
@@ -178,7 +187,7 @@ def _install(rt, args) -> Envelope:
     """viwo install [--all | <id>... | --game <slug>]: pinned tools into third_party/ (doc 10)."""
     from viwo.core.preflight import check, install
 
-    note = None if args.json else (lambda e: print(e.legacy_line(), file=sys.stderr))
+    note = _note(args)
     if getattr(args, "game", None):
         from viwo.core.indexes import DEFAULT_ROOT, install_game
 

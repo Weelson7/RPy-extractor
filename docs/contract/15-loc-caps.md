@@ -1,19 +1,18 @@
 # 15. Code size caps (strict, non-blank, non-comment lines)
 
-Proposal. The numbers are set from a measurement of v1 (15.2) and the
-prototype scope (doc 14). They are meant to be **enforced by CI**, not
-treated as guidelines. Every number is open to discussion before it's locked.
+Normative for 1.1, enforced by `tools/loc_count.py` (reads `loc_caps.ini` through
+`tools/caps_ini.py`) as an L0 gate (`tests/test_pipeline.py::test_loc_caps`). **History:**
+draft 3 (2026-11-02) set the numbers from a measurement of v1 and the prototype scope; the
+budgets below are the ones in force after the 1.0 and 1.1 scope the owner approved.
 
 ## 15.1 What counts (counting rules)
 
-To keep the count objective and hard to game:
-
-1. **Format first, then count.** Code is formatted with a pinned formatter (proposed: `ruff format`, line length **100**) before counting. Long lines, `;`-joined statements and packed one-liners can't be used to dodge the caps.
-2. **Python:** a line counts if it holds any token other than comments, blank lines and indentation. The counter uses `tokenize`, not regexes. Multi-line strings count on every line, **except docstrings** (the first string of a module, class or function), which are excluded so documentation isn't discouraged ❓.
-3. **JS / CSS / HTML:** non-blank lines that aren't purely `//`, `/* */` or `<!-- -->` comments.
-4. **Other glue languages** (C# for the CUE4Parse wrapper and the Unity dump plugin): non-blank lines that aren't purely comments.
-5. **Excluded from the product count:** `third_party/` (vendored), generated code (for example Kaitai output, which must be marked as generated and listed in the caps file), fixtures data, docs. Tests have their own caps (15.4).
-6. One counter, in the repository, at most **120 counted lines** itself, run as an L0 test gate (doc 17).
+1. **Format first, then count.** Code is formatted with `ruff format` (line length **100**) before counting. Long lines, `;`-joined statements and packed one-liners cannot dodge the caps; a line over 100 characters is itself a cap failure.
+2. **Python:** a line counts if it holds any token other than comments, blank lines and indentation. The counter uses `tokenize`, not regexes. Multi-line strings count on every line, **except docstrings** (the first string of a module, class or function), which are excluded so documentation is not discouraged.
+3. **JS / CSS / HTML:** non-blank lines that are not purely `//`, `/* */` or `<!-- -->` comments.
+4. **Other glue languages:** none exist (the CUE4Parse wrapper is deferred, doc 13); the rule for them stays "non-blank, non-comment lines".
+5. **Counted trees:** `viwo/` (product), `tests/` (test caps and the floor), `tools/` (its own budget). **Excluded:** `third_party/`, `indexes/`, `examples/`, `sqc/fixtures/`, `packaging/`, docs and data files. Generated code does not exist yet; when it does, it is marked generated and listed in the caps file as excluded.
+6. The counter is split in two small modules: `tools/loc_count.py` (counting and checks) at most **120** counted lines and `tools/caps_ini.py` (caps-file schema, exceptions, expiry) at most **120**; both live under the `tools` budget.
 
 ## 15.2 v1 baseline (measured 2026-11-02)
 
@@ -24,13 +23,11 @@ To keep the count objective and hard to game:
 | Largest functions (approximate spans) | `build_media_merger_output` ~172 · `build_merged_video` ~164 · `export_unitypy_assets` ~133 · `UnityExtractor.extract` ~118 · `startup_dependency_preflight` ~101 · `extract_assets` ~100 |
 | Web | `app.js` 1,879 · `styles.css` 1,030 · `index.html` 288 |
 
-So v1 already breaks the per-file and per-function caps below in several
-places. Under the caps, the migration has to **split** these files and
-functions, not copy them.
+v1 was removed in prototype A; the baseline is kept as the reference the caps were set against.
 
 ## 15.3 Product caps (Python, excluding tests)
 
-**Granularity caps** (hard; CI fails):
+**Granularity caps** (hard; the L0 gate fails):
 
 | Unit | Cap |
 |------|-----|
@@ -38,44 +35,30 @@ functions, not copy them.
 | Class | **200** |
 | File (module) | **250** |
 | File in `contracts/` | **150** |
-| Function parameters | **6** (more → a dataclass or spec object) |
+| Function parameters | **6** (more → a dataclass or spec object); not applied to tests |
+| Line length | **100** |
 
-**Package budgets** (hard total per package; the split inside is free):
+**Package budgets** (hard total per prefix; the split inside is free). The budgets live in
+`loc_caps.ini [budgets]` as path prefixes, coarser than draft 3's per-subpackage table so that
+moving code between `core/pipeline`, `core/wiring` and friends needs no budget edit:
 
-| Package | Budget | Notes |
-|---------|--------|-------|
-| `contracts/` | 900 | interfaces + value types only; the scratchpad draft was about 850 |
-| `os/_shared` | 300 | the common base of both OS layers |
-| `os/linux` | 500 | prototype A: ≤ 300 (process, tools, fs only) |
-| `os/windows` | 500 | prototype A: ≤ 300 |
-| `core/pipeline` (stages, identify/carve, unpack loop, collect) | 900 | replaces v1 `extraction_core` (≈440) + orchestration |
-| `core/wiring` (ini, boot, registries, slot binder) | 700 | new; prototype A uses ≤ 500 (flat ini, failover only) |
-| `core/jobs` (runner, events, run records) | 350 | new |
-| `core/workspace` (layout, curation: sorting, groups, trash, undo) | 800 | replaces v1 `sorting.py` + sorting handler logic (≈600) |
-| `core/merger` | 650 | v1 ≈800 across service + handlers; must shrink |
-| `core/sanitizer` (runner + phase 1 rules) | 400 | |
-| `core/capture` (policy, journal, diff) | 400 | S7 |
-| `core/roundtrip` (edit set, plan, patched copy, verify) | 450 | doc 18; plugins add ≤ 150 each for packing |
-| `api/` | 700 | thin adapters; v1 `extract.py` + `api/` ≈1,550, so most of that logic moves to core |
-| `cli/` | 400 | |
-| `backends/` (core-owned backends) | 1,200 | ≤ **150** per backend |
-| each built-in plugin (`renpy`, `godot`, `unreal`), including its backends | 500 | |
-| `plugins/unity`, including its backends | 700 | v1 Unity is ≈1,000. The placeholder "slices" and the meaningless completeness ratio get cut (doc 0.4) |
-| each custom plugin (`user_plugins/…`, e.g. the showcase or Overwatch) | 300 | |
-| **Total Python product, hard cap** | **10,000** | |
-| **Prototype A target** (end of M6) | **≤ 5,500** |
-| **Prototype B target** (end of M10, with round trip) | **≤ 9,000** | |
+| Prefix | Budget | Notes |
+|--------|--------|-------|
+| `viwo` (whole product) | 9,800 | the hard ceiling is **10,000**; the 1.0/1.1 scope (installer, indexes, capture and settings views, add-ons, diagnostics) raised the Prototype B target of 9,000 with the owner's approval, reasons on the line |
+| `viwo/contracts` | 900 | interfaces + value types only |
+| `viwo/os` | 900 | both OS layers and their shared base |
+| `viwo/core` | 4,700 | pipeline, wiring, jobs, workspace, curation, merger, sanitizer, carve, decode, capture, round trip, survey, installer, indexes, diagnostics |
+| `viwo/backends` | 600 | core-owned backends |
+| each built-in plugin (`viwo/plugins/<id>`) | 100-700 | one line per plugin: generic 100, unity 700, renpy/godot/unreal 500, the rest 200-300 |
+| `viwo/cli.py` | 400 | `cli_extra.py` and `cli_format.py` count under `viwo` |
+| `tools` | 600 | counter, caps reader, version tool, notices, games runner, coverage check |
 
-**Other languages:**
+`viwo/api` has no separate line: it is bounded by the product total. Every raise carries its
+reason as an inline comment on the budget line.
 
-| Item | Cap |
-|------|-----|
-| CUE4Parse .NET wrapper (C#), deferred | 400 |
-| Unity runtime dump plugin (C#, S7+) | 300 |
-| `web/app.js` | **ratchet at 1,879**: may only shrink. New UI goes in separate modules of ≤ 300 each |
-| `web/styles.css` | ratchet at 1,030 |
-| `web/index.html` | ratchet at 288 |
-| Total new web code during the prototype | 900 |
+**Web** (`loc_caps.ini [web]`): every JS module at most **300** counted lines; `viwo/web` total
+5,400 (js + css + html). The v1 ratchets (`app.js`, `styles.css`, `index.html`) ended when v1
+was removed; nothing is ratcheted today.
 
 ## 15.4 Test caps
 
@@ -83,36 +66,27 @@ functions, not copy them.
 |------|-----|
 | Test file | 400 |
 | Test function | 60 |
-| Fixture builder (makes a synthetic RPA, PCK, pak…) | 150 each |
-| Fake backend or fake OS layer | 120 each |
+| Fixture builders and fake tools | live inside the test files under the same caps |
 
-Tests have no total budget. Instead, a **floor**: test LoC should be at least
-0.6 × product LoC for `contracts/` + `core/`.
+Tests have no total budget. Instead, a **floor**, enforced by the counter: test LoC ≥ 0.6 ×
+(`viwo/contracts` + `viwo/core`). 1.1 measures about 0.9.
 
-## 15.5 Exceptions
+## 15.5 Exceptions and raises
 
-- They live in `loc_caps.ini` (the same ini approach as the rest):
+- They live in `loc_caps.ini`:
 
   ```ini
-  [caps]
-  function = 40
-  file = 250
-  ; ...
-  [budgets]
-  core/pipeline = 900
-  ; ...
   [exceptions]
-  ; path = new cap | reason | expires at milestone
-  core/merger/filtergraph.py = 300 | ffmpeg graph builder; split planned | M10
-  [ratchet]
-  web/app.js = 1879
+  ; path = cap | reason | expires at vX.Y  (or a milestone name, reviewed at that milestone)
+  viwo/core/merger/filtergraph.py = 300 | ffmpeg graph builder; split planned | expires at v1.3
   ```
-- At most **3 active exceptions** at a time. Every exception has an **expiry milestone**, and CI fails once it has passed.
-- Ratchets only move down. Each PR that touches a ratcheted file lowers the stored number to the new count automatically.
-- Raising a package budget is a contract change: it needs its own commit, stating the reason in the caps file.
+  An exception raises the **file cap** of that exact path. At most **3 active exceptions** at a time; one whose version has been reached (compared with `viwo.__version__`) fails the L0 gate until it is removed or renewed; a milestone-named expiry is reviewed at that milestone.
+- The caps file itself is validated: unknown sections or keys, non-integer values, a malformed exception line or a missing cap are L0 failures (`tests/test_l0_static.py`).
+- Ratchets: none since v1 was removed; the `[web]` and `[budgets]` numbers are hard caps.
+- Raising a package budget is a contract change: the new value and its reason go on the budget line, and the commit that raises it names the budget in its message (one commit per raise where the raise is the point of the commit; a raise that a feature needs ships with that feature's commit and is named there).
 
 ## 15.6 Why these numbers
 
-- **40 per function and 250 per file** are tight but workable for glue code. Orchestration code that doesn't fit is usually doing two jobs.
-- The **total cap (10k)** is about 2.3× v1, for: two OS layers, a core that's an actual framework, five plugins, a CLI, jobs, sanitizer and capture. The prototype target of 8k keeps pressure on "wrap, don't reimplement".
-- **Plugin budgets of 500** force plugins to stay glue. If a plugin needs more, the work probably belongs in an external tool or a shared core helper.
+- **40 per function and 250 per file** are tight but workable for glue code. Orchestration code that does not fit is usually doing two jobs.
+- The **total cap (10k)** is about 2.3× v1, for: two OS layers, a core that is an actual framework, thirteen plugins, a CLI, jobs, sanitizer, capture, installer and indexes. The pressure stays on "wrap, don't reimplement".
+- **Plugin budgets of 300-700** force plugins to stay glue. If a plugin needs more, the work probably belongs in an external tool or a shared core helper.

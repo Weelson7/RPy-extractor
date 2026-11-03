@@ -24,6 +24,8 @@ from .pipeline.failover import run_with_failover
 from .pipeline.guard import changes, refuse_writes_inside, snapshot
 from .pipeline.identify import identify
 from .pipeline.ticker import Ticker
+from .records import record_context
+from .roundtrip_edits import Edit, edit_set, original_hashes
 from .workspace import workspace_lock, write_atomic
 
 MARKER = ".viwo-patched"
@@ -31,45 +33,11 @@ CORE_PACK = {"unarchive.zip": "pack.zip"}
 
 
 @dataclass
-class Edit:
-    file: Path
-    kind: str
-    container: str
-    member: str
-    plugin: str = ""  # owner of "exported" files
-
-
-@dataclass
 class PlanItem:
     container: str  # game-relative; "" for loose files
     slot: str  # "override" or a pack.* slot
     members: dict[str, Path] = field(default_factory=dict)
-
-
-def edit_set(workspace: Path) -> tuple[list[Edit], list[str]]:
-    """Workspace files whose content differs from what extraction wrote."""
-    path, edits, skipped, missing = workspace / ws.PROVENANCE_FILE, [], [], []
-    lines = path.read_text(encoding="utf-8").splitlines() if path.is_file() else []
-    for entry in map(json.loads, lines):
-        rel = ws.safe_member(entry["path"])
-        file = workspace.joinpath(*rel.parts) if rel else None
-        if file is None or not file.is_file():
-            missing.append(entry["path"])
-            continue
-        if sha256(file) == entry["sha256"]:
-            continue
-        kind = entry.get("kind", "derived")
-        if kind in ("loose", "member", "exported"):
-            where = (entry.get("container", ""), entry.get("member", ""), entry.get("plugin", ""))
-            edits.append(Edit(file, kind, *where))
-        else:
-            skipped.append(f"{entry['path']}: {kind} file, writing it back is not supported yet")
-    if missing:  # renamed, moved or trashed since extraction: their edits cannot be traced
-        shown = ", ".join(missing[:5]) + (
-            f" and {len(missing) - 5} more" if len(missing) > 5 else ""
-        )
-        skipped.append(f"{len(missing)} extracted file(s) were moved, renamed or trashed: {shown}")
-    return edits, skipped
+    untouched: dict[str, str] = field(default_factory=dict)  # member -> original sha256
 
 
 def _pack_slot(rt, match) -> str:
@@ -82,9 +50,10 @@ def _pack_slot(rt, match) -> str:
     return plugin.pack_slot(match.slot_id) if plugin else ""
 
 
-def plan(rt, game: Path, edits: list[Edit]) -> tuple[list[PlanItem], list[str]]:
+def plan(rt, game: Path, edits: list[Edit], originals=None) -> tuple[list[PlanItem], list[str]]:
+    """originals: container -> {member: sha256} of the extraction, for the untouched check."""
     items, warnings, groups = [], [], defaultdict(dict)
-    loose = {e.member: e.file for e in edits if e.kind == "loose"}
+    loose = {e.member: e.file for e in edits if e.kind in ("loose", "added")}
     if loose:
         items.append(PlanItem("", "override", loose))
     for edit in (e for e in edits if e.kind in ("member", "exported")):
@@ -102,7 +71,10 @@ def plan(rt, game: Path, edits: list[Edit]) -> tuple[list[PlanItem], list[str]]:
         elif binding is None or not binding.bound:
             warnings.append(f"{container}: {slot} has no available backend (see `viwo slots`)")
         else:
-            items.append(PlanItem(container, slot, members))
+            kept = {
+                m: h for m, h in (originals or {}).get(container, {}).items() if m not in members
+            }
+            items.append(PlanItem(container, slot, members, kept))
     return items, warnings
 
 
@@ -155,19 +127,21 @@ def _ctx(rt, target: Path, work: Path, sink, cancel) -> ExtractionContext:
     )
 
 
-def _verify(rt, packed: Path, members: dict[str, Path], ctx) -> list[str]:
-    """Members that do not come back with the edited content after re-extraction."""
+def _verify(rt, packed: Path, item: PlanItem, ctx) -> list[str]:
+    """Re-extract the packed container (18.3 VERIFY): edited members must carry the edited
+    content and every untouched member its original hash; returns the members that do not."""
     match = identify(packed, rt.slots.values())
     if match is None:
-        return list(members)
+        return list(item.members) + list(item.untouched)
     dest = Path(tempfile.mkdtemp(dir=ctx.scratch.parent))
     outcome, _ = run_with_failover(
         rt.bindings[match.slot_id], rt.backends, lambda b: b.extract(packed, dest, ctx)
     )
+    expected = {m: sha256(src) for m, src in item.members.items()} | dict(item.untouched)
     bad = [
         m
-        for m, src in members.items()
-        if not outcome.ok or not (dest / m).is_file() or sha256(dest / m) != sha256(src)
+        for m, digest in expected.items()
+        if not outcome.ok or not (dest / m).is_file() or sha256(dest / m) != digest
     ]
     shutil.rmtree(dest, ignore_errors=True)
     return bad
@@ -218,8 +192,10 @@ def _apply(rt, item: PlanItem, target: Path, ctx) -> dict:
         return {**result, "failed": list(item.members), "error": outcome.error}
     out = rt.backends[used].output_for(container)
     try:  # a packer's own verify must not abort the whole repack
-        bad = rt.backends[used].verify(out, item.members, ctx)
-        bad = _verify(rt, out, item.members, ctx) if bad is None else bad
+        own = rt.backends[used].verify(out, item.members, ctx)
+        # a backend with its own verifier knows its member naming; the generic re-extraction
+        # check (edited content + untouched hashes, 18.3) covers every other container
+        bad = _verify(rt, out, item, ctx) if own is None else list(own)
     except Exception as exc:  # noqa: BLE001 (reported per container)
         bad, result["error"] = list(item.members), f"verify failed: {exc}"
     state = "verified" if not bad else f"{len(bad)} member(s) FAILED"
@@ -238,7 +214,7 @@ def repack(
     """Plan (apply=False) or build a patched copy of the game with the workspace edits."""
     game = source_game(workspace)
     edits, skipped = edit_set(workspace)
-    items, warnings = plan(rt, game, edits)
+    items, warnings = plan(rt, game, edits, original_hashes(workspace))
     warnings = [*warnings, *_reminders(rt, items)]
     report = {
         "game": str(game),
@@ -249,6 +225,7 @@ def repack(
         ],
         "skipped": skipped,
         "warnings": warnings,
+        "context": record_context(rt),  # effective ini, bindings, tool versions (doc 12.3)
     }
     if not apply or not items:
         return report

@@ -47,6 +47,7 @@ def safe_tar_members(tf: tarfile.TarFile, dest: Path) -> list[tarfile.TarInfo]:
 
 class ZipBackend(Unarchiver):
     backend_id, license = "py-zipfile", "PSF-2.0"
+    parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
     def extract(self, archive, dest, ctx) -> Outcome:
         skipped = 0
@@ -68,6 +69,7 @@ class ZipBackend(Unarchiver):
 
 class TarBackend(Unarchiver):
     backend_id, license = "py-tarfile", "PSF-2.0"
+    parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
     def extract(self, archive, dest, ctx) -> Outcome:
         try:
@@ -110,6 +112,7 @@ class _CliBackend(Unarchiver):
 
 class SevenZipCli(_CliBackend):
     backend_id, license, isolation, spec = "sevenzip-cli", "LGPL-2.1", "subprocess", SEVENZIP
+    self_check_args = ()
 
     def argv(self, archive: Path, dest: Path) -> list[str]:
         return ["x", "-y", "-p", f"-o{dest}", str(archive)]
@@ -117,6 +120,7 @@ class SevenZipCli(_CliBackend):
 
 class UnrarCli(_CliBackend):
     backend_id, license, isolation, spec = "unrar-cli", "unRAR", "subprocess", UNRAR
+    self_check_args = ()
 
     def argv(self, archive: Path, dest: Path) -> list[str]:
         return ["x", "-o+", "-y", "-p-", str(archive), f"{dest}/"]
@@ -124,6 +128,7 @@ class UnrarCli(_CliBackend):
 
 class Py7zrBackend(Unarchiver):
     backend_id, license = "py7zr", "LGPL-2.1"
+    parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
     def dependencies(self):
         return (PY7ZR,)

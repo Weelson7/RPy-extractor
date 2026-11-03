@@ -76,6 +76,7 @@ def safe_path(name: bytes) -> PurePosixPath | None:
 
 class RgssadBuiltin(Unarchiver):
     backend_id, owner, license = "rgssad-builtin", "rpgmaker", "MIT"
+    parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
     def extract(self, archive: Path, dest: Path, ctx) -> Outcome:
         try:  # memory-mapped: game archives can be large

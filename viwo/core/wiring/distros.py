@@ -33,7 +33,8 @@ ENGINE_PROFILES = ("renpy", "unity", "unreal", "godot")  # the rest of the built
 
 def tool_example(os_id: str, spec) -> str:
     """A plausible path for the commented [tools] line, from the dependency's own names."""
-    exe = spec.executables[0] if spec.executables else spec.dep_id
+    names = spec.executables_for(os_id)
+    exe = names[0] if names else spec.dep_id
     if os_id == "windows":
         folder = spec.install_dirs[0] if spec.install_dirs else exe
         return f"C:/Program Files/{folder}/{exe}.exe"

@@ -26,9 +26,7 @@ def identify(path: Path, slots: Iterable[SlotDefinition]) -> Match | None:
                 best, best_len = slot, len(suffix)
     if best is not None:
         return Match(best.slot_id, path)
-    if path.suffix:  # magic only for extension-less files (a .docx is a zip, not an archive)
-        return None
-    for slot in candidates:
+    for slot in candidates:  # doc 2.5: no suffix claimed it, so the head bytes decide
         if any(head.startswith(magic) for magic in slot.magic):
             return Match(slot.slot_id, path)
     return None

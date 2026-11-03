@@ -9,7 +9,13 @@ from __future__ import annotations
 
 import re
 
-from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest, PluginOption
+from viwo.contracts.plugin import (
+    EnginePlugin,
+    GameProbe,
+    PluginManifest,
+    PluginOption,
+    VerifyReport,
+)
 from viwo.contracts.slots import Exporter, SlotDefinition
 from viwo.contracts.types import DependencySpec, DetectionResult, Outcome, OutcomeKind
 
@@ -107,5 +113,5 @@ class OverwatchPlugin(EnginePlugin):
     def skip_dirs(self):
         return ("data",)  # CASC storage: DataTool reads it; never copied raw
 
-    def verify(self, ctx, collected: int):
-        return (REMINDER,)
+    def verify_report(self, ctx, inventory, export, collected: int) -> VerifyReport:
+        return VerifyReport(True, (REMINDER,))

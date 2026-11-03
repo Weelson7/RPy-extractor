@@ -55,6 +55,19 @@ def slots(data: dict) -> str:
     return "\n".join(lines)
 
 
+def slots_check(data: dict) -> str:
+    """`viwo slots --check`: one line per bound backend self-test."""
+    lines = [f"{'SLOT':<24} {'BACKEND':<22} {'ROLE':<6} RESULT"]
+    for c in data.get("checks", []):
+        state = "ok" if c["ok"] else f"FAIL: {c['reason']}"
+        lines.append(f"{c['slot']:<24} {c['backend']:<22} {c['role']:<6} {state}")
+    lines.append("")
+    lines.append(
+        f"{len(data.get('checks', []))} backend(s) checked, {len(data.get('failed', []))} failed"
+    )
+    return "\n".join(lines)
+
+
 def info(data: dict) -> str:
     head = [
         f"OS layer : {data['os']}",

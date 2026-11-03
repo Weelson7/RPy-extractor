@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import glob
 import importlib.util
 import os
 import shutil
@@ -105,15 +106,27 @@ class Locator(ToolLocator):
         roots: Sequence[Path],
         suffixes: Sequence[str],
         wrap: Callable[[Path], tuple[str, ...]],
+        os_id: str = "",
     ) -> None:
         self._overrides = dict(overrides)
-        self._roots = list(roots)
+        self._roots = list(roots)  # a root may hold a glob ("scoop/apps/*/current", doc 1.2)
         self._suffixes = list(suffixes)
         self._wrap = wrap
+        self._os_id = os_id
+
+    def _expanded_roots(self) -> list[Path]:
+        out: list[Path] = []
+        for root in self._roots:
+            text = str(root)
+            if "*" in text:
+                out += [Path(p) for p in sorted(glob.glob(text)) if os.path.isdir(p)]
+            else:
+                out.append(root)
+        return out
 
     def known_install_dirs(self, spec: DependencySpec) -> Sequence[Path]:
         dirs: list[Path] = []
-        for root in self._roots:
+        for root in self._expanded_roots():
             dirs.append(root)
             for name in spec.install_dirs:
                 dirs += [root / name, root / name / "bin"]
@@ -141,12 +154,13 @@ class Locator(ToolLocator):
                 if found
                 else None
             )
-        for name in spec.executables:
+        names = spec.executables_for(self._os_id)
+        for name in names:
             hit = shutil.which(name)
             if hit:
                 return self._found(spec, Path(hit), "path")
         for folder in self.known_install_dirs(spec):
-            for name in spec.executables:
+            for name in names:
                 for suffix in self._suffixes:
                     candidate = folder / f"{name}{suffix}"
                     if candidate.is_file():

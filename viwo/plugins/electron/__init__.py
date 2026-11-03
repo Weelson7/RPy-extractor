@@ -43,6 +43,7 @@ def _walk(tree: dict, prefix: str = ""):
 
 class AsarBuiltin(Unarchiver):
     backend_id, owner, license = "asar-builtin", "electron", "MIT"
+    parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
     def extract(self, archive: Path, dest: Path, ctx) -> Outcome:
         with open(archive, "rb") as fh:

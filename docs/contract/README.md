@@ -1,6 +1,6 @@
 # Vidya Wormhole (ViWo): architecture contract (draft 3, decisions closed)
 
-**Status: proposal, draft 3** (draft 2 added the research in doc 13; draft 3 applies an independent review: new v1 data-loss and security findings, contradictions fixed, prototype split into A/B). Nothing here is implemented or decided. These documents
+**Status: in force (1.1).** Draft 3 (2026-11-02) was the proposal; the decisions below were closed the same day and the implementation was audited against every document on 2026-11-03 (`CONFORMANCE.md`). Where a document still reads as a proposal, its History line says what the shipped design is. These documents
 lay out how I understand the target architecture after reading the v1 code
 (`extract.py`, `api/*`, `extraction_core/*`, `extraction_types/*`,
 `sorting.py`, `media_merger/*`, `startup.py`, `web/app.js`). The goal is to
@@ -54,7 +54,7 @@ are places where I'm unsure or where the choice is yours.
 3. **Mixed mode**: any combination of plugins can run on one game folder, and the test suite covers every combination.
 4. Every processing engine of the pipeline sits behind an **interface**, filled by a **main** backend and, where it makes sense, a **spare** (unarchiving first).
 5. **Startup wiring comes from an `.ini` file**, so a distro is just an ini file.
-6. Third-party tools are **vendored as sparse submodules**.
+6. Third-party tools are **pinned and installed automatically** (`viwo/data/tools.json`: version, HTTPS URL, size, sha256; into `third_party/`), per D8. **History:** draft 3 said sparse submodules; the lock file plus installer replaced them (doc 10).
 7. The v1 UI keeps working; new API surface is added alongside the existing routes.
 
 ## Layers (proposed)
@@ -69,7 +69,7 @@ are places where I'm unsure or where the choice is yours.
   backends/   implementations behind slots: unarchivers, exporters, media, analyzers
   os/    linux | windows: process, tool location, installer, shell, filesystem rules
   contracts/  interfaces + value types only (stdlib, no app imports)
-  third_party/  vendored tools (sparse submodules)
+  third_party/  pinned tools, installed by viwo/core/thirdparty.py (gitignored)
 ```
 
 Proposed dependency direction: every layer may use the layers listed below it,
@@ -100,14 +100,14 @@ These are the ideas the other documents build on. Each is up for debate.
 
 1. **One writer per folder; the game folder is read-only.** Plugins and backends write to staging; only COLLECT writes the workspace, by **copying** from the game folder and moving only from staging. Only PREPARE clears, and only inside a folder holding the workspace marker. This rules out v1's H1 (files moved out of the game), H2 (user folder deleted) and F1 (Unity exports wiped).
 2. **The local HTTP API is authenticated** (a per-start token, JSON only, Host check, path containment; doc 4.1).
-3. **OS-specific code only in OS layers.** That includes subprocess calls, tool lookup, installers, dialogs and filename rules.
+3. **OS-specific code only in OS layers.** That includes subprocess calls, tool lookup, dialogs and filename rules. Two recorded exceptions in core, each a single call with no OS primitive to delegate to: the installer runs `msiexec` for the 7-Zip MSI through `subprocess.run` with a verbatim command line (`viwo/core/thirdparty.py`), and the workspace lock checks a pid with `OpenProcess` on Windows (`viwo/core/workspace.py`).
 4. **Every engine behind an interface, bound through a slot** (doc 8). Stages never call tools directly.
 5. **Failures are isolated.** A failing plugin or backend is recorded against its owner; the other plugins keep running.
 6. **Destructive bulk actions plan first, apply second, and can be undone** (sanitizer, retain groups).
-7. **Top-level dot-folders in the workspace are reserved** (`.trash`, `.extraction_metadata`, `.sanitizer`, `.analysis`).
+7. **Top-level dot-folders in the workspace are reserved** (`.trash`, `.extraction_metadata`; the sanitizer journal lives under `.extraction_metadata`; `.analysis` stays reserved for the analysis rung).
 8. **Determinism.** The same input and the same ini give the same output.
 9. **Honest metrics.** A number's name says what it counts (doc 0.4). Gaining confidence in output quality starts with this.
-10. **Versioning.** `MAJOR.MINOR`. Optional additions bump the minor; anything else bumps the major.
+10. **Versioning.** The contract keeps `CONTRACT_VERSION = "1.0"` (`MAJOR.MINOR`: optional additions bump the minor, anything else the major). The product uses `va.b.c` (`tools/version.py`, CLAUDE.md): `a` per finished roadmap, `b` per feature, `c` per commit. **History:** draft 3 had one scheme for both.
 
 ## Decisions (all closed)
 
@@ -127,7 +127,7 @@ You accepted every recommendation on 2026-11-02, so this table is now the record
 | D9 | License | MIT core; dependencies keep their own licenses |
 | D10 | v1 hotfix | done (`hotfix/v1-data-safety`, merged into `makeover`) |
 | D11 | Ren'Py RPA | our safe reader is main; unrpa (subprocess) is spare |
-| D12 | CATALOG → SELECT | yes, an optional stage (Prototype B) |
+| D12 | CATALOG → SELECT | **closed, not built.** SELECT (`viwo/core/pipeline/select.py`) plus `viwo survey` and the per-game indexes cover what CATALOG was for (knowing what a folder holds before choosing plugins); a separate stage would add a pass over the folder for no new decision |
 | D13 | Runtime agents | journaled overlay + crash recovery |
 | D14 | Custom plugin showcase | open-source custom-engine game in CI; Overwatch as a `tos_sensitive` plugin tested by an independent operator |
 | D15 | Name | **Vidya Wormhole (ViWo)**; CLI `viwo` |
@@ -135,8 +135,8 @@ You accepted every recommendation on 2026-11-02, so this table is now the record
 | D17 | Round trip scope in B | **all four engines**: Ren'Py (override + safe RPA writer), Godot (PCK rebuild), Unreal (`_P.pak` via repak), Unity (UnityPy same-format replacement) |
 | D18 | Unreal AES keys | an offline-playable game must carry its pak key locally, so the key is always reachable: **a user-supplied key wins; otherwise the key finder runs automatically**; every candidate is **verified against the pak's encrypted index** before use; keys are never stored |
 | D19 | Runtime capture pilot | **inside Prototype B** (refusal policy, journaled overlay, RenderDoc harvest, diff against the static extraction) |
-| D20 | Real-game check | after Prototype B (you / the independent operator) |
-| D21 | Coverage goal | **whatever is stored locally can be extracted**, through a ladder of fallbacks (doc 16.0b): engine plugin, container unpackers, signature carver, compressed-stream scan, decoders, script-driven unpackers (QuickBMS), runtime capture. `viwo survey` measures coverage per game. Limits that stay: no DRM or anti-cheat circumvention, no key guessing (keys come from the user or from the game's own local files and are verified, D18) |
+| D20 | Real-game check | after Prototype B (you / the independent operator). **Pending the owner:** `sqc/games.md` lists the games, `tools/integration_games.py` runs them; the `docs/prototype-b/STATUS.md` "not verified" table closes row by row with the results |
+| D21 | Coverage goal | **whatever is stored locally can be extracted**, through a ladder of fallbacks (doc 16.0b): engine plugin, container unpackers, signature carver, compressed-stream scan, decoders, script-driven unpackers (QuickBMS), runtime capture. `viwo survey` measures coverage per game. The "limits that stay" sentence of draft 3 is superseded by D22: ViWo authors no code for defeating copy protection or brute-forcing keys (keys come from the user or from the game's own local files and are verified, D18), and refuses nothing |
 
 ## Not in this draft
 
