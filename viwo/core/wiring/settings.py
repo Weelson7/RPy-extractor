@@ -15,7 +15,7 @@ from viwo.contracts.errors import ViwoError
 
 from .ini import SECRET_WORDS, load_ini
 
-FORM_STARTUP = ("os", "profile", "features", "auto_install", "strict_preflight")
+FORM_STARTUP = ("os", "profile", "features", "auto_install", "strict_preflight", "av_exclusions")
 KEY_LINE = re.compile(r"^(\s*)([^;#=\s\[][^=]*?)\s*=\s*(.*?)(\s*[;#].*)?$")
 SAFE_KEY = re.compile(r"^[a-z0-9_.-]+$")
 Values = dict[str, "str | None"]  # None removes the key
@@ -32,6 +32,7 @@ def read_settings(ini_path: Path, plugin_ids, dep_ids) -> dict:
             "features": list(cfg.features),
             "auto_install": cfg.auto_install,
             "strict_preflight": cfg.strict_preflight,
+            "av_exclusions": cfg.av_exclusions,
         },
         "plugins": {pid: cfg.plugins.get(pid, True) for pid in plugin_ids},
         "tools": {dep: cfg.tools.get(dep, "") for dep in dep_ids},

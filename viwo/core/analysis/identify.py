@@ -10,6 +10,8 @@ import json
 from viwo.contracts.analysis import AnalysisTarget, Analyzer
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 
+from ._process import failed, run_tool
+
 DIE = DependencySpec(
     "die",
     "Detect It Easy (diec)",
@@ -51,16 +53,14 @@ class DetectItEasy(Analyzer):
             return Outcome(OutcomeKind.UNAVAILABLE, error=DIE.hint)
         binary = target.paths[0]
         ctx.log(f"Detect It Easy: identifying {binary.name}", stage="analyze")
-        timeout = int(ctx.options.get("timeout_s") or DEFAULT_TIMEOUT)
         argv = [*tool.argv_prefix, "-j", "-d", str(binary)]
-        result = ctx.os.process.run(argv, timeout=timeout, cancel=ctx.cancel)
+        result = run_tool(ctx, argv, None, DEFAULT_TIMEOUT)
         try:
             report = json.loads(result.stdout or "{}")
         except ValueError:
             report = {}
         if result.timed_out or not report.get("detects"):
-            error = "diec timed out" if result.timed_out else (result.stderr or result.stdout)
-            return Outcome(OutcomeKind.FAILED, error=(error or "diec found nothing")[-400:])
+            return failed(result, "diec found nothing")
         lines, wrappers = summarize(report)
         (ctx.staging / "identify.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
         (ctx.staging / "identify.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")

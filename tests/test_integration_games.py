@@ -39,6 +39,12 @@ class IntegrationGamesTests(unittest.TestCase):
                 "loose-game": [
                     {"name": "nope", "glob": "png/*.png", "min": 99},
                     {"name": "an analysis flag", "analyze": "nope", "glob": ".analysis/**/*"},
+                    {
+                        "name": "with a slot",
+                        "analyze": "nope",
+                        "slot": "analysis.protector",
+                        "glob": "x",
+                    },
                 ],
             }
             records = [
@@ -67,6 +73,7 @@ class IntegrationGamesTests(unittest.TestCase):
             self.assertFalse(analysis["ok"])
             self.assertIn("nope", analysis["error"])
             self.assertTrue((root / "out" / "loose-game" / "analysis.ini").is_file())
+            self.assertIn("analyze:nope:protector", loose["steps"])
             self.assertEqual(tool.exit_code(records), 1)
             report = tool.write_report(records, root / "out").read_text(encoding="utf-8")
             self.assertIn("| zip-game |", report)
@@ -89,6 +96,11 @@ class IntegrationGamesTests(unittest.TestCase):
             (game / "a.txt").write_text("changed")
             self.assertFalse(tool.integrity(record, game, before))
             self.assertEqual(record["changedFiles"], ["a.txt"])
+            held = {**before, "held.dll": "unreadable:22"}  # an antivirus hold is not a change
+            (game / "a.txt").write_text("a")
+            (game / "held.dll").write_bytes(b"MZ")
+            self.assertTrue(tool.integrity(record, game, held))
+            self.assertEqual(record["blockedFiles"], ["held.dll"])
             self.assertEqual(tool.exit_code([]), 1)
             self.assertEqual(tool.exit_code([{"ok": True}, {"ok": False}]), 1)
             self.assertEqual(tool.exit_code([{"ok": True}]), 0)

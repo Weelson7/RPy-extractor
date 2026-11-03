@@ -73,6 +73,6 @@ def main(capture: str, out: str) -> int:
 
 if __name__ == "__main__":
     args = sys.argv[1:3] if len(sys.argv) >= 3 else []
-    capture_file = os.environ.get("VIWO_RD_CAPTURE") or args[0]
-    out_dir = os.environ.get("VIWO_RD_OUT") or args[1]
+    capture_file = args[0] if args else os.environ.get("VIWO_RD_CAPTURE", "")
+    out_dir = args[1] if args else os.environ.get("VIWO_RD_OUT", "")
     sys.exit(main(capture_file, out_dir))

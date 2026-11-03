@@ -460,13 +460,20 @@
   "die": {
    "version": "3.21",
    "license": "MIT",
-   "_note": "Detect It Easy portable build: the console scanner diec.exe and its signature database; the Linux portable tarball's layout was not verified, so PATH lookup there",
+   "_note": "Detect It Easy portable builds: the console scanner (diec.exe; diec.sh on Linux) and its signature database",
    "windows": {
     "url": "https://github.com/horsicq/DIE-engine/releases/download/3.21/die_win64_portable_3.21_x64.zip",
     "sha256": "078f2934f267392247f9c7b759a1c2457a48bc2000b25b80c2f129955ee4a3b9",
     "size": 25197854,
     "kind": "zip",
     "find": "diec.exe"
+   },
+   "linux": {
+    "url": "https://github.com/horsicq/DIE-engine/releases/download/3.21/die_3.21_portable_Ubuntu_20.04_amd64.tar.gz",
+    "sha256": "4d85614dd169c0d23f52084f86e05a503c30429df5fb5ec14de50f23808bc2d4",
+    "size": 27429929,
+    "kind": "tar",
+    "find": "diec.sh"
    }
   }
  }

@@ -56,7 +56,10 @@ def run_capture(app: App, d: dict) -> dict:
     workspace = app.workspace
     if not workspace.exists() or not any(workspace.iterdir()):
         claim(workspace)  # the lock file lands inside it before capture() looks at it
-    after = float(d.get("captureAfter", DEFAULT_AUTO))
+    try:
+        after = float(d.get("captureAfter") or DEFAULT_AUTO)
+    except (TypeError, ValueError):
+        return failure(ViwoError("invalid_request", "captureAfter must be a number of seconds"))
     request = CaptureRequest(game, exe, workspace, bool(d.get("confirmed")), after)
 
     def run(sink, cancel) -> dict:

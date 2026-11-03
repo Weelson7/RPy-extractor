@@ -9,7 +9,7 @@ from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest, Plugi
 from viwo.contracts.slots import SlotDefinition
 from viwo.contracts.types import DetectionResult
 
-from .decompile import RPYC_SLOT, UnrpycCli
+from .decompile import ANALYSIS_SLOT, RPYC_SLOT, UnrpycAnalyzer, UnrpycCli
 from .pack import RpaWriter
 from .rpa import RpaSafe, Unrpa
 
@@ -48,16 +48,16 @@ class RenPyPlugin(EnginePlugin):
         return DetectionResult("renpy", round(score, 2), evidence, "renpy")
 
     def analysis_targets(self, probe: GameProbe):
-        """`.rpyc` scripts as one python_bytecode target (extraction already decodes them)."""
+        """`.rpyc` scripts as one python_bytecode target (analysis.python, unrpyc)."""
         files = tuple(probe.with_suffix(".rpyc")[:500])
         label = f"{len(files)} .rpyc"
         return (AnalysisTarget("rpyc", "python_bytecode", files, "renpy", label),) if files else ()
 
     def slot_definitions(self):
-        return (RPA_SLOT, PACK_SLOT, RPYC_SLOT)
+        return (RPA_SLOT, PACK_SLOT, RPYC_SLOT, ANALYSIS_SLOT)
 
     def backends(self):
-        return (RpaSafe(), Unrpa(), RpaWriter(), UnrpycCli())
+        return (RpaSafe(), Unrpa(), RpaWriter(), UnrpycCli(), UnrpycAnalyzer())
 
     def pack_slot(self, unarchive_slot: str) -> str:
         return "pack.rpa" if unarchive_slot == "unarchive.rpa" else ""

@@ -6,13 +6,13 @@ and its metadata, unluac (MIT, on the pinned JDK) decompiles Lua bytecode. Artif
 
 from __future__ import annotations
 
-import re
 import shutil
 from pathlib import Path
 
 from viwo.contracts.analysis import AnalysisTarget, Analyzer
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 
+from ._process import failed, run_tool
 from .ghidra import JDK, java_env
 
 ILSPY = DependencySpec(
@@ -44,19 +44,10 @@ DOTNET = DependencySpec(
     hint="install the .NET runtime: `viwo install dotnet`",
 )
 DEFAULT_TIMEOUT = 3600
-ANSI = re.compile(r"\x1b\[[0-9;]*m")
 
 
 def _run(ctx, argv: list[str], env: dict | None):
-    timeout = int(ctx.options.get("timeout_s") or DEFAULT_TIMEOUT)
-    relay = lambda line: ctx.log(ANSI.sub("", line)[:200], stage="analyze")  # noqa: E731
-    return ctx.os.process.run(argv, timeout=timeout, cancel=ctx.cancel, env=env, on_line=relay)
-
-
-def _failed(result, fallback: str) -> Outcome:
-    if result.timed_out:
-        return Outcome(OutcomeKind.FAILED, error="the analyzer timed out or was cancelled")
-    return Outcome(OutcomeKind.FAILED, error=(result.stderr or result.stdout or fallback)[-400:])
+    return run_tool(ctx, argv, env, DEFAULT_TIMEOUT)
 
 
 def dotnet_env(ctx) -> dict[str, str] | None:
@@ -84,7 +75,7 @@ class IlSpy(Analyzer):
         result = _run(ctx, argv, dotnet_env(ctx))
         sources = sum(1 for _ in ctx.staging.rglob("*.cs"))
         if result.timed_out or not sources:
-            return _failed(result, "ilspycmd produced no C# source")
+            return failed(result, "ilspycmd produced no C# source")
         return Outcome(OutcomeKind.OK, sources, notes=(f"{sources} C# files (project mode)",))
 
 
@@ -135,7 +126,7 @@ class Cpp2Il(Analyzer):
         result = _run(ctx, argv, None)
         dlls = [p for p in ctx.staging.glob("*.dll")]
         if result.timed_out or not dlls:
-            return _failed(result, "Cpp2IL produced no assemblies")
+            return failed(result, "Cpp2IL produced no assemblies")
         note = f"{len(dlls)} stub assemblies (metadata only, no method bodies)"
         return Outcome(OutcomeKind.OK, len(dlls), notes=(note,))
 
@@ -160,8 +151,8 @@ class Unluac(Analyzer):
             out = ctx.staging / f"{path.stem}.lua"
             result = _run(ctx, [*tool.argv_prefix, "--output", str(out), str(path)], env)
             if result.timed_out:
-                return _failed(result, "unluac timed out")
+                return failed(result, "unluac timed out")
             done += int(out.is_file() and out.stat().st_size > 0)
         if not done:
-            return _failed(result, "unluac produced nothing")
+            return failed(result, "unluac produced nothing")
         return Outcome(OutcomeKind.OK, done, notes=(f"{done}/{len(target.paths)} chunks",))

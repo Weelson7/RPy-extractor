@@ -14,6 +14,7 @@ from viwo.contracts.plugin import (
 from viwo.contracts.slots import SlotDefinition
 from viwo.contracts.types import DetectionResult
 
+from .gdscript import GdreDecompile, engine_version
 from .pck import (
     MAGIC,
     GdreRecover,
@@ -112,22 +113,26 @@ class GodotPlugin(EnginePlugin):
     def analysis_targets(self, probe: GameProbe):
         """Compiled GDScript (`.gdc`), one target for all of them (doc 6.1)."""
         files = tuple(probe.with_suffix(".gdc")[:500])
-        label = f"{len(files)} .gdc"
-        return (
-            (AnalysisTarget("gdscript", "gdscript_bytecode", files, "godot", label),)
-            if files
-            else ()
+        if not files:
+            return ()
+        exes = sorted(probe.with_suffix(".exe", ".x86_64"), key=lambda p: -p.stat().st_size)
+        version = engine_version(exes[0]) if exes else ""  # only read when .gdc files exist
+        hints = {"engine_version": version} if version else {}
+        target = AnalysisTarget(
+            "gdscript", "gdscript_bytecode", files, "godot", f"{len(files)} .gdc", hints
         )
+        return (target,)
 
     def slot_definitions(self):
         return (
             PCK_SLOT,
             EXPORT_SLOT,
             SlotDefinition("pack.pck", "pack", "godot", "godotpcktool-pack"),
+            SlotDefinition("analysis.gdscript", "analysis", "godot", "gdre-decompile"),
         )
 
     def backends(self):
-        return (GdreTools(), GodotPckTool(), GodotPckPacker(), GdreRecover())
+        return (GdreTools(), GodotPckTool(), GodotPckPacker(), GdreRecover(), GdreDecompile())
 
     def pack_slot(self, unarchive_slot: str) -> str:
         return "pack.pck" if unarchive_slot == "unarchive.pck" else ""

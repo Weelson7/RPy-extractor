@@ -20,6 +20,7 @@ from ..context import core_context
 from ..pipeline.failover import run_with_failover
 from ..pipeline.probe import FolderProbe
 from ..records import record_context
+from ..scan_exclusions import excluded
 from ..workspace import write_atomic
 from .ghidra import GhidraGui, GhidraHeadless
 from .identify import DetectItEasy
@@ -126,7 +127,9 @@ def extras_for(rt, kind: str) -> list[dict]:
 
 
 def _context(rt, req: AnalysisRequest, out: Path, scratch: Path, sink, cancel):
-    """Exports go to `out` (under .analysis/); the copy of the input sits in `scratch`."""
+    """Exports go to `out` (under .analysis/), emptied first so a failed rerun cannot pass on
+    last time's artifacts; the copy of the input sits in `scratch`."""
+    shutil.rmtree(out, ignore_errors=True)
     out.mkdir(parents=True, exist_ok=True)
     ctx = core_context(rt, "analyze", req.game, scratch, sink, cancel)
     ctx.staging, ctx.scratch, ctx.options = out, scratch, req.options
@@ -159,17 +162,19 @@ def analyze(rt, req: AnalysisRequest, sink=None, cancel: CancelToken | None = No
     rt.temp_root.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=rt.temp_root, prefix="viwo-analyze-") as tmp:
         scratch = Path(tmp)
-        inputs = _copy_inputs(target, scratch)
         out = output_dir(req.workspace, binding.main, target.key)
         ctx = _context(rt, req, out, scratch, sink or (lambda e: None), cancel)
-        outcome, used = run_with_failover(binding, rt.backends, lambda b: b.analyze(inputs, ctx))
+        with excluded(rt, (req.game, out, scratch), lambda m: ctx.log(m, "warn", "analyze")):
+            inputs = _copy_inputs(target, scratch)
+            outcome, used = run_with_failover(
+                binding, rt.backends, lambda b: b.analyze(inputs, ctx)
+            )
     if not outcome.ok:
         raise ViwoError(
             outcome.kind.value if outcome.kind.value != "ok" else "failed",
             outcome.error or f"{slot} failed",
         )
-    out = output_dir(req.workspace, used, target.key)
-    artifacts = sorted(p.name for p in out.iterdir() if p.is_file())
+    artifacts = sorted(p.name for p in out.iterdir() if p.is_file())  # where the run wrote
     report = {
         "target": target.to_dict(),
         "backend": used,

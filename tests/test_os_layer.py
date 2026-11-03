@@ -84,6 +84,17 @@ class ProcessRunnerTests(unittest.TestCase):
         self.assertEqual((result.returncode, result.stdout.strip()), (3, "ok"))
         self.assertGreater(runner.max_command_length, 1000)
 
+    def test_grandchild_holding_the_pipes_does_not_hang_run(self) -> None:
+        code = (
+            "import subprocess,sys; subprocess.Popen([sys.executable,'-c',"
+            "'import time; time.sleep(6)']); print('parent done')"
+        )
+        start = time.monotonic()
+        result = select_os().process.run([sys.executable, "-c", code], timeout=20)
+        self.assertEqual((result.returncode, result.timed_out), (0, False))
+        self.assertIn("parent done", result.stdout)
+        self.assertLess(time.monotonic() - start, 5)
+
     def test_timeout_kills_tree(self) -> None:
         code = (
             "import subprocess,sys,time; subprocess.Popen([sys.executable,'-c',"

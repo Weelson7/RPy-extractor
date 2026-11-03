@@ -16,6 +16,7 @@ from unittest import mock
 from tests.helpers import runtime, tree_hashes
 from viwo.contracts import ViwoError
 from viwo.core.analysis import AnalysisRequest, analyze, extras_for, ghidra, open_in, targets_for
+from viwo.os import select_os
 
 FAKE_HEADLESS = """#!{python}
 import sys
@@ -220,12 +221,48 @@ class AnalyzeTests(unittest.TestCase):
             analyze(self.rt, AnalysisRequest(self.unity, self.ws, "g-exe", slot="analysis.script"))
         self.assertEqual(err.exception.code, "unavailable")
 
+    def test_engine_plugin_analyzers_rpyc_and_gdc(self) -> None:
+        rpyc = """#!{python}
+import sys
+from pathlib import Path
+folder = Path(sys.argv[-1])
+assert "--clobber" in sys.argv and folder.is_dir(), sys.argv
+for f in folder.glob("*.rpyc"):
+    f.with_suffix(".rpy").write_text("label start:")
+"""
+        gdc = """#!{python}
+import sys
+from pathlib import Path
+pairs = [a.split("=", 1) for a in sys.argv[1:] if "=" in a]
+out = Path(dict(pairs)["--output"])
+assert dict(pairs)["--bytecode"] == "4.3.0", sys.argv
+for f in [Path(v) for k, v in pairs if k == "--decompile"]:
+    (out / f.with_suffix(".gd").name).write_text("extends Node")
+"""
+        game = self.root / "vn"
+        (game / "game").mkdir(parents=True)
+        (game / "game" / "script.rpyc").write_bytes(b"RENPY RPC2")
+        (game / "game" / "main.gdc").write_bytes(b"GDSC")
+        (game / "vn.exe").write_bytes(b"MZ ... 4.3.0.stable.official ...")
+        unrpyc = script(self.root / "unrpyc", "unrpyc", rpyc.format(python=sys.executable))
+        gdre = script(self.root / "gdre", "gdre_tools", gdc.format(python=sys.executable))
+        ini = "[startup]\nfeatures = extraction, analysis\n[plugins]\nrenpy = on\ngodot = on\n"
+        rt = runtime(
+            _folder(self.root / "eng"), ini + f"[tools]\nunrpyc = {unrpyc}\ngdre = {gdre}\n"
+        )
+        for key, backend, artifact in (
+            ("rpyc", "unrpyc-analyze", "script.rpy"),
+            ("gdscript", "gdre-decompile", "main.gd"),
+        ):
+            report = analyze(rt, AnalysisRequest(game, self.ws, key))
+            self.assertEqual((report["backend"], report["artifacts"]), (backend, [artifact]), key)
+
     def test_gui_prompts_pre_answered_other_preferences_kept(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {"APPDATA": tmp}):
             prefs = Path(tmp) / "ghidra" / "ghidra_12.2_PUBLIC" / "preferences"
             prefs.parent.mkdir(parents=True)
             prefs.write_text("Theme=x\nSHOW_TIPS=true\n", encoding="utf-8")
-            ghidra.quiet_gui(Path("/opt/ghidra_12.2_PUBLIC"))
+            ghidra.quiet_gui(select_os(), Path("/opt/ghidra_12.2_PUBLIC"))
             lines = prefs.read_text(encoding="utf-8").splitlines()
             self.assertEqual(lines, ["Theme=x", "USER_AGREEMENT=ACCEPT", "SHOW_TIPS=false"])
 

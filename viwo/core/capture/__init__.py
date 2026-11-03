@@ -22,6 +22,7 @@ from ..pipeline.guard import refuse_writes_inside
 from ..pipeline.probe import FolderProbe
 from ..pipeline.runner import detect_all
 from ..records import record_context
+from ..scan_exclusions import excluded
 from ..steps import teller
 from ..workspace import claim, write_atomic
 from .journal import pending
@@ -99,9 +100,11 @@ def _run(rt, req: CaptureRequest, known: set[str], sink, cancel) -> tuple:
         ctx.staging.mkdir(parents=True)
         spec = {"exe": str(req.exe), "workdir": str(req.exe.parent), "args": []}
         spec["capture_after"] = req.capture_after
-        outcome, used = run_with_failover(
-            binding, rt.backends, lambda b: b.capture(spec, ctx.staging, ctx)
-        )
+        say = lambda m: ctx.log(m, "warn", "capture")  # noqa: E731
+        with excluded(rt, (req.game, req.workspace, work), say):
+            outcome, used = run_with_failover(
+                binding, rt.backends, lambda b: b.capture(spec, ctx.staging, ctx)
+            )
         if not outcome.ok:
             raise ViwoError("failed", outcome.error or "capture failed")
         job = time.strftime("%Y%m%d-%H%M%S")

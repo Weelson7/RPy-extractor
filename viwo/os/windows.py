@@ -110,6 +110,19 @@ def _install_roots() -> list[Path]:
     ]
 
 
+def _is_admin() -> bool:
+    import ctypes
+
+    try:
+        return bool(ctypes.windll.shell32.IsUserAnAdmin())
+    except (AttributeError, OSError):
+        return False
+
+
+def _ps_list(paths) -> str:
+    return ",".join("'" + str(p).replace("'", "''") + "'" for p in paths)
+
+
 class WindowsOS(OS):
     os_id = "windows"
     display_name = "Windows"
@@ -151,6 +164,36 @@ class WindowsOS(OS):
     @property
     def fs(self) -> WindowsFs:
         return self._fs
+
+    def exclude_from_scan(self, paths) -> tuple[list[Path], str]:
+        """Windows Defender: only an elevated process may read or change its exclusions, so a
+        normal ViWo says so once and scanning stays on. Folders already excluded by the user
+        are left out (and so are never removed afterwards)."""
+        if not _is_admin():
+            return (
+                [],
+                "antivirus exclusions skipped: Defender takes them from an elevated ViWo only",
+            )
+        listed = self._ps("(Get-MpPreference).ExclusionPath")
+        known = {line.strip().lower() for line in listed.stdout.splitlines()}
+        new = [Path(p) for p in paths if str(p).lower() not in known]
+        if new and not self._ps(f"Add-MpPreference -ExclusionPath {_ps_list(new)}").ok:
+            return [], "antivirus exclusions skipped: Add-MpPreference was refused"
+        return new, ""
+
+    def include_in_scan(self, paths) -> None:
+        if paths:
+            self._ps(f"Remove-MpPreference -ExclusionPath {_ps_list(paths)}")
+
+    def _ps(self, command: str):
+        argv = ["powershell", "-NoProfile", "-NonInteractive", "-Command", command]
+        return self._process.run(argv, timeout=60)
+
+    def config_home(self) -> Path:
+        return Path(os.environ.get("APPDATA") or Path.home() / "AppData" / "Roaming")
+
+    def data_home(self) -> Path:
+        return Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local")
 
     @property
     def shell(self) -> WindowsShell:

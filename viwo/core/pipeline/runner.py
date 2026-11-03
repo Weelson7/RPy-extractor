@@ -17,6 +17,7 @@ from viwo.contracts.plugin import ExtractionContext
 from viwo.contracts.types import CancelToken, DetectionResult, ProgressEvent, ProgressSink
 
 from ..records import record_context
+from ..scan_exclusions import excluded
 from ..workspace import precheck, resolve_target, workspace_lock, write_atomic
 from .carving import carve_all
 from .checks import _verify, verified
@@ -100,7 +101,8 @@ def extract(
         work = Path(tempfile.mkdtemp(prefix=f"viwo-{job_id}-", dir=rt.temp_root))
         try:
             run = Run(rt, request, job_id, sink, cancel, game, work)
-            return _stages(run, workspace)
+            with excluded(rt, (game, workspace, work), lambda m: run.log(m, "prepare", "warn")):
+                return _stages(run, workspace)
         finally:
             shutil.rmtree(work, ignore_errors=True)
 

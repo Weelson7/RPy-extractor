@@ -18,6 +18,7 @@ from viwo.core.capture.journal import Journal, pending
 from viwo.core.capture.policy import check
 from viwo.core.capture.renderdoc import quiet_ui
 from viwo.core.pipeline.runner import extract
+from viwo.os import select_os
 
 FAKE_RDCMD = """#!{python}
 import sys
@@ -57,13 +58,13 @@ def script(folder: Path, name: str, body: str) -> Path:
 class QuietUiTests(unittest.TestCase):
     def test_first_run_prompts_answered_once_user_choice_kept(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {"APPDATA": tmp}):
-            quiet_ui()
-            cfg = json.loads(renderdoc.ui_config().read_text(encoding="utf-8"))
+            quiet_ui(select_os())
+            cfg = json.loads(renderdoc.ui_config(select_os()).read_text(encoding="utf-8"))
             self.assertTrue(cfg["Analytics_ManualCheck"] and cfg["Tips_HasSeenFirst"])
             cfg.update({"Analytics_TotalOptOut": False, "Tips_HasSeenFirst": False})
-            renderdoc.ui_config().write_text(json.dumps(cfg), encoding="utf-8")
-            quiet_ui()
-            cfg = json.loads(renderdoc.ui_config().read_text(encoding="utf-8"))
+            renderdoc.ui_config(select_os()).write_text(json.dumps(cfg), encoding="utf-8")
+            quiet_ui(select_os())
+            cfg = json.loads(renderdoc.ui_config(select_os()).read_text(encoding="utf-8"))
             self.assertEqual(
                 (cfg["Analytics_TotalOptOut"], cfg["Tips_HasSeenFirst"]), (False, True)
             )

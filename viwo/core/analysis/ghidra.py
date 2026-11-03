@@ -9,6 +9,8 @@ from pathlib import Path
 from viwo.contracts.analysis import AnalysisTarget, Analyzer, Handoff, LaunchSpec
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 
+from ._process import failed, run_tool
+
 GHIDRA = DependencySpec(
     "ghidra",
     "Ghidra (analyzeHeadless)",
@@ -49,12 +51,11 @@ def project_dir(staging: Path) -> Path:
     return workspace.parent / f"{workspace.name}.ghidra" / staging.name
 
 
-def quiet_gui(root: Path) -> None:
+def quiet_gui(host, root: Path) -> None:
     """Pre-answer the GUI's first-run prompts (user agreement, tip of the day) in Ghidra's
     per-version preferences: an unattended handoff must not wait on a dialog. The ViWo
     disclaimer covers the agreement; a user who answered already is left alone."""
-    base = os.environ.get("APPDATA") or os.environ.get("XDG_CONFIG_HOME") or "~/.config"
-    path = Path(base).expanduser() / "ghidra" / root.name / "preferences"
+    path = host.config_home() / "ghidra" / root.name / "preferences"
     try:
         lines = path.read_text(encoding="utf-8").splitlines() if path.is_file() else []
         keep = [ln for ln in lines if not ln.startswith(("USER_AGREEMENT=", "SHOW_TIPS="))]
@@ -104,16 +105,11 @@ class GhidraHeadless(Analyzer):
         argv = [*tool.argv_prefix, str(project), PROJECT, "-import", str(target.paths[0])]
         argv += ["-overwrite", "-postScript", "ViwoExport.java", str(ctx.staging)]
         argv += ["-scriptPath", str(SCRIPTS)]
-        timeout = int(ctx.options.get("timeout_s") or DEFAULT_TIMEOUT)
         ctx.log(f"Ghidra: importing and analysing {target.paths[0].name}", stage="analyze")
-        result = ctx.os.process.run(
-            argv, timeout=timeout, cancel=ctx.cancel, env=env, on_line=lambda ln: _relay(ctx, ln)
-        )
+        result = run_tool(ctx, argv, env, DEFAULT_TIMEOUT, lambda ln: _relay(ctx, ln))
         found = [a for a in ARTIFACTS if (ctx.staging / a).is_file()]
-        if result.timed_out:
-            return Outcome(OutcomeKind.FAILED, error="Ghidra timed out or was cancelled")
-        if "functions.csv" not in found:
-            return Outcome(OutcomeKind.FAILED, error=(result.stderr or result.stdout)[-400:])
+        if result.timed_out or "functions.csv" not in found:
+            return failed(result, "Ghidra wrote no functions.csv")
         return Outcome(OutcomeKind.OK, len(found), notes=tuple(found))
 
 
@@ -146,5 +142,5 @@ class GhidraGui(Handoff):
         argv = _gui_argv(Path(tool.path), Path(java.path), gpr) if java else None
         if argv is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error="Ghidra's Utility.jar not found")
-        quiet_gui(Path(tool.path).resolve().parent.parent)
+        quiet_gui(ctx.os, Path(tool.path).resolve().parent.parent)
         return LaunchSpec(tuple(argv), gpr.parent, env)

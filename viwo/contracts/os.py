@@ -127,3 +127,19 @@ class OS(ABC):
     @property
     @abstractmethod
     def shell(self) -> DesktopShell: ...
+
+    @abstractmethod
+    def config_home(self) -> Path:
+        """Where per-user tool settings live (APPDATA; XDG_CONFIG_HOME or ~/.config)."""
+
+    @abstractmethod
+    def data_home(self) -> Path:
+        """Where per-user tool data lives (LOCALAPPDATA; XDG_DATA_HOME or ~/.local/share)."""
+
+    def exclude_from_scan(self, paths: Sequence[Path]) -> tuple[list[Path], str]:
+        """Ask the host antivirus to skip these folders; (the ones added, a note when it could
+        not). Hosts without a scanner ViWo can manage add nothing and say nothing."""
+        return [], ""
+
+    def include_in_scan(self, paths: Sequence[Path]) -> None:
+        """Undo exclude_from_scan for exactly these folders."""

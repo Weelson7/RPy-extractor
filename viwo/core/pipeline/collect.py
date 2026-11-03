@@ -105,9 +105,11 @@ def collect(
             report.skipped_by_ext[group] += 1
             continue
         try:
-            _collect_one(src, workspace / group, source, report)
-        except OSError as exc:  # blocked by the antivirus or locked: a warning, not a crash
+            digest = sha256(src)  # where an antivirus hold or a lock on the source surfaces
+        except OSError as exc:  # a warning, not a crash; workspace errors below still raise
             report.unreadable.append(f"{src.name} ({exc.strerror or exc.errno})")
+            continue
+        _collect_one(src, digest, workspace / group, source, report)
     return report
 
 
@@ -120,9 +122,8 @@ def _where(source: Source, rel: str) -> dict:
     return {"kind": source.kind, "container": source.container, "member": member}
 
 
-def _collect_one(src: Path, folder: Path, source: Source, report: CollectReport) -> None:
+def _collect_one(src: Path, digest: str, folder: Path, source: Source, report) -> None:
     folder.mkdir(parents=True, exist_ok=True)
-    digest = sha256(src)
     target, duplicate = _place(src, folder, digest)
     if not duplicate:
         (shutil.move if source.move else shutil.copy2)(str(src), str(target))

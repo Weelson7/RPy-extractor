@@ -113,6 +113,12 @@ class LinuxOS(OS):
     def fs(self) -> PosixFs:
         return self._fs
 
+    def config_home(self) -> Path:
+        return Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
+
+    def data_home(self) -> Path:
+        return Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share")
+
     @property
     def shell(self) -> LinuxShell:
         return self._shell

@@ -13,6 +13,7 @@ const FEATURES = [
 const STARTUP = [
   ["auto_install", "AUTO-INSTALL TOOLS", "missing pinned tools are downloaded into third_party/ at startup"],
   ["strict_preflight", "STRICT PREFLIGHT", "viwo serve exits (code 4) when a plugin format has no tool; the web UI ignores it"],
+  ["av_exclusions", "ANTIVIRUS EXCLUSIONS", "while a job runs, its workspace, source and temp folders skip the real-time scan (Windows Defender, elevated ViWo only); removed when the job ends"],
 ];
 
 export function featuresForm(startup, touch) {

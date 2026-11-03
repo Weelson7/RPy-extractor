@@ -16,11 +16,15 @@ import renderdoc as rd  # type: ignore  # provided by the RenderDoc install
 
 
 def targets(deadline: float) -> int:
-    """The first target-control ident on this machine, waiting until the game registers."""
+    """The newest target-control ident on this machine (the game ViWo just launched), waiting
+    until it registers; an older RenderDoc-injected process is skipped."""
     while time.time() < deadline:
-        ident = rd.EnumerateRemoteTargets("", 0)
-        if ident:
-            return ident
+        ident = newest = rd.EnumerateRemoteTargets("", 0)
+        while ident:
+            newest = ident
+            ident = rd.EnumerateRemoteTargets("", ident)
+        if newest:
+            return newest
         time.sleep(0.5)
     return 0
 

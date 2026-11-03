@@ -119,8 +119,8 @@ class SubprocessRunner(ProcessRunner):
                 break
             time.sleep(0.1)
         proc.wait()
-        for thread in threads:
-            thread.join(timeout=5)
+        for thread in threads:  # daemon pumps; a grandchild may still hold the pipes
+            thread.join(timeout=1)
         out, err = "".join(chunks["out"]), "".join(chunks["err"])
         return ProcessResult(-9 if timed_out else proc.returncode, out, err, timed_out=timed_out)
 

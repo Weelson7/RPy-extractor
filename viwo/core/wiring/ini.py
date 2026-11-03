@@ -10,7 +10,16 @@ from viwo import CONTRACT_VERSION
 from viwo.contracts.errors import ViwoError
 
 KNOWN_SECTIONS = {"startup", "plugins", "slots", "tools", "server"}
-STARTUP_KEYS = {"os", "profile", "features", "auto_install", "strict_preflight", "base", "contract"}
+STARTUP_KEYS = {
+    "os",
+    "profile",
+    "features",
+    "auto_install",
+    "strict_preflight",
+    "av_exclusions",
+    "base",
+    "contract",
+}
 SERVER_KEYS = {"host", "port", "workspace", "merged", "logs", "temp"}
 MAX_LAYERS = 2  # doc 9.1: the ini and at most one base file
 SECRET_WORDS = ("key", "secret", "password", "token")
@@ -23,6 +32,7 @@ class StartupConfig:
     features: tuple[str, ...] = ("extraction", "sorting", "merger")
     auto_install: bool = True  # install missing pinned tools into third_party/ at startup
     strict_preflight: bool = False
+    av_exclusions: bool = True  # workspace, source and temp skip the antivirus during a job
     plugins: dict[str, bool] = field(default_factory=dict)
     custom_dirs: tuple[Path, ...] = ()
     slots: dict[str, tuple[str, str]] = field(default_factory=dict)
@@ -72,7 +82,7 @@ def _read_startup(cfg: configparser.ConfigParser, out: StartupConfig) -> None:
     out.profile = str(sec.get("profile", out.profile)).lower()
     if "features" in sec:
         out.features = tuple(_split(sec["features"]))
-    for name in ("auto_install", "strict_preflight"):
+    for name in ("auto_install", "strict_preflight", "av_exclusions"):
         if name in sec:
             setattr(out, name, cfg.getboolean("startup", name))
 
@@ -150,7 +160,15 @@ def _unknown_keys(cfg: configparser.ConfigParser, out: StartupConfig) -> None:
 def _sources(files: list[Path], out: StartupConfig) -> None:
     """Doc 9.1: where every effective value comes from (default, base, ini); cli is added by
     boot. Keys are "section.key"; [startup] fields absent from every file read "default"."""
-    for name in ("os", "profile", "features", "auto_install", "strict_preflight", "contract"):
+    for name in (
+        "os",
+        "profile",
+        "features",
+        "auto_install",
+        "strict_preflight",
+        "av_exclusions",
+        "contract",
+    ):
         out.sources[f"startup.{name}"] = "default"
     for index, file in enumerate(files):
         origin = "ini" if index == len(files) - 1 else "base"

@@ -4,7 +4,6 @@ captures with RenderDoc's in-game hotkey (F12 / PrtScn); every capture is harves
 from __future__ import annotations
 
 import json
-import os
 from pathlib import Path
 
 from viwo.contracts.slots import Backend
@@ -32,21 +31,24 @@ OFFLINE_ENV = {"VIWO_OFFLINE": "1"}  # doc 11.6: the hint runtime agents read; R
 # makes no network use (network = "none")
 
 
-def ui_config() -> Path:
-    base = os.environ.get("APPDATA") or os.environ.get("XDG_CONFIG_HOME") or "~/.config"
-    return Path(base).expanduser() / "qrenderdoc" / "UI.config"
+def ui_config(host) -> Path:
+    """qrenderdoc keeps UI.config under the roaming config home on Windows and under the Qt
+    data home (~/.local/share) on Linux."""
+    base = host.config_home() if host.os_id == "windows" else host.data_home()
+    return base / "qrenderdoc" / "UI.config"
 
 
-def quiet_ui() -> None:
+def quiet_ui(host) -> None:
     """Answer qrenderdoc's first-run prompts (analytics, tips, update check) once: they are
     modal and would block `qrenderdoc --py` forever in an unattended run. A choice the user
-    already made about analytics is kept."""
-    path = ui_config()
+    already made about analytics or update checks is kept."""
+    path = ui_config(host)
     try:
         cfg = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
         if not cfg.get("Analytics_ManualCheck"):
             cfg["Analytics_ManualCheck"] = cfg["Analytics_TotalOptOut"] = True
-        cfg["Tips_HasSeenFirst"], cfg["CheckUpdate_AllowChecks"] = True, False
+        cfg["Tips_HasSeenFirst"] = True
+        cfg.setdefault("CheckUpdate_AllowChecks", False)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(cfg, indent=4), encoding="utf-8")
     except (OSError, ValueError):
@@ -67,7 +69,7 @@ class RenderDocCapture(Backend):
         cmd, py = ctx.os.tools.locate(RENDERDOCCMD), ctx.os.tools.locate(RD_PYTHON)
         if cmd is None or py is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=RENDERDOCCMD.hint)
-        quiet_ui()
+        quiet_ui(ctx.os)
         captures = staging.parent / "captures"
         captures.mkdir(parents=True, exist_ok=True)
         argv = [
@@ -83,7 +85,7 @@ class RenderDocCapture(Backend):
         env = {**OFFLINE_ENV, **spec.get("env", {})}
         after = float(spec.get("capture_after") or 0)
         if after > 0:
-            error = self._auto(argv, env, after, py, ctx)
+            error = self._auto(argv, env, after, py, ctx, Path(spec["exe"]).name)
         else:
             ctx.log(
                 f"Launching {Path(spec['exe']).name} under RenderDoc: capture with F12 / PrtScn, "
@@ -99,10 +101,9 @@ class RenderDocCapture(Backend):
         return Outcome(OutcomeKind.OK, harvested, notes=(f"{len(files)} capture(s)",))
 
     @staticmethod
-    def _auto(argv: list[str], env: dict, after: float, py, ctx) -> str:
+    def _auto(argv: list[str], env: dict, after: float, py, ctx, exe: str) -> str:
         """Unattended: the game runs as a tracked child, the trigger helper asks RenderDoc for
         one frame after `after` seconds, then the child is stopped (tree kill)."""
-        exe = Path(argv[-1]).name if argv else "the game"
         ctx.log(
             f"Launching {exe} under RenderDoc; one frame captured after {after:.0f} s",
             stage="capture",
