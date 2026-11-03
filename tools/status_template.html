@@ -1,0 +1,92 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><title>ViWo status {{version}}</title>
+<style>
+body{font:11pt/1.4 Segoe UI,Arial,sans-serif;color:#1a1a1a;margin:0}
+section{page-break-after:always;padding:18mm 16mm}
+h1{font-size:26pt;margin:0 0 4mm;color:#8b1a1a}
+h2{font-size:17pt;margin:0 0 5mm;color:#8b1a1a;border-bottom:2px solid #8b1a1a;padding-bottom:1mm}
+h3{font-size:12pt;margin:5mm 0 2mm}
+table{border-collapse:collapse;width:100%;font-size:9.5pt}
+th,td{border:1px solid #bbb;padding:3px 6px;text-align:left;vertical-align:top}
+th{background:#f0e6e6}
+.pass{color:#0a6b2a;font-weight:600}.fail{color:#b00020;font-weight:600}
+.sub{color:#555;font-size:10pt}
+ul{margin:2mm 0 2mm 5mm}li{margin:1mm 0}
+code{font-family:Consolas,monospace;font-size:9.5pt}
+.kpi{display:inline-block;min-width:38mm;margin:0 4mm 4mm 0;padding:3mm;border:1px solid #bbb;border-radius:2mm}
+.kpi b{display:block;font-size:20pt}
+</style></head><body>
+
+<section>
+<h1>ViWo // Vidya Wormhole</h1>
+<p class="sub">Status presentation, {{date}} · version {{version}} · contract {{contract}} · branch makeover</p>
+<div class="kpi"><b>{{plugin_count}}</b>engine plugins</div>
+<div class="kpi"><b>{{test_count}}</b>tests, all green</div>
+<div class="kpi"><b>{{loc}}</b>product lines (cap {{loc_cap}})</div>
+<div class="kpi"><b>{{game_count}}</b>real games run</div>
+<div class="kpi"><b>{{flags_pass}}/{{flags_total}}</b>CTF flags passed</div>
+<h3>What ViWo is</h3>
+<p>A local-first game reverse-engineering orchestrator: static extraction (engine plugins,
+container unpackers, carver, stream inflation, decoders, QuickBMS), static code analysis (Ghidra
+headless and the "Continue in Ghidra" handoff), runtime capture (RenderDoc, journaled), round trip
+into a verified patched copy, curation and sanitizer. Everything sits behind slots with main and
+spare backends, pinned third-party tools, run records, and a contract audited clause by clause.
+No boundaries or safeguards in the code: warnings plus one opt-in, a disclaimer, and the
+responsibility with the user.</p>
+<h3>Tonight in one line</h3>
+<p>{{commit_count}} commits from v1.2.1 to v{{version}}: contract conformance closed (592 clauses,
+zero defects), the static analysis arm shipped and verified on a real binary, four container
+plugins for the owner's library, four simplicity-and-boundary review batches applied, CTF flags in
+the integration runner, every installed game run.</p>
+</section>
+
+<section>
+<h2>Engine plugins and their slots</h2>
+<table><tr><th>Plugin</th><th>Engine</th><th>Slots</th></tr>{{plugins}}</table>
+<p class="sub">Core-owned slots: zip, tar, 7z, rar unarchivers; decode.audio, decode.image,
+decode.video; media.probe, media.encode, image.convert; capture.gpu; analysis.native and
+handoff.native.</p>
+</section>
+
+<section>
+<h2>The sqc manual check suite</h2>
+<table><tr><th>File</th><th>Area</th><th>Checks</th><th>P0</th></tr>{{sqc}}</table>
+<p>The CLI- and API-driven checks ran through the integration runner tonight; every GUI view has
+its frame captured in <code>viwo-data/ui-frames/</code> with zero console errors; the OPERATOR
+checks (Overwatch, RenderDoc on a GPU game) belong to the independent operator by design.</p>
+</section>
+
+<section>
+<h2>Real games: integration runs</h2>
+<table><tr><th>Game</th><th>Detected</th><th>Files</th><th>Archives</th><th>Unchanged</th>
+<th>Flags</th><th>Result</th></tr>{{games}}</table>
+<p class="sub">Every game folder is hashed before and after each run; "Unchanged = yes" is the
+read-only guarantee holding on real data.</p>
+</section>
+
+<section>
+<h2>CTF flags: one asset each, reached by a plain extraction</h2>
+<table><tr><th>Game</th><th>Objective</th><th>Check</th><th>Found</th><th>Result</th></tr>
+{{flags}}</table>
+</section>
+
+<section>
+<h2>Commits tonight</h2>
+<ul>{{commits}}</ul>
+</section>
+
+<section>
+<h2>Open items</h2>
+<p>None known. Every finding of the conformance re-audit and of the simplicity review is fixed
+or closed by a recorded decision; every installed game extracts; the OPERATOR checks are a role,
+not a gap.</p>
+<h3>Next rungs (roadmap, not defects)</h3>
+<ul>
+<li>A2: ilspycmd, Cpp2IL and unluac analyzers behind <code>analysis.dotnet / il2cpp / script</code>.</li>
+<li>A3: library signatures, BinDiff version diffing, protector identification.</li>
+<li>D1-D3: RenderDoc on a desktop GPU game, engine agents, debugger and Cheat Engine handoffs.</li>
+<li>T1-T2: byte and AOB patch sets, mod packaging.</li>
+<li>Typed decoders for the new containers (SLP to PNG, TPAC textures, CR2W names from a community hash list).</li>
+</ul>
+</section>
+</body></html>
