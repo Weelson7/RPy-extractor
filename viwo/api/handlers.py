@@ -9,21 +9,23 @@ from viwo.contracts import workspace as ws
 from viwo.contracts.errors import ViwoError
 from viwo.core.curation import sorting, trash
 from viwo.core.merger import media
-from viwo.core.merger.build import build
+from viwo.core.merger.build import Settings, build
 
-from .app import App
+from .app import App, failure
+
+DEFAULTS = Settings()  # the merger's own defaults, once
 
 
 def safe(fn: Callable[[], dict]) -> dict:
     try:
         return fn()
     except ViwoError as exc:
-        return {"success": False, "error": exc.message, "code": exc.code, "hint": exc.hint}
+        return failure(exc)
 
 
 def _int(query: dict, key: str, default: int) -> int:
     try:
-        return int((query.get(key) or [default])[0])
+        return int(query.get(key, default))
     except (TypeError, ValueError):
         return default
 
@@ -68,7 +70,7 @@ def dependencies(app: App, q: dict) -> dict:
 
 
 def pick_folder(app: App, q: dict) -> dict:
-    start = Path((q.get("initialPath") or [""])[0] or Path.home()).expanduser()
+    start = Path(q.get("initialPath") or Path.home()).expanduser()
     chosen = app.rt.os.shell.pick_folder("Select folder", start if start.exists() else None)
     if chosen is None:
         return {
@@ -163,7 +165,7 @@ def assets_window(app: App, q: dict) -> dict:
 
 
 def asset_preview(app: App, q: dict) -> dict:
-    return safe(lambda: sorting.preview(app.workspace, (q.get("path") or [""])[0]))
+    return safe(lambda: sorting.preview(app.workspace, q.get("path", "")))
 
 
 def open_folder(app: App, d: dict) -> dict:
@@ -180,11 +182,11 @@ def merger_state(app: App, q: dict) -> dict:
         "workingDir": str(app.workspace),  # one read
         "mergerDir": str(app.server.merged),
         "defaultPattern": media.PATTERNS[0],
-        "defaultTransition": "diapo",
-        "defaultDiapoDelay": 3.0,
-        "defaultFadeCrossTime": 0.7,
-        "defaultEndFadeoutTime": 0.0,
-        "defaultEndLastImageTime": 0.0,
+        "defaultTransition": DEFAULTS.transition,
+        "defaultDiapoDelay": DEFAULTS.delay,
+        "defaultFadeCrossTime": DEFAULTS.cross,
+        "defaultEndFadeoutTime": DEFAULTS.fadeout,
+        "defaultEndLastImageTime": DEFAULTS.hold_last,
         "supportedOverlayAudioExts": sorted(media.AUDIO),
         "encoder": app.rt.bindings["media.encode"].main or None,
     }

@@ -46,7 +46,8 @@ viwo/
   backends/    core unpackers: zip, tar (stdlib), 7-Zip, py7zr, unrar; zip packer
   plugins/     generic, renpy, unity, godot, unreal (repak/retoc, verified AES keys), doom (WAD),
                rpgmaker, kirikiri (XP3), electron (asar), source (VPK), bethesda (BSA/BA2),
-               quickbms (script bridge)
+               genie (DRS), warscape (Total War packs), redengine (Cyberpunk RDAR, Kraken
+               through the game's own Oodle DLL), quickbms (script bridge)
   api/         local web server (token, JSON-only, Host check), JSON handlers (tools, capture,
                settings, system), job routes
   web/         the web UI (plain HTML/CSS/ES modules, no build step): landing + 12 views

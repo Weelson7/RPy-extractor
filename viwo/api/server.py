@@ -108,7 +108,8 @@ class Handler(BaseHTTPRequestHandler):
         if path.startswith("/api/"):
             if not self._token_ok():
                 return self._reject(403, "Missing or invalid API token")
-            return self._api(GET, routes.handle_get, path, parse_qs(url.query))
+            query = {k: v[0] for k, v in parse_qs(url.query).items()}  # scalars for handlers
+            return self._api(GET, routes.handle_get, path, query)
         if path.startswith("/preview/"):  # resolve() decodes once: pass the raw path
             return self._preview(url.path[len("/preview/") :])
         if plugin_assets.serve(self, path):  # plugin UI add-ons: /plugins/<id>/ui.js

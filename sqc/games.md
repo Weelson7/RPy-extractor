@@ -27,6 +27,9 @@ the store's download sizes. "none verified" means no free title could be confirm
 | Electron / NW.js (`electron`) | none verified as a standalone Electron `app.asar` game; the RPG Maker MV title above ships the NW.js runtime (`package.nw` is a zip, `nw.exe` marker) | | | asar / `.nw` zip handling | (use `rpgmv-first`) |
 | Source (`source`) | Team Fortress 2 (Valve), free to play on Steam; online title: **warnings expected** | https://store.steampowered.com/app/440/ | about 15 GB | `tf/tf2_*.vpk` multi-part VPK v2 (`_dir.vpk` + numbered parts), `hl2/*.vpk` | `tf2` (point at `Team Fortress 2/`) |
 | Bethesda (`bethesda`) | none verified free. If you own one: Skyrim Special Edition (`Data/*.bsa`, LZ4 entries, needs the `lz4` pin), Fallout 4 (`Data/*.ba2`, textures rebuilt as DDS) | | | BSA 105 / BA2 | `skyrim-se`, `fallout4` |
+| Genie (`genie`) | Age of Empires II HD (owner's copy; any AoE I/II install) | | 5.5 GB | `.drs` resource archives: SLP graphics, WAV, BINA | `pass-aoe` |
+| Warscape (`warscape`) | Total War: Rome II (owner's copy; Empire through Warhammer share PFH4/PFH5) | | 36 GB | `data/*.pack`: db tables, textures, models, scripts, loc | `pass-total-war-rome-ii` |
+| REDengine 4 (`redengine`) | Cyberpunk 2077 (owner's copy) | | 86 GB | `archive/pc/content/*.archive` (RDAR): Kraken segments inflated with the game's own `oo2ext_7_win64.dll`; members by name hash with the CR2W type as extension | `pass-cyberpunk-2077` |
 | QuickBMS (`quickbms`) | no title of its own: it serves any archive with a `<ext>.bms` script in `third_party/quickbms/scripts` (indexes supply them per game) | | | script bridge | any |
 | Overwatch (`overwatch`, OPERATOR) | Overwatch 2 (Blizzard), free to play via Battle.net; terms-of-service-sensitive: **warnings expected**, real-game run by the operator | https://overwatch.blizzard.com | 50 GB+ | CASC data through DataTool (Windows only), explicit or auto-selected with the reminder | `overwatch` |
 

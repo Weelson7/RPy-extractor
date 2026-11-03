@@ -76,7 +76,7 @@ class CaptureApiTests(unittest.TestCase):
     def test_browse_file(self) -> None:
         shell = type(self.app.rt.os.shell)
         with mock.patch.object(shell, "pick_file", return_value=None):
-            res = CAPTURE_GET["/api/browse-file"](self.app, {"initialPath": [str(self.game)]})
+            res = CAPTURE_GET["/api/browse-file"](self.app, {"initialPath": str(self.game)})
             self.assertEqual((res["success"], res["code"]), (False, "cancelled"))
         with mock.patch.object(shell, "pick_file", return_value=self.game / "Game.exe"):
             res = CAPTURE_GET["/api/browse-file"](self.app, {})

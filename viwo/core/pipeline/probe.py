@@ -7,6 +7,8 @@ import os
 from functools import lru_cache
 from pathlib import Path
 
+from viwo.contracts.types import DetectionResult
+
 
 class FolderProbe:
     def __init__(self, root: Path, limit: int = 50000) -> None:
@@ -70,3 +72,15 @@ def _read(path: Path, size: int, from_end: bool) -> bytes:
             return fh.read(size)
     except OSError:
         return b""
+
+
+def detect_all(rt, probe: FolderProbe) -> dict[str, DetectionResult]:
+    found = {}
+    for plugin_id, plugin in rt.plugins.items():
+        try:
+            found[plugin_id] = plugin.detect(probe)
+        except Exception as exc:  # detect must never take the run down
+            found[plugin_id] = DetectionResult(
+                plugin_id, 0.0, (f"detect failed: {exc}",), plugin_id
+            )
+    return found

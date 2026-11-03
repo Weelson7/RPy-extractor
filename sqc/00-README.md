@@ -22,6 +22,7 @@ steps and exact expected results, so two testers get the same verdict.
 | 14-security.md | token, Host, JSON-only, preview containment, pinned downloads |
 | 15-release-package.md | portable zip, wheel |
 | 16-analysis.md | 12 ANALYSIS: targets, Ghidra headless run, Continue in Ghidra, feature switch |
+| 17-ctf.md | CTF flags per game (`ctf.json`): one plain extraction must reach the named assets |
 
 ## Real games: `games.md` and the automated integration run
 

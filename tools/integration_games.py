@@ -123,7 +123,40 @@ def integrity(record: dict, game: Path, before: dict[str, str]) -> bool:
     return not changed
 
 
-def run_game(game: Path, out: Path, runner: Runner = viwo, deep=False, extract=True) -> dict:
+FLAGS_FILE = ROOT / "sqc" / "ctf.json"
+
+
+def load_flags(path: Path = FLAGS_FILE) -> dict[str, list[dict]]:
+    """slug -> CTF flags (sqc/17-ctf.md); the `_comment` key is documentation."""
+    data = json.loads(path.read_text(encoding="utf-8")) if path.is_file() else {}
+    return {k: v.get("flags", []) for k, v in data.items() if not k.startswith("_")}
+
+
+def _count(ws: Path, pattern: str) -> int:
+    inner = pattern.removeprefix("**/")
+    files = ws.rglob(inner) if pattern.startswith("**/") else ws.glob(pattern)
+    return sum(1 for p in files if p.is_file())
+
+
+def check_flags(record: dict, ws: Path | None, flags: list[dict]) -> None:
+    """A glob flag needs `min` files under the workspace; a warning flag needs the text in
+    the run's warnings. Without an extraction, glob flags are left undecided (ok = None)."""
+    out = []
+    for flag in flags:
+        if "warning" in flag:
+            ok = any(flag["warning"] in w for w in record["warnings"])
+            out.append({**flag, "ok": ok, "found": int(ok)})
+        elif ws is None or not ws.is_dir():
+            out.append({**flag, "ok": None, "found": 0})
+        else:
+            found = _count(ws, flag["glob"])
+            out.append({**flag, "ok": found >= int(flag.get("min", 1)), "found": found})
+    record["flags"] = out
+
+
+def run_game(
+    game: Path, out: Path, runner: Runner = viwo, deep=False, extract=True, flags=()
+) -> dict:
     """detect -> survey -> extract -> repack plan -> sanitize plan, then the integrity check."""
     record: dict = {"game": game.name, "path": str(game), "steps": {}, "warnings": []}
     target = out / game.name
@@ -148,8 +181,11 @@ def run_game(game: Path, out: Path, runner: Runner = viwo, deep=False, extract=T
         if ws.is_dir():
             step(record, "repack_plan", ["repack", str(ws), "--plan"], runner)
             step(record, "sanitize_plan", ["sanitize", str(ws)], runner)
+    check_flags(record, target / "ws" if extract else None, list(flags))
     unchanged = integrity(record, game, before)
-    record["ok"] = unchanged and all(s["ok"] for s in record["steps"].values())
+    steps_ok = all(s["ok"] for s in record["steps"].values())
+    flags_ok = all(f["ok"] is not False for f in record["flags"])
+    record["ok"] = unchanged and steps_ok and flags_ok
     return record
 
 
@@ -160,9 +196,10 @@ def exit_code(records: list[dict]) -> int:
 def report_md(records: list[dict]) -> str:
     """One table row per game, then a totals line."""
     head = (
-        "| Game | Detected | Plugins | Copied | Archives | Warnings | Unchanged | Steps | Result |"
+        "| Game | Detected | Plugins | Copied | Archives | Warnings | Unchanged | Flags | Steps "
+        "| Result |"
     )
-    lines = ["# Integration run", "", head, "|---|---|---|---|---|---|---|---|---|"]
+    lines = ["# Integration run", "", head, "|---|---|---|---|---|---|---|---|---|---|"]
     for r in records:
         top = max(r.get("detection", {}).items(), key=lambda kv: kv[1], default=("none", 0))
         ex = r.get("extract") or {}
@@ -171,15 +208,28 @@ def report_md(records: list[dict]) -> str:
             f"| {r['game']} | {top[0]} {top[1]:.0%} | {', '.join(ex.get('plugins', [])) or '-'} | "
             f"{ex.get('copied', '-')} | "
             f"{ex.get('archivesExtracted', '-')}/{ex.get('archivesFound', '-')} | "
-            f"{len(r['warnings'])} | {'yes' if r.get('gameUnchanged') else 'NO'} | {steps} | "
-            f"{'PASS' if r['ok'] else 'FAIL'} |"
+            f"{len(r['warnings'])} | {'yes' if r.get('gameUnchanged') else 'NO'} | "
+            f"{_flags_cell(r)} | {steps} | {'PASS' if r['ok'] else 'FAIL'} |"
         )
     passed = sum(1 for r in records if r["ok"])
     lines += ["", f"Total: {passed}/{len(records)} games passed; exit code {exit_code(records)}."]
     for r in records:
         for w in r["warnings"][:5]:
             lines.append(f"- {r['game']}: {w}")
+        for f in r.get("flags", []):
+            if f["ok"] is False:
+                lines.append(f"- {r['game']}: FLAG FAILED: {f['name']} (found {f['found']})")
     return "\n".join(lines) + "\n"
+
+
+def _flags_cell(r: dict) -> str:
+    flags = r.get("flags", [])
+    decided = [f for f in flags if f["ok"] is not None]
+    if not flags:
+        return "-"
+    if not decided:
+        return f"0/{len(flags)} n/a"
+    return f"{sum(1 for f in decided if f['ok'])}/{len(flags)}"
 
 
 def write_report(records: list[dict], out: Path) -> Path:
@@ -200,6 +250,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--only", default="", help="comma-separated slugs (default: every folder)")
     args = ap.parse_args(argv)
     folders = game_folders(args.games)
+    flags = load_flags()
     if args.only:
         wanted = {s.strip() for s in args.only.split(",") if s.strip()}
         folders = [f for f in folders if f.name in wanted]
@@ -209,7 +260,8 @@ def main(argv: list[str] | None = None) -> int:
     records = []
     for game in folders:
         print(f"== {game.name}", flush=True)
-        records.append(run_game(game, args.out, viwo, args.deep, not args.skip_extract))
+        extract = not args.skip_extract
+        records.append(run_game(game, args.out, viwo, args.deep, extract, flags.get(game.name, ())))
         print("   " + ("PASS" if records[-1]["ok"] else "FAIL"), flush=True)
     print(write_report(records, args.out).read_text(encoding="utf-8"))
     return exit_code(records)

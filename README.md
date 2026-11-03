@@ -60,7 +60,8 @@ Today and as it grows:
 - **Survey and discovery:** engine, version and packaging of each game; which files each tool
   can open; density estimates that flag encrypted or compressed blobs; reports over a library.
 - **Unpacking:** engine archives (Ren'Py, Unity, Godot, Unreal with verified keys, Doom, RPG
-  Maker, KiriKiri, Electron, Source, Bethesda, Overwatch via DataTool), generic containers, nested
+  Maker, KiriKiri, Electron, Source, Bethesda, Age of Empires DRS, Total War packs, Cyberpunk 2077
+  archives, Overwatch via DataTool), generic containers, nested
   archives, and QuickBMS scripts for every format without a plugin, supplied per game by the
   indexes.
 - **Carving and stream inflation:** standard files hidden inside unknown data; zlib and gzip

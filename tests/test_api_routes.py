@@ -82,7 +82,7 @@ class RouteTests(unittest.TestCase):
         body, status = handle_get(f"/api/jobs/{job_id}", {})
         self.assertEqual((status, body["data"]["state"]), (200, "succeeded"))
         self.assertTrue(body["data"]["result"]["success"])
-        body, _ = handle_get(f"/api/jobs/{job_id}/events", {"from": ["1"]})
+        body, _ = handle_get(f"/api/jobs/{job_id}/events", {"from": "1"})
         self.assertEqual(body["data"]["from"], 1)
         self.assertTrue(body["data"]["events"][0]["line"].startswith("["))
         body, status = handle_post(f"/api/jobs/{job_id}/cancel", {})

@@ -41,8 +41,7 @@ def manifest() -> dict:
 
 def home_of(config) -> Path:
     """third_party/ lives next to the active startup.ini (or the current folder)."""
-    first = str(config.source).split(" <- ")[0]
-    return Path(first).parent if config.source != "defaults" else Path.cwd()
+    return config.path.parent if config.path is not None else Path.cwd()
 
 
 def python_dir(home: Path) -> Path:

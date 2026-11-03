@@ -5,15 +5,16 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Callable
 
+from viwo.contracts.errors import ViwoError
 from viwo.core.capture import CaptureRequest, capture, warnings
 from viwo.core.capture.policy import CONFIRMATION
 from viwo.core.workspace import claim
 
-from .app import App
+from .app import App, failure
 
 
 def browse_file(app: App, q: dict) -> dict:
-    start = Path((q.get("initialPath") or [""])[0] or Path.home()).expanduser()
+    start = Path(q.get("initialPath") or Path.home()).expanduser()
     if start.is_file():
         start = start.parent
     chosen = app.rt.os.shell.pick_file(
@@ -33,7 +34,7 @@ def capture_warnings(app: App, d: dict) -> dict:
     """What the user should know before capturing this game: information, never a block."""
     game = Path(str(d.get("gamePath", "")).strip())
     if not str(game) or not game.is_dir():
-        return {"success": False, "error": f"Game folder not found: {game}", "code": "not_found"}
+        return failure(ViwoError("not_found", f"Game folder not found: {game}"))
     binding = app.rt.bindings.get("capture.gpu")
     return {
         "success": True,
@@ -49,9 +50,9 @@ def run_capture(app: App, d: dict) -> dict:
     game = Path(str(d.get("gamePath", "")).strip())
     exe = Path(str(d.get("exePath", "")).strip())
     if not str(game) or not game.is_dir():
-        return {"success": False, "error": f"Game folder not found: {game}", "code": "not_found"}
+        return failure(ViwoError("not_found", f"Game folder not found: {game}"))
     if not str(exe) or not exe.is_file():
-        return {"success": False, "error": f"Executable not found: {exe}", "code": "not_found"}
+        return failure(ViwoError("not_found", f"Executable not found: {exe}"))
     workspace = app.workspace
     if not workspace.exists() or not any(workspace.iterdir()):
         claim(workspace)  # the lock file lands inside it before capture() looks at it

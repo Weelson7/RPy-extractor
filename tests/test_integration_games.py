@@ -34,7 +34,14 @@ class IntegrationGamesTests(unittest.TestCase):
             games = synthetic_games(root)
             folders = tool.game_folders(games)
             self.assertEqual([f.name for f in folders], ["loose-game", "zip-game"])
-            records = [tool.run_game(g, root / "out", tool.viwo_inprocess) for g in folders]
+            flags = {
+                "zip-game": [{"name": "a text file out of the zip", "glob": "**/*.txt", "min": 1}],
+                "loose-game": [{"name": "nope", "glob": "png/*.png", "min": 99}],
+            }
+            records = [
+                tool.run_game(g, root / "out", tool.viwo_inprocess, flags=flags[g.name])
+                for g in folders
+            ]
             for r in records:
                 self.assertEqual(
                     set(r)
@@ -46,15 +53,23 @@ class IntegrationGamesTests(unittest.TestCase):
                     ["detect", "survey", "extract", "repack_plan", "sanitize_plan"],
                 )
                 self.assertTrue(r["gameUnchanged"], r.get("changedFiles"))
-                self.assertTrue(r["ok"], r["steps"])
                 self.assertTrue((root / "out" / r["game"] / "survey.json").is_file())
             zip_game = next(r for r in records if r["game"] == "zip-game")
             self.assertGreaterEqual(zip_game["extract"]["archivesFound"], 1)
             self.assertIn("generic", zip_game["extract"]["plugins"])
-            self.assertEqual(tool.exit_code(records), 0)
+            self.assertTrue(zip_game["ok"] and zip_game["flags"][0]["ok"], zip_game["flags"])
+            loose = next(r for r in records if r["game"] == "loose-game")
+            self.assertFalse(loose["ok"])  # every step passed, the flag did not
+            self.assertEqual(tool.exit_code(records), 1)
             report = tool.write_report(records, root / "out").read_text(encoding="utf-8")
             self.assertIn("| zip-game |", report)
-            self.assertIn("2/2 games passed", report)
+            self.assertIn("FLAG FAILED: nope (found 1)", report)
+            self.assertIn("1/2 games passed", report)
+            shipped = tool.load_flags()
+            self.assertGreaterEqual(len(shipped["DDLC-1.1.1-pc"]), 3)
+            for slug, items in shipped.items():
+                for flag in items:
+                    self.assertTrue(flag["name"] and ("glob" in flag or "warning" in flag), slug)
 
     def test_integrity_and_exit_code(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

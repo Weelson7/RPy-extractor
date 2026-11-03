@@ -14,8 +14,7 @@ from .app import App
 
 
 def ini_path(app: App) -> Path:
-    source = str(app.rt.config.source)
-    return DEFAULT_INI if source == "defaults" else Path(source.split(" <- ")[0])
+    return app.rt.config.path or DEFAULT_INI
 
 
 def _plugin_info(app: App) -> dict[str, dict]:

@@ -36,12 +36,7 @@ def survey_library(app: App, d: dict) -> dict:
         sink(ProgressEvent(f"Report saved: {saved['path']}", "info", "core", "report"))
         return {"success": True, "games": games, "reportId": saved["id"], **_meta(saved)}
 
-    job = app.jobs.submit_with_listener(
-        lambda e: app.log(e.legacy_line()), "survey", run, background=False
-    )
-    if job.error:
-        return {"success": False, "error": job.error["message"], "code": job.error["code"]}
-    return {**job.result, "jobId": job.job_id}
+    return app.job("survey", run)
 
 
 def _reports_dir(app: App) -> Path:
@@ -59,7 +54,7 @@ def survey_reports(app: App, q: dict) -> dict:
 
 def survey_report(app: App, q: dict) -> dict:
     try:
-        report = surveys.load(_reports_dir(app), (q.get("id") or [""])[0])
+        report = surveys.load(_reports_dir(app), q.get("id", ""))
     except ViwoError as exc:
         return {"success": False, "error": exc.message, "code": exc.code}
     return {"success": True, "report": report}
@@ -115,7 +110,7 @@ def run_preflight(app: App, d: dict) -> dict:
             app.reload()  # newly installed tools bind now
         return {"success": True, **report}
 
-    return _job(app, "preflight", run)
+    return app.job("preflight", run)
 
 
 def install_dependency(app: App, d: dict) -> dict:
@@ -126,22 +121,7 @@ def install_dependency(app: App, d: dict) -> dict:
         app.reload()
         return {"success": True, **done}
 
-    return _job(app, "install", run)
-
-
-def _job(app: App, kind: str, run) -> dict:
-    job = app.jobs.submit_with_listener(
-        lambda e: app.log(e.legacy_line()), kind, run, background=False
-    )
-    if job.error:
-        return {
-            "success": False,
-            "error": job.error["message"],
-            "code": job.error["code"],
-            "hint": job.error["hint"],
-            "jobId": job.job_id,
-        }
-    return {**job.result, "jobId": job.job_id}
+    return app.job("install", run)
 
 
 TOOL_GET: dict[str, Callable[[App, dict], Any]] = {

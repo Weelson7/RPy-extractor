@@ -1,0 +1,127 @@
+{
+  "_comment": "CTF flags per Test-games/<slug>: an asset a reverse engineer wants from that game. A flag passes when the extraction workspace holds at least `min` files matching `glob` (relative to the workspace, ** allowed), or when the run's warnings contain `warning`. tools/integration_games.py evaluates them; sqc/17-ctf.md lists them for people.",
+  "DDLC-1.1.1-pc": {
+    "title": "Doki Doki Literature Club (Ren'Py)",
+    "flags": [
+      {"name": "the music and voice tracks out of the RPA archives", "glob": "ogg/*.ogg", "min": 10},
+      {"name": "character sprites and backgrounds", "glob": "png/*.png", "min": 100},
+      {"name": "the game scripts decompiled to .rpy", "glob": "rpy/*.rpy", "min": 10}
+    ]
+  },
+  "freedoom": {
+    "title": "Freedoom (Doom WAD)",
+    "flags": [
+      {"name": "every graphic lump as PNG", "glob": "png/*.png", "min": 1000},
+      {"name": "the music as MIDI", "glob": "mid/*.mid", "min": 10},
+      {"name": "the sound effects as WAV", "glob": "wav/*.wav", "min": 10}
+    ]
+  },
+  "ultrakill-prelude": {
+    "title": "ULTRAKILL Prelude (Unity)",
+    "flags": [
+      {"name": "level and weapon meshes as OBJ", "glob": "obj/*.obj", "min": 100},
+      {"name": "textures as PNG", "glob": "png/*.png", "min": 100},
+      {"name": "sound clips as WAV", "glob": "wav/*.wav", "min": 50}
+    ]
+  },
+  "baldi-cr": {
+    "title": "Baldi's Basics Classic Remastered (Unity)",
+    "flags": [
+      {"name": "sprites as PNG", "glob": "png/*.png", "min": 500},
+      {"name": "voice lines as WAV", "glob": "wav/*.wav", "min": 100}
+    ]
+  },
+  "BURNING_SNOW_1_0_4": {
+    "title": "Burning Snow (Unity)",
+    "flags": [
+      {"name": "textures as PNG", "glob": "png/*.png", "min": 10},
+      {"name": "a mesh as OBJ", "glob": "obj/*.obj", "min": 1}
+    ]
+  },
+  "voids-cave": {
+    "title": "Void's Cave DEMO (Unreal 5, pak + IoStore)",
+    "flags": [
+      {"name": "cooked assets out of the pak and the IoStore containers", "glob": "uasset/*.uasset", "min": 100},
+      {"name": "bulk data (textures, meshes) out of the IoStore", "glob": "ubulk/*.ubulk", "min": 10}
+    ]
+  },
+  "the-basement": {
+    "title": "The Basement (Unreal 5)",
+    "flags": [
+      {"name": "cooked assets out of the containers", "glob": "uasset/*.uasset", "min": 100},
+      {"name": "bulk data out of the IoStore", "glob": "ubulk/*.ubulk", "min": 10}
+    ]
+  },
+  "rpgmv-first": {
+    "title": "My first shitty game (RPG Maker MV on NW.js)",
+    "flags": [
+      {"name": "encrypted .rpgmvp pictures decrypted to PNG", "glob": "png/*.png", "min": 100},
+      {"name": "encrypted .rpgmvo audio decrypted to OGG", "glob": "ogg/*.ogg", "min": 10},
+      {"name": "the database (System.json)", "glob": "json/System.json", "min": 1}
+    ]
+  },
+  "ubu": {
+    "title": "Ubu (KiriKiri XP3)",
+    "flags": [
+      {"name": "images out of data.xp3", "glob": "png/*.png", "min": 100},
+      {"name": "the scenario scripts (.ks)", "glob": "ks/*.ks", "min": 5},
+      {"name": "the engine scripts (.tjs)", "glob": "tjs/*.tjs", "min": 1}
+    ]
+  },
+  "godotone": {
+    "title": "GodotOne (bare Godot template, no data)",
+    "flags": [
+      {"name": "ViWo says the PCK data is missing instead of pretending", "warning": "no PCK data"}
+    ]
+  },
+  "godot-mad": {
+    "title": "MAD game (bare Godot template, no data)",
+    "flags": [
+      {"name": "ViWo says the PCK data is missing instead of pretending", "warning": "no PCK data"}
+    ]
+  },
+  "pass-aoe": {
+    "title": "Age of Empires II HD (Genie engine, DRS archives)",
+    "flags": [
+      {"name": "graphics out of the DRS archives (SLP) or at least the archives found", "glob": "**/*.slp", "min": 10}
+    ]
+  },
+  "pass-schedule-i": {
+    "title": "Schedule I (Unity IL2CPP)",
+    "flags": [
+      {"name": "textures as PNG", "glob": "png/*.png", "min": 100},
+      {"name": "the IL2CPP metadata reachable for analysis", "glob": "dat/global-metadata.dat", "min": 1}
+    ]
+  },
+  "pass-approximately-up-build-25884550": {
+    "title": "Approximately Up (Unity IL2CPP)",
+    "flags": [
+      {"name": "textures as PNG", "glob": "png/*.png", "min": 50},
+      {"name": "audio as WAV", "glob": "wav/*.wav", "min": 10}
+    ]
+  },
+  "pass-total-war-rome-ii": {
+    "title": "Total War: Rome II (Warscape .pack)",
+    "flags": [
+      {"name": "a texture out of a .pack archive", "glob": "dds/*.dds", "min": 1}
+    ]
+  },
+  "pass-cyberpunk-2077": {
+    "title": "Cyberpunk 2077 (REDengine 4 .archive)",
+    "flags": [
+      {"name": "a texture out of basegame_*.archive", "glob": "**/*.xbm", "min": 1}
+    ]
+  },
+  "pass-mount-blade-2-bannerlord": {
+    "title": "Mount & Blade II: Bannerlord (TaleWorlds .tpac)",
+    "flags": [
+      {"name": "a texture or mesh out of a .tpac", "glob": "**/*.dds", "min": 1}
+    ]
+  },
+  "pass-zipped-game-data": {
+    "title": "Returning to Mia (zipped game data)",
+    "flags": [
+      {"name": "the game's images out of the zip", "glob": "png/*.png", "min": 10}
+    ]
+  }
+}

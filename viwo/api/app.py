@@ -75,14 +75,7 @@ class App:
         try:  # questions and refusals are answered before any job starts
             precheck(self.workspace, request.on_existing, self.server.workspace)
         except ViwoError as exc:
-            return {
-                "success": False,
-                "error": exc.message,
-                "details": exc.hint,
-                "code": exc.code,
-                "needsDecision": exc.code == "needs_decision",
-                "options": ["new", "replace", "cancel"],
-            }
+            return {**failure(exc), **DECISION, "needsDecision": exc.code == "needs_decision"}
         job = self.jobs.submit_with_listener(
             lambda e: self.log(e.legacy_line()),
             "extract",
@@ -90,13 +83,11 @@ class App:
             background=False,
         )
         if job.error:
+            decision = job.error["code"] == "needs_decision"
             return {
-                "success": False,
-                "error": job.error["message"],
-                "details": job.error["hint"],
-                "code": job.error["code"],
-                "needsDecision": job.error["code"] == "needs_decision",
-                "options": ["new", "replace", "cancel"],
+                **failure(job.error),
+                **DECISION,
+                "needsDecision": decision,
                 "jobId": job.job_id,
             }
         result = job.result.to_legacy_dict()
@@ -110,6 +101,16 @@ class App:
             "jobId": job.job_id,
         }
 
+    def job(self, kind: str, run: Callable[..., dict]) -> dict:
+        """run(job_id, sink, cancel) in the foreground as a visible job; the v1 answer shape:
+        the result plus jobId, or the failure dict."""
+        job = self.jobs.submit_with_listener(
+            lambda e: self.log(e.legacy_line()), kind, run, background=False
+        )
+        if job.error:
+            return {**failure(job.error), "jobId": job.job_id}
+        return {**job.result, "jobId": job.job_id}
+
     def locked(self, fn: Callable[[], dict], folder: Path | None = None) -> dict:
         """A curation call under the workspace lock: busy while a job writes there."""
         target = folder or self.workspace
@@ -118,27 +119,13 @@ class App:
                 migrate(target)
                 return fn()
         except ViwoError as exc:
-            return {"success": False, "error": exc.message, "code": exc.code, "hint": exc.hint}
+            return failure(exc)
 
     def locked_job(self, kind: str, folder: Path, fn: Callable[..., dict]) -> dict:
         """fn(sink, cancel) runs as a job under the workspace lock."""
 
         def run() -> dict:
-            job = self.jobs.submit_with_listener(
-                lambda e: self.log(e.legacy_line()),
-                kind,
-                lambda jid, s, c: fn(s, c),
-                background=False,
-            )
-            if job.error:
-                return {
-                    "success": False,
-                    "error": job.error["message"],
-                    "code": job.error["code"],
-                    "hint": job.error["hint"],
-                    "jobId": job.job_id,
-                }
-            return {**job.result, "jobId": job.job_id}
+            return self.job(kind, lambda jid, s, c: fn(s, c))
 
         return self.locked(run, folder)
 
@@ -160,6 +147,28 @@ def reset_app(app: App | None = None) -> None:
         _STATE.pop("app", None)
         if app is not None:
             _STATE["app"] = app
+
+
+DECISION = {"needsDecision": True, "options": ["new", "replace", "cancel"]}
+
+
+def failure(error) -> dict:
+    """The v1 failure shape from a ViwoError or a job's error dict (doc 4.1)."""
+    if isinstance(error, dict):
+        return {
+            "success": False,
+            "error": error["message"],
+            "code": error["code"],
+            "hint": error.get("hint", ""),
+            "details": error.get("hint", ""),
+        }
+    return {
+        "success": False,
+        "error": error.message,
+        "code": error.code,
+        "hint": error.hint,
+        "details": error.hint,
+    }
 
 
 def request_from_payload(data: Mapping[str, Any], workspace: str = "") -> ExtractionRequest:

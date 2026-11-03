@@ -92,11 +92,11 @@ class SurveyTests(unittest.TestCase):
             listed = TOOL_GET["/api/surveys"](app, {})["reports"]
             self.assertEqual([r["id"] for r in listed][:2], [again["reportId"], result["reportId"]])
             self.assertEqual(listed[0]["gameCount"], 2)
-            report = TOOL_GET["/api/survey-report"](app, {"id": [result["reportId"]]})["report"]
+            report = TOOL_GET["/api/survey-report"](app, {"id": result["reportId"]})["report"]
             self.assertEqual(len(report["games"]), 2)
             self.assertTrue(report["deep"])
             self.assertEqual(
-                TOOL_GET["/api/survey-report"](app, {"id": ["../x"]})["code"], "invalid_request"
+                TOOL_GET["/api/survey-report"](app, {"id": "../x"})["code"], "invalid_request"
             )
 
     def test_reports_are_numbered_and_contained(self) -> None:

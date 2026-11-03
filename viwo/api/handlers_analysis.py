@@ -6,6 +6,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any, Callable
 
+from viwo.contracts.errors import ViwoError
 from viwo.core.analysis import (
     AnalysisRequest,
     analyze,
@@ -16,19 +17,13 @@ from viwo.core.analysis import (
 )
 from viwo.core.workspace import claim
 
-from .app import App
+from .app import App, failure
 
 
 def _game(d: dict) -> Path | dict:
-    game = Path(
-        str(
-            (d.get("gamePath") or [""])[0]
-            if isinstance(d.get("gamePath"), list)
-            else d.get("gamePath", "")
-        ).strip()
-    )
+    game = Path(str(d.get("gamePath", "")).strip())
     if not str(game) or not game.is_dir():
-        return {"success": False, "error": f"Game folder not found: {game}", "code": "not_found"}
+        return failure(ViwoError("not_found", f"Game folder not found: {game}"))
     return game
 
 
@@ -58,7 +53,7 @@ def _request(app: App, d: dict) -> AnalysisRequest | dict:
         return game
     key = str(d.get("targetKey", "")).strip()
     if not key:
-        return {"success": False, "error": "targetKey is required", "code": "invalid_request"}
+        return failure(ViwoError("invalid_request", "targetKey is required"))
     options = d.get("options") if isinstance(d.get("options"), dict) else {}
     return AnalysisRequest(game, app.workspace, key, dict(options))
 

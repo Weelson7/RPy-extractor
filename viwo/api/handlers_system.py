@@ -11,12 +11,7 @@ from viwo.core import diag
 from viwo.core.indexes import update_indexes
 from viwo.core.thirdparty import home_of
 
-from .app import App
-from .handlers_tools import _job
-
-
-def _failure(exc: ViwoError) -> dict:
-    return {"success": False, "error": exc.message, "code": exc.code, "hint": exc.hint}
+from .app import App, failure
 
 
 def check_updates(app: App, q: dict) -> dict:
@@ -24,7 +19,7 @@ def check_updates(app: App, q: dict) -> dict:
     try:
         return {"success": True, **diag.check_updates(home_of(app.rt.config))}
     except ViwoError as exc:
-        return _failure(exc)
+        return failure(exc)
 
 
 def make_diag(app: App, d: dict) -> dict:
@@ -45,7 +40,7 @@ def indexes_update(app: App, d: dict) -> dict:
     def run(jid, sink, cancel) -> dict:
         return {"success": True, **update_indexes(home_of(app.rt.config), major, sink, cancel)}
 
-    return _job(app, "indexes", run)
+    return app.job("indexes", run)
 
 
 SYSTEM_GET: dict[str, Callable[[App, dict], Any]] = {"/api/updates": check_updates}

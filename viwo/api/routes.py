@@ -5,7 +5,6 @@ Every response is the doc 12.3b envelope with an HTTP status from the error code
 
 from __future__ import annotations
 
-import re
 from pathlib import Path
 
 from viwo.contracts.errors import Envelope, ViwoError
@@ -16,8 +15,6 @@ from viwo.core.pipeline.select import select_plugins
 from viwo.core.wiring.conformance import capabilities_of
 
 from .app import get_app
-
-PLUGIN_PROBLEM = re.compile(r"^plugin ([a-z][a-z0-9_-]*)\b")
 
 STATUS = {
     "invalid_request": 400,
@@ -55,11 +52,7 @@ def _plugin_entry(plugin_id: str, plugin, deps: list[dict], error: str) -> dict:
 
 def _plugins() -> list[dict]:
     rt = get_app().rt
-    errors: dict[str, str] = {}
-    for problem in rt.problems:  # "plugin <id> disabled: ..." / "plugin <id>: options rejected"
-        hit = PLUGIN_PROBLEM.match(problem)
-        if hit:
-            errors.setdefault(hit.group(1), problem)
+    errors = rt.disabled
     deps = rt.dependency_report()
     out = [
         _plugin_entry(pid, p, deps, errors.get(pid, "")) for pid, p in sorted(rt.plugins.items())
@@ -107,7 +100,7 @@ def _job(job_id: str, query: dict) -> dict:
 
 
 def _events(job_id: str, query: dict) -> dict:
-    start = int((query.get("from") or ["0"])[0])
+    start = int(query.get("from") or 0)
     events = get_app().jobs.get(job_id).events[start:]
     return {
         "from": start,

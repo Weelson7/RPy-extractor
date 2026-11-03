@@ -12,16 +12,18 @@ from pathlib import Path
 from viwo import __version__
 from viwo.contracts import workspace as ws
 from viwo.contracts.errors import ViwoError
-from viwo.contracts.pipeline import ExtractionRequest, ExtractionResult, PluginRun
+from viwo.contracts.pipeline import ExtractionRequest, ExtractionResult
 from viwo.contracts.plugin import ExtractionContext
 from viwo.contracts.types import CancelToken, DetectionResult, ProgressEvent, ProgressSink
 
+from ..records import record_context
 from ..workspace import precheck, resolve_target, workspace_lock, write_atomic
 from .carving import carve_all
+from .checks import _verify, verified
 from .collect import collect
-from .failover import run_with_failover
+from .export import export_one, rewrap
 from .guard import changes, refuse_writes_inside, snapshot
-from .probe import FolderProbe
+from .probe import FolderProbe, detect_all
 from .select import select_plugins
 from .sources import claimed, sources_for
 from .unpack import files_under, unpack_all
@@ -66,23 +68,6 @@ class Run:
             "core" if owner == "core" else f"plugin:{owner}",
             probe=self.probe if game is None else None,
         )
-
-
-from ..records import record_context  # noqa: E402
-from .checks import _verify, verified  # noqa: E402
-from .rewrap import _kinds, _rewrap  # noqa: E402  (rewrap imports the runner lazily)
-
-
-def detect_all(rt, probe: FolderProbe) -> dict[str, DetectionResult]:
-    found = {}
-    for plugin_id, plugin in rt.plugins.items():
-        try:
-            found[plugin_id] = plugin.detect(probe)
-        except Exception as exc:  # detect must never take the run down
-            found[plugin_id] = DetectionResult(
-                plugin_id, 0.0, (f"detect failed: {exc}",), plugin_id
-            )
-    return found
 
 
 def extract(
@@ -139,8 +124,8 @@ def _stages(run: Run, workspace: Path) -> ExtractionResult:
     game_files = files_under(run.game, "game", skip)
     run.log(f"Scanning {len(game_files)} game file(s) for containers", "unpack")
     unpacked = unpack_all(rt, game_files, run.work / "unpack", run.ctx)
-    runs = [_export(run, pid) for pid in chosen]
-    runs += _rewrap(run, chosen, unpacked)
+    runs = [export_one(run, pid) for pid in chosen]
+    runs += rewrap(run, chosen, unpacked)
     carved, unpacked = _carve(run, runs, game_files, unpacked)
     sources = sources_for(run, chosen, {**unpacked.origins, **carved.origins}, runs)
     collected = _collect(run, workspace, sources, skip)
@@ -208,29 +193,6 @@ def _carve(run: Run, runs, game_files, unpacked):
         unpacked.by_backend.update(more.by_backend)
         unpacked.failures += more.failures
     return carved, unpacked
-
-
-def _export(run: Run, plugin_id: str, game: Path | None = None) -> PluginRun:
-    plugin, detection = run.rt.plugins[plugin_id], run.detections[plugin_id]
-    slot_id = plugin.export_slot()
-    if not slot_id:
-        return PluginRun(plugin_id, detection)
-    ctx = run.ctx(plugin_id, game)
-    ctx.staging.mkdir(parents=True, exist_ok=True)
-    run.log(f"Exporting {plugin.manifest.name} assets ({slot_id})", "export")
-    outcome, used = run_with_failover(
-        run.rt.bindings[slot_id], run.rt.backends, lambda backend: backend.export(ctx)
-    )
-    error = "" if outcome.ok else f"{slot_id}: {outcome.kind.value}: {outcome.error}"
-    return PluginRun(
-        plugin_id,
-        detection,
-        outcome.files,
-        used if outcome.ok else "",
-        warnings=(error,) if error else (),
-        error=error,
-        exported_by_kind=_kinds(ctx.staging),
-    )
 
 
 def _masked_options(run: Run) -> dict[str, dict[str, str]]:

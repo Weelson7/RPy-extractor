@@ -29,6 +29,7 @@ class StartupConfig:
     tools: dict[str, str] = field(default_factory=dict)
     options: dict[str, dict[str, str]] = field(default_factory=dict)
     source: str = "defaults"
+    path: Path | None = None  # the ini file itself (None = built-in defaults)
     contract: str = CONTRACT_VERSION
     sources: dict[str, str] = field(default_factory=dict)  # "section.key" -> default|base|ini|cli
     problems: list[str] = field(default_factory=list)
@@ -178,4 +179,5 @@ def load_ini(path: Path | None) -> StartupConfig:
     except (configparser.Error, ValueError) as exc:
         raise ViwoError("invalid_request", f"{path}: {exc}") from exc
     out.source = " <- ".join(str(f) for f in reversed(files))
+    out.path = path
     return out

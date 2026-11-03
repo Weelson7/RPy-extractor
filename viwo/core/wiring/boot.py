@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -25,6 +26,7 @@ _HOME = (
     else Path(__file__).resolve().parents[3]
 )
 DEFAULT_INI = _HOME / "startup.ini"
+DISABLED = re.compile(r"^plugin ([a-z][a-z0-9_-]*)")  # the registry's own wording, read here only
 
 
 @dataclass
@@ -37,6 +39,7 @@ class Runtime:
     bindings: dict[str, SlotBinding]
     temp_root: Path
     problems: list[str] = field(default_factory=list)
+    disabled: dict[str, str] = field(default_factory=dict)  # plugin id -> why it did not load
 
     def owner_options(self, owner: str) -> dict:
         return dict(self.config.options.get(owner, {}))
@@ -119,4 +122,5 @@ def boot(
     root = temp_root or config.server.temp  # one answer for the CLI and the server
     root.mkdir(parents=True, exist_ok=True)
     all_problems = config.problems + problems + clash + bind_problems
-    return Runtime(config, layer, plugins, slots, backends, bindings, root, all_problems)
+    disabled = {m.group(1): p for p in problems if (m := DISABLED.match(p))}
+    return Runtime(config, layer, plugins, slots, backends, bindings, root, all_problems, disabled)

@@ -147,6 +147,18 @@ time and are not re-audited here.
 - Verified on a real binary: ULTRAKILL.exe through the pinned Ghidra 12.2 + JDK 25 (STATUS
   "Real-game evidence"); the GUI handoff is tested with a fake launcher only.
 
+## 1.3.3 (containers from the owner's library, 2026-11-03)
+Three flat-container plugins from the Games-folder pass: `genie` (AoE DRS: 404 members out of
+`interfac.drs`), `warscape` (Total War PFH4/5 packs: 530 out of `blood_rome2.pack`), `redengine`
+(Cyberpunk 2077 RDAR: 308 out of `basegame_2_mainmenu.archive`, Kraken inflated through the
+game's own Oodle DLL found beside the archive; members named by hash with the CR2W root class
+as extension). Bannerlord `.tpac` is next (format from TpacTool, not pinned down yet).
+
+## Morning deliverable (owner, 2026-11-04)
+A PDF presentation of the project status, the sqc suite and the CTF flags (`sqc/ctf.json`,
+`sqc/17-ctf.md`: five basic objectives per game plus one per GB), with no known limitation or
+issue left open: every finding is fixed or closed by a recorded decision before the PDF is built.
+
 ## Respec to a full RE orchestrator (2026-11-03, docs only)
 From `temp.md`. Reframes ViWo from "orchestrator oriented towards asset extraction" to a **full game
 RE orchestrator** over three arms — **static** (extraction + code/data analysis), **dynamic/runtime**,
