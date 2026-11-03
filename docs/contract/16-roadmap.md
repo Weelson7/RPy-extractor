@@ -91,8 +91,8 @@ time.
 | Dynamic | D2 | `runtime.<engine>` agents feeding static extraction; `capture.audio` | BepInEx, UE4SS, Frida | §5, §11 |
 | Dynamic | D3 | `debug.*`, `trace.*`, `memory.*` headless backends + handoffs | x64dbg, Frida, Cheat Engine | §6, §7, §8 |
 | Dynamic | D4 | `hook.inject` loader + hot-reload; `net.*` own-traffic tooling; `profile.*` | our loader, tshark, Tracy | §9, §10, §20 |
-| Authoring | T1 | `patch.bytes` + `patch.sig` (AOB), patch export (18.8) | our writer, Keystone (lib) | §9, §16 |
-| Authoring | T2 | `mod.package`: loader, stable API layer, crash handler, update checker (18.9) | — (glue + SDK) | §19 |
+| Authoring | T1 (**shipped 1.4.5-1.4.6**: `viwo/core/patchsets.py`, `patch_tools.py`; offset, rva and AOB addresses, asm through kstool, capstone plans, export) | `patch.bytes` + `patch.sig` (AOB), patch export (18.8) | our writer, Keystone (kstool, a process: GPL) | §9, §16 |
+| Authoring | T2 (**shipped 1.4.5-1.4.6**: `viwo/core/mods.py`; pack, check with the AOB update check, ordered and conflict-checked apply; the runtime loader side is D2's pinned loaders) | `mod.package`: loader, stable API layer, crash handler, update checker (18.9) | — (glue + SDK) | §19 |
 
 Sequencing: A1→A3 first (static is low-risk and feeds everything), then D1→D2 (asset runtime), then
 T1 (needs A1/A3 for addresses), then D3→D4 and T2 as demand shows. Cross-cutting: the `runtime`

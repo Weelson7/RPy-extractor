@@ -127,9 +127,11 @@ def mod_command(command) -> None:
     md = command("mod", "package a patched copy as a mod, check it, or apply it to a copy (T2)")
     md.add_argument("action", choices=["pack", "check", "apply"], help="what to do with the mod")
     md.add_argument("game", type=Path, help="the game folder (read-only)")
-    md.add_argument("mod", type=Path, help="the mod zip (written by pack)")
+    md.add_argument("mod", type=Path, nargs="+", help="the mod zip(s); apply takes several")
     md.add_argument("--copy", type=Path, help="pack: the patched copy; apply: the copy to write")
     md.add_argument("--name", default="", help="pack: the mod's name (default: the zip name)")
+    md.add_argument("--requires", default="", help="pack: comma-separated mods it needs")
+    md.add_argument("--after", default="", help="pack: comma-separated mods it loads after")
 
 
 def diff_command(command) -> None:

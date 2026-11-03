@@ -278,6 +278,22 @@ so `progress.js` stops parsing message text, let `list_window` return the type c
   untouched install, `mod apply` wrote a second copy, and the patched copy then ran under the
   unattended RenderDoc capture (frame 53710, 116 textures and shaders).
 
+## 1.4.6 (T1 and T2 to their contract, 2026-11-03)
+- T1 (doc 18.8) complete: `rva` addresses (PE sections, `viwo/core/patch_tools.py`), `asm` edits
+  assembled at their address by Keystone's `kstool` (GPL-2, a pinned separate process), the plan
+  disassembles the instructions an edit touches before and after it (capstone, BSD, a Python
+  pin), VERIFY re-reads the whole file (the range has the new bytes, every other byte is
+  unchanged), EXPORT writes `<set>.diff.txt` and `<set>.aob.patch.json` (`patch.sig`: patterns
+  grown until unique in this version) into the copy's `.viwo-patched/`. Core slot `patch.bytes`
+  (backend `viwo-patcher`) owns Keystone and capstone so preflight and 05 SYSTEM list them.
+  Real run on ULTRAKILL.exe: `int3` at RVA 0x1260 (file 0x660) replaces `sub rsp, 0x28`.
+- T2 (doc 18.9) complete for ViWo's side: a mod carries the AOB patch sets it was built from,
+  `requires` and `after`; `check` adds `adapts` (another game version, the AOB patches resolve:
+  the update check), `apply` takes several mods, orders them (requirements first, cycles and
+  missing requirements refused) and refuses two mods writing one file differently unless the
+  later declares `after`. The in-game half of 18.9 (loader, hook API, overlay, crash handler) is
+  what the pinned runtime loaders do (BepInEx, UE4SS: rung D2), not ViWo code.
+
 ## Morning deliverable (owner, 2026-11-04)
 A PDF presentation of the project status, the sqc suite and the CTF flags (`sqc/ctf.json`,
 `sqc/17-ctf.md`: five basic objectives per game plus one per GB), with no known limitation or

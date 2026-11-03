@@ -112,7 +112,7 @@ def apply_patch_set(app: App, d: dict) -> dict:
         return failure(ViwoError("not_found", "give an existing gamePath and patchSet file"))
     try:
         if d.get("plan") or not out:
-            return {"success": True, **patchsets.plan(game, patchsets.load(set_path))}
+            return {"success": True, **patchsets.plan(game, patchsets.load(set_path), app.rt.os)}
     except ViwoError as exc:
         return failure(exc)
 
@@ -128,7 +128,9 @@ def mod_package(app: App, d: dict) -> dict:
     from viwo.core import mods
 
     action, game = str(d.get("action", "")), Path(str(d.get("gamePath", "")))
-    mod, copy = Path(str(d.get("mod", ""))), Path(str(d.get("copy", "") or "."))
+    listed = d.get("mods") if isinstance(d.get("mods"), list) else [d.get("mod", "")]
+    mod_list = [Path(str(m)) for m in listed if m]
+    mod, copy = (mod_list or [Path("")])[0], Path(str(d.get("copy", "") or "."))
     if action not in ("pack", "check", "apply") or not game.is_dir():
         return failure(ViwoError("invalid_request", "give action pack|check|apply and a gamePath"))
     if action == "check":
@@ -140,7 +142,7 @@ def mod_package(app: App, d: dict) -> dict:
     def run(sink, cancel) -> dict:
         if action == "pack":
             return {"success": True, **mods.pack(game, copy, mod, str(d.get("name", "")))}
-        return {"success": True, **mods.apply(app.rt, game, mod, copy)}
+        return {"success": True, **mods.apply(app.rt, game, mod_list, copy)}
 
     return app.locked_job("mod", copy, run)
 

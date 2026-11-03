@@ -4,7 +4,8 @@
   "unitypy": "UnityPy==1.25.4",
   "py7zr": "py7zr==1.1.4",
   "unrpa": "unrpa==2.3.0",
-  "lz4": "lz4==4.4.5"
+  "lz4": "lz4==4.4.5",
+  "capstone": "capstone==5.0.9"
  },
  "tools": {
   "repak": {
@@ -474,6 +475,18 @@
     "size": 27429929,
     "kind": "tar",
     "find": "diec.sh"
+   }
+  },
+  "keystone": {
+   "version": "0.9.2",
+   "license": "GPL-2.0",
+   "_note": "Keystone's kstool for `asm` edits of patch sets (doc 18.8); GPL, so always a separate process; no Linux release asset (PATH lookup there)",
+   "windows": {
+    "url": "https://github.com/keystone-engine/keystone/releases/download/0.9.2/keystone-0.9.2-win64.zip",
+    "sha256": "4a1df6c53104f4930861533c646d83ac17aacfd6884b3ed37835a6da6de5fdb1",
+    "size": 8097572,
+    "kind": "zip",
+    "find": "kstool.exe"
    }
   }
  }

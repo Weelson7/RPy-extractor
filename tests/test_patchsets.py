@@ -5,11 +5,14 @@ patched in place, a set that does not fit is refused; CLI and API."""
 from __future__ import annotations
 
 import json
+import struct
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
 from tests.helpers import runtime, tree_hashes
+from tests.test_capture import script
 from viwo.contracts import ViwoError
 from viwo.core import patchsets
 from viwo.core.roundtrip import MARKER
@@ -32,6 +35,69 @@ def fixture(root: Path) -> tuple[Path, Path]:
     set_path = root / "skip.patch.json"
     set_path.write_text(json.dumps(patch), encoding="utf-8")
     return game, set_path
+
+
+FAKE_KSTOOL = """#!{python}
+import sys
+mode, text, address = sys.argv[1:4]
+assert (mode, address) == ("x64", "140001010"), sys.argv
+print(text + " = [ eb 0e 90 ]")
+"""
+
+
+def make_pe(path: Path) -> None:
+    """A minimal PE32+: one .text section, VA 0x1000 at file offset 0x200, image base
+    0x140000000; the code starts with `74 05` at RVA 0x1010."""
+    head = bytearray(0x200)
+    head[:2], head[0x3C:0x40] = b"MZ", (0x40).to_bytes(4, "little")
+    head[0x40:0x44] = b"PE\0\0"
+    struct.pack_into("<HH", head, 0x44, 0x8664, 1)
+    struct.pack_into("<H", head, 0x54, 0xF0)  # optional header size
+    struct.pack_into("<HxxxxxxxxxxxxxxxxxxxxxxQ", head, 0x58, 0x20B, 0x140000000)
+    struct.pack_into("<8sIIII", head, 0x58 + 0xF0, b".text", 0x100, 0x1000, 0x200, 0x200)
+    code = bytearray(b"\x90" * 0x200)
+    code[0x10:0x13] = b"\x74\x05\x90"
+    code[0x40:0x50] = bytes(range(0x40, 0x50))  # unique bytes for the signature
+    path.write_bytes(bytes(head) + bytes(code))
+
+
+class PeAsmTests(unittest.TestCase):
+    def test_rva_asm_untouched_bytes_and_export(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            game = root / "game"
+            game.mkdir()
+            make_pe(game / "Game.exe")
+            (root / "ks").mkdir()
+            kstool = script(root / "ks", "kstool", FAKE_KSTOOL.format(python=sys.executable))
+            rt = runtime(root, f"[tools]\nkeystone = {kstool}\n")
+            patch = {
+                "schema": 1,
+                "title": "asm",
+                "patches": [
+                    {
+                        "file": "Game.exe",
+                        "rva": "0x1010",
+                        "original": "74 05 90",
+                        "asm": "jmp 0x140001020; nop",
+                    }
+                ],
+            }
+            set_path = root / "asm.patch.json"
+            set_path.write_text(json.dumps(patch))
+            planned = patchsets.plan(game, patchsets.load(set_path), rt.os)["results"][0]
+            self.assertEqual(
+                (planned["offset"], planned["new"], planned["status"]), (0x210, "eb 0e 90", "ready")
+            )
+            done = patchsets.apply(rt, game, set_path, root / "copy")
+            self.assertTrue(done["verified"])  # the range has the new bytes, nothing else moved
+            marker = root / "copy" / MARKER
+            self.assertIn("0x210: 74 05 90 -> eb 0e 90", (marker / "asm.diff.txt").read_text())
+            aob = json.loads((marker / "asm.aob.patch.json").read_text())
+            self.assertEqual(len(aob["patches"]), 1)
+            (root / "aob.patch.json").write_text(json.dumps(aob))
+            again = patchsets.plan(game, patchsets.load(root / "aob.patch.json"))["results"][0]
+            self.assertEqual((again["offset"], again["status"]), (0x210, "ready"))  # resolves again
 
 
 class PatchSetTests(unittest.TestCase):

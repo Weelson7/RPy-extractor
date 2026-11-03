@@ -228,10 +228,11 @@ def core_sources() -> tuple[tuple[SlotDefinition, ...], list[Backend]]:
     """Every core-owned slot and backend (backends/, decode, capture, analysis): the one list
     boot, the distro generator and the L0 lint share, so a new arm is added here only."""
     from viwo.backends import CORE_SLOTS, core_backends
-    from viwo.core import analysis, capture, decode
+    from viwo.core import analysis, capture, decode, patch_tools
 
-    slots = (*CORE_SLOTS, *decode.SLOTS, *capture.SLOTS, *analysis.SLOTS)
-    return slots, [*core_backends(), *decode.decoders(), *capture.backends(), *analysis.backends()]
+    slots = (*CORE_SLOTS, *decode.SLOTS, *capture.SLOTS, *analysis.SLOTS, *patch_tools.SLOTS)
+    backends = [*core_backends(), *decode.decoders(), *capture.backends(), *analysis.backends()]
+    return slots, [*backends, patch_tools.Patcher()]
 
 
 def known_ids(custom_dirs: Iterable[Path] = ()) -> set[str]:
