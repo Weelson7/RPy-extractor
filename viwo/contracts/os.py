@@ -37,6 +37,10 @@ class ProcessRunner(ABC):
         the whole process tree is killed and timed_out=True is returned. on_line, when
         given, receives every stdout/stderr line as it arrives (output is still captured)."""
 
+    def running_images(self) -> set[str]:
+        """Lowercase image names of the running processes (best effort; empty when unknown)."""
+        return set()
+
 
 class ToolLocator(ABC):
     @abstractmethod

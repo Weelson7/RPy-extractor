@@ -7,8 +7,10 @@ import io
 import json
 import subprocess
 import sys
+import tarfile
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 
 from tests.helpers import ROOT, make_game, runtime, tree_hashes, write_ini
@@ -48,6 +50,45 @@ class PipelineTests(unittest.TestCase):
         lines = (self.root / "ws" / ws.PROVENANCE_FILE).read_text().splitlines()
         self.assertEqual(len(lines), result.copied_files)
         self.assertTrue(all(json.loads(line)["sha256"] for line in lines))
+
+    def test_tar_links_and_devices_are_never_written(self) -> None:
+        """Doc 17.3: symlinks, hard links and device members are filtered, regular files kept."""
+        game = self.root / "nasty"
+        game.mkdir()
+        with tarfile.open(game / "nasty.tar", "w") as tf:
+            for name, kind, link in (
+                ("sym", tarfile.SYMTYPE, "../../escape"),
+                ("hard", tarfile.LNKTYPE, "../x"),
+                ("dev", tarfile.CHRTYPE, ""),
+            ):
+                info = tarfile.TarInfo(name)
+                info.type, info.linkname = kind, link
+                tf.addfile(info)
+            info = tarfile.TarInfo("ok.txt")
+            info.size = 2
+            tf.addfile(info, io.BytesIO(b"ok"))
+        result = run_extract(self.rt, game, self.root / "ws-nasty")
+        files = tree_hashes(self.root / "ws-nasty", skip_reserved=True)
+        self.assertIn("txt/ok.txt", files)
+        self.assertFalse([n for n in files if n.rsplit("/", 1)[-1] in ("sym", "hard", "dev")])
+        self.assertFalse((self.root / "escape").exists())
+        self.assertEqual(result.archives_extracted, 1)
+
+    def test_nesting_deeper_than_ten_is_reported(self) -> None:
+        """Doc 17.3: the depth bomb stops at MAX_DEPTH and is reported, the run still succeeds."""
+        game = self.root / "deep"
+        game.mkdir()
+        data = b"leaf"
+        for level in range(13):
+            buf = io.BytesIO()
+            with zipfile.ZipFile(buf, "w") as zf:
+                zf.writestr(f"l{level}.zip" if level else "leaf.txt", data)
+            data = buf.getvalue()
+        (game / "bomb.zip").write_bytes(data)
+        result = run_extract(self.rt, game, self.root / "ws-deep")
+        warnings = result.to_legacy_dict()["checks"]["warnings"]
+        self.assertTrue(any("nesting deeper than 10" in w for w in warnings), warnings)
+        self.assertTrue(result.success)
 
     def test_rerun_needs_decision_and_replace_is_deterministic(self) -> None:
         run_extract(self.rt, self.game, self.root / "ws")

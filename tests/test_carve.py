@@ -219,6 +219,19 @@ if __name__ == "__main__":
     unittest.main()
 
 
+class StreamBoundTests(unittest.TestCase):
+    def test_oversized_stream_is_skipped(self) -> None:
+        """Doc 17.3: a stream that inflates past LIMIT is dropped, not kept in memory."""
+        from unittest import mock
+
+        from viwo.core.carve import streams
+
+        data = b"\0" * 5 + zlib.compress(b"A" * 4096)
+        with mock.patch.object(streams, "LIMIT", 1024):
+            self.assertEqual(list(streams.find_streams(data, len(data), [], CancelToken())), [])
+        self.assertEqual(len(list(streams.find_streams(data, len(data), [], CancelToken()))), 1)
+
+
 class OptionalStreamTests(unittest.TestCase):
     """Ladder rung 4 (doc 16.0b): LZ4 and zstd frames are inflated when their modules exist,
     and silently skipped (never a crash) when they do not."""

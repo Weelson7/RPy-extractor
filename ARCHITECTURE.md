@@ -2,6 +2,23 @@
 
 The full contract is in [docs/contract/](docs/contract/README.md); this page is the map.
 
+ViWo is a **full game reverse-engineering orchestrator** over three arms, all built on the same
+slot/backend, OS-layer, pinned-tool and provenance plumbing:
+
+- **Static** — extraction (the mature arm: unpack, export, decode, carve) plus code and data
+  analysis (Ghidra and friends: disasm/decompile, type/symbol recovery, bytecode VMs, protector ID,
+  emulation, version diffing). Reads copies, never runs the game. Docs 3 and 6.
+- **Dynamic/runtime** — capture, debugging, instrumentation/tracing, memory, hooking, own-traffic
+  networking, profiling. Runs or attaches to the game through `core/capture/journal.py`, behind the
+  `runtime` feature flag with warnings and one opt-in. Doc 11.
+- **Authoring** — asset round trip, binary patch sets with AOB signatures, and mod-runtime
+  packaging. Writes only a separate, marked patched copy. Doc 18.
+
+Each arm offers headless backends for batch/automation and **"continue in &lt;tool&gt;" handoffs**
+(doc 8.3a) that prepare a target and open a GUI tool (Ghidra, x64dbg, RenderDoc, ReClass.NET) as a
+tracked child subprocess. ViWo writes the glue; capability is pinned third-party tools (philosophy
+point 5: no first-party borderline code). No capability is gated for what a game is (D22).
+
 ```
 viwo/
   contracts/   interfaces + value types only (stdlib, no app imports)
@@ -51,4 +68,10 @@ Key invariants (tested):
 - Round trip writes only into a separate, marked patched copy and verifies every packed member.
 - No policy boundaries: nothing is refused because of what a game is. Anti-cheat, online titles and
   sensitive plugins produce warnings; the user confirms once and is responsible (README: Philosophy).
+- Two job classes: **static** jobs (extraction, `analysis.*`) read copies and never run or touch the
+  game; **dynamic** jobs (`capture/runtime/debug/trace/memory/hook/net/profile`) touch the running
+  game and so go through the capture journal, the `runtime` feature flag and the opt-in. A GUI
+  handoff that runs code in the game is a dynamic action; one that opens a static file is not.
+- GUI tools are launched as tracked child subprocesses inside ViWo's process tree, so tree-kill and
+  timeouts reach them (doc 8.3a, doc 1).
 - Code size caps: see `loc_caps.ini` and `tools/loc_count.py`.

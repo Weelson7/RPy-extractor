@@ -20,10 +20,17 @@ KillTree = Callable[[subprocess.Popen], None]
 
 
 class SubprocessRunner(ProcessRunner):
-    def __init__(self, max_len: int, popen_kwargs: dict, kill_tree: KillTree) -> None:
+    def __init__(self, max_len: int, popen_kwargs: dict, kill_tree: KillTree, lister=None):
         self._max_len = max_len
         self._popen_kwargs = popen_kwargs
         self._kill_tree = kill_tree
+        self._lister = lister  # per-OS process lister (doc 1.1 running_images)
+
+    def running_images(self) -> set[str]:
+        try:
+            return set(self._lister(self)) if self._lister else set()
+        except Exception:  # noqa: BLE001  (a process list is advice, never a blocker)
+            return set()
 
     @property
     def max_command_length(self) -> int:

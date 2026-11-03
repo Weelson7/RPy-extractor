@@ -123,7 +123,13 @@ class FfprobeProbe(Prober):
         tool = ctx.os.tools.locate(FFPROBE)
         if tool is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=FFPROBE.hint)
-        argv = [*tool.argv_prefix, "-v", "error", "-show_entries", "format=format_name,duration"]
+        argv = [
+            *tool.argv_prefix,
+            "-v",
+            "error",
+            "-show_entries",
+            "format=format_name,duration:stream=codec_type",
+        ]
         result = ctx.os.process.run(argv + ["-of", "default=nw=1", str(path)], timeout=60)
         if not result.ok:
             return Outcome(OutcomeKind.FAILED, error=(result.stderr or "")[-300:])

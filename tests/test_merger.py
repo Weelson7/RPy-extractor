@@ -54,6 +54,39 @@ class MergerLogicTests(unittest.TestCase):
         self.assertIn("tpad=stop_mode=clone:stop_duration=0.500", graph)
 
 
+class ProbeSlotTests(unittest.TestCase):
+    def test_probe_goes_through_the_media_probe_slot(self) -> None:
+        """Doc 8.5: the merger reads duration and audio from whatever `media.probe` binds."""
+        from viwo.contracts import Outcome, OutcomeKind, SlotBinding
+        from viwo.contracts.slots import Prober
+        from viwo.core.merger.build import _probe_ctx, output_name
+        from viwo.core.merger.ffmpeg import probe
+
+        class FakeProbe(Prober):
+            backend_id, owner, license = "fake-probe", "core", "MIT"
+
+            def dependencies(self):
+                return ()
+
+            def available(self, os):
+                return True, ""
+
+            def probe(self, path, ctx):
+                facts = ("format_name=mov", "duration=2.5", "codec_type=video", "codec_type=audio")
+                return Outcome(OutcomeKind.OK, 1, notes=facts)
+
+        with tempfile.TemporaryDirectory() as tmp:
+            rt = runtime(Path(tmp))
+            rt.backends["fake-probe"] = FakeProbe()
+            rt.bindings["media.probe"] = SlotBinding("media.probe", "fake-probe")
+            ctx = _probe_ctx(rt, Path(tmp), None)
+            self.assertEqual(probe(rt, Path(tmp) / "a.mp4", ctx), (2.5, True))
+            rt.bindings["media.probe"] = SlotBinding("media.probe", "")
+            self.assertEqual(probe(rt, Path(tmp) / "a.mp4", ctx), (0.0, False))
+            self.assertEqual(output_name("re:el?", rt.os.fs).endswith(".mp4"), True)
+            self.assertTrue(rt.os.fs.is_valid_filename(output_name("a<b>c", rt.os.fs)))
+
+
 @unittest.skipUnless(shutil.which("ffmpeg") and shutil.which("ffprobe"), "needs ffmpeg + ffprobe")
 class MergerBuildTests(unittest.TestCase):
     def test_build_from_images(self) -> None:

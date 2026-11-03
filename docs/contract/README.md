@@ -17,26 +17,26 @@ are places where I'm unsure or where the choice is yours.
 | 3 | [03-pipeline-and-mixed-mode.md](03-pipeline-and-mixed-mode.md) | stages, plugin routing, mixed mode, the combination test matrix |
 | 4 | [04-v1-locks.md](04-v1-locks.md) | what the v1 UI depends on (API, payloads, workspace layout, logs) and should be kept |
 | 5 | [05-asset-sanitizer.md](05-asset-sanitizer.md) | review of the Tdarr-style sanitizer idea, and a sketch of its interfaces |
-| 6 | [06-analysis-hook.md](06-analysis-hook.md) | decompiler hook (Ghidra first) |
+| 6 | [06-analysis-hook.md](06-analysis-hook.md) | **static-analysis arm:** binary loading, disasm/decompile, type/symbol recovery, bytecode VMs, protector ID, emulation, version diffing (Ghidra and friends) |
 | 7 | [07-migration-and-findings.md](07-migration-and-findings.md) | v1 issues found while reading, where each v1 file would go, order of work |
 | 8 | [08-backend-slots.md](08-backend-slots.md) | every pipeline engine behind an interface: slots with a **main** and a **spare** backend |
 | 9 | [09-startup-ini.md](09-startup-ini.md) | startup wiring declared in an `.ini` file; boot sequence |
 | 10 | [10-third-party-submodules.md](10-third-party-submodules.md) | third-party tools as sparse submodules; open problems |
-| 11 | [11-runtime-capture.md](11-runtime-capture.md) | runtime capture (assets that only exist decoded at runtime), with a safety policy |
+| 11 | [11-runtime-capture.md](11-runtime-capture.md) | **dynamic/runtime arm:** capture, debugging, instrumentation/tracing, memory, hooking, own-traffic networking, profiling, through the journal and one opt-in |
 | 12 | [12-core-cli-jobs.md](12-core-cli-jobs.md) | headless core, CLI, jobs; the web UI as one client |
 | 13 | [13-landscape.md](13-landscape.md) | existing tools and frameworks, where this fits, what to borrow |
 | 14 | [14-prototype.md](14-prototype.md) | the prototype: scope, slices, success criteria |
 | 15 | [15-loc-caps.md](15-loc-caps.md) | strict caps on non-blank, non-comment LoC: counting rules, v1 baseline, budgets |
 | 16 | [16-roadmap.md](16-roadmap.md) | milestones M0–M12, decision gates, exit criteria |
 | 17 | [17-testing-model.md](17-testing-model.md) | test levels L0–L7, safety catalogue, fixtures, CI, definition of done |
-| 18 | [18-round-trip.md](18-round-trip.md) | repack and modding: provenance map, edit set, per-plugin strategy, patched game copy |
+| 18 | [18-round-trip.md](18-round-trip.md) | **authoring arm:** asset round trip, binary patch sets with AOB signatures and patch export, mod-runtime packaging; patched game copy |
 
 ## Scope decisions taken (your answers)
 
 | Topic | Answer |
 |-------|--------|
-| Framing | A **game reverse-engineering framework oriented towards asset extraction** |
-| Scope | **Static extraction + runtime capture**; code RE through hooks |
+| Framing | A **full game reverse-engineering orchestrator** over three arms: **static** (extraction + code/data analysis, doc 6), **dynamic/runtime** (doc 11), **authoring** (round trip, patching, mods, doc 18). Asset extraction is the mature arm; the others follow the respec (doc 16.2b) |
+| Scope | **Static extraction + static analysis + dynamic/runtime + authoring.** Headless backends for batch, "continue in &lt;tool&gt;" handoffs for interactive work (doc 8.3a). No capability is gated for what a game is (D22); heavy arms are feature flags off by default |
 | Form | **Headless core + CLI + web UI** (the web UI is one client) |
 | Build vs wrap | **Orchestrate existing tools, write glue**; native code only where nothing exists or as a light spare |
 | Prototype engines | **Ren'Py + Unity (port v1), Godot, Unreal, plus a custom-plugin showcase (e.g. Overwatch)** |
@@ -104,10 +104,10 @@ These are the ideas the other documents build on. Each is up for debate.
 4. **Every engine behind an interface, bound through a slot** (doc 8). Stages never call tools directly.
 5. **Failures are isolated.** A failing plugin or backend is recorded against its owner; the other plugins keep running.
 6. **Destructive bulk actions plan first, apply second, and can be undone** (sanitizer, retain groups).
-7. **Top-level dot-folders in the workspace are reserved** (`.trash`, `.extraction_metadata`; the sanitizer journal lives under `.extraction_metadata`; `.analysis` stays reserved for the analysis rung).
+7. **Top-level dot-folders in the workspace are reserved** (`.trash`, `.extraction_metadata`, `.sanitizer` for sanitizer plans and journals; `.analysis` stays reserved for the analysis rung).
 8. **Determinism.** The same input and the same ini give the same output.
 9. **Honest metrics.** A number's name says what it counts (doc 0.4). Gaining confidence in output quality starts with this.
-10. **Versioning.** The contract keeps `CONTRACT_VERSION = "1.0"` (`MAJOR.MINOR`: optional additions bump the minor, anything else the major). The product uses `va.b.c` (`tools/version.py`, CLAUDE.md): `a` per finished roadmap, `b` per feature, `c` per commit. **History:** draft 3 had one scheme for both.
+10. **Versioning.** The contract keeps `CONTRACT_VERSION` (`"1.1"` since the 1.2 batch's additive types; `MAJOR.MINOR`: optional additions bump the minor, anything else the major). The product uses `va.b.c` (`tools/version.py`, CLAUDE.md): `a` per finished roadmap, `b` per feature, `c` per commit. **History:** draft 3 had one scheme for both.
 
 ## Decisions (all closed)
 

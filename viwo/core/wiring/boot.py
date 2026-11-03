@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from viwo.backends import CORE_SLOTS, core_backends
+from viwo.contracts.errors import ViwoError
 from viwo.contracts.os import OS
 from viwo.contracts.plugin import EnginePlugin
 from viwo.contracts.slots import Backend, SlotBinding, SlotDefinition
@@ -88,12 +89,25 @@ class Runtime:
         }
 
 
+def _apply_profile(config, profile: str) -> None:
+    """`--profile` (doc 9.1 value source 4): that distro's plugin set over the ini's."""
+    from .distros import PROFILES, enabled_for
+
+    if profile not in PROFILES:
+        raise ViwoError("invalid_request", f"unknown profile {profile!r}; one of {PROFILES}")
+    config.profile, config.plugins = profile, {**config.plugins, **enabled_for(profile)}
+    config.sources["startup.profile"] = "cli"
+
+
 def boot(
     ini_path: Path | None = None,
     os_id: str | None = None,
     temp_root: Path | None = None,
+    profile: str | None = None,
 ) -> Runtime:
     config = load_ini(ini_path if ini_path is not None else DEFAULT_INI)
+    if profile:
+        _apply_profile(config, profile)
     home = thirdparty.home_of(config)
     thirdparty.activate(home)  # pinned Python packages installed under third_party/python
     tools = {**thirdparty.found_tools(home), **config.tools}  # the ini wins over third_party/

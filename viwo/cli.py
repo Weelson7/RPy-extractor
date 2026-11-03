@@ -38,6 +38,10 @@ def _parser(rt=None) -> argparse.ArgumentParser:
     )
     ap.add_argument("--ini", type=Path, help="startup ini (default: startup.ini)")
     ap.add_argument("--os", dest="os_id", help="auto | linux | windows")
+    ap.add_argument(
+        "--profile",
+        help="renpy | unity | unreal | godot | custom | mixed: that distro's plugin set",
+    )
     ap.add_argument("--json", action="store_true", help="print a JSON envelope")
     ap.add_argument("--quiet", action="store_true", help="no progress lines on stderr")
     ap.add_argument("--verbose", action="store_true", help="also print the ini and bindings")
@@ -91,7 +95,7 @@ def _verbose_header(rt, args) -> None:
 
 
 def _run(args, rt=None) -> Envelope:
-    rt = rt or boot(args.ini, args.os_id)
+    rt = rt or boot(args.ini, args.os_id, profile=args.profile)
     _verbose_header(rt, args)
     plugin_command = getattr(args, "plugin_command", None)
     if plugin_command is not None:  # an add-on, possibly overriding a core command

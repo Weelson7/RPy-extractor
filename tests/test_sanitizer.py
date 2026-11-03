@@ -96,6 +96,33 @@ class SanitizerTests(unittest.TestCase):
                 "Undoing actions: 1 / 1", [e.message for e in app.jobs.get(undone["jobId"]).events]
             )
 
+    def test_plan_request_fields_and_plugin_rules(self) -> None:
+        """Doc 5.3: recipeId, path, offset, limit on the wire; doc 5.2: a plugin rule runs."""
+        from viwo.core.sanitizer_rules import SanitizerRule
+
+        class Flag(SanitizerRule):
+            rule_id, owner, category, cost = "generic.flag", "generic", "junk", 1
+
+            def inspect(self, path, ctx):
+                return [ctx.finding(self.rule_id, path, "flagged by a plugin rule", "none")]
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            ws = make_workspace(root)
+            app = app_module.App(runtime(root))
+            app.set_workspace(ws)
+            app.rt.plugins["generic"].sanitizer_rules = lambda: [Flag()]
+            page = POST["/api/sanitizer/plan"](app, {"limit": 1, "offset": 1})
+            self.assertEqual((len(page["findings"]), page["findings"][0]["index"]), (1, 1))
+            self.assertGreater(page["total"], 1)
+            whole = POST["/api/sanitizer/plan"](app, {"path": "png"})
+            self.assertTrue(
+                whole["findings"] and all(f["path"].startswith("png/") for f in whole["findings"])
+            )
+            self.assertIn("generic.flag", {f["rule"] for f in whole["findings"]})
+            self.assertFalse(POST["/api/sanitizer/plan"](app, {"recipeId": "nope"})["success"])
+            self.assertFalse(POST["/api/sanitizer/plan"](app, {"path": "../.."})["success"])
+
     def test_cancel_stops_the_scan(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             ws = make_workspace(Path(tmp))

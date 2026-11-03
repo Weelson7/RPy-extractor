@@ -151,6 +151,23 @@ class FormatPipelineTests(unittest.TestCase):
         self.assertEqual(tree_hashes(game), before)
         return result, root / f"ws-{name}"
 
+    def test_engine_inside_an_asar_is_redetected(self) -> None:
+        """Doc 3.1 / 14.2 #3: after the wrapper is unpacked, detection runs once inside it."""
+        with tempfile.TemporaryDirectory() as tmp:
+            inner = {
+                "www/js/rpg_core.js": b"//mv",
+                "www/data/System.json": b"{}",
+                "www/img/a.png": PNG,
+            }
+            files = {"resources/app.asar": asar(inner), "electron.exe": b"MZ"}
+            result, ws = self.run_game(Path(tmp), "wrapped", files)
+            self.assertEqual(result.runs[0].plugin_id, "electron")
+            self.assertIn("rpgmaker", {r.plugin_id for r in result.runs})
+            self.assertTrue(
+                any("Re-detected rpgmaker" in line for line in result.logs), result.logs
+            )
+            self.assertEqual((ws / "png" / "a.png").read_bytes(), PNG)
+
     def test_all_formats(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

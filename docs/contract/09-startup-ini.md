@@ -131,4 +131,4 @@ hook points: after_os, after_plugins, before_server, on_shutdown
 ## 9.6 Relationship to the UI
 
 - `GET /api/distro` returns the effective ini (with the source of every value), the bindings (main, spare, promoted, unbound) and any problems.
-- Editing the wiring from the UI is planned for later. When it comes, the UI will write `startup.ini`, and the change takes effect after a restart. Nothing is re-wired while the app is running in contract 1.0.
+- 11 SETTINGS edits the wiring (1.0): it writes `startup.ini` and applies the change by reloading the runtime (`App.reload()`: plugins, slots and tools are re-bound; a running job finishes on the bindings it started with). No restart. **History:** contract 1.0 said "after a restart"; the owner chose apply-by-reload.

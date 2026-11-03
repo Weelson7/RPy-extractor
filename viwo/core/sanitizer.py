@@ -100,6 +100,7 @@ def _save_plan(workspace: Path, files: list[Path], findings: list[dict], opts: d
     write_atomic(folder / f"{plan_id}.json", json.dumps(result, indent=1))
     offset, limit = max(0, int(opts.get("offset") or 0)), int(opts.get("limit") or 0)
     page = findings[offset : offset + limit] if limit > 0 else findings[offset:]
+    page = [{**f, "index": offset + i} for i, f in enumerate(page)]  # accept[] indexes
     return {**result, "findings": page, "total": len(findings), "offset": offset, "limit": limit}
 
 

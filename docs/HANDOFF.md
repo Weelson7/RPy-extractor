@@ -113,5 +113,42 @@ JobHandle fields, anti-cheat service and network warnings, offline hints, round-
 hash check + same-format rule + `_added/` files, `plugins[].error`, marker fields, doc 3.5 keys,
 `POST /api/jobs`, per-mode detect answer, wrapper re-detection, sanitizer rule providers and
 paging, property test; doc revisions for the documented deviations.
-**Next:** re-run the clause audit in-session and update CONFORMANCE.md; the agents' own status
-rewrite never happened.
+**Done in 1.2.1 (below).**
+
+## 1.2.1 (conformance closure, 2026-11-03)
+Four fresh reviewers re-read every contract doc against the 1.2 tree (591 rows); every defect
+and undocumented gap they found was closed: inventory metrics from `verify_report()`, the shared
+probe on every plugin context, merger probe through the `media.probe` slot and the OS filename
+rule for merged names, suffix-clash boot problem, capability checks and derived capabilities,
+distros without spares of switched-off plugins (regenerated), `--profile`, `GET /api/plugins`
+fields, `POST /api/jobs` wired (it was dead code), sanitizer plan request fields and plugin rules
+on the route and CLI, DataTool network declaration, run-record context on extraction records,
+process list through the OS layer, the contract-version mirror, the conformance kit over
+drop-ins, and the missing safety tests (tar links and devices, depth bomb, stream bound, random
+selection property, wrapper re-detection). `docs/contract/CONFORMANCE.md` is regenerated with
+the new evidence. Docs 06, 11 and 18 were being rewritten by the capabilities respec at the same
+time and are not re-audited here.
+
+## Respec to a full RE orchestrator (2026-11-03, docs only)
+From `temp.md`. Reframes ViWo from "orchestrator oriented towards asset extraction" to a **full game
+RE orchestrator** over three arms — **static** (extraction + code/data analysis), **dynamic/runtime**,
+**authoring** — all on the existing slot/OS-layer/pinned-tool/provenance plumbing. **No code changed;
+no invariant changed; nothing new is refused** (D22 stands: warnings + one opt-in, disclaimer,
+responsibility on the user; `temp.md`'s "structural boundaries" are the user's own morals, not ViWo
+gates). Philosophy point 5 is the one project rule kept: ViWo authors no first-party borderline code;
+capability is pinned third-party tools.
+- **Reworked existing docs** (no new files, per the owner): `06` (static-analysis arm: binary
+  loading, disasm/decompile, type/symbol recovery, bytecode VMs, signatures, version diffing,
+  protector ID, emulation/symbolic exec), `11` (dynamic arm: capture + debug/trace/memory/hook/net/
+  profile, journaled, opt-in; stale "refuse" language reconciled to warn+opt-in), `18` (authoring:
+  adds binary patch sets §18.8 and mod-runtime packaging §18.9), `08` (new slot families registered;
+  **§8.3a "continue in &lt;tool&gt;" interactive handoff**), `16` (§16.2b orchestrator rungs A1–A4,
+  D1–D4, T1–T2), plus `README.md`, `ARCHITECTURE.md`, `docs/contract/README.md` (framing/scope).
+- **New concept — handoff:** "continue in Ghidra/x64dbg/RenderDoc" spawns the GUI tool as a tracked
+  child subprocess (tree-kill, timeouts) after ViWo prepares the target; headless backends remain for
+  batch. Static handoff = no opt-in; a handoff that runs code in the game = dynamic, journaled.
+- **Not built:** every arm past the capture pilot is a normative shape + roadmap rung, feature-flagged
+  off by default, sized by LoC when implemented (doc 16.2b). `temp.md` can be deleted or kept as the
+  source capability spec.
+- **Owner call:** confirm the three-arm framing and the handoff model, then the A1 rung (Ghidra
+  headless + GUI handoff) is the first implementation step.

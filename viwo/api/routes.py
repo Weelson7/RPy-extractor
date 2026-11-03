@@ -5,6 +5,7 @@ Every response is the doc 12.3b envelope with an HTTP status from the error code
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from viwo import CONTRACT_VERSION
@@ -13,8 +14,11 @@ from viwo.contracts.pipeline import ExtractionMode, ExtractionRequest, MixedPoli
 from viwo.core.pipeline.probe import FolderProbe
 from viwo.core.pipeline.runner import detect_all
 from viwo.core.pipeline.select import select_plugins
+from viwo.core.wiring.conformance import capabilities_of
 
 from .app import get_app
+
+PLUGIN_PROBLEM = re.compile(r"^plugin ([a-z][a-z0-9_-]*)\b")
 
 STATUS = {
     "invalid_request": 400,
@@ -31,23 +35,39 @@ def _distro() -> dict:
     return {**rt.info(), "contract": CONTRACT_VERSION, "features": list(rt.config.features)}
 
 
+def _plugin_entry(plugin_id: str, plugin, deps: list[dict], error: str) -> dict:
+    """Doc 4.1: manifest, options schema, capabilities, load error, dependency status."""
+    m = plugin.manifest
+    return {
+        "id": plugin_id,
+        "name": m.name,
+        "version": m.version,
+        "engineType": m.engine_type,
+        "builtin": m.builtin,
+        "tosSensitive": m.tos_sensitive,
+        "description": m.description,
+        "capabilities": list(capabilities_of(plugin)),
+        "options": [o.__dict__ for o in m.options],
+        "slots": [s.slot_id for s in plugin.slot_definitions()],
+        "dependencies": {d["id"]: d["available"] for d in deps if d["category"] == plugin_id},
+        "error": error,
+        "loaded": True,
+    }
+
+
 def _plugins() -> list[dict]:
     rt = get_app().rt
-    out = []
-    for plugin_id, plugin in sorted(rt.plugins.items()):
-        m = plugin.manifest
-        out.append(
-            {
-                "id": plugin_id,
-                "name": m.name,
-                "version": m.version,
-                "engineType": m.engine_type,
-                "builtin": m.builtin,
-                "tosSensitive": m.tos_sensitive,
-                "options": [o.__dict__ for o in m.options],
-                "slots": [s.slot_id for s in plugin.slot_definitions()],
-            }
-        )
+    errors: dict[str, str] = {}
+    for problem in rt.problems:  # "plugin <id> disabled: ..." / "plugin <id>: options rejected"
+        hit = PLUGIN_PROBLEM.match(problem)
+        if hit:
+            errors.setdefault(hit.group(1), problem)
+    deps = rt.dependency_report()
+    out = [
+        _plugin_entry(pid, p, deps, errors.get(pid, "")) for pid, p in sorted(rt.plugins.items())
+    ]
+    for pid in sorted(set(errors) - set(rt.plugins)):  # disabled at load: shown with the reason
+        out.append({"id": pid, "error": errors[pid], "loaded": False})
     return out
 
 

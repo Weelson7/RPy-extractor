@@ -58,7 +58,11 @@ REMINDER = "Overwatch: personal, offline use of your own install; respect Blizza
 
 
 class DataToolExporter(Exporter):
+    """DataTool reads the local CASC install; it may fetch missing keys itself, so it declares
+    `download` (doc 11.6). ViWo passes no online switch; the user goes offline (REMINDER)."""
+
     backend_id, owner, license, isolation = "datatool", "overwatch", "MIT", "subprocess"
+    network = "download"
 
     def dependencies(self):
         return (DATATOOL,)

@@ -28,6 +28,10 @@ from .records import record_context
 from .roundtrip_edits import Edit, edit_set, original_hashes
 from .workspace import workspace_lock, write_atomic
 
+UNVERIFIED = (
+    "untouched members were not re-verified: this packer checks the edited members only "
+    "(doc 18.3); the in-place save keeps the others"
+)
 MARKER = ".viwo-patched"
 CORE_PACK = {"unarchive.zip": "pack.zip"}
 
@@ -196,15 +200,16 @@ def _apply(rt, item: PlanItem, target: Path, ctx) -> dict:
         # a backend with its own verifier knows its member naming; the generic re-extraction
         # check (edited content + untouched hashes, 18.3) covers every other container
         bad = _verify(rt, out, item, ctx) if own is None else list(own)
+        notes = [UNVERIFIED] if own is not None and item.untouched else []
     except Exception as exc:  # noqa: BLE001 (reported per container)
-        bad, result["error"] = list(item.members), f"verify failed: {exc}"
+        bad, notes, result["error"] = list(item.members), [], f"verify failed: {exc}"
     state = "verified" if not bad else f"{len(bad)} member(s) FAILED"
     ctx.log(f"Verify {out.name}: {state}", "info" if not bad else "warn", "repack")
     return {
         **result,
         "output": out.relative_to(target).as_posix(),
         "failed": bad,
-        "notes": list(outcome.notes),
+        "notes": [*outcome.notes, *notes],
     }
 
 

@@ -10,7 +10,8 @@ from pathlib import Path
 from typing import Any
 
 from viwo.contracts.errors import ViwoError
-from viwo.contracts.types import ProgressEvent
+from viwo.contracts.plugin import ExtractionContext
+from viwo.contracts.types import DetectionResult, ProgressEvent
 from viwo.core.curation.trash import trash_files
 
 from .ffmpeg import FFMPEG, Timeline, filtergraph, probe
@@ -64,11 +65,17 @@ class Settings:
         )
 
 
-def output_name(raw: str) -> str:
-    name = re.sub(r"[^A-Za-z0-9._-]+", "_", raw).strip("._-") or time.strftime(
-        "merged_%Y%m%d_%H%M%S"
-    )
+def output_name(raw: str, fs) -> str:
+    """The merged file's name under the OS filename rule (doc 1.5), `.mp4` appended."""
+    name = fs.sanitize_filename(raw.strip("._- "), "") or time.strftime("merged_%Y%m%d_%H%M%S")
     return name if name.lower().endswith(".mp4") else f"{name}.mp4"
+
+
+def _probe_ctx(rt, workdir: Path, sink) -> ExtractionContext:
+    """A core context for the `media.probe` backends (doc 8.5)."""
+    core = DetectionResult("core", 0.0, (), "core")
+    scratch = rt.temp_root
+    return ExtractionContext("merge", workdir, scratch, scratch, rt.os, core, None, {}, sink)
 
 
 def _inputs(workdir: Path, rels: list[str]) -> list[Path]:
@@ -89,10 +96,11 @@ def _inputs(workdir: Path, rels: list[str]) -> list[Path]:
     return files
 
 
-def _timeline(os, files: list[Path], s: Settings, overlay: Path | None) -> Timeline:
+def _timeline(rt, files: list[Path], s: Settings, overlay: Path | None, ctx) -> Timeline:
     durations, audio = [], []
     for path in files:
-        seconds, has_audio = (0.0, False) if media_type(path.suffix) == "image" else probe(os, path)
+        image = media_type(path.suffix) == "image"
+        seconds, has_audio = (0.0, False) if image else probe(rt, path, ctx)
         durations.append(seconds if seconds > 0 else s.delay)
         audio.append(has_audio)
     return Timeline(
@@ -147,11 +155,11 @@ def build_one(tg: Target, rels: list[str], s: Settings, name: str) -> dict:
             "unavailable", "ffmpeg/ffprobe are required for merger builds", hint=FFMPEG.hint
         )
     files, overlay = _inputs(workdir, rels), _overlay(s)
-    _say(sink, f"Probing {len(files)} input(s) for {output_name(name)}")
-    timeline = _timeline(rt.os, files, s, overlay)
+    _say(sink, f"Probing {len(files)} input(s) for {output_name(name, rt.os.fs)}")
+    timeline = _timeline(rt, files, s, overlay, _probe_ctx(rt, workdir, sink))
     graph, video, audio, total = filtergraph(timeline)
     outdir.mkdir(parents=True, exist_ok=True)
-    target = outdir / output_name(name)
+    target = outdir / output_name(name, rt.os.fs)
     argv = _argv(list(tool.argv_prefix), files, timeline, overlay)
     tail = ["-map", f"[{video}]", "-map", f"[{audio}]", *ENCODE, "-t", f"{total:.3f}", str(target)]
     with tempfile.TemporaryDirectory(dir=rt.temp_root) as tmp:

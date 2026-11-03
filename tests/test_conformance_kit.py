@@ -11,25 +11,25 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tests.helpers import make_game, runtime, tree_hashes
+from tests.helpers import ROOT, make_game, runtime, tree_hashes
 from viwo.contracts import CancelToken, DependencySpec, ExtractionRequest
 from viwo.contracts.pipeline import ExtractionMode, MixedPolicy
 from viwo.contracts.plugin import OPTION_KINDS
 from viwo.core.pipeline.probe import FolderProbe
 from viwo.core.pipeline.runner import extract
-from viwo.core.wiring.registry import (
-    BUILTIN_PLUGINS,
-    SLUG,
-    EmptyProbe,
-    load_enabled,
-    load_plugin,
-    validate_plugin,
-)
+from viwo.core.wiring.conformance import SLUG, EmptyProbe, validate_plugin
+from viwo.core.wiring.registry import BUILTIN_PLUGINS, dropin_manifests, load_enabled, load_plugin
 from viwo.os import select_os
 
 
 def every_plugin():
-    return {pid: load_plugin(entry) for pid, entry in BUILTIN_PLUGINS.items()}
+    """Built-ins plus the drop-ins under examples/plugins and VIWO_PLUGIN_DIRS (the kit a
+    third-party plugin runs against its own folder)."""
+    plugins = {pid: load_plugin(entry) for pid, entry in BUILTIN_PLUGINS.items()}
+    extra = [Path(p) for p in os.environ.get("VIWO_PLUGIN_DIRS", "").split(os.pathsep) if p]
+    for pid, (make, _meta) in dropin_manifests([ROOT / "examples" / "plugins", *extra], []).items():
+        plugins.setdefault(pid, make())
+    return plugins
 
 
 class ManifestTests(unittest.TestCase):

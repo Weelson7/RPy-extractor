@@ -44,10 +44,10 @@ moving code between `core/pipeline`, `core/wiring` and friends needs no budget e
 
 | Prefix | Budget | Notes |
 |--------|--------|-------|
-| `viwo` (whole product) | 9,800 | the hard ceiling is **10,000**; the 1.0/1.1 scope (installer, indexes, capture and settings views, add-ons, diagnostics) raised the Prototype B target of 9,000 with the owner's approval, reasons on the line |
+| `viwo` (whole product) | 10,800 | this line **is** the hard ceiling (draft 3 said 10,000). 1.0/1.1 (installer, indexes, capture and settings views, add-ons, diagnostics) and 1.2 (contract types, conformance kit, `media.probe` and `image.convert` slots, run-record context, `slots --check`) raised it with the owner's approval, reasons on the line |
 | `viwo/contracts` | 900 | interfaces + value types only |
 | `viwo/os` | 900 | both OS layers and their shared base |
-| `viwo/core` | 4,700 | pipeline, wiring, jobs, workspace, curation, merger, sanitizer, carve, decode, capture, round trip, survey, installer, indexes, diagnostics |
+| `viwo/core` | 5,400 | pipeline, wiring, jobs, workspace, curation, merger, sanitizer, carve, decode, capture, round trip, survey, installer, indexes, diagnostics |
 | `viwo/backends` | 600 | core-owned backends |
 | each built-in plugin (`viwo/plugins/<id>`) | 100-700 | one line per plugin: generic 100, unity 700, renpy/godot/unreal 500, the rest 200-300 |
 | `viwo/cli.py` | 400 | `cli_extra.py` and `cli_format.py` count under `viwo` |
@@ -83,10 +83,10 @@ Tests have no total budget. Instead, a **floor**, enforced by the counter: test 
   An exception raises the **file cap** of that exact path. At most **3 active exceptions** at a time; one whose version has been reached (compared with `viwo.__version__`) fails the L0 gate until it is removed or renewed; a milestone-named expiry is reviewed at that milestone.
 - The caps file itself is validated: unknown sections or keys, non-integer values, a malformed exception line or a missing cap are L0 failures (`tests/test_l0_static.py`).
 - Ratchets: none since v1 was removed; the `[web]` and `[budgets]` numbers are hard caps.
-- Raising a package budget is a contract change: the new value and its reason go on the budget line, and the commit that raises it names the budget in its message (one commit per raise where the raise is the point of the commit; a raise that a feature needs ships with that feature's commit and is named there).
+- Raising a package budget is a contract change: the new value and its reason go on the budget line, and the reason on that line is the record. A commit whose point is the raise names the budget in its message; a raise that a feature needs ships with that feature's commit (the 1.2 raise did, unnamed: the reason is on the line).
 
 ## 15.6 Why these numbers
 
 - **40 per function and 250 per file** are tight but workable for glue code. Orchestration code that does not fit is usually doing two jobs.
-- The **total cap (10k)** is about 2.3× v1, for: two OS layers, a core that is an actual framework, thirteen plugins, a CLI, jobs, sanitizer, capture, installer and indexes. The pressure stays on "wrap, don't reimplement".
+- The **total cap (10.8k since 1.2)** is about 2.5× v1, for: two OS layers, a core that is an actual framework, thirteen plugins, a CLI, jobs, sanitizer, capture, installer and indexes. The pressure stays on "wrap, don't reimplement".
 - **Plugin budgets of 300-700** force plugins to stay glue. If a plugin needs more, the work probably belongs in an external tool or a shared core helper.

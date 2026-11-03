@@ -102,6 +102,10 @@ class ProcessRunnerTests(unittest.TestCase):
         )
         self.assertTrue(result.timed_out)
 
+    def test_running_images_lists_this_interpreter(self) -> None:
+        names = select_os().process.running_images()
+        self.assertTrue(any(n.startswith("python") for n in names), sorted(names)[:8])
+
 
 class StreamingRunTests(unittest.TestCase):
     def test_lines_arrive_while_the_tool_runs_and_output_is_still_captured(self) -> None:

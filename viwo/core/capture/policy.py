@@ -10,7 +10,6 @@ from __future__ import annotations
 import json
 import os
 import socket
-import sys
 from pathlib import Path
 
 from viwo.contracts.errors import ViwoError
@@ -38,20 +37,8 @@ def _markers(game: Path, markers: dict[str, str]) -> list[str]:
 
 
 def running_processes(rt) -> set[str]:
-    """Lowercase image names of the running processes (best effort, through the OS layer)."""
-    if rt is None:
-        return set()
-    try:
-        if sys.platform == "win32":
-            result = rt.os.process.run(["tasklist", "/FO", "CSV", "/NH"], timeout=10)
-            rows = (line.split('","')[0].strip('"') for line in result.stdout.splitlines())
-            return {name.lower() for name in rows if name}
-        names = set()
-        for comm in Path("/proc").glob("[0-9]*/comm"):
-            names.add(comm.read_text(encoding="utf-8", errors="replace").strip().lower())
-        return names
-    except Exception:  # noqa: BLE001  (a process list is advice, never a blocker)
-        return set()
+    """Lowercase image names of the running processes, through the OS layer (principle 3)."""
+    return rt.os.process.running_images() if rt is not None else set()
 
 
 def network_reachable() -> bool:

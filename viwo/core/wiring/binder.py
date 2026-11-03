@@ -36,6 +36,9 @@ def _resolve(
     chosen, problems = [], []
     for position, (wanted, default) in enumerate(zip(override, defaults)):
         error = _config_error(wanted, slot, backends)
+        if error and position == 1 and wanted == default:
+            chosen.append("")  # the default spare's plugin is off: simply absent (doc 8.2)
+            continue
         if error:
             name = ("main", "spare")[position]
             problems.append(f"[slots] {slot.slot_id}: {error}; default {name} '{default}' used")

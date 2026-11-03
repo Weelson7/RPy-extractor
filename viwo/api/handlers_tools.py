@@ -11,6 +11,7 @@ from viwo.contracts.types import ProgressEvent
 from viwo.core import sanitizer, surveys
 from viwo.core.preflight import install, preflight
 from viwo.core.roundtrip import repack
+from viwo.core.sanitizer_rules import collect_rules
 from viwo.core.survey import survey
 
 from .app import App
@@ -80,7 +81,9 @@ def _sanitize(op: str) -> Callable[[App, dict], dict]:
 
         def run(sink, cancel) -> dict:  # a "cleanup" job: visible in 04 JOBS and the chips
             if op == "plan":
-                return {"success": True, **sanitizer.plan(folder, sink, cancel)}
+                opts = {k: d.get(k) for k in ("path", "offset", "limit")}
+                opts["recipe"], opts["rules"] = d.get("recipeId"), collect_rules(app.rt)
+                return {"success": True, **sanitizer.plan(folder, sink, cancel, **opts)}
             if op == "apply":
                 accept = d.get("accept") or "all-safe"
                 plan_id = str(d.get("planId", ""))

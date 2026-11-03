@@ -51,6 +51,14 @@ class LinuxShell(DesktopShell):
         return tk_pick_file(title, initial, patterns)
 
 
+def _running_images(_runner: SubprocessRunner) -> set[str]:
+    """Command names from /proc/<pid>/comm, lowercased."""
+    names = set()
+    for comm in Path("/proc").glob("[0-9]*/comm"):
+        names.add(comm.read_text(encoding="utf-8", errors="replace").strip().lower())
+    return names
+
+
 def _install_roots() -> list[Path]:
     """Doc 1.2: /usr/bin, /usr/local/bin, /opt/*, ~/.local/bin, flatpak exports."""
     home = Path.home()
@@ -72,7 +80,7 @@ class LinuxOS(OS):
     def __init__(self, tool_overrides: Mapping[str, str | Sequence[str]] | None = None) -> None:
         arg_max = os.sysconf("SC_ARG_MAX") if hasattr(os, "sysconf") else 131072
         self._process = SubprocessRunner(
-            max(4096, arg_max // 2), {"start_new_session": True}, _kill_group
+            max(4096, arg_max // 2), {"start_new_session": True}, _kill_group, _running_images
         )
         self._tools = Locator(
             tool_overrides or {}, _install_roots(), [""], lambda p: (str(p),), "linux"

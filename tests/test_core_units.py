@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import itertools
+import random
 import tempfile
 import unittest
 from pathlib import Path
@@ -115,6 +116,27 @@ class SelectionTests(unittest.TestCase):
         self.assertEqual(select_plugins(ExtractionRequest("g"), dets, {}), ("unity",))
         none = self.detections(self.IDS, {"generic": 0.4})
         self.assertEqual(select_plugins(ExtractionRequest("g"), none, {}), ("generic",))
+
+    def test_random_confidences_keep_the_invariants(self) -> None:
+        """Doc 3.6 property test: auto picks the strongest non-generic plugin, DETECTED is the
+        set above the threshold, every answer is non-empty and order-independent."""
+        rng = random.Random(1234)
+        for _ in range(300):
+            conf = {i: round(rng.random(), 3) for i in self.IDS}
+            dets = self.detections(self.IDS, conf)
+            auto = select_plugins(ExtractionRequest("g"), dets, {})
+            ranked = sorted((i for i in self.IDS if i != "generic"), key=lambda i: (-conf[i], i))
+            expected = (ranked[0],) if conf[ranked[0]] > 0 else ("generic",)
+            self.assertEqual(auto, expected)
+            req = ExtractionRequest(
+                "g", mode=ExtractionMode.MIXED, plugins=self.IDS, mixed_policy=MixedPolicy.DETECTED
+            )
+            chosen = select_plugins(req, dets, {})
+            strong = {i for i in self.IDS if conf[i] >= req.mixed_threshold}
+            self.assertEqual(set(chosen), strong or {"generic"})
+            shuffled = list(dets)
+            rng.shuffle(shuffled)
+            self.assertEqual(chosen, select_plugins(req, shuffled, {}))
 
 
 class IdentifyTests(unittest.TestCase):

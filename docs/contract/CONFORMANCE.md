@@ -1,872 +1,857 @@
-# Contract conformance (audit of 2026-11-03, v1.1.0)
+# Contract conformance (re-audit at v1.2.0, closure in v1.2.1, 2026-11-03)
 
-Read-only audit of the implementation against every document in `docs/contract/`, clause by
-clause, by four parallel reviewers. Statuses: CONFORMS; DEVIATES (defect); DEVIATES
-(intentional, documented: a prototype collapse, a 1.0 revision such as D22, or a decision the
-doc predates); NOT IMPLEMENTED (deferred, documented); NOT IMPLEMENTED (undocumented gap: never
-built and not recorded as deferred).
+Clause-by-clause audit of the implementation against every document in `docs/contract/`, by
+four independent reviewers (one per document group), each row re-read against the current code
+and the current doc text; then every defect and undocumented gap was closed in 1.2.1 (code,
+tests or a doc revision with a History line) and its row rewritten with the new evidence.
+Statuses: CONFORMS; DEVIATES (defect); DEVIATES (intentional, documented); NOT IMPLEMENTED
+(deferred, documented); NOT IMPLEMENTED (undocumented gap). "Documented" means the contract doc
+itself, `docs/prototype-b/STATUS.md`, README.md or ARCHITECTURE.md says so.
 
-| Status | Clauses |
+History: the v1.1.0 audit found 532 clauses (374 conform, 23 defects, 34 undocumented gaps); the
+1.2 batch implemented the list; this re-audit counts 592 rows (the revised docs added
+clauses) and closes the rest.
+
+| Status | Rows |
 |---|---|
-| CONFORMS | 374 |
-| DEVIATES (intentional, documented) | 65 |
-| NOT IMPLEMENTED (deferred, documented) | 36 |
-| DEVIATES (defect) | 23 |
-| NOT IMPLEMENTED (undocumented gap) | 34 |
-| Total | 532 |
+| CONFORMS | 501 |
+| DEVIATES (defect) | 0 |
+| DEVIATES (intentional, documented) | 53 |
+| NOT IMPLEMENTED (deferred, documented) | 38 |
+| NOT IMPLEMENTED (undocumented gap) | 0 |
+| Total | 592 |
 
-## Defects (DEVIATES)
+## Still open as a defect or undocumented gap
 
-| Clause | Evidence |
-|---|---|
-| 0.4 keep v1 metric keys, add correctly named metrics (`movedFiles`, `inventoryItems`, `collectedFromInventory`) | `viwo/contracts/pipeline.py:143-152` (`to_legacy_dict`) |
-| 1.2 Windows known dirs: ProgramFiles, ProgramFiles(x86), scoop `apps/*/current`, chocolatey `lib/*/tools`, LOCALAPPDATA\Programs | `viwo/os/windows.py:73-77` |
-| 1.2 Linux known dirs: /usr/bin, /usr/local/bin, /opt/*, ~/.local/bin, flatpak exports | `viwo/os/linux.py:62` |
-| 1.7 `locate()` never installs; checked with a recording fake installer | no installer object exists, so no such test; `tests/test_os_layer.py:58` only checks order |
-| 2.1 `plugin_id` slug `[a-z][a-z0-9_-]{1,31}`, unique | `viwo/core/wiring/registry.py:105` (drop-ins: no 32-char cap), built-ins not validated at all (`:63-71`) |
-| 2.1 `PluginOption { key, label, type, default, choices, help }`, types string/secret/bool/int/float/choice/path | `viwo/contracts/plugin.py:21-27` |
-| 2.2 `verify(ctx, inventory, export, collected) -> VerifyReport` | `viwo/contracts/plugin.py:149-151` (`verify(ctx, collected) -> warnings`) |
-| 2.5 slot lookup: longest suffix first, then magic | `viwo/core/pipeline/identify.py:21-33` |
-| 2.6 kind `runtime`; `executables` per OS; `packages` map | `viwo/contracts/types.py:77,80` |
-| 2.9 slug/contract/engine_type/detect capability checks | no manifest validation for built-ins (`registry.py:63-71`) |
-| 2.9 `detect()` never raises on fixtures, same result twice, ids match manifest | `tests/test_mixed.py:62` runs every plugin on every fixture (no raise, ids match); no idempotence assertion |
-| 2.9 sandbox check: no change outside `staging/<plugin>` after `export()` | game-folder hashes only (`tests/test_formats.py:148`, `tests/test_capture.py:79-89`) |
-| 8.4 unarchive.pak repak / quickbms spare | `viwo/plugins/unreal/__init__.py:40-46` (`unarchive.upak`, no spare) |
-| 9.1 only one level of `base =` | `viwo/core/wiring/ini.py:13,116` (`MAX_LAYERS = 4`, so three `base` hops are accepted) |
-| 9.1 effective configuration with the source of every value, logged and in `/api/distro` | `viwo/core/wiring/ini.py:151` (`source` = file chain only), `viwo/api/routes.py:29-31` |
-| 9.2 `[startup] contract` | `ini.py:12` (`STARTUP_KEYS` lacks `contract`), `:128-132` |
-| 9.4 unknown plugin/slot/backend id → error for that entry, default used instead | `binder.py:13-17,33-37`, `registry.py:188-191`, `binder.py:46` |
-| 12.3 `JobHandle {id, kind, state, created, started, finished}` | `jobs.py:34-43` summary has `started`, `elapsed`, no `created`/`finished` fields |
-| 12.3 run record: JobSpec, effective ini, slot bindings, tool versions, result → `.extraction_metadata/runs/<job>.json` | `runner.py:246-266` writes request, bindings, result, viwo version; capture record `capture/__init__.py:141` |
-| 14.6 mitigations: pinned versions, spares, `viwo slots --check` | pins in `tools.json`; spares; no `--check` |
-| 18.3 RESOLVE: reject edits whose format differs from the original member | `roundtrip.py:49-72` no format check; `plugins/unity/pack.py:2` converts PNG → Texture2D (declared converter) |
-| 18.3 VERIFY: every untouched member keeps its original hash | `roundtrip.py:167-171` checks edited members only |
-| L5 real-tool smoke: nightly on tool images; locally when present | CI real-tools job now runs `viwo install --all` but `tests/test_l5_tools.py:70-129` still locates tools through `VIWO_<ID>` env vars that nothing exports, so those tests `skipTest` on CI; only unrpa/UnityPy/7z-on-PATH/Freedoom actually run. No nightly schedule (owner's cost rule) |
+None.
 
-## Undocumented gaps (never built, not recorded as deferred)
+## Not covered by this pass
 
-- OS: `display_name`
-- 1.5 `long_path(path)` (`\\?\` prefix)
-- 2.1 manifest: `description`, `capabilities`, `dependencies`, `OS layers`
-- 2.2 `inventory(ctx)`
-- 2.3 ExtractionContext `probe`
-- 2.8 conformance checks against an empty probe at load
-- 2.9 option keys and dependency ids unique
-- 8.3 MediaProbe slot
-- 8.4 export.godot gdre-tools --recover / godotdec
-- 8.4 media.probe ffprobe / pillow; image.convert pillow / imagemagick
-- 8.4 `network` and `parses_untrusted_in_process` declarations
-- 9.4 `contract` major mismatch → exit 2
-- 3.5 new keys `contractVersion`, `manifestsPath`; `plugins[]` fields `exportedByKind`, `exportedByTool`, `inventoryCount`, `verifyPassed`
-- 3.6 Property tests with random confidences
-- 5.2 `SanitizerRule` / `BatchRule` provider objects from core and plugins (`sanitizer_rules()`), `applies_to` / `inspect` / `fix`
-- 11.1 precondition: anti-cheat service running (OS layer, best effort)
-- 11.6 every backend declares its network use; offline flags on by default
-- 12.4 `unpack --slot/--backend`
-- 12.4 `slots --check` (backend self-tests)
-- 12.5 `POST /api/jobs` generic submit
-- 14.2 #3 wrapper plugins + one re-detection after unpacking an outer wrapper
-- 14.2 #5 every backend declares network use; offline default
-- 18.2 edit set: files the user adds with a target path ("added")
-- D12 CATALOG → SELECT optional stage (Prototype B)
-- 13.3 wrapper plugins: rerun detection after unwrapping
-- 15.5 exceptions section, max 3, expiry milestone, CI fails after expiry
-- doc 17 L0: ini schema validation of `loc_caps.ini`
-- 16.0b ladder rung 4: zstd/LZ4 stream scan when modules present
-- 16.4 risks: `viwo slots --check`
-- L0 import-direction lint
-- L0 every GPL/AGPL backend declares `isolation=subprocess`
-- L0 every backend declares its network use
-- L0 ini schema validation of `loc_caps.ini`
-- 17.5 coverage floors (90/80/75 %)
+Docs 06 (analysis hook), 11 (runtime capture) and 18 (round trip) were rewritten by the
+capabilities respec (three arms: static, dynamic, authoring) in the same commit as this
+closure; their sections below audit the v1.2.0 text. The next audit re-reads them against
+the new text.
 
 ---
 
-# Conformance audit A: docs 00, 01, 02, 08, 09, 10 vs the implementation (v1.1.0, 2026-11-03)
+# Conformance audit A (re-run): contract docs 00, 01, 02, 08, 09, 10 vs implementation (v1.2.0, contract 1.1, 2026-11-03)
 
-Read-only. Status vocabulary: CONFORMS · DEVIATES (defect) · DEVIATES (intentional, documented) ·
-NOT IMPLEMENTED (deferred, documented) · NOT IMPLEMENTED (undocumented gap). "Documented" means
-a prototype-scope note, revision note (D22, 1.0) or decision in the contract docs, STATUS,
-ARCHITECTURE or startup.ini; a comment in code alone does not count.
+Scope note: `git diff v1.1.0..HEAD -- docs/contract/` shows that none of these six documents changed in the 1.2 batch (only 03-07, 13, 15-17 and README were revised). "Documented" below therefore comes from the clause text itself, `docs/contract/README.md` (History lines, decisions), `docs/contract/16-roadmap.md`, `docs/prototype-b/STATUS.md`, `README.md` or `ARCHITECTURE.md`. Every CONFORMS row names code opened at the current tree; test names exist in the current suite.
 
 ## 00 Glossary and semantic model
 
 | Clause | Status | Evidence | Note |
 |---|---|---|---|
-| 0.1 "engine" never used alone; game engine vs backend | CONFORMS | `viwo/contracts/slots.py:53` (`Backend`), `viwo/contracts/plugin.py:110` (`EnginePlugin`) | API field `engineType`/`extractorType` kept as v1 compatibility |
-| 0.1 extractor → engine plugin; extract/unpack/export split | CONFORMS | `viwo/core/pipeline/unpack.py:1`, `viwo/contracts/slots.py:71,81` | stages named prepare/detect/unpack/export/carve/collect/decode/verify/report |
-| 0.1 phase/slice → stage | CONFORMS | `viwo/contracts/types.py:12` (`ProgressEvent.stage`) | |
-| 0.1 detect vs scan | CONFORMS | `viwo/core/pipeline/runner.py:71` (detect), survey "Scanning files" | |
-| 0.1 three trash layouts `.trash/groups|items|merger` | CONFORMS | `viwo/core/curation/trash.py` (`migrate`), `tests/test_curation.py` | checked by name only; doc 4 is outside this audit |
-| 0.1 "v1" = old app, contract written "contract 1.0" | CONFORMS | `viwo/__init__.py:4` `CONTRACT_VERSION = "1.0"`, `/api/distro` `contract` | |
-| 0.1 manifest → report / plugin manifest / startup ini / tool lock | CONFORMS | `viwo/contracts/plugin.py:31` (`PluginManifest`), `viwo/data/tools.json` (tool lock) | |
-| 0.1 assets dir → workspace | CONFORMS | `viwo/core/workspace.py`, `/api/workspace` | legacy `assetPath` kept in `/api/extract` (compat, documented in doc 4 mapping) |
-| 0.1 session = UI session, explicit stores for persisted state | CONFORMS | `viwo/api/app.py:21-30` (memory), `viwo/core/surveys.py` (explicit store) | |
-| 0.1 generic = plugin id; "undetected" outcome | CONFORMS | `viwo/plugins/generic/__init__.py:8`, `viwo/core/pipeline/select.py:46` | |
-| 0.2 OS layer: package `viwo.os`, only place for OS code | CONFORMS | `viwo/os/__init__.py:1`, `viwo/os/windows.py`, `viwo/os/linux.py` | `subprocess`/`os.startfile` only there and in the installer (`thirdparty.py:211` msiexec, Windows-only branch) |
-| 0.2 profile, distro = OS + profile in an ini | CONFORMS | `viwo/core/wiring/distros.py:27-28` (`OSES`, `PROFILES`), `distros/*.ini` | |
-| 0.2 extraction run as a job; run record in `.extraction_metadata/runs/` | CONFORMS | `viwo/core/jobs.py`, `viwo/core/pipeline/runner.py:245-265` | |
-| 0.2 feature switches (extraction, sorting, merger, sanitizer, analysis, capture) | DEVIATES (intentional, documented) | `viwo/core/wiring/ini.py:21`, `startup.ini` | features are extraction, sorting, merger, capture; sanitizer rides on sorting, analysis deferred (roadmap M13+) |
-| 0.2 slot / backend / main / spare / tool / dependency | CONFORMS | `viwo/contracts/slots.py:42,53,124`, `viwo/contracts/types.py:72` | |
-| 0.2 vendored tool = sparse submodule | DEVIATES (intentional, documented) | doc 10 sequencing note; `viwo/core/thirdparty.py:1-8` | pinned release binaries under `third_party/` instead (doc 10.4 option b) |
-| 0.2 game folder never modified; COLLECT copies | CONFORMS | `viwo/core/pipeline/collect.py`, `tests/test_pipeline.py:36`, `tree_hashes(game)` in 7 test modules | |
-| 0.2 workspace marker `.viwo-workspace` | CONFORMS | `viwo/core/workspace.py`, `tests/test_core_units.py:151` | |
-| 0.2 staging / scratch / workspace / group / container / inventory | CONFORMS (inventory absent) | `viwo/contracts/plugin.py:76-79` | `inventory` is not a concept in code (see 02 hooks) |
-| 0.2 round-trip terms (provenance map, edit set, patched copy, pack) | CONFORMS | `viwo/core/roundtrip.py`, `viwo/core/provenance.py`, `viwo/contracts/slots.py:105` | |
-| 0.2 curation / sanitizer / merger terms | CONFORMS | `viwo/core/sanitizer.py` (rule, recipe, finding, plan, apply, journal), `viwo/core/merger/` | |
-| 0.2 analysis target / analyzer | NOT IMPLEMENTED (deferred, documented) | roadmap doc 16 M13+ | |
-| 0.4 keep v1 metric keys, add correctly named metrics (`movedFiles`, `inventoryItems`, `collectedFromInventory`) | DEVIATES (defect) | `viwo/contracts/pipeline.py:143-152` (`to_legacy_dict`) | v1 keys kept and files are now copied (so `copiedFiles` is true); the proposed extra metrics do not exist and the Unity quality-gate keys were dropped rather than renamed. Doc or code should state the final metric set |
-| 0.5 questions | n/a | decided in `docs/contract/README.md` (D0 etc.) | |
+| 0.1 assets dir → workspace | CONFORMS | `viwo/contracts/pipeline.py:61-62,153` (`workspace` field and key), `viwo/core/workspace.py` | legacy `assetPath` kept for `/api/extract` compatibility (doc 4) |
+| 0.1 session = UI session (memory only); persisted state has an explicit store | CONFORMS | `viwo/api/app.py:37` (`reload`, in-memory app), `viwo/core/records.py:12-35` and `viwo/core/pipeline/runner.py:257-282` (run records as the explicit store) | |
+| 0.1 generic = plugin id; "no engine" = undetected outcome | CONFORMS | `viwo/plugins/generic/__init__.py:8`, `viwo/core/pipeline/select.py:46-49` | generic is chosen when no other plugin scores above 0 |
+| 0.1 copied = moved; v1 key names stay, meaning documented | CONFORMS | `viwo/contracts/pipeline.py:144,155` | `copiedFiles` now counts real copies (nothing is moved out of the game); `movedFiles` is fixed at 0 |
+| 0.2 OS layer: package `viwo.os`, the only place for OS code | CONFORMS | `viwo/os/__init__.py:14-30`, `viwo/os/_shared.py:9,37-48` | one recorded exception: `viwo/core/thirdparty.py:211` (msiexec), listed in contract README principle 3 |
+| 0.2 profile; distro = OS + profile in an ini | CONFORMS | `viwo/core/wiring/distros.py:27-31`, `distros/*.ini` (12 files) | |
+| 0.2 extraction run as a job; run record in `.extraction_metadata/runs/` | CONFORMS | `viwo/core/pipeline/runner.py:257-282`, `viwo/core/records.py:12-35`, `viwo/cli.py:116-118` (`JobRunner`) | |
+| 0.2 feature switches (extraction, sorting, merger, sanitizer, analysis, capture) | DEVIATES (intentional, documented) | `viwo/core/wiring/ini.py:23`, `startup.ini:9` | features are extraction, sorting, merger, capture; the sanitizer rides on sorting; analysis is open (doc 16 M13+) |
+| 0.2 slot / backend / main / spare / tool / dependency | CONFORMS | `viwo/contracts/slots.py:41-50,53-71,160-171`, `viwo/contracts/types.py:72-94` | |
+| 0.2 vendored tool = sparse submodule | DEVIATES (intentional, documented) | `viwo/core/thirdparty.py:1-8`, contract README goal 6 History ("the lock file plus installer replaced them") | pinned release binaries under `third_party/` |
+| 0.2 game folder never modified; COLLECT copies | CONFORMS | `viwo/core/pipeline/runner.py:99,132,146-148` (`refuse_writes_inside`, before/after snapshot), `viwo/contracts/plugin.py:153-155`, `tests/test_conformance_kit.py` `test_export_writes_only_inside_staging_and_scratch` | |
+| 0.2 workspace marker `.viwo-workspace` | CONFORMS | `viwo/contracts/workspace.py:8`, `tests/test_core_units.py` `test_ownership_and_policies` | |
+| 0.2 staging / scratch / workspace / group / container / inventory | CONFORMS | `viwo/contracts/plugin.py:98-109,172-175` | `inventory` is now a plugin hook (2.2) |
+| 0.2 round-trip terms (provenance map, edit set, patched copy, pack) | CONFORMS | `viwo/contracts/slots.py:142-157` (`Packer`), `viwo/core/roundtrip.py:125` (patched-copy context), `viwo/core/pipeline/runner.py:260-261` (provenance file) | |
+| 0.2 curation / sanitizer / merger terms | CONFORMS | `viwo/core/sanitizer.py:5,22,63`, `viwo/core/sanitizer_rules.py:183-186`, `viwo/core/merger/ffmpeg.py:40-49` (`Timeline`) | |
+| 0.2 analysis target / analyzer | NOT IMPLEMENTED (deferred, documented) | doc 16 M13+ ("open: analysis backends"), `README.md:66-68` ("next rungs") | |
+| 0.4 keep v1 metric keys and add `movedFiles`, `inventoryItems`, `collectedFromInventory` | CONFORMS | `viwo/core/pipeline/checks.py:22` (`verify_one`: `inventory()` + `verify_report()` feed `inventory_items`/`inventory_found`), `viwo/contracts/pipeline.py:155-157` | a plugin without an inventory reports 0 (no completeness claim, doc 0.4); a plugin that overrides the 1.0 `verify()` keeps that path |
+| 0.4 a completeness claim holds only when inventory counts the same kind of item as collection | CONFORMS | `viwo/contracts/plugin.py:55-62,172-175` (0 = no claim), `viwo/contracts/legacy.py:16` | no plugin claims completeness today |
+| 0.5 questions (OS name, backend/main/spare, trash split, metric names) | CONFORMS | contract README D0 (OS, backend/main/spare, three trash layouts), `viwo/contracts/pipeline.py:141-157` (v1 keys frozen, new keys beside them) | all four answered |
 
-Verdict: the vocabulary of the glossary is the vocabulary of the code; every structural term maps to one type or module.
-Open: the 0.4 metric proposal was never closed (extra metric names absent), and "feature" switches differ from the list by design.
+Verdict: the glossary vocabulary is the code vocabulary; the only open point is that the new inventory metrics exist as keys but are never fed.
+Open: 0.2 feature switches (extraction, sorting, merger, sanitizer, analysis,  (intentional) · 0.2 vendored tool = sparse submodule (intentional) · 0.2 analysis target / analyzer (deferred).
 
 ## 01 OS contract
 
 | Clause | Status | Evidence | Note |
 |---|---|---|---|
-| OS: os_id, is_supported_host, process, tools, shell, fs | CONFORMS | `viwo/contracts/os.py:82-104`, `viwo/os/windows.py:80-108`, `viwo/os/linux.py:54-84` | |
-| OS: `display_name` | NOT IMPLEMENTED (undocumented gap) | `viwo/contracts/os.py:85` | trivial; UI prints `os_id` upper-cased |
-| OS: `installer : PackageInstaller` | NOT IMPLEMENTED (deferred, documented) | doc 1.3 prototype-scope note; `viwo/contracts/os.py:3-4` | replaced by the pinned installer (`viwo/core/thirdparty.py`), see doc 10 |
-| 1.1 `max_command_length`, `python_executable`, `run(argv, cwd, env, timeout, cancel)` | CONFORMS | `viwo/contracts/os.py:16-38`, `viwo/os/_shared.py:21-63` | `on_line` added (streamed output), documented in the contract docstring |
-| 1.1 `ProcessResult { returncode, stdout, stderr, timed_out, ok }` | CONFORMS | `viwo/contracts/types.py:96-105` | |
-| 1.1 UTF-8 with errors=replace | CONFORMS | `viwo/os/_shared.py:44-45` | |
-| 1.1 never raises on non-zero exit; FileNotFoundError only when it cannot start | CONFORMS | `viwo/os/_shared.py:49-63` (Popen raises, nothing else does), `tests/test_os_layer.py:81` | |
-| 1.1 timeout/cancel kills the whole tree (taskkill /T on Windows, process group on Linux) | CONFORMS | `viwo/os/windows.py:20-27,84`, `viwo/os/linux.py:17-21,60`, `tests/test_os_layer.py:87,97,119` | |
-| 1.1 `max_command_length` 32767 on Windows, ARG_MAX-derived on Linux; merger switches to file args | CONFORMS | `viwo/os/windows.py:85`, `viwo/os/linux.py:58-60`, `viwo/core/merger/build.py` (`-filter_complex_script`) | Linux uses ARG_MAX/2 with a 4096 floor |
-| 1.2 `locate(spec)` side-effect free, `known_install_dirs(spec)` | CONFORMS | `viwo/os/_shared.py:99-154` | |
-| 1.2 `status(spec, owner) -> DependencyStatus` | DEVIATES (intentional, documented) | `viwo/core/wiring/boot.py:44-65` (`dependency_report`) | status lives on the Runtime, not the locator; doc 4.2 shape |
-| 1.2 `ToolLocation { dep_id, path, argv_prefix, source }` with the five sources | CONFORMS | `viwo/contracts/types.py:86-93` | |
-| 1.2 argv_prefix examples (`python -m x`, `cmd /c x.bat`) | CONFORMS | `viwo/os/_shared.py:140`, `viwo/os/windows.py:30-33` | plus argv tuples for dotnet/qrenderdoc overrides (`_shared.py:130-132`) |
-| 1.2 search order: ini `[tools]` → env var → PATH (names + .exe/.bat/.cmd) → known dirs | CONFORMS | `viwo/os/_shared.py:125-154`, `tests/test_os_layer.py:58` | a python-module step sits between env and PATH for `kind="python"` (documented in `contracts/os.py:44-45`); `third_party/` tools enter as config overrides (`boot.py:85`), i.e. before PATH |
-| 1.2 Windows known dirs: ProgramFiles, ProgramFiles(x86), scoop `apps/*/current`, chocolatey `lib/*/tools`, LOCALAPPDATA\Programs | DEVIATES (defect) | `viwo/os/windows.py:73-77` | uses `scoop/shims` and `chocolatey/bin` (the shim folders, which is what PATH-less installs actually expose) and `LOCALAPPDATA` + `ProgramData` roots; doc should be updated to the shim folders or code extended |
-| 1.2 Linux known dirs: /usr/bin, /usr/local/bin, /opt/*, ~/.local/bin, flatpak exports | DEVIATES (defect) | `viwo/os/linux.py:62` | `/opt/<install_dir>` only (no `/opt/*` glob), no flatpak exports |
-| 1.2 one locator for status and calls (fixes F4) | CONFORMS | `viwo/contracts/slots.py:63-68`, `viwo/backends/archives.py:98` | |
-| 1.3 PackageInstaller (pip → winget/choco/scoop; never elevates; only with auto_install) | NOT IMPLEMENTED (deferred, documented) | doc 1.3 note; replaced by `viwo/core/preflight.py:87-98` (pinned downloads, `auto_install` honoured at `:93`) | |
-| 1.4 `open_folder`, `pick_folder`, `pick_file`; None on headless | CONFORMS | `viwo/contracts/os.py:67-79`, `viwo/os/_shared.py:174-207` | |
+| OS: os_id, is_supported_host, process, tools, shell, fs | CONFORMS | `viwo/contracts/os.py:87-110`, `viwo/os/windows.py:104-133`, `viwo/os/linux.py:68-100` | |
+| OS: `display_name` | CONFORMS | `viwo/contracts/os.py:91`, `viwo/os/windows.py:106`, `viwo/os/linux.py:70`, `viwo/core/wiring/boot.py:70` (`osName`) | |
+| OS: `installer : PackageInstaller` | NOT IMPLEMENTED (deferred, documented) | doc 1.3 note; `viwo/contracts/os.py:3-4` ("not an OS-layer concern"); replaced by `viwo/core/thirdparty.py` (contract README goal 6) | |
+| 1.1 `max_command_length`, `python_executable`, `run(argv, cwd, env, timeout, cancel)` | CONFORMS | `viwo/contracts/os.py:16-38`, `viwo/os/_shared.py:22-64` | `on_line` streaming added, documented in the contract docstring |
+| 1.1 `ProcessResult { returncode, stdout, stderr, timed_out, ok }` | CONFORMS | `viwo/contracts/types.py:107-116` | |
+| 1.1 UTF-8 with errors=replace | CONFORMS | `viwo/os/_shared.py:44-46` | |
+| 1.1 never raises on non-zero exit; FileNotFoundError only when it cannot start | CONFORMS | `viwo/os/_shared.py:50-64` (only `Popen` raises), `tests/test_os_layer.py` `test_run_and_exit_code` | |
+| 1.1 timeout/cancel kills the whole tree (taskkill /T, process group) | CONFORMS | `viwo/os/windows.py:20-27,109-110`, `viwo/os/linux.py:17-21,74-76`, `test_timeout_kills_tree`, `test_cancel`, `test_streaming_respects_cancel` | |
+| 1.1 `max_command_length` 32767 / ARG_MAX-derived; merger switches to file args | CONFORMS | `viwo/os/windows.py:110`, `viwo/os/linux.py:73-75` (ARG_MAX/2, floor 4096), `viwo/core/merger/build.py:158-164` (`-filter_complex_script`) | |
+| 1.2 `locate(spec)` side-effect free, `known_install_dirs(spec)` | CONFORMS | `viwo/os/_shared.py:127-168`, `tests/test_conformance_kit.py` `test_locate_never_installs_or_writes` | |
+| 1.2 `status(spec, owner) -> DependencyStatus` | DEVIATES (intentional, documented) | `viwo/core/wiring/boot.py:44-65` (`dependency_report`) | status lives on the Runtime in the doc 4.2 item shape, not on the locator |
+| 1.2 `ToolLocation { dep_id, path, argv_prefix, source }` with the five sources | CONFORMS | `viwo/contracts/types.py:97-104` | |
+| 1.2 argv_prefix examples (`python -m x`, `cmd /c x.bat`) | CONFORMS | `viwo/os/_shared.py:153`, `viwo/os/windows.py:30-33`, `viwo/os/_shared.py:143-145` (argv-tuple overrides for dotnet/qrenderdoc) | |
+| 1.2 search order: ini `[tools]` → env var → PATH (+ .exe/.bat/.cmd) → known dirs | CONFORMS | `viwo/os/_shared.py:138-168`, `viwo/os/windows.py:111`, `tests/test_os_layer.py` `test_search_order` | a python-module step sits between env and PATH (`contracts/os.py:44-45`); `third_party/` tools enter as config overrides (`boot.py:99`); doc 1.2 says `[tools]` is keyed by backend id while doc 9 and the code key by dependency id |
+| 1.2 Windows known dirs: ProgramFiles, ProgramFiles(x86), scoop `apps/*/current`, chocolatey `lib/*/tools`, LOCALAPPDATA\Programs | CONFORMS | `viwo/os/windows.py:85-101`, `viwo/os/_shared.py:117-125` (glob roots expanded) | superset: LOCALAPPDATA, ProgramData, scoop shims and choco bin are also searched |
+| 1.2 Linux known dirs: /usr/bin, /usr/local/bin, /opt/*, ~/.local/bin, flatpak exports | CONFORMS | `viwo/os/linux.py:54-65` | system and user flatpak exports |
+| 1.2 one locator for status and calls (fixes F4) | CONFORMS | `viwo/contracts/slots.py:66-71` (`available` → `locate`), `viwo/core/decode.py:73`, `viwo/core/wiring/boot.py:49` | |
+| 1.3 PackageInstaller (pip → winget/choco/scoop; never elevates; only with auto_install) | NOT IMPLEMENTED (deferred, documented) | doc 1.3 note; `viwo/core/preflight.py:87-98` (pinned downloads, `auto_install` honoured at `:93`) | |
+| 1.4 `open_folder`, `pick_folder`, `pick_file`; None on headless | CONFORMS | `viwo/contracts/os.py:72-84`, `viwo/os/_shared.py:180-221` | |
 | 1.4 Linux fallback tkinter → zenity → kdialog | NOT IMPLEMENTED (deferred, documented) | doc 1.4 prototype note; `viwo/os/linux.py:47-51` | |
 | 1.5 `case_sensitive`, `path_key`, `sanitize_filename`, `is_valid_filename` | CONFORMS | `viwo/os/windows.py:36-53`, `viwo/os/linux.py:24-38` | |
-| 1.5 `long_path(path)` (`\\?\` prefix) | NOT IMPLEMENTED (undocumented gap) | `viwo/contracts/os.py:51-64` | no caller needs it yet; deep workspaces on Windows could |
-| 1.5 Windows rules (forbidden chars, trailing dot/space, reserved names, 255) | CONFORMS | `viwo/os/windows.py:16-17,44-53`, `tests/test_os_layer.py:46` | |
+| 1.5 `long_path(path)` (`\\?\` prefix) | CONFORMS | `viwo/contracts/os.py:66-69`, `viwo/os/windows.py:55-62,82` | no core caller and no test yet |
+| 1.5 Windows rules (forbidden chars, trailing dot/space, reserved names, 255) | CONFORMS | `viwo/os/windows.py:16-17,44-53`, `tests/test_os_layer.py` `test_windows_rules` | |
 | 1.5 Linux rules (no `/`, NUL, `.`, `..`) | CONFORMS | `viwo/os/linux.py:32-38` | |
-| 1.5 one rule replaces Unity `_safe_name`, sort rename check, merger output name | CONFORMS | `viwo/core/curation/sorting.py` (rename uses `fs.is_valid_filename`), `viwo/core/merger/build.py` (`output_name`) | |
-| 1.6 case-insensitive engine markers through the probe | CONFORMS | `viwo/core/pipeline/probe.py:19-20,31-32` | |
-| 1.6 executable suffix handling / open folder per OS | CONFORMS | `viwo/os/windows.py:86`, `viwo/os/linux.py:63,45` | |
+| 1.5 one rule replaces Unity `_safe_name`, sort rename check, merger output name | CONFORMS | `viwo/core/curation/sorting.py` (`fs.is_valid_filename`), `viwo/cli_extra.py` (`fs.sanitize_filename`), `viwo/core/merger/build.py:68` (`output_name(raw, fs)` through `fs.sanitize_filename`); `tests/test_merger.py::ProbeSlotTests` | the merger's private regex is gone (1.2.1) |
+| 1.6 case-insensitive engine markers through the probe | CONFORMS | `viwo/core/pipeline/probe.py:19-20,31-32,36-41` | |
+| 1.6 executable suffix handling / open folder per OS | CONFORMS | `viwo/os/windows.py:66-73,111`, `viwo/os/linux.py:42-45,78` | |
+| 1.6 installers column (pip, winget, choco, scoop / pip + hints) | NOT IMPLEMENTED (deferred, documented) | as 1.3; `viwo/core/thirdparty.py:225-262` installs pins instead | |
 | 1.7 `max_command_length > 0` | CONFORMS | `tests/test_os_layer.py:85` | |
-| 1.7 sanitize set (empty, `.`, `..`, CON, nul.txt, a/b, a\b, x:y, trailing dot/space, control, NUL, Unicode, 300 chars) | CONFORMS | `tests/test_os_layer.py:20-45` (`NASTY`, both policies) | |
-| 1.7 `path_key` stable and case-folded on Windows | CONFORMS | `tests/test_os_layer.py:46-56` | |
-| 1.7 `locate()` never installs; checked with a recording fake installer | DEVIATES (defect) | no installer object exists, so no such test; `tests/test_os_layer.py:58` only checks order | property holds by construction (`_shared.py:125-154` performs no writes); the conformance test is missing |
+| 1.7 sanitize set (empty, `.`, `..`, CON, nul.txt, a/b, a\b, x:y, trailing, control, NUL, Unicode, 300) | CONFORMS | `tests/test_os_layer.py:18-44` (`NASTY`, both policies) | |
+| 1.7 `path_key` stable and case-folded on Windows | CONFORMS | `tests/test_os_layer.py:46-55` | |
+| 1.7 `locate()` never installs; checked with a recording fake | CONFORMS | `tests/test_conformance_kit.py:134-159` `test_locate_never_installs_or_writes` (spied `open`, `makedirs`, `copy2`, `urlopen`) | |
 
-Verdict: the OS layer matches the contract in shape and behaviour; the installer and dialog fallbacks are documented deferrals.
-Open: known-dir lists differ from the doc on both OSes, `long_path`/`display_name` are missing, and the "locate never installs" conformance test does not exist.
+Verdict: the OS layer now matches doc 1 in shape, search order, known dirs, `long_path` and `display_name`, with the conformance test the previous audit found missing; the installer and dialog fallbacks remain documented deferrals.
+Open: OS: `installer : PackageInstaller` (deferred) · 1.2 `status(spec, owner) -> DependencyStatus` (intentional) · 1.3 PackageInstaller (pip → winget/choco/scoop; never elevates; only wit (deferred) · 1.4 Linux fallback tkinter → zenity → kdialog (deferred) · 1.6 installers column (pip, winget, choco, scoop / pip + hints) (deferred).
 
 ## 02 Engine plugin contract
 
 | Clause | Status | Evidence | Note |
 |---|---|---|---|
-| 2.1 manifest: `plugin_id`, `name`, `version`, `engine_type`, `contract`, `priority`, `options`, `builtin` | CONFORMS | `viwo/contracts/plugin.py:30-40` | |
-| 2.1 manifest: `description`, `capabilities`, `dependencies`, `OS layers` | NOT IMPLEMENTED (undocumented gap) | `viwo/contracts/plugin.py:30-40` | capabilities are implied by slots/backends; dependencies are declared on backends (2.6 allows that); no OS-layer restriction per plugin |
-| 2.1 `plugin_id` slug `[a-z][a-z0-9_-]{1,31}`, unique | DEVIATES (defect) | `viwo/core/wiring/registry.py:105` (drop-ins: no 32-char cap), built-ins not validated at all (`:63-71`) | uniqueness is enforced by the dict (`:71,179`) |
-| 2.1 `PluginOption { key, label, type, default, choices, help }`, types string/secret/bool/int/float/choice/path | DEVIATES (defect) | `viwo/contracts/plugin.py:21-27` | no `help`, no `float`; harmless, doc or code to align |
-| 2.1 secrets never logged nor written to manifests | CONFORMS | `viwo/core/pipeline/runner.py` (`SECRET` placeholder in run records), `viwo/contracts/plugin.py:92-105` (`mask`), `tests/test_godot.py` (record stores `<secret>`) | |
-| 2.2 `detect(probe)` required; `manifest` required | CONFORMS | `viwo/contracts/plugin.py:114-119` | |
-| 2.2 `slot_definitions()`, `backends()` default empty | CONFORMS | `viwo/contracts/plugin.py:124-128` | |
-| 2.2 `source_roots(game_root, probe)` default `[game_root]`; `skip_dirs()` | CONFORMS | `viwo/contracts/plugin.py:130-135` | Ren'Py returns `<game>/game` (doc 2.7) |
-| 2.2 `inventory(ctx)` | NOT IMPLEMENTED (undocumented gap) | `viwo/contracts/plugin.py` (no hook) | doc 0.4 ties completeness claims to inventory; none are made, so no wrong claim results |
-| 2.2 `export(ctx) -> ExportReport` on the plugin | DEVIATES (intentional, documented) | `viwo/contracts/plugin.py:145-147` (`export_slot`), doc 8.5 (EXPORT goes through `export.<plugin>` slots) | plugin names its export slot; the Exporter backend does the work |
-| 2.2 `verify(ctx, inventory, export, collected) -> VerifyReport` | DEVIATES (defect) | `viwo/contracts/plugin.py:149-151` (`verify(ctx, collected) -> warnings`) | simplified signature; doc to align |
-| 2.2 `sanitizer_rules()`, `analysis_targets()` | NOT IMPLEMENTED (deferred, documented) | doc 5 sanitizer phase 1 is core-owned (STATUS M10); analysis M13+ | |
-| 2.2 extra hooks not in doc: `configure`, `claimed_suffixes`, `pack_slot`, `cli_commands`, `ui_module` | CONFORMS (extensions) | `viwo/contracts/plugin.py:121,137,141,153,157` | `configure` is doc 9 `[options.*]`; add-ons documented in `docs/plugins.md` |
-| 2.2 detect fast and pure; same result twice | CONFORMS (by construction, untested) | `viwo/plugins/*/__init__.py` detect bodies only read the probe (e.g. `renpy/__init__.py:40-43`, `unreal/__init__.py:63-71`) | no "called twice" test (see 2.9) |
-| 2.2 export writes only into staging/scratch; nothing deleted outside staging | CONFORMS | `viwo/contracts/slots.py:81-86`, game-folder hash checks in `tests/test_formats.py:148-151`, `tests/test_doom.py:148-163` | staging-only boundary is not asserted directly (see 2.9 sandbox) |
-| 2.2 exception in a hook → warning for that plugin, not a crash | CONFORMS | `viwo/core/pipeline/runner.py:71-74` (detect), `viwo/core/pipeline/failover.py:29-32` (backends) | |
-| 2.3 GameProbe: root, truncated, has_name, find, with_suffix, head, tail; bounded, one scan | CONFORMS | `viwo/contracts/plugin.py:55-69`, `viwo/core/pipeline/probe.py:11-57` (50k limit, `truncated`) | |
-| 2.3 ExtractionContext: request_id, game_root, staging, scratch, selected_exts, options, detection, OS, progress, cancel, log | CONFORMS | `viwo/contracts/plugin.py:72-90` | |
-| 2.3 ExtractionContext `probe` | NOT IMPLEMENTED (undocumented gap) | `viwo/contracts/plugin.py:72-86` | backends rebuild what they need from `game_root`; harmless |
+| 2.1 manifest: `plugin_id`, `name`, `version`, `engine_type`, `contract`, `priority`, `options`, `builtin` | CONFORMS | `viwo/contracts/plugin.py:33-51` | |
+| 2.1 manifest: `description`, `capabilities`, `dependencies`, `OS layers` | CONFORMS | `viwo/contracts/plugin.py:48-51`, `viwo/core/wiring/registry.py:72-75` (`os_layers` validated), `viwo/plugins/godot/__init__.py:35-37` | capability vocabulary in code is detect/unpack/export/pack/decode; most built-ins leave it empty; `dependencies` lists ids for people, backends carry the specs |
+| 2.1 `plugin_id` slug `[a-z][a-z0-9_-]{1,31}`, unique | CONFORMS | `viwo/core/wiring/registry.py:31,60-61,170-171,306-314`, `tests/test_conformance_kit.py` `test_every_builtin_passes_validate_plugin` | built-ins and drop-ins validated alike |
+| 2.1 `PluginOption { key, label, type, default, choices, help }`, types string/secret/bool/int/float/choice/path | CONFORMS | `viwo/contracts/plugin.py:20-30`, `viwo/core/wiring/registry.py:69-71` | the field is named `kind` |
+| 2.1 secrets never logged nor written to manifests | CONFORMS | `viwo/core/pipeline/runner.py:29,247-254` (`<secret>` in run records), `viwo/contracts/plugin.py:115-128` (mask in tool output), `viwo/core/wiring/ini.py:99-101` | |
+| 2.2 `detect(probe)` and `manifest` required | CONFORMS | `viwo/contracts/plugin.py:137-142` | |
+| 2.2 `slot_definitions()`, `backends()` default empty | CONFORMS | `viwo/contracts/plugin.py:147-151` | |
+| 2.2 `source_roots(game_root, probe)` default `[game_root]`; `skip_dirs()` | CONFORMS | `viwo/contracts/plugin.py:153-158`, `viwo/plugins/renpy/__init__.py:58-60` | |
+| 2.2 `inventory(ctx)` | CONFORMS | `viwo/contracts/plugin.py:172-175`, called from the `verify` shim at `:187` | the counts it yields are discarded (see 0.4) |
+| 2.2 `export(ctx) -> ExportReport` on the plugin | DEVIATES (intentional, documented) | `viwo/contracts/plugin.py:168-170` (`export_slot`), doc 8.5 (`export.<plugin_id>`), `viwo/core/pipeline/runner.py:209-229` | the plugin names its export slot; the Exporter backend does the work |
+| 2.2 `verify(ctx, inventory, export, collected) -> VerifyReport` | CONFORMS | `viwo/contracts/plugin.py:54-62,177-190` (`verify_report` with that signature, `verify` as the 1.0 shim), `viwo/plugins/unity/__init__.py:94-97` | the runner (`runner.py:238`) still calls the 2-arg shim |
+| 2.2 `sanitizer_rules()` | CONFORMS | `viwo/contracts/plugin.py:192-194`, `viwo/core/sanitizer_rules.py:183-186` | |
+| 2.2 `analysis_targets(probe)` | NOT IMPLEMENTED (deferred, documented) | doc 16 M13+ ("open: analysis backends") | |
+| 2.2 extra hooks (`configure`, `claimed_suffixes`, `pack_slot`, `cli_commands`, `ui_module`) | CONFORMS | `viwo/contracts/plugin.py:144,160,164,196,200` | extensions; add-ons documented in `docs/plugins.md` |
+| 2.2 detect fast and pure; same result twice | CONFORMS | `viwo/core/wiring/registry.py:76-81` (checked at load), `tests/test_conformance_kit.py` `test_detect_is_pure_on_empty_and_fixture_probes` | |
+| 2.2 export writes only into staging/scratch; nothing deleted outside staging | CONFORMS | `viwo/contracts/slots.py:103-104`, `tests/test_conformance_kit.py` `test_export_writes_only_inside_staging_and_scratch` | |
+| 2.2 exception in a hook → warning for that plugin, not a crash | CONFORMS | `viwo/core/pipeline/runner.py:76-81,240-242`, `viwo/core/pipeline/failover.py:29-32` | |
+| 2.3 GameProbe: root, truncated, has_name, find, with_suffix, head, tail; bounded, one scan | CONFORMS | `viwo/contracts/plugin.py:77-91`, `viwo/core/pipeline/probe.py:11-57` (50k limit, `truncated`) | |
+| 2.3 ExtractionContext: request_id, game_root, staging, scratch, selected_exts, options, detection, OS, progress, cancel, log | CONFORMS | `viwo/contracts/plugin.py:94-113` | |
+| 2.3 ExtractionContext `probe` | CONFORMS | `viwo/contracts/plugin.py:109`, `viwo/core/pipeline/runner.py:67` (`Run.probe` built once by DETECT, handed to every plugin context of the game root) | tool contexts (`unpack`, repack, capture) pass None, as the field comment says |
 | 2.4 DetectionResult { engine_type, confidence, evidence[], plugin_id } and legacy JSON | CONFORMS | `viwo/contracts/types.py:44-62` | range 0..1 enforced |
-| 2.4 confidence scale | CONFORMS | `viwo/plugins/renpy/__init__.py:40-43` (weighted hints), `unity/__init__.py:62-66`, `godot/__init__.py:42-47` (strong = magic ≥ 0.75) | generic fixed 0.4 (`generic/__init__.py`) |
-| 2.5 plugins introduce slots and ship backends; core owns zip/tar/7z/rar | CONFORMS | `viwo/backends/__init__.py:12-46`, `viwo/plugins/*/__init__.py` | |
-| 2.5 main/spare from ini with plugin defaults | CONFORMS | `viwo/core/wiring/binder.py:22-37` | |
-| 2.5 recursive loop: queue, seen-set, `archive_NNNNN_<uuid8>`, nested detection | CONFORMS | `viwo/core/pipeline/unpack.py:48-64` | |
-| 2.5 slot lookup: longest suffix first, then magic | DEVIATES (defect) | `viwo/core/pipeline/identify.py:21-33` | magic is consulted only for extension-less files (code comment: a `.docx` is a zip). Reasonable, but the contract says otherwise; doc to align |
-| 2.5 every unarchive backend prevents traversal | CONFORMS | `viwo/backends/archives.py:36-45,55-58`, `viwo/contracts/workspace.py` (`safe_member`), `tests/test_pipeline.py:36` | |
-| 2.5 ownership table (zip/tar/7z/rar core; rpa renpy; unitypackage unity; pck godot; pak/iostore unreal) | CONFORMS (ids differ) | `viwo/plugins/unreal/__init__.py:40-47` (`unarchive.upak`, `unarchive.utoc`) | slot ids `upak`/`utoc` instead of `pak`/`iostore`; `distros/*.ini` and the UI use the real ids |
-| 2.6 DependencySpec { dep_id, label, kind, requirement, import_name, executables, env_var, hint } | CONFORMS | `viwo/contracts/types.py:72-83` | |
-| 2.6 kind `runtime`; `executables` per OS; `packages` map | DEVIATES (defect) | `viwo/contracts/types.py:77,80` | flat executables tuple (OS adds suffixes, `types.py:73`), no `runtime` kind (the .NET runtime is a hidden tools.json entry instead), no package ids (installer is pinned downloads). Doc to align with the installer decision |
+| 2.4 confidence scale | CONFORMS | `viwo/plugins/renpy/__init__.py:39-46`, `unity/__init__.py:66-77`, `godot/__init__.py:70-80`, `unreal/__init__.py:62-75`, `generic/__init__.py:19-22` | |
+| 2.5 plugins introduce slots and ship backends; core owns zip/tar/7z/rar | CONFORMS | `viwo/backends/__init__.py:12-46`, `viwo/plugins/*/__init__.py` `slot_definitions` | |
+| 2.5 main/spare from ini with plugin defaults | CONFORMS | `viwo/core/wiring/binder.py:26-44` | |
+| 2.5 recursive loop: queue, seen-set, `archive_NNNNN_<uuid8>`, nested detection | CONFORMS | `viwo/core/pipeline/unpack.py:40-65` | |
+| 2.5 slot lookup: longest suffix first, then magic | CONFORMS | `viwo/core/pipeline/identify.py:13-32`, `tests/test_core_units.py` `test_suffix_magic_custom_and_carve` | custom identifiers (exe trailers) run before both |
+| 2.5 every unarchive backend prevents traversal | CONFORMS | `viwo/backends/archives.py:12,36-45,57`, `viwo/contracts/slots.py:95-96` | |
+| 2.5 ownership table (zip/tar/7z/rar core; rpa renpy; unitypackage unity; pck godot; pak/iostore unreal) | DEVIATES (intentional, documented) | `viwo/plugins/unreal/__init__.py:39-48` (`unarchive.upak`, `unarchive.utoc`), doc 16 M7 note names `unarchive.upak` | ids `upak`/`utoc` instead of `pak`/`iostore` (".pak is used by many engines"); docs 2.5 and 8.4 tables not updated |
+| 2.6 DependencySpec { dep_id, label, kind, requirement, import_name, executables, env_var, hint } | CONFORMS | `viwo/contracts/types.py:71-94` | |
+| 2.6 kind `runtime`; `executables` per OS; `packages` map | CONFORMS | `viwo/contracts/types.py:79,82,86-94`, `viwo/core/decode.py:38-47` (per-OS executables) | `packages` is informational (pins install) |
 | 2.6 `/api/dependencies` combines all, `category` = owner | CONFORMS | `viwo/core/wiring/boot.py:44-65` | |
-| 2.7 generic: always 0.4 | CONFORMS | `viwo/plugins/generic/__init__.py` | |
-| 2.7 renpy markers; `source_roots` = `<game>/game` | CONFORMS | `viwo/plugins/renpy/__init__.py:40-43`, `source_roots` in the same file | |
-| 2.7 unity markers | CONFORMS | `viwo/plugins/unity/__init__.py:62-66` (`STRONG`, il2cpp, Assembly-CSharp, `*_Data`) | |
-| 2.7 unreal markers; options `aesKey` (secret), `engineVersion` | CONFORMS (names differ) | `viwo/plugins/unreal/__init__.py:30-31,63-71` | options are `aes_key` (secret) and a second non-secret option |
-| 2.7 godot markers; option `encryptionKey` secret; `.ctex` conversion as sanitizer rule | CONFORMS / NOT IMPLEMENTED | `viwo/plugins/godot/__init__.py:17,42-47` | option is `encryption_key` (secret); `.ctex/.stex → .png` rule is not implemented (sanitizer phase 1 scope, documented in STATUS M10) |
+| 2.7 generic: always 0.4 | CONFORMS | `viwo/plugins/generic/__init__.py:19-22` | |
+| 2.7 renpy markers; `source_roots` = `<game>/game` | CONFORMS | `viwo/plugins/renpy/__init__.py:38-47,58-60` | |
+| 2.7 unity markers | CONFORMS | `viwo/plugins/unity/__init__.py:47-55,66-77` | |
+| 2.7 unreal markers; options `aesKey` (secret), `engineVersion` | CONFORMS | `viwo/plugins/unreal/__init__.py:29-37,62-75` | options are `aes_key` (secret) and `find_key` (bool) |
+| 2.7 godot markers; option `encryptionKey` secret | CONFORMS | `viwo/plugins/godot/__init__.py:25-33,70-80` | option is `encryption_key` |
+| 2.7 godot `.ctex`/`.stex` → `.png` as a sanitizer rule | NOT IMPLEMENTED (deferred, documented) | doc 5 line 33 ("Phase 2 (1.x, not shipped in 1.1)"); `viwo/plugins/godot/__init__.py` has no `sanitizer_rules` | |
 | 2.7 "tools column defers to 8.4" | CONFORMS | see 08 | |
-| 2.8 custom plugins: discovery, `plugin.json`, `entry` form, opt-in, trust model | CONFORMS | revision note in doc 2.8; `viwo/core/wiring/registry.py:97-192`, `tests/test_registry.py:76-160`, `docs/plugins.md` | |
-| 2.8 reserved ids (`generic renpy unity unreal godot mixed auto`) | CONFORMS (revised) | `registry.py:30,179-182` | built-in names need `override`; `mixed/auto/core/none` reserved |
-| 2.8 contract-version check at load | DEVIATES (intentional, documented) | `registry.py:107-109` (`requires.viwo`) | the revision note replaces `contract` with `requires`; `plugin.json` `contract` key is ignored |
-| 2.8 conformance checks against an empty probe at load | NOT IMPLEMENTED (undocumented gap) | `registry.py:116-136` | only type and id checks run at load |
-| 2.9 slug/contract/engine_type/detect capability checks | DEVIATES (defect) | no manifest validation for built-ins (`registry.py:63-71`) | built-ins are trusted code; still, the doc promises the check |
-| 2.9 option keys and dependency ids unique | NOT IMPLEMENTED (undocumented gap) | no check in `registry.py` / `boot.py` | `dependency_report` dedups by id silently (`boot.py:64`) |
-| 2.9 slot and backend ids unique; owner is the plugin id; suffixes lowercase dotted | CONFORMS (partially) | `registry.py:230-241` (uniqueness with problems) | owner/suffix form not validated; every built-in satisfies it by inspection (`SlotDefinition` literals listed in the plugin `__init__` files) |
-| 2.9 `detect()` never raises on fixtures, same result twice, ids match manifest | DEVIATES (defect) | `tests/test_mixed.py:62` runs every plugin on every fixture (no raise, ids match); no idempotence assertion | add a "detect twice" conformance test |
-| 2.9 sandbox check: no change outside `staging/<plugin>` after `export()` | DEVIATES (defect) | game-folder hashes only (`tests/test_formats.py:148`, `tests/test_capture.py:79-89`) | the stronger "nothing outside staging" assertion is absent |
+| 2.8 custom plugins: discovery, `plugin.json`, `entry` form, opt-in, trust model | CONFORMS | `viwo/core/wiring/registry.py:162-266`, `tests/test_registry.py` `test_opt_in_override_and_errors`, `docs/plugins.md` | |
+| 2.8 reserved ids (`generic renpy unity unreal godot mixed auto`) | CONFORMS | `viwo/core/wiring/registry.py:30,253-257` | revised form: built-in ids need `override`; `mixed/auto/core/none` reserved |
+| 2.8 contract-version check at load | CONFORMS | `viwo/core/wiring/registry.py:62-63` (manifest major vs `CONTRACT_VERSION`), `:172-174` (`requires.viwo`) | the `plugin.json` `contract` key itself is informational |
+| 2.8 conformance checks against an empty probe at load | CONFORMS | `viwo/core/wiring/registry.py:35-53,76-81,227-232` (`EmptyProbe`, `_accept`) | |
+| 2.9 slug / contract / engine_type checks | CONFORMS | `viwo/core/wiring/registry.py:56-82`, `tests/test_conformance_kit.py` `test_validate_plugin_rejects_bad_manifests` | |
+| 2.9 `detect` declared as a capability; `unarchive.*` slots imply the `unpack` capability | CONFORMS | `viwo/core/wiring/conformance.py:80` (`_capability_problems`: known set, `detect` required, `unarchive.*` slots need `unpack`), `viwo/core/wiring/conformance.py:93` (`capabilities_of` derives them when a manifest declares none); `GET /api/plugins` `capabilities` | built-ins without a declaration get `detect` plus what their slots imply |
+| 2.9 option keys and dependency ids unique | CONFORMS | `viwo/core/wiring/registry.py:66-68,85-93` | |
+| 2.9 slot and backend ids unique; owner is the plugin id; suffixes lowercase dotted | CONFORMS | `viwo/core/wiring/registry.py:304-314`, `tests/test_conformance_kit.py` `test_slots_and_backends_belong_to_their_plugin` | |
+| 2.9 `detect()` never raises on fixtures, same result twice, ids match manifest | CONFORMS | `tests/test_conformance_kit.py` `test_detect_is_pure_on_empty_and_fixture_probes`, `tests/test_mixed.py` `test_pairs_and_singles` | |
+| 2.9 sandbox check: no change outside `staging/<plugin>` after `export()` | CONFORMS | `tests/test_conformance_kit.py:112-131` | diffs the game folder, a sibling folder and `<root>/<plugin>`; the job's own work folder is not diffed |
 
-Verdict: the plugin model (manifest, detect, slots, backends, probe, context, failure handling) is implemented as described, and the 1.0 revision of 2.8 is honoured with tests.
-Open: the automated conformance kit of 2.9 is mostly missing, and several manifest/option/dependency fields of 2.1/2.6 were simplified without a doc update.
+Verdict: the plugin model is implemented as described, and the 2.9 kit the previous audit found missing now exists and runs on every plugin at load and in tests.
+Open: 2.2 `export(ctx) -> ExportReport` on the plugin (intentional) · 2.2 `analysis_targets(probe)` (deferred) · 2.5 ownership table (zip/tar/7z/rar core; rpa renpy; unitypackage unity; (intentional) · 2.7 godot `.ctex`/`.stex` → `.png` as a sanitizer rule (deferred).
 
 ## 08 Pipeline backends and slots
 
 | Clause | Status | Evidence | Note |
 |---|---|---|---|
-| Every tool is reached through a slot; no stage calls a tool directly | CONFORMS (one exception) | `viwo/core/pipeline/unpack.py` (failover), `viwo/core/decode.py`, `viwo/core/roundtrip.py` | the merger calls `ffprobe` through the dependency locator, not a `media.probe` slot (`viwo/core/merger/ffmpeg.py:54`) |
+| Every tool is reached through a slot; no stage calls a tool directly | CONFORMS | `viwo/core/merger/ffmpeg.py:53` (`probe()` through the `media.probe` binding with failover), `viwo/core/merger/build.py` (`media.encode` binding checked, ffmpeg argv built by its backend module) | the last direct locate (ffprobe) is gone (1.2.1) |
 | 8.1 SlotDefinition: slot_id, family, owner, matches, default_main, default_spare | CONFORMS | `viwo/contracts/slots.py:41-50` (`suffixes`/`magic`/`identify` = matches) | |
-| 8.1 SlotDefinition `interface`, `policy` | NOT IMPLEMENTED (deferred, documented) | doc 8.2 prototype note (failover only) | interface is implied by family |
-| 8.1 Backend: backend_id, owner, families, dependencies(), available() | CONFORMS | `viwo/contracts/slots.py:53-68` | `available()` returns `(ok, reason)`; no `location` field |
-| 8.1 SlotBinding: slot_id, main, spare, promoted, source default|ini|cli | CONFORMS | `viwo/contracts/slots.py:123-134` | `cli` source deferred with CLI overrides (doc 9 note) |
-| 8.2 policies failover / main_only / supplement | NOT IMPLEMENTED (deferred, documented) | doc 8.2 prototype note; `viwo/core/pipeline/failover.py` implements failover | |
-| 8.2 outcome kinds collapsed to ok/unavailable/failed/needs_key | CONFORMS | `viwo/contracts/types.py:108-114`, doc 8.2 note | |
-| 8.2 retry table: unavailable/failed retry; needs_key only with a key-capable spare | DEVIATES (intentional, documented) | `viwo/contracts/types.py:128-131` (needs_key never retried), `tests/test_core_units.py:67-85`, `ARCHITECTURE.md:48` | the spare is never tried for needs_key even when `supports_keys=True` (gdre-tools, repak declare it). Documented as an invariant in ARCHITECTURE, not in doc 8 |
-| 8.2 startup resolution: main stays; missing main → spare promoted with a warning; neither → unbound, stages skip with the install hint, no crash | CONFORMS | `viwo/core/wiring/binder.py:22-37`, `viwo/core/pipeline/failover.py:18-20`, `tests/test_core_units.py:53` | reasons flow into `rt.problems` (`boot.py:107-108`) |
-| 8.2 every result records its backend; `by_backend` counts in reports | CONFORMS | `viwo/contracts/pipeline.py:104,120,143,152` | |
-| 8.3 Unarchiver: extract, supports_keys; core loop unchanged | CONFORMS | `viwo/contracts/slots.py:71-78`, `viwo/core/pipeline/unpack.py` | `sniff(path, head)` replaced by slot-level identification (doc 8.4 "Identify, then extract") |
-| 8.3 Exporter.export(ctx) | CONFORMS | `viwo/contracts/slots.py:81-86` | returns `Outcome`, not `ExportReport` |
-| 8.3 MediaProbe slot | NOT IMPLEMENTED (undocumented gap) | `viwo/core/merger/ffmpeg.py:54` (direct `FFPROBE` locate) | the merger works; the probe is not swappable through the ini |
-| 8.3 MediaEncoder (`media.encode`, honours max_command_length) | CONFORMS | `viwo/backends/__init__.py:13`, `viwo/core/merger/build.py` (`max_command_length // 2` switch) | |
-| 8.3 ImageCodec (`image`) | DEVIATES (intentional, documented) | `viwo/core/decode.py:30` (`decode.image`, ffmpeg DDS → PNG), STATUS D21 ladder | decoders family instead of image codec; pillow not used |
-| 8.3 CodeAnalyzer (`analysis`) | NOT IMPLEMENTED (deferred, documented) | roadmap M13+ | |
-| 8.4 "Identify, then extract": identifier sees head and tail, reports embedded chunks, core carves | CONFORMS | `viwo/contracts/slots.py:24-38`, `viwo/core/pipeline/identify.py:13-52`, `viwo/plugins/godot/__init__.py:44` (exe trailer), `tests/test_core_units.py:121` | |
-| 8.4 unarchive.zip py-zipfile / sevenzip-cli; .zip (+ zip appended to exe) | CONFORMS | `viwo/backends/__init__.py:16-24` | exe-appended zips are found by the carver rather than the zip identifier; `.nw` added |
+| 8.1 SlotDefinition `interface`, `policy` | NOT IMPLEMENTED (deferred, documented) | doc 8.2 prototype note; the family implies the interface (`viwo/contracts/slots.py:89-157`) | |
+| 8.1 Backend: backend_id, owner, families, dependencies(), available() | CONFORMS | `viwo/contracts/slots.py:53-71` | `available()` returns `(ok, reason)` without `location`; `self_check` added for `viwo slots --check` |
+| 8.1 SlotBinding: slot_id, main, spare, promoted, source default/ini/cli | CONFORMS | `viwo/contracts/slots.py:160-171` | `cli` source deferred with the CLI overrides (doc 9 note) |
+| 8.2 policies failover / main_only / supplement | NOT IMPLEMENTED (deferred, documented) | doc 8.2 note; `viwo/core/pipeline/failover.py:11-35` (failover only) | |
+| 8.2 outcome kinds collapsed to ok/unavailable/failed/needs_key | CONFORMS | `viwo/contracts/types.py:119-125` | |
+| 8.2 retry table: unavailable/failed retry; needs_key only with a key-capable spare | DEVIATES (intentional, documented) | `viwo/contracts/types.py:139-142`, `tests/test_core_units.py:67-86`, `ARCHITECTURE.md:47-48` | the spare is never tried for needs_key even when `supports_keys=True` (`godot/pck.py:97`, `unreal/pak.py:88`) |
+| 8.2 startup resolution: main stays; missing main → spare promoted with a warning; neither → unbound, stages skip | CONFORMS | `viwo/core/wiring/binder.py:55-70`, `viwo/core/pipeline/failover.py:18-20`, `tests/test_core_units.py` `test_four_availability_cases` | reasons flow into `rt.problems` (`boot.py:123-124`) |
+| 8.2 every result records its backend; `by_backend` counts | CONFORMS | `viwo/contracts/pipeline.py:108,128,151`, `viwo/contracts/legacy.py:15`, `viwo/core/pipeline/unpack.py:92` | |
+| 8.3 Unarchiver: extract, supports_keys; core loop unchanged | CONFORMS | `viwo/contracts/slots.py:89-96`, `viwo/core/pipeline/unpack.py:40-65` | `sniff(path, head)` replaced by slot identifiers (8.4) |
+| 8.3 Exporter.export(ctx) | CONFORMS | `viwo/contracts/slots.py:99-104` | returns `Outcome` |
+| 8.3 MediaProbe `probe(path) -> MediaInfo` | CONFORMS | `viwo/contracts/slots.py:123-130`, `viwo/core/decode.py:32,113-150` | facts travel as `Outcome.notes` (format, duration, width, height); no `has_audio`/`codec` |
+| 8.3 MediaEncoder (`media.encode`, honours max_command_length) | CONFORMS | `viwo/backends/__init__.py:13`, `viwo/core/merger/ffmpeg.py:32-37`, `viwo/core/merger/build.py:158-164` | |
+| 8.3 ImageCodec (`image`: decode, convert) | CONFORMS | `viwo/contracts/slots.py:133-139`, `viwo/core/decode.py:30,33,153-189` | split into `decode.image` (DDS → PNG, ffmpeg) and `image.convert` (Pillow / ImageMagick, PNG target) |
+| 8.3 CodeAnalyzer (`analysis`) | NOT IMPLEMENTED (deferred, documented) | doc 16 M13+ | |
+| 8.4 "Identify, then extract": head and tail, embedded chunks carved by core | CONFORMS | `viwo/contracts/slots.py:24-38`, `viwo/core/pipeline/identify.py:13-50`, `viwo/plugins/godot/__init__.py:40-49`, `viwo/plugins/unreal/__init__.py:39-47`, `tests/test_core_units.py` `test_suffix_magic_custom_and_carve` | |
+| 8.4 unarchive.zip py-zipfile / sevenzip-cli; .zip (+ zip appended to exe) | CONFORMS | `viwo/backends/__init__.py:16-24` | `.nw` added; exe-appended zips found by the carver |
 | 8.4 unarchive.tar, .7z (sevenzip-cli/py7zr), .rar (unrar-cli/sevenzip-cli) | CONFORMS | `viwo/backends/__init__.py:25-45` | |
-| 8.4 unarchive.rpa rpa-safe / unrpa (restricted unpickler, subprocess) | CONFORMS | `viwo/plugins/renpy/__init__.py:23-25`, `renpy/rpa.py:31,81,106` | D11 resolved as proposed |
-| 8.4 unarchive.unitypackage py-tarfile / sevenzip-cli | CONFORMS | `viwo/plugins/unity/__init__.py:29-36` | |
-| 8.4 unarchive.unity-bundle (unitypy / uabea-cli), unarchive.unity-webgl | DEVIATES (intentional, documented) | `viwo/plugins/unity/__init__.py:37-39` (`CLAIMED` suffixes go to `export.unity`) | bundles are handled by the exporter, not a separate unarchive slot; STATUS M5/D7 |
-| 8.4 unarchive.pck gdre-tools / godotpcktool | CONFORMS | `viwo/plugins/godot/__init__.py:19-26`, `godot/pck.py:96-105` | |
-| 8.4 unarchive.pak repak / quickbms spare | DEVIATES (defect) | `viwo/plugins/unreal/__init__.py:40-46` (`unarchive.upak`, no spare) | QuickBMS is a separate plugin slot (`unarchive.bms`) rather than the pak spare; doc to align or a spare to add |
-| 8.4 unarchive.iostore retoc / CUE4Parse wrapper | DEVIATES (intentional, documented) | `viwo/plugins/unreal/__init__.py:47`, STATUS M7 ("retoc to legacy, raw as spare") | |
-| 8.4 unarchive.casc datatool / casclib | DEVIATES (intentional, documented) | `viwo/plugins/overwatch/__init__.py:99` (`export.overwatch`), STATUS M8 | export slot instead of an unarchive slot; no casclib spare |
-| 8.4 export.unity unitypy / assetstudiomod-cli (D7) | CONFORMS | `viwo/plugins/unity/__init__.py:37` | |
-| 8.4 export.unity-project (assetripper), export.unreal (CUE4Parse/umodel) | NOT IMPLEMENTED (deferred, documented) | doc 8.4 "optional" / "deferred after the prototype" | |
-| 8.4 export.godot gdre-tools --recover / godotdec | NOT IMPLEMENTED (undocumented gap) | `viwo/plugins/godot/__init__.py:53` (unarchive + pack only) | GDRE's `--extract` is used; `--recover` (project recovery) is not offered |
-| 8.4 export.overwatch datatool | CONFORMS | `viwo/plugins/overwatch/__init__.py:55,99` | |
-| 8.4 keys slots (user key / aesdumpster / keyring) | DEVIATES (intentional, documented) | D18 (`docs/contract/README.md`), `viwo/plugins/unreal/pak.py` (key from the user or found in the game's executables, verified) | keys are options plus a finder, not slots |
-| 8.4 media.probe ffprobe / pillow; image.convert pillow / imagemagick | NOT IMPLEMENTED (undocumented gap) | see 8.3 | |
-| 8.4 audio.decode vgmstream | CONFORMS (renamed) | `viwo/core/decode.py:27` (`decode.audio`, spare `ffmpeg-decode`) | |
-| 8.4 analysis.* slots | NOT IMPLEMENTED (deferred, documented) | roadmap M13+ | `analysis.python` (unrpyc) exists as `decode.rpyc` (`viwo/plugins/renpy/decompile.py:21`) |
-| 8.4 capture.gpu; capture.memory, capture.audio, runtime.<engine> | CONFORMS / NOT IMPLEMENTED (deferred, documented) | `viwo/core/capture/__init__.py:29`, STATUS M11 (pilot = RenderDoc only) | |
-| 8.4 backend declarations: `license` (SPDX), GPL/AGPL → subprocess | CONFORMS | `viwo/contracts/slots.py:57-58`; unrpa `renpy/rpa.py:106`, quickbms `:46`, ffmpeg `merger/ffmpeg.py:33`, decoders `decode.py:49`, renderdoc, datatool, gdre: all `subprocess` | every GPL backend is a subprocess; no test enforces the rule (doc 17 L0 lint listed, not present) |
-| 8.4 `network` and `parses_untrusted_in_process` declarations | NOT IMPLEMENTED (undocumented gap) | `viwo/contracts/slots.py:53-58` | |
-| 8.5 UNPACK: `unarchive.*` by matches (longest suffix, then magic) | CONFORMS (see 2.5 note on magic) | `viwo/core/pipeline/identify.py` | |
-| 8.5 EXPORT: `export.<plugin_id>` | CONFORMS | `viwo/contracts/plugin.py:145`, `viwo/plugins/unity/__init__.py:37`, `rpgmaker/__init__.py:22`, `overwatch/__init__.py:99` | |
-| 8.5 VERIFY: plugin.verify + optional media.probe health | CONFORMS (health through the sanitizer instead) | `viwo/contracts/plugin.py:149`, `viwo/core/sanitizer.py` (`core.health`) | |
-| 8.5 SANITIZE by rule; REPORT core; merger build probe+encode | CONFORMS | `viwo/core/sanitizer.py`, `viwo/core/pipeline/runner.py:245-265`, `viwo/core/merger/build.py` | |
-| 8.6 `slot_definitions()` / `backends()` replace `archive_handlers()` | CONFORMS | `viwo/contracts/plugin.py:124-128` | |
-| 8.6 a plugin may add a backend to a slot it does not own; ini binds it | CONFORMS | `viwo/core/wiring/binder.py:9-19` (family check only) | |
-| 8.6 slot ids unique across plugins | CONFORMS | `viwo/core/wiring/registry.py:230-235` | |
-| 8.6 default main/spare name a known backend serving the family | CONFORMS | `viwo/core/wiring/binder.py:13-17`, `viwo/core/wiring/distros.py:118-125`, `tests/test_config.py:65` | |
-| 8.6 `available()` has no side effects | CONFORMS (by construction) | `viwo/contracts/slots.py:63-68` → `locate` | no recording test |
-| 8.6 spare with `supports_keys=false` never called for needs_key | CONFORMS | `viwo/contracts/types.py:128-131`, `tests/test_core_units.py:67-85` | stronger than required (no spare at all for needs_key) |
-| 8.6 matrix {main up, down} × {spare up, down}; promotion, failover, unbound | CONFORMS | `tests/test_core_units.py:53-66,67-85` | |
+| 8.4 unarchive.rpa rpa-safe / unrpa (restricted unpickler, subprocess) | CONFORMS | `viwo/plugins/renpy/__init__.py:23-25`, `viwo/plugins/renpy/rpa.py:36,80-82,106-107` | |
+| 8.4 unarchive.unitypackage py-tarfile / sevenzip-cli | CONFORMS | `viwo/plugins/unity/__init__.py:35-42` | |
+| 8.4 unarchive.unity-bundle (unitypy / uabea-cli), unarchive.unity-webgl | DEVIATES (intentional, documented) | `viwo/plugins/unity/__init__.py:43,46,88-92` (`CLAIMED` suffixes go to `export.unity`), contract README D7 | bundles are decoded by the exporter, not an unarchive slot |
+| 8.4 unarchive.pck gdre-tools / godotpcktool | CONFORMS | `viwo/plugins/godot/__init__.py:40-49`, `viwo/plugins/godot/pck.py:95-101,145-146` | |
+| 8.4 unarchive.pak repak / quickbms spare | CONFORMS | `viwo/plugins/unreal/__init__.py:40-47` (spare `quickbms-cli`), `viwo/core/wiring/distros.py:85` (distros name a spare only when its plugin is on), `viwo/core/wiring/binder.py:5` (a default spare whose plugin is off is simply absent); `tests/test_config.py::test_engine_distros_boot_without_spare_problems` | engine distros bind repak alone without a problem line; mixed distros bind both |
+| 8.4 unarchive.iostore retoc / CUE4Parse wrapper | DEVIATES (intentional, documented) | `viwo/plugins/unreal/__init__.py:48` (`unarchive.utoc`: retoc-legacy / retoc-unpack), STATUS M7 | |
+| 8.4 unarchive.casc datatool / casclib | DEVIATES (intentional, documented) | `viwo/plugins/overwatch/__init__.py:61,105,111` (`export.overwatch`), STATUS M8 | export slot instead of an unarchive slot; no casclib spare |
+| 8.4 export.unity unitypy / assetstudiomod-cli (D7) | CONFORMS | `viwo/plugins/unity/__init__.py:43`, `viwo/plugins/unity/exporters.py:182-184,210-211`, contract README D7 | |
+| 8.4 export.unity-project (assetripper), export.unreal (CUE4Parse/umodel) | NOT IMPLEMENTED (deferred, documented) | doc 8.4 "optional" / "deferred after the prototype"; doc 16 M13+ "Unreal export" | |
+| 8.4 export.godot gdre-tools --recover / godotdec | DEVIATES (intentional, documented) | `viwo/plugins/godot/__init__.py:39,64-68,90`, `viwo/plugins/godot/pck.py:104-120` (`gdre-recover`, opt-in `recover` option); doc 8.4 row revised | `godotdec` (Godot 3 only) deferred, said in the doc row |
+| 8.4 export.overwatch datatool | CONFORMS | `viwo/plugins/overwatch/__init__.py:61,105` | |
+| 8.4 keys slots (user key / aesdumpster / keyring) | DEVIATES (intentional, documented) | contract README D18, `viwo/plugins/unreal/__init__.py:30-36` (`aes_key`, `find_key`) | keys are options plus a verified finder, not slots |
+| 8.4 media.probe ffprobe / pillow; image.convert pillow / imagemagick | CONFORMS | `viwo/core/decode.py:32-33,113-189`, `distros/windows-unreal.ini` `[slots]` (bound in every distro) | registered and bound; no stage calls them yet (see 8.5 merger) |
+| 8.4 audio.decode vgmstream | CONFORMS | `viwo/core/decode.py:26-29` (`decode.audio`, spare `ffmpeg-decode`) | renamed |
+| 8.4 analysis.* slots | NOT IMPLEMENTED (deferred, documented) | doc 16 M13+ | `analysis.python` exists as `decode.rpyc` (`viwo/plugins/renpy/decompile.py:21`) |
+| 8.4 capture.gpu | CONFORMS | `viwo/core/capture/__init__.py:30` | |
+| 8.4 capture.memory, capture.audio, runtime.<engine> | NOT IMPLEMENTED (deferred, documented) | STATUS M11 (pilot = RenderDoc only) | |
+| 8.4 backend declarations: `license` (SPDX), GPL/AGPL → subprocess | CONFORMS | `viwo/contracts/slots.py:57-58`, `tests/test_l0_static.py` `test_gpl_backends_run_as_subprocesses`, `viwo/plugins/renpy/rpa.py:107`, `viwo/plugins/quickbms/__init__.py:46` | |
+| 8.4 `network` and `parses_untrusted_in_process` declarations | CONFORMS | `viwo/contracts/slots.py:59-60`, `tests/test_l0_static.py` `test_every_backend_declares_network_and_untrusted_parsing`, `viwo/backends/archives.py:50,72,131`, `viwo/core/decode.py:137,156` | |
+| 8.4 OS-layer-internal dialog fallbacks (zenity/kdialog, PowerShell) | NOT IMPLEMENTED (deferred, documented) | doc 1.4 prototype note; `viwo/os/linux.py:47-51`, `viwo/os/windows.py:75-79` (tkinter only) | |
+| 8.5 UNPACK: `unarchive.*` by matches (longest suffix, then magic) | CONFORMS | `viwo/core/pipeline/identify.py:13-32`, `viwo/core/pipeline/unpack.py:52` | |
+| 8.5 EXPORT: `export.<plugin_id>` | CONFORMS | `viwo/core/pipeline/runner.py:209-219`, `viwo/contracts/plugin.py:168-170` | |
+| 8.5 VERIFY: plugin.verify + optional media.probe health | CONFORMS | `viwo/core/pipeline/runner.py:232-244`, `viwo/core/sanitizer.py:5` (health as a sanitizer rule) | the optional probe is not used in VERIFY |
+| 8.5 SANITIZE by rule; REPORT core | CONFORMS | `viwo/core/sanitizer_rules.py:183-186`, `viwo/core/pipeline/runner.py:257-282` | |
+| 8.5 merger build: MediaProbe + MediaEncoder (`media.probe`, `media.encode`) | CONFORMS | `viwo/core/merger/ffmpeg.py:53`, `viwo/core/merger/build.py:74` (`_probe_ctx`), `viwo/core/decode.py:131` (ffprobe reports `codec_type` per stream); `tests/test_merger.py::ProbeSlotTests` | the ini can swap the prober (`media.probe = pillow-probe` gives no duration: the merger falls back to the slide delay) |
+| 8.6 `slot_definitions()` / `backends()` replace `archive_handlers()` | CONFORMS | `viwo/contracts/plugin.py:147-151` | |
+| 8.6 a plugin may add a backend to a slot it does not own; ini binds it | CONFORMS | `viwo/core/wiring/binder.py:14-23` (family check only) | |
+| 8.6 slot ids unique across plugins | CONFORMS | `viwo/core/wiring/registry.py:304-309` | |
+| 8.6 default main/spare name a known backend serving the family | CONFORMS | `viwo/core/wiring/binder.py:30-35`, `viwo/core/wiring/distros.py:6-13`, `tests/test_config.py` `test_strict_rules` | a default spare owned by a disabled plugin is dropped silently only when no `[slots]` entry names it (see 8.4 pak spare) |
+| 8.6 `available()` has no side effects | CONFORMS | `viwo/contracts/slots.py:66-71` (delegates to `locate`), `tests/test_conformance_kit.py` `test_locate_never_installs_or_writes` | |
+| 8.6 spare with `supports_keys=false` never called for needs_key | CONFORMS | `viwo/contracts/types.py:139-142`, `tests/test_core_units.py` `test_failover_outcomes` | stronger than required (no spare at all for needs_key) |
+| 8.6 matrix {main up, down} × {spare up, down}; promotion, failover, unbound | CONFORMS | `tests/test_core_units.py` `test_four_availability_cases`, `test_failover_outcomes` | |
 
-Verdict: slots, binding, promotion, failover and the ownership of formats follow doc 8 with the documented prototype collapses; GPL isolation is declared everywhere it must be.
-Open: the needs_key policy is stricter than doc 8.2 (documented only in ARCHITECTURE), `media.probe` and a pak spare are missing, and the `network`/untrusted-parser declarations were never added.
+Verdict: slots, binding, promotion, failover, the declarations (`license`, `network`, `parses_untrusted_in_process`) and the new `media.probe` / `image.convert` / `export.godot` slots follow doc 8; what remains is wiring the merger's probe through its slot and tidying the two new spares.
+Open: 8.1 SlotDefinition `interface`, `policy` (deferred) · 8.2 policies failover / main_only / supplement (deferred) · 8.2 retry table: unavailable/failed retry; needs_key only with a key-cap (intentional) · 8.3 CodeAnalyzer (`analysis`) (deferred) · 8.4 unarchive.unity-bundle (unitypy / uabea-cli), unarchive.unity-webgl (intentional) · 8.4 unarchive.iostore retoc / CUE4Parse wrapper (intentional) · 8.4 unarchive.casc datatool / casclib (intentional) · 8.4 export.unity-project (assetripper), export.unreal (CUE4Parse/umodel) (deferred) · 8.4 export.godot gdre-tools --recover / godotdec (intentional) · 8.4 keys slots (user key / aesdumpster / keyring) (intentional) · 8.4 analysis.* slots (deferred) · 8.4 capture.memory, capture.audio, runtime.<engine> (deferred) · 8.4 OS-layer-internal dialog fallbacks (zenity/kdialog, PowerShell) (deferred).
 
 ## 09 Startup wiring from an ini file
 
 | Clause | Status | Evidence | Note |
 |---|---|---|---|
-| configparser, `[startup]`, `[plugins]`, `[slots]`, `[tools]`, `[server]` | CONFORMS | `viwo/core/wiring/ini.py:11,107-108` | |
-| 9.1 `startup.ini` + 12 shipped distros | CONFORMS | `distros/*.ini`, `viwo/core/wiring/distros.py:27-28`, `tests/test_config.py:17,47` | implemented beyond the prototype note |
-| 9.1 precedence defaults < base < ini < cli | CONFORMS (cli partial) | `viwo/core/wiring/ini.py:111-125,140-146` (base first, later files override), `viwo/cli.py` `--os` → `boot(os_id)` | `--profile`, `--plugin`, `--slot` flags deferred (doc 9 prototype note) |
-| 9.1 only one level of `base =` | DEVIATES (defect) | `viwo/core/wiring/ini.py:13,116` (`MAX_LAYERS = 4`, so three `base` hops are accepted) | lenient; `tests/test_config.py:81` only covers one level |
-| 9.1 effective configuration with the source of every value, logged and in `/api/distro` | DEVIATES (defect) | `viwo/core/wiring/ini.py:151` (`source` = file chain only), `viwo/api/routes.py:29-31` | bindings carry `source: default|ini`; other values do not; nothing logs the effective ini at boot |
-| 9.2 encoding UTF-8 with BOM, `;`/`#` comments, booleans, case-insensitive keys | CONFORMS | `ini.py:108,120,143`, configparser semantics | |
-| 9.2 `[startup] contract` | DEVIATES (defect) | `ini.py:12` (`STARTUP_KEYS` lacks `contract`), `:128-132` | a `contract = 1.0` line is reported as "unknown key ignored"; the major-version check → exit 2 (9.4) is missing |
-| 9.2 `[startup] os`, `profile`, `features`, `auto_install`, `strict_preflight`, `base` | CONFORMS | `ini.py:12,57-65` | key is `os`, the doc's prose says "OS layer" |
-| 9.2 `auto_install` default off | DEVIATES (intentional, documented) | `ini.py:22` (default on), `startup.ini`, HANDOFF item 1 (owner: fully automated installs) | F19 concern answered by pinned, checksummed downloads |
-| 9.2 `[plugins]` ids, `generic` forced on, `custom_dirs`, `custom.<id>` | CONFORMS | `ini.py:69-74`, `registry.py:28,155-170` | |
-| 9.2 `[slots] <slot> = <main>[, <spare>]`, `none` | CONFORMS | `ini.py:75-78` | |
-| 9.2 `[slot_policy]` | NOT IMPLEMENTED (deferred, documented) | doc 8.2 note; `ini.py:92-93` reports it as an unknown section | the warning text could point at the deferral |
-| 9.2 `[tools]` keyed by dependency id, paths relative to the ini | CONFORMS | `ini.py:79-80`, `boot.py:85` | doc 1.2 says "keyed by backend id": doc 1 to align with doc 9 |
-| 9.2 `[options.<plugin>]`, secrets refused | CONFORMS | `ini.py:83-91`, `tests/test_config.py:65` | |
-| 9.2 `[hooks]` | NOT IMPLEMENTED (deferred, documented) | doc 9 prototype note | |
-| 9.3 step 1 usage error → exit 2 | CONFORMS | argparse (`viwo/cli.py:233`), `tests/test_cli.py` | |
-| 9.3 step 2 syntax error → exit 2 with file:line | CONFORMS | `ini.py:149-150` (`invalid_request` with configparser's message, which carries the line), `viwo/cli.py:33` | |
-| 9.3 step 3 `[server]` defaults under `viwo-data/` | CONFORMS | `ini.py:34-50,96-104` | |
-| 9.3 step 4 OS select, unsupported host → exit 3 | CONFORMS | `viwo/os/__init__.py:21-30` (`refused`), `viwo/cli.py:33` | |
-| 9.3 steps 5, 7, 10, 12 hooks | NOT IMPLEMENTED (deferred, documented) | | |
-| 9.3 step 6 register built-ins, discover/validate/register custom; bad plugin disabled and shown | CONFORMS | `registry.py:162-192`, `/api/distro` problems | shown under `/api/distro.problems` (doc says `/api/plugins`) |
-| 9.3 step 8 bind: defaults + `[slots]` + `[tools]`, auto-install, promote spares | CONFORMS | `boot.py:85,106-108`, `preflight.py:87-98` (install after bind, then `App.reload()` rebinds) | |
-| 9.3 step 9 strict_preflight → exit 4 | DEVIATES (intentional, documented) | `viwo/api/server.py:217-234`, `preflight.py:101-109`, `startup.ini` comment | condition is "an enabled plugin's slot has no backend" instead of "a REQUIRED dependency is missing" (no dependency is marked required: `boot.py:56`) |
+| configparser, `[startup]`, `[plugins]`, `[slots]`, `[tools]`, `[server]` | CONFORMS | `viwo/core/wiring/ini.py:12,118-119` | |
+| 9.1 `startup.ini` + 12 shipped distros | CONFORMS | `distros/` (12 files), `viwo/core/wiring/distros.py:27-31`, `tests/test_config.py` `test_twelve_files_named_and_written_strictly`, `test_shipped_distros_match_the_generator` | |
+| 9.1 precedence defaults < base < ini < cli | CONFORMS | `viwo/core/wiring/ini.py:122-138,171` (base first, later files override), `viwo/core/wiring/boot.py:103-105` (`--os` recorded as `cli`) | only `--os` exists as a cli layer |
+| 9.1 cli flags `--profile`, `--plugin <id>=on/off`, `--slot <slot>=<main>[,<spare>]` | NOT IMPLEMENTED (deferred, documented) | `viwo/cli.py:42` (`--profile`), `viwo/core/wiring/boot.py:92` (`_apply_profile`: that distro's plugin set, source `cli`); `tests/test_config.py::test_suffix_clash_is_reported_and_profile_flag_selects_plugins` | `--os/--profile` implemented; `--plugin/--slot` deferred by the doc 9 prototype note |
+| 9.1 only one level of `base =` | CONFORMS | `viwo/core/wiring/ini.py:15,122-138` (`MAX_LAYERS = 2`), `tests/test_config.py` `test_base_layering` | |
+| 9.1 effective configuration with the source of every value, logged at boot and in `/api/distro` | CONFORMS | `viwo/core/wiring/ini.py:33,149-160`, `viwo/core/wiring/boot.py:73,105`, `viwo/api/routes.py:29-31`, `viwo/core/records.py:25-29` (also in run records) | `--verbose` prints the ini chain and bindings (`viwo/cli.py:86-90`), not the per-value sources; `sources` has no test |
+| 9.2 encoding UTF-8 with BOM, `;`/`#` comments, booleans, case-insensitive keys | CONFORMS | `viwo/core/wiring/ini.py:119,133,171,76,85` | |
+| 9.2 `[startup] contract` | CONFORMS | `viwo/core/wiring/ini.py:13,63-69` | no test exercises the mismatch |
+| 9.2 `[startup] os`, `profile`, `features`, `auto_install`, `strict_preflight`, `base` | CONFORMS | `viwo/core/wiring/ini.py:13,70-76` | key is `os` where the doc prose says "OS layer" |
+| 9.2 `auto_install` default off | DEVIATES (intentional, documented) | `viwo/core/wiring/ini.py:24` (default on), `startup.ini:10`, `README.md:93-94` | owner's rule: fully automated pinned, checksummed installs |
+| 9.2 `[plugins]` ids, `generic` forced on, `custom_dirs`, `custom.<id>` | CONFORMS | `viwo/core/wiring/ini.py:80-85`, `viwo/core/wiring/registry.py:28,220-224,243` | |
+| 9.2 `[slots] <slot> = <main>[, <spare>]`, `none` | CONFORMS | `viwo/core/wiring/ini.py:86-89` | |
+| 9.2 `[slot_policy]` | NOT IMPLEMENTED (deferred, documented) | doc 8.2 note; `viwo/core/wiring/ini.py:103-104` reports it as an unknown section | |
+| 9.2 `[tools]` keyed by dependency id, paths relative to the ini | CONFORMS | `viwo/core/wiring/ini.py:90-91`, `viwo/core/wiring/boot.py:99` | |
+| 9.2 `[options.<plugin>]`, secrets refused | CONFORMS | `viwo/core/wiring/ini.py:94-102`, `tests/test_core_units.py:48` | |
+| 9.2 `[hooks]` | NOT IMPLEMENTED (deferred, documented) | doc 9 prototype note; doc 16 M13+ ("open: `[hooks]`") | |
+| 9.3 step 1 usage error → exit 2 | CONFORMS | `viwo/cli.py:33-47,127` (argparse) | |
+| 9.3 step 2 syntax error → exit 2 with file:line | CONFORMS | `viwo/core/wiring/ini.py:178-179` (configparser message carries the line), `viwo/cli.py:27,155` | |
+| 9.3 step 3 `[server]` defaults under `viwo-data/` | CONFORMS | `viwo/core/wiring/ini.py:38-54,107-115` | |
+| 9.3 step 4 OS select, unsupported host → exit 3 | CONFORMS | `viwo/os/__init__.py:21-30` (`refused`), `viwo/cli.py:27` | |
+| 9.3 steps 5, 7, 10, 12 hooks | NOT IMPLEMENTED (deferred, documented) | as `[hooks]` | |
+| 9.3 step 6 register built-ins, discover/validate/register custom; bad plugin disabled and shown | CONFORMS | `viwo/core/wiring/registry.py:235-266`, `viwo/core/wiring/boot.py:106-111,127`, `viwo/api/routes.py:29-31` | shown under `/api/distro.problems`; `/api/plugins` (`routes.py:34-51`) lists only loaded plugins |
+| 9.3 step 8 bind: defaults + `[slots]` + `[tools]`, auto-install, promote spares | CONFORMS | `viwo/core/wiring/boot.py:99,117-124`, `viwo/api/server.py:217-224` (install, then `App.reload()` rebinds), `viwo/core/preflight.py:87-98` | |
+| 9.3 step 9 strict_preflight → exit 4 | DEVIATES (intentional, documented) | `viwo/api/server.py:231-234`, `viwo/core/preflight.py:101-109`, `startup.ini:11` | condition is "an enabled plugin's slot has no backend"; no dependency is marked required (`boot.py:56`) |
 | 9.3 step 11 port in use → clear error | CONFORMS | `viwo/api/server.py:236-244` (exit 2) | |
-| 9.3 exit codes 0/2/3/4 | CONFORMS | `viwo/cli.py:33,41`, `server.py:234,244` | plus 1 (failed), 130 (cancelled), documented in `viwo -h` |
-| 9.4 unknown sections/keys → warning, ignored | CONFORMS (partial) | `ini.py:92-93,128-132` | `[startup]` keys and sections are checked; unknown keys inside `[server]` are ignored silently |
-| 9.4 unknown plugin/slot/backend id → error for that entry, default used instead | DEVIATES (defect) | `binder.py:13-17,33-37`, `registry.py:188-191`, `binder.py:46` | problems are reported, but an unknown or wrong-family backend in `[slots]` leaves the slot unbound (or on the spare) rather than falling back to the plugin default |
-| 9.4 `contract` major mismatch → exit 2 | NOT IMPLEMENTED (undocumented gap) | see 9.2 `contract` | |
-| 9.4 secret-looking option keys refused with a warning | CONFORMS | `ini.py:14,88-90` | `token` added to the word list |
-| 9.4 paths relative to the ini folder | CONFORMS | `ini.py:72,80,103` | |
-| 9.5 lifecycle hooks | NOT IMPLEMENTED (deferred, documented) | | |
-| 9.6 `GET /api/distro` returns effective ini, bindings, problems | CONFORMS (partial, see 9.1) | `viwo/api/routes.py:29-31`, `boot.py:67-74` | bindings and problems yes; per-value sources no |
-| 9.6 UI editing later, takes effect after restart; nothing re-wired while running | DEVIATES (intentional, documented) | `viwo/core/wiring/settings.py`, `viwo/api/handlers_settings.py` (`App.reload()`), HANDOFF 1.0 | owner's decision: apply by reload, no restart |
+| 9.3 exit codes 0/2/3/4 | CONFORMS | `viwo/cli.py:27,155`, `viwo/api/server.py:234,244`, `viwo/cli_args.py:28` | plus 1 (failed) and 130 (Ctrl+C) |
+| 9.4 unknown sections/keys → warning, ignored | CONFORMS | `viwo/core/wiring/ini.py:103-104,141-146` (`[startup]` and `[server]` keys checked) | |
+| 9.4 unknown plugin/slot/backend id → error for that entry, default used instead | CONFORMS | `viwo/core/wiring/binder.py:26-44,79`, `viwo/core/wiring/registry.py:262-265`, live boot of `distros/windows-unreal.ini` | no unit test for the fallback; the rule also fires on the generated `unarchive.upak` spare (8.4) |
+| 9.4 wrong-family backend → same | CONFORMS | `viwo/core/wiring/binder.py:21-22,38-42` | |
+| 9.4 `contract` major mismatch → exit 2 | CONFORMS | `viwo/core/wiring/ini.py:63-69` (`invalid_request`) → `viwo/cli.py:27` (2) | untested |
+| 9.4 secret-looking option keys refused with a warning | CONFORMS | `viwo/core/wiring/ini.py:16,99-101` | `token` added to the word list |
+| 9.4 paths relative to the ini folder | CONFORMS | `viwo/core/wiring/ini.py:83,91,114` | |
+| 9.5 lifecycle hooks | NOT IMPLEMENTED (deferred, documented) | as `[hooks]` | |
+| 9.6 `GET /api/distro` returns effective ini, bindings, problems | CONFORMS | `viwo/api/routes.py:29-31`, `viwo/core/wiring/boot.py:67-77` | |
+| 9.6 UI editing later; takes effect after restart; nothing re-wired while running | CONFORMS | doc 9.6 revised (apply by reloading, no restart); `viwo/api/app.py:37` (`reload`), `viwo/api/handlers_settings.py` | the owner's apply-by-reload decision is now in the contract |
 
-Verdict: the flat ini, layering, validation of ids and secrets, and the boot exit codes match doc 9; hooks, slot policies and CLI overrides are documented deferrals.
-Open: `contract` in `[startup]` is treated as an unknown key, more than one base level is accepted, bad `[slots]` entries do not fall back to defaults, and per-value provenance of the effective config is absent.
+Verdict: the ini model is complete for the prototype scope: one base level, the `contract` key with its major check, per-value sources, default fallback on bad ids and the four exit codes all match doc 9; hooks and slot policies stay documented deferrals.
+Open: 9.1 cli flags `--profile`, `--plugin <id>=on/off`, `--slot <slot>=<main> (deferred) · 9.2 `auto_install` default off (intentional) · 9.2 `[slot_policy]` (deferred) · 9.2 `[hooks]` (deferred) · 9.3 steps 5, 7, 10, 12 hooks (deferred) · 9.3 step 9 strict_preflight → exit 4 (intentional) · 9.5 lifecycle hooks (deferred).
 
 ## 10 Third-party tools (sparse submodules proposal)
 
 | Clause | Status | Evidence | Note |
 |---|---|---|---|
-| Direction: sparse submodules at M11; until then a tool lock file (name, version, URL, checksum) | CONFORMS (interim design) | `viwo/data/tools.json` (version, license, url, size, sha256, kind, find per OS), `viwo/core/thirdparty.py:31-38` | the lock file is the shipped design; submodules remain a roadmap item (M12) |
-| 10.1 pinned versions, provenance, licenses next to the tool, fewer install surprises, locator knows the place | CONFORMS | `tools.json` `license` per entry, `THIRD_PARTY_NOTICES.md` (generated by `tools/notices.py`), `boot.py:85` (`found_tools` first) | |
-| 10.2 `third_party/vendor.ini` + submodule folders + `_build/` | NOT IMPLEMENTED (deferred, documented) | doc 10 sequencing note; roadmap M12 | `third_party/<id>/` folders exist with release binaries instead |
-| 10.2 sync script for sparse checkout | NOT IMPLEMENTED (deferred, documented) | | |
-| 10.2 locator order: config → env → vendored → PATH → known dirs; vendored first ❓ | CONFORMS (decided: vendored first) | `boot.py:85` (`{**found_tools, **config.tools}` feeds the config step), `_shared.py:125-132` | ini still wins over `third_party/`, PATH comes after; README "Precedence" states it |
-| 10.3 pure-Python tools from source on sys.path | CONFORMS (variant) | `thirdparty.py:47-54` (`third_party/python` on `sys.path`, pip `--target`), unrpyc from a tagged source zip run with `{python}` (`thirdparty.py:99-100`) | |
-| 10.3 UnityPy native deps need wheels | CONFORMS | `thirdparty.py:273-290` (pip install of the pin, wheels included) | |
-| 10.3 compiled tools: release binaries | CONFORMS | `tools.json` (repak, retoc, vgmstream, gdre, godotpcktool, assetstudiomod, 7-Zip, ffmpeg, quickbms, datatool, renderdoc, dotnet) | 10.4 option (b) in practice |
-| 10.3 unrar / 7-Zip do not fit git | CONFORMS | `tools.json` `unrar` (RARLAB self-extractor opened by 7-Zip: `thirdparty.py:216-222`), `sevenzip` (MSI administrative unpack: `:209-215`) | |
-| 10.4.1 source vs runnable → (b) binaries verified by checksum | CONFORMS | `thirdparty.py:140-166,245-249` (sha256 + size, 3 attempts, HTTPS only) | ❓ answered by the implementation |
-| 10.4.2 licenses before vendoring | CONFORMS | `LICENSE` (MIT), `tools.json` license per tool, GPL tools as subprocesses (see 08) | |
-| 10.4.3 repository size | CONFORMS (moot) | nothing vendored in git; `third_party/` is gitignored | |
-| 10.4.4 bumping a pin reruns the matrix | CONFORMS (by policy) | `tests/test_thirdparty.py:186` (manifest complete and HTTPS), CI real-tool job installs the pins (`.github/workflows/ci.yml`) | |
-| 10.4.5 vendor list vs `[tools]` split | CONFORMS (decided) | `tools.json` (what is pinned) vs `[tools]` (what is forced) | |
-| 10.5 `DependencySpec.vendored`; `[tools] x = vendored:<name>`; `auto_install` as fallback | DEVIATES (intentional, documented) | `boot.py:85` makes every installed pin a config override automatically; `preflight.py:92-94` installs only what is missing when `auto_install` is on | the explicit `vendored:` syntax is unnecessary under the lock-file design |
-| Owner's 1.0 rules (HANDOFF item 1): every tool under `third_party/`, pinned, checksummed, HTTPS, no manual step | CONFORMS | `thirdparty.py:142-143,248`, `tests/test_thirdparty.py:163,186`, STATUS "1.0 evidence" (Windows and Linux installs) | `installable()` refuses Python pins in the frozen build (`thirdparty.py:133-137`) |
+| Direction: sparse submodules at M11; until then a tool lock file (name, version, URL, checksum) | CONFORMS | `viwo/data/tools.json` (version, license, per-OS url/size/sha256/kind/find), `viwo/core/thirdparty.py:1-8,37-38`, contract README goal 6 History, doc 16 M12 | the lock file is the shipped and recorded design |
+| 10.1 pinned versions, provenance, licenses next to the tool, fewer install surprises, locator knows the place | CONFORMS | `tools.json` `license` per entry, `viwo/core/wiring/boot.py:99` (`found_tools` first), `viwo/core/records.py:19` (`installed_version` in run records), `THIRD_PARTY_NOTICES.md` | |
+| 10.2 `third_party/vendor.ini` + submodule folders + `_build/` | DEVIATES (intentional, documented) | contract README goal 6 History; doc 16 M12 ("done as the pinned installer ... replaced submodules") | `third_party/<id>/` folders hold release binaries |
+| 10.2 sync script for sparse checkout | DEVIATES (intentional, documented) | same; `viwo install --all` (`viwo/cli_args.py:84-85`) | |
+| 10.2 locator order: config → env → vendored → PATH → known dirs; vendored first ❓ | CONFORMS | `viwo/core/wiring/boot.py:99` (`{**found_tools, **config.tools}`), `viwo/os/_shared.py:138-145`, `README.md:107` | decided: ini over `third_party/` over PATH |
+| 10.3 pure-Python tools from source on sys.path | CONFORMS | `viwo/core/thirdparty.py:47-55,273-290` (`third_party/python` on `sys.path`, pinned pip `--target`) | variant: pinned wheels, not submodule source |
+| 10.3 UnityPy native deps need wheels | CONFORMS | `viwo/core/thirdparty.py:273-290`, `tests/test_thirdparty.py` `test_manifest_pins_match_pyproject` | |
+| 10.3 compiled tools: release binaries | CONFORMS | `tools.json` (repak, retoc, vgmstream, gdre, godotpcktool, assetstudiomod, sevenzip, ffmpeg, ffprobe, dotnet, unrar, quickbms, datatool, renderdoccmd, rdpython, unrpyc), `viwo/core/thirdparty.py:225-262` | option (b) in practice |
+| 10.3 unrar / 7-Zip do not fit git | CONFORMS | `viwo/core/thirdparty.py:209-215` (MSI administrative unpack), `tests/test_thirdparty.py:214` (kinds `sfx`, `msi`) | |
+| 10.4.1 source vs runnable → (b) binaries verified by checksum | CONFORMS | `viwo/core/thirdparty.py:140-153,245-249` (HTTPS only, sha256 + size, 3 attempts), contract README D8 | |
+| 10.4.2 licenses before vendoring | CONFORMS | `LICENSE` (MIT), contract README D9, `tools.json` license per tool, `tests/test_l0_static.py` `test_gpl_backends_run_as_subprocesses` | |
+| 10.4.3 repository size | CONFORMS | nothing vendored in git (`viwo/core/thirdparty.py:8`, contract README layers: `third_party/` gitignored) | moot |
+| 10.4.4 bumping a pin reruns the matrix | CONFORMS | `tests/test_thirdparty.py` `test_manifest_is_complete_and_https`, doc 17 real-tools job (`17-testing-model.md:80`) | by policy (CI only on major tags) |
+| 10.4.5 vendor list vs `[tools]` split | CONFORMS | `tools.json` (what is pinned) vs `viwo/core/wiring/ini.py:90-91` (what is forced) | decided |
+| 10.5 `DependencySpec.vendored`; `[tools] x = vendored:<name>`; `auto_install` as fallback | DEVIATES (intentional, documented) | `viwo/core/wiring/boot.py:99` (every installed pin becomes a config override), `viwo/core/preflight.py:92-94`, contract README goal 6 History | the `vendored:` syntax is unnecessary under the lock-file design |
+| Owner's 1.0 rules: every tool under `third_party/`, pinned, checksummed, HTTPS, no manual step | CONFORMS | `viwo/core/thirdparty.py:142-143,248`, `tests/test_thirdparty.py` `test_http_download_is_refused`, `test_manifest_is_complete_and_https`, `README.md:93-94,247-248` | `installable()` refuses Python pins in the frozen build (`thirdparty.py:133-137`) |
 
-Verdict: doc 10 was a proposal; the owner chose its option (b) and the interim lock-file design, and the implementation follows that choice completely.
-Open: sparse submodules, `vendor.ini` and the `vendored:` ini syntax stay deferred (M12); the doc itself still reads as an open proposal and should record the decision.
+Verdict: doc 10 was a proposal; the owner chose option (b) with the lock file, the README History line records it, and the implementation follows that choice completely.
+Open: 10.2 `third_party/vendor.ini` + submodule folders + `_build/` (intentional) · 10.2 sync script for sparse checkout (intentional) · 10.5 `DependencySpec.vendored`; `[tools] x = vendored:<name>`; `auto_ins (intentional).
 
 ## Counts per status
 
-| Doc | CONFORMS | DEVIATES (defect) | DEVIATES (intentional, documented) | NOT IMPL. (deferred, documented) | NOT IMPL. (undocumented gap) |
+| Doc | CONFORMS | DEVIATES (defect) | DEVIATES (intentional, documented) | NOT IMPLEMENTED (deferred, documented) | NOT IMPLEMENTED (undocumented gap) |
 |---|---|---|---|---|---|
-| 00 | 17 | 1 | 2 | 1 | 0 |
-| 01 | 20 | 4 | 1 | 3 | 2 |
-| 02 | 23 | 8 | 2 | 1 | 5 |
-| 08 | 24 | 1 | 6 | 6 | 4 |
-| 09 | 20 | 5 | 3 | 5 | 1 |
-| 10 | 13 | 0 | 1 | 2 | 0 |
-
-Defects worth fixing first (small, concrete): `[startup] contract` handling and the major-version
-check (09), `[slots]` fallback to defaults on a bad backend id (09), the 2.9 conformance kit
-(detect twice, staging sandbox, manifest validation for built-ins), and a doc pass to align 2.1,
-2.5 (magic rule), 2.6, 8.2 (needs_key), 8.4 (pak spare, slot ids) with what ships.
+| 00 Glossary and semantic model | 16 | 0 | 2 | 1 | 0 |
+| 01 OS contract | 27 | 0 | 1 | 4 | 0 |
+| 02 Engine plugin contract | 44 | 0 | 2 | 2 | 0 |
+| 08 Pipeline backends and slots | 38 | 0 | 6 | 7 | 0 |
+| 09 Startup wiring from an ini file | 28 | 0 | 2 | 5 | 0 |
+| 10 Third-party tools (sparse submodules proposal) | 13 | 0 | 3 | 0 | 0 |
+| Total | 166 | 0 | 16 | 19 | 0 |
 
 
 ---
 
-# Conformance audit B: contract docs 03-07 vs implementation (v1.1.0, 2026-11-03)
+# Conformance re-audit B: docs 03, 04, 05, 06, 07 against the implementation (v1.2.0, branch `makeover`, contract 1.1, 2026-11-03)
 
 Read-only. Status values: CONFORMS · DEVIATES (defect) · DEVIATES (intentional, documented) ·
 NOT IMPLEMENTED (deferred, documented) · NOT IMPLEMENTED (undocumented gap).
-Evidence is `file:line` at commit v1.1.0 or a test name.
+Evidence is `file:line` at the current tree (v1.2.0) or a test method that exists now.
 
 ## Doc 03: pipeline, routing and mixed mode
 
 | Clause | Status | Evidence | Note |
 |---|---|---|---|
-| 3.1 PREPARE: ownership rule, never clear without marker, `staging/<plugin>/` + `scratch/` | CONFORMS | `viwo/core/pipeline/runner.py:95-108`, `viwo/core/workspace.py:71-99`, `Run.ctx` staging per owner `runner.py:54-66`; `tests/test_core_units.py::WorkspaceTests.test_ownership_and_policies` | Staging lives under a temp work dir, not under the workspace (fine: it is moved in by COLLECT). |
-| 3.1 PROBE: one GameProbe | CONFORMS | `runner.py:118` (`FolderProbe(run.game)`), `sources.py:149` second probe with `limit=1` | A second cheap probe is built for source roots; no observable deviation. |
-| 3.1 DETECT: every enabled plugin, then `select_plugins()` | CONFORMS | `runner.py:69-78,116-122` | Detection exceptions become 0.0 results (D2 spirit). |
-| 3.1 INVENTORY / CATALOG stage (D12) | NOT IMPLEMENTED (deferred, documented) | `contracts/pipeline.py:14-23` has no INVENTORY stage; doc 3.1 marks it "optionally… ❓ D12" | Open decision in the contract itself. |
-| 3.1 UNPACK: identify by head+tail, carve embedded containers, recursive, main then spare | CONFORMS | `pipeline/unpack.py:40-95`, `identify.py` (via `IdentifyTests.test_suffix_magic_custom_and_carve`), `failover.py:11-35` | Depth cap 10 (`unpack.py:17`), failures recorded per archive. |
-| 3.1 UNPACK: after an outer wrapper (Electron/NW.js) is unpacked, detection runs once more | DEVIATES (intentional, documented) | `plugins/electron/__init__.py:1-4` (wrapper members flow through the same unpack queue; no re-detection); no code path re-runs `detect_all` after unpack | Documented only in the plugin docstring; the contract sentence has no implementation. Low impact: nested archives still unpack through slots; plugin selection for inner engines (e.g. RPG Maker MV inside NW.js) relies on the mixed-game markers being visible at the top level. |
-| 3.1 EXPORT per plugin into its own staging | CONFORMS | `runner.py:205-217`, `Run.ctx` staging = `work/staging/<owner>` | |
-| 3.1 COLLECT: copy from game, move from staging, `<ext>/` layout, `selected_exts` filter, v1 collision naming, dedupe size+hash, provenance map | CONFORMS | `collect.py:112-121` (`_place`: size + sha256), `:124-157`, `:169-185` (provenance), `sources.py:109-127` (`move=False` for game roots); `tests/test_pipeline.py::test_selected_extensions_and_cancel`, `test_game_integrity.py::test_every_plugin_leaves_the_game_untouched` | |
-| 3.1 VERIFY: `logic_check_summary` warnings, then plugin `verify()` | CONFORMS | `runner.py:140-146,220-228` | Plus a game-folder snapshot diff (`guard.py:192-207`), beyond the contract. |
-| 3.1 SANITIZE stage inside extraction (optional recipe) | NOT IMPLEMENTED (deferred, documented) | No SANITIZE stage in `contracts/pipeline.py`; `ExtractionRequest` has no `sanitize_recipe`/`sanitize_auto_apply` (`pipeline.py:55-66`) | Sanitizer exists only as a separate workspace tool (doc 5). The deferral is implied by roadmap M10 "report-only sanitizer", not stated against 3.1. |
-| 3.1 REPORT: manifests in `.extraction_metadata/`, result built | CONFORMS | `runner.py:241-269` (run record `runs/<job>.json`, `provenance.jsonl`, atomic writes) | |
-| 3.1 ANALYZE never part of extraction | CONFORMS | no analysis code anywhere (`grep -rl analysis viwo` is empty) | |
-| 3.1 Every stage sends events with `stage` set; cancel checked between files | CONFORMS | `runner.py:48-49`, `collect.py:138,145`, `unpack.py` via ctx; `test_pipeline.py::test_selected_extensions_and_cancel` | CARVE and DECODE stages were added (D21) and are not in doc 3.1. |
-| 3.2 Request fields | DEVIATES (intentional, documented) | `contracts/pipeline.py:55-66`: `sanitize_recipe`/`sanitize_auto_apply` absent; `on_existing` (doc 4.3) and `carve` (D21) added | Same root cause as the SANITIZE stage. |
-| 3.2 v1 payload mapping (`extractionType` missing/""/auto → auto; id → single; mixed → plugins + `mixedPolicy` default selected) | CONFORMS | `contracts/pipeline.py:68-96` | |
-| 3.3 Run order: confidence desc, priority desc, id | CONFORMS | `select.py:23-26`; `SelectionTests.test_every_combination` asserts order independence | |
-| 3.3 auto / single / mixed-selected / detected / all; never empty; generic fallback | CONFORMS | `select.py:35-50`; `SelectionTests.test_auto_and_fallback` (Unity 0.92 beats Ren'Py 0.78; generic when nothing matches) | Unknown/disabled requested ids now raise `invalid_request` (`select.py:28-34`, added 1.0.1); the contract says "if it's enabled" (silent drop). Stricter, user-facing improvement; note it. |
-| 3.4 Unpack: suffix clash between plugins → ini decides, else boot problem | CONFORMS | `wiring/registry.py` `collect()` reports "slot … clashes; ignored" (seen at `registry.py` collect, test `test_registry.py`) | Magic sniffing tie-break (open ❓) not implemented; still open in the doc. |
-| 3.4 Export into own staging; no overwrite between plugins | CONFORMS | `runner.py:54-57,210-211` | |
-| 3.4 Collect once from all roots, overlapping roots deduped with `path_key` | CONFORMS (with doc inconsistency) | `sources.py:148-165` (nested roots dropped by `parents`), `collect.py:112-121` dedupe by size + hash | Doc 3.4 says "same size and mtime"; doc 4.3 and F6 say size + hash. Code follows 4.3. Doc 3.4 sentence is stale. |
-| 3.4 Failure isolation: plugin error in `plugins[i].error`, others still run, success if COLLECT completes | DEVIATES (defect, low) | `runner.py:213-217`: an export failure is recorded in `PluginRun.warnings` as `"<slot>: <kind>: <error>"` and `error` stays `""`; other plugins still run; `success=True` set at `runner.py:147-148` | The isolation holds; only the field differs from the contract (`error` is always empty). |
-| 3.4 Result: `extractorType: "mixed"`, detection from first plugin in run order, one `plugins[]` entry each; plugin-specific top-level keys only in single/auto | CONFORMS | `contracts/pipeline.py:127-161`; `test_mixed.py::test_pairs_and_singles` | No plugin-specific top-level keys exist any more (Unity gate removed, see 3.5). |
-| 3.5 v1 keys kept | CONFORMS | `contracts/pipeline.py:164-177` `LEGACY_RESULT_KEYS`, `to_legacy_dict` | |
-| 3.5 v1 Unity extras (`discoveredCount`, `qualityGatePass`, `completenessReport`, …) | DEVIATES (intentional, documented) | not produced anywhere; roadmap doc 16 M5: "placeholder slices and the fake completeness gate removed" (F11) | |
-| 3.5 new keys `contractVersion`, `manifestsPath`; `plugins[]` fields `exportedByKind`, `exportedByTool`, `inventoryCount`, `verifyPassed` | NOT IMPLEMENTED (undocumented gap) | `contracts/pipeline.py:131-158`: new keys present are `mode`, `byBackend`, `runRecord`, `workspace`, `carvedFiles`, `plugins[]{id,detection,exported,backend,warnings,error}` | `/api/distro` carries `contract`; the run record carries the version. The result shape itself never got these keys and no doc records the trim. |
-| 3.6 Selection exhaustive over subsets × policies | CONFORMS | `test_core_units.py::SelectionTests.test_every_combination` (31 subsets of 5 ids × 3 policies, plus order independence) | Uses 5 synthetic ids rather than the 13 enabled plugins (63 subsets); the function is id-agnostic. |
-| 3.6 Property tests with random confidences | NOT IMPLEMENTED (undocumented gap) | no randomized test in `tests/test_core_units.py` | Low value given the fixed-confidence exhaustive test. |
-| 3.6 Pipeline pairwise over every pair + singles on the mixed fixture | CONFORMS | `test_mixed.py::test_pairs_and_singles` (13 singles + 78 pairs on `make_mixed_game`) | Each plugin's own fixture is covered by its own module, not by this test. |
-| 3.6 invariants 1-3 (selection non-empty, inside subset, no clashes), 4 (writes only under staging + workspace; game hashes unchanged), 5 (v1 keys, one `plugins[]` entry per plugin), 6 (re-run identical) | CONFORMS | `test_mixed.py:76-91` (sets equal, hashes unchanged, re-run equal), `test_game_integrity.py` (every plugin), `LEGACY_RESULT_KEYS` | Invariant 6 is checked for the generic single run only. |
-| 3.6 `sample-custom` plugin via the custom loader | CONFORMS | `examples/plugins/hello/` + `tests/test_registry.py` end-to-end extract through a drop-in | |
+| 3.1 history (D12): no INVENTORY stage, sanitizer never a stage of an extraction; table is the implemented `Stage` order | CONFORMS | `viwo/contracts/pipeline.py:18-27` (PREPARE, PROBE, DETECT, UNPACK, CARVE, EXPORT, COLLECT, VERIFY, REPORT; no INVENTORY, no SANITIZE, no ANALYZE) | Doc revised to the implemented design. |
+| 3.1 history (D12): `plugins[].inventoryCount` reports what each export saw | CONFORMS | `viwo/core/pipeline/checks.py:22` (`verify_one`), `viwo/contracts/legacy.py:16` (`inventoryCount`) | 0 for plugins without an inventory (no claim); no built-in keeps one yet |
+| 3.1 PREPARE: ownership rule, never clear without marker, `staging/<plugin_id>/` + `scratch/` | CONFORMS | `viwo/core/pipeline/runner.py:99-117` (precheck, `resolve_target`, temp work dir), `viwo/core/workspace.py:92-120`, staging per owner `runner.py:51-66`; `tests/test_core_units.py::WorkspaceTests.test_ownership_and_policies` | Staging/scratch live under a temp work dir (`runner.py:112`), moved into the workspace by COLLECT. |
+| 3.1 PROBE: build one GameProbe | CONFORMS | `viwo/core/pipeline/runner.py:122` (`FolderProbe(run.game)`); a second `limit=1` probe for source roots at `viwo/core/pipeline/sources.py:54` | No observable deviation. |
+| 3.1 DETECT: `detect()` on every enabled plugin, then `select_plugins()` | CONFORMS | `viwo/core/pipeline/runner.py:73-82,120-126` | Detection exceptions become 0.0 results (`runner.py:78-81`). |
+| 3.1 UNPACK: identify (head + tail, carving embedded containers), recursive unpack, main then spare | CONFORMS | `viwo/core/pipeline/identify.py:13-32` (custom identifier with head and tail bytes, longest suffix, then magic), `:35-45` (carve), `viwo/core/pipeline/unpack.py:17,46-64` (queue, depth cap 10), `viwo/core/pipeline/failover.py:23-35`; `tests/test_core_units.py::IdentifyTests.test_suffix_magic_custom_and_carve`, `tests/test_pipeline.py::ReplayAndUnpackTests.test_unpack_one_archive` | |
+| 3.1 UNPACK: after an outer wrapper (`.asar`, `.nw`) is unpacked, detection runs once more and the strongest engine (≥ `mixed_threshold`, not already selected) exports from it, one pass, never nested | CONFORMS | `viwo/core/pipeline/rewrap.py:27-51` (`WRAPPERS`, nested origins skipped by `"!" in origin` at `:37`, `taken` set, threshold at `:45`, `_export(run, best.plugin_id, dest)` at `:50`), called from `viwo/core/pipeline/runner.py:139` | No test exercises the re-detection path (`grep -rn "Re-detected\|rewrap" tests` is empty). |
+| 3.1 CARVE: signature carver over unknown blobs (D21), archives found are unpacked | CONFORMS | `viwo/core/pipeline/runner.py:140,191-206` (`carve_all`, nested `unpack_all` into `unpack-carved`), `viwo/contracts/pipeline.py:51-56` (`CarveMode`) | |
+| 3.1 EXPORT: `export()` for each selected plugin into its own staging folder | CONFORMS | `viwo/core/pipeline/runner.py:138,209-229`, staging `work/staging/<owner>` at `runner.py:57` | |
+| 3.1 COLLECT: copy from game roots, move from staging, `<ext>/` layout, `selected_exts` filter, v1 collision naming, dedupe size + hash, provenance map, DECODE inside COLLECT | CONFORMS | `viwo/core/pipeline/collect.py:62-71` (`_place`: size + sha256), `:99-106` (selected exts), `:119-135` (`copy2` when `move=False`, provenance rows), `viwo/core/pipeline/sources.py:14-32,53-70` (game roots `move=False`), `viwo/core/pipeline/runner.py:169-188` (`_decode` inside `_collect`); `tests/test_pipeline.py::PipelineTests.test_selected_extensions_and_cancel`, `tests/test_game_integrity.py::GameIntegrityTests.test_every_plugin_leaves_the_game_untouched` | |
+| 3.1 VERIFY: `logic_check_summary` warnings, then plugin `verify()` | CONFORMS | `viwo/core/pipeline/checks.py:6-14`, `viwo/core/pipeline/runner.py:145,149-150,232-244` | Plus a game-folder snapshot diff warning (`runner.py:132,146-148`, `viwo/core/pipeline/guard.py:27-41`), beyond the contract. |
+| 3.1 REPORT: manifests to `.extraction_metadata/`, result built | CONFORMS | `viwo/core/pipeline/runner.py:257-285` (`provenance.jsonl`, `runs/<job_id>.json`, atomic writes) | |
+| 3.1 ANALYZE never part of an extraction | CONFORMS | no `Stage.ANALYZE` (`viwo/contracts/pipeline.py:18-27`); `grep -rln analysis viwo` is empty | |
+| 3.1 every stage sends events with `stage` set, cancel checked between files, v1 line format kept | CONFORMS | `viwo/core/pipeline/runner.py:44-49`, `viwo/core/pipeline/collect.py:88-96`, `viwo/contracts/types.py:20-24` (`legacy_line`); `tests/test_pipeline.py::PipelineTests.test_selected_extensions_and_cancel` | |
+| 3.2 request fields (`game_path`, `selected_exts`, `mode`, `plugins`, `mixed_policy`, `mixed_threshold`, `plugin_options`, `on_existing`, `carve`) | CONFORMS | `viwo/contracts/pipeline.py:59-70` | Additive `workspace` field (`:62`). |
+| 3.2 v1 payload mapping (`extractionType` missing/""/auto → auto; id → single; mixed → `plugins` + `mixedPolicy` default selected) | CONFORMS | `viwo/contracts/pipeline.py:72-100` | |
+| 3.3 run order: confidence desc, priority desc, id; independent of registration order | CONFORMS | `viwo/core/pipeline/select.py:23-26`; `tests/test_core_units.py::SelectionTests.test_every_combination` (`:109` reversed input gives the same order) | |
+| 3.3 auto / mixed selected / detected / all; never empty; generic fallback; Unity 0.92 beats Ren'Py 0.78 | CONFORMS | `viwo/core/pipeline/select.py:35-50`; `tests/test_core_units.py::SelectionTests.test_auto_and_fallback` | |
+| 3.3 single: "the requested id, if it's enabled" (silent fall-through to step 3) | CONFORMS | doc 3.3 revised (unknown or disabled id refused with `invalid_request` since 1.0.1); `viwo/core/pipeline/select.py:28-34` |  |
+| 3.4 Unpack: slots of all chosen plugins combined; same suffix claimed by two plugins → the ini decides, else a boot configuration problem (❓ magic tie-break open) | CONFORMS | `viwo/core/wiring/conformance.py:119` (`suffix_clashes`: boot problem naming the winner), `viwo/core/wiring/registry.py` (`collect` appends it); doc 3.4 revised (ini decides by switching a plugin off; magic never breaks ties); `tests/test_config.py::test_suffix_clash_is_reported_and_profile_flag_selects_plugins` | no built-in pair clashes today |
+| 3.4 Export: each plugin into its own `staging/<id>/` | CONFORMS | `viwo/core/pipeline/runner.py:57,214-215` | |
+| 3.4 Collect once from all roots and staging folders; overlapping source roots deduped; duplicates by content (size + hash → skip, else `name__N.ext`) | CONFORMS | `viwo/core/pipeline/sources.py:55-59` (resolved roots, nested roots dropped by `parents`), `viwo/core/pipeline/collect.py:62-71` | Overlap uses `Path.resolve()` + `parents`, not `os.fs.path_key`; same effect. Doc 3.4 now says size + hash (the old mtime sentence is gone). |
+| 3.4 Failure isolation: export/verify failure in `plugins[i].error` and repeated in `warnings`; `verifyPassed` false on verify warnings; others still run; success if COLLECT completes | CONFORMS | `viwo/core/pipeline/runner.py:220-229` (`error` and `warnings` set together), `:232-244` (`verify_passed=not found`, verify exception lands in `error`), `:151-152` (`success=True` after COLLECT); `viwo/contracts/legacy.py:17,20` | No test asserts `plugins[].error` or `verifyPassed` (`grep -rn "verifyPassed\|exportedByKind" tests` is empty). |
+| 3.4 Result: `extractorType: "mixed"`, `detection` from the first plugin in run order, one `plugins[]` entry each, no plugin-specific top-level keys | CONFORMS | `viwo/contracts/pipeline.py:137-161`; `tests/test_mixed.py::MixedPairwiseTests.test_pairs_and_singles` (`:78-79`) | |
+| 3.5 v1 keys kept | CONFORMS | `viwo/contracts/pipeline.py:139-149,167-170` (`LEGACY_RESULT_KEYS`); `tests/test_pipeline.py:46` | |
+| 3.5 removed (F11): v1 Unity extras | CONFORMS | not produced anywhere; `viwo/plugins/unity/__init__.py:94-97` only warns when nothing was collected | |
+| 3.5 new keys `contractVersion mode manifestsPath workspace runRecord byBackend carvedFiles` and `plugins[] { id detection exported exportedByKind exportedByTool backend inventoryCount verifyPassed warnings error }` present | CONFORMS | `viwo/contracts/pipeline.py:150-160`, `viwo/contracts/legacy.py:10-21`, `viwo/core/pipeline/rewrap.py:17-24` (`exportedByKind`) | Additive keys `movedFiles`, `inventoryItems`, `collectedFromInventory` (doc 0.4) are not listed in 3.5. |
+| 3.5 `contractVersion` value is the contract version (1.1) | CONFORMS | `viwo/contracts/pipeline.py:13`; `tests/test_l0_static.py::ContractVersionTests` keeps the mirror equal to `viwo.CONTRACT_VERSION` |  |
+| 3.6 selection: exhaustive over every non-empty subset × 3 policies × synthetic detections | CONFORMS | `tests/test_core_units.py::SelectionTests.test_every_combination` (`:95-111`: 31 subsets of 5 ids × 3 policies) | 5 synthetic ids rather than the enabled plugin set (63 subsets); the function is id-agnostic. |
+| 3.6 selection: property tests with random confidences | CONFORMS | `tests/test_core_units.py::test_random_confidences_keep_the_invariants` (300 random confidence sets: auto picks the strongest non-generic plugin, DETECTED is the set above the threshold, order independence) |  |
+| 3.6 pipeline: real runs for every pair of plugins plus each single, on the mixed fixture and on each plugin's own fixture | CONFORMS | `tests/test_mixed.py::MixedPairwiseTests.test_pairs_and_singles` (`:63`: 13 singles + 78 pairs on `make_mixed_game`) | Each plugin's own fixture is covered by its own test module. |
+| 3.6 OS layers: every selection and pipeline test runs on the Linux and Windows CI runners | CONFORMS | `.github/workflows/ci.yml:21-23` (`ubuntu-latest`, `windows-latest`), `:35-41` (full `unittest discover`) | CI runs only on major release tags or by hand (CLAUDE.md policy). |
+| 3.6 OS layers: plus a fake-OS run of the fast tests on each runner | DEVIATES (intentional, documented) | doc 3.6 revised: the OS layer has its own conformance tests (`tests/test_os_layer.py`); tools are faked, the OS layer never is | the fake-OS run of draft 3 was dropped, now said in the doc |
+| 3.6 invariants 1-6 (selection non-empty, no duplicates, inside the subset; order independence; no slot/backend clash; writes only under staging and the workspace, game hashes unchanged; v1 keys and one `plugins[]` entry per plugin; re-run identical) | CONFORMS | `tests/test_core_units.py:103-109` (1, 2), `tests/test_registry.py::DropinTests.test_clash_with_a_builtin_needs_override` (3), `tests/test_conformance_kit.py::SandboxTests.test_export_writes_only_inside_staging_and_scratch` and `tests/test_mixed.py:81` (4), `tests/test_pipeline.py:46` and `tests/test_mixed.py:78` (5), `tests/test_mixed.py:82-92` (6) | Invariant 6 is checked for the generic single run only. |
+| 3.6 `sample-custom` plugin through the custom-plugin loader | CONFORMS | `tests/test_registry.py:22-29` (`copy_hello` from `examples/plugins/hello/`), `tests/test_registry.py::DropinTests.test_end_to_end_extraction_through_a_dropin` | |
 
-Verdict: the stage runner, selection, mixed mode, COLLECT and the game-folder guarantee conform, with stronger behaviour than written in two places (unknown plugin ids refused, game snapshot diff). Two documented deferrals (INVENTORY, in-pipeline SANITIZE), one stale doc sentence (3.4 mtime), one low defect (`plugins[i].error` never set) and one undocumented trim of the 3.5 "new keys".
+Verdict: the stage runner, wrapper re-detection, selection, mixed mode, COLLECT, failure isolation and the 3.5 key set now conform; the doc was revised to the implemented design. Open: `inventoryCount` is emitted but never filled, the result's `contractVersion` still says 1.0, the 3.3 "single" sentence and the 3.4 suffix-clash sentence do not describe the code, and the two 3.6 test promises (property test, fake-OS run) do not exist.
+Open: 3.6 OS layers: plus a fake-OS run of the fast tests on each runner (intentional).
 
 ## Doc 04: HTTP API, workspace layout and configuration
 
 | Clause | Status | Evidence | Note |
 |---|---|---|---|
-| 4.1 Frozen GET routes kept (`/api/status`, `/api/logs`, `/api/dependencies`, `/api/assets-window`, `/api/assets-window-preview`, `/api/browse-folder`, `/api/media-merger/state`, `/preview/<path>`, static) | CONFORMS | `viwo/api/handlers.py:257-266`, `server.py:103-116` | |
-| 4.1 Dropped v1 routes (`/api/state`, `/api/session`, `/api/resume`, `/api/scan`, `/api/extensions`, `/api/detected-extensions`, `/api/assets-preview`, `/api/open-log-dir`, `/api/logs/load`) | DEVIATES (intentional, documented) | doc 04 header "Update (Prototype A)" lists them as dropped; not in `handlers.py` | |
-| 4.1 Frozen POST routes kept (extract, keep-selected, trash, restore, delete, clear-trash, sort-*, logs/clear, save-remaining-assets, open-folder, media-merger/*) | CONFORMS | `handlers.py:269-286` | `/api/open-folder` is token-checked (stronger than "origin-checked"); it accepts any existing directory by design (backend audit). |
-| 4.1 Error conventions: expected failures `{"success": false, "error"}` HTTP 200; uncaught → 500 `{"error"}`; invalid JSON → 400; unknown POST → 404 | CONFORMS | `server.py:90-101,133-137`; `tests/test_server.py::test_game_folder_and_unknown_routes` | Expected failures also carry `code`/`hint` (additive). |
-| 4.1 New routes: `/api/distro`, `/api/plugins`, `/api/detect`, sanitizer plan/apply/undo/recipes, jobs (`POST /api/jobs`, `GET /api/jobs/<id>`, events, cancel) | CONFORMS (minus two) | `routes.py:96-117`, `handlers_tools.py:154-166`; `test_api_routes.py`, `test_sanitizer.py::test_routes` | `POST /api/jobs` (generic submit) does not exist: jobs are created by their own routes. `/api/detect` returns every plugin's detection plus the auto selection only, not "the selection for each mode" (`routes.py:54-62`). Both undocumented. |
-| 4.1 `/api/analysis/*` | NOT IMPLEMENTED (deferred, documented) | doc 6 "contract hook only" | |
-| 4.1 Optional `/api/extract` fields `extractionType`, `plugins`, `mixedPolicy`, `pluginOptions` | CONFORMS | `contracts/pipeline.py:68-96` | `sanitizeRecipe`, `sanitizeAutoApply` absent (see 3.2). `onExisting`, `carve` added. |
-| 4.1 Security 1: per-start token, injected into index.html, `X-VIWO-Token` on every `/api/*` | CONFORMS | `server.py:58-60,71-75,108-110,122-123`, `make_server` token; `test_server.py::test_security_model` | Custom header forces a CORS preflight; no CORS headers are ever sent, so the preflight fails. |
-| 4.1 Security 2: JSON only, 415 otherwise | CONFORMS | `server.py:124-126`; same test | Body size cap 16 MiB (413) added. |
-| 4.1 Security 3: Host header check | CONFORMS | `server.py:53-56`; same test | |
-| 4.1 Security 4: path containment for static and `/preview/` relative to the active workspace | CONFORMS | `server.py` `_static` (WEB_ROOT parents check), `_preview` → `curation/sorting.py:215-224` (`resolve`, reserved dot folders refused); plugin assets `api/plugin_assets.py` containment; `test_security_model` traversal cases | |
-| 4.1 Security 5: UI `api()` helper sends the token | CONFORMS | `viwo/web/js/api.js` (`X-VIWO-Token` from the meta tag) | |
-| 4.1 Mapping: `/api/extract` submits an `extract` job and waits | CONFORMS | `api/app.py` `extract()` (`submit_with_listener(..., background=False)`) | |
-| 4.1 Mapping: merger build as a `merge` job and waits | CONFORMS | `handlers.py:229` `merger_build` via `locked_job("merge", …)` (seen in `KIND` on the web side and `handlers.py`) | |
-| 4.1 Mapping: curation routes synchronous under the workspace lock, 409 `busy` during a job | CONFORMS (shape note) | `app.py` `locked()` + `workspace.py:170-185`; `tests/test_curation.py::LockTests.test_curation_is_busy_during_a_job` | Legacy routes answer HTTP 200 with `code: "busy"` (doc 4.1 error convention), while envelope routes map busy → 409 (`routes.py:19-26`). Consistent with "expected failures are 200" for v1 shapes. |
-| 4.1 Mapping: `/api/logs` ring buffer; `/api/logs/clear` clears the view only | CONFORMS | `api/app.py` `_log` deque(2000), `clear_logs()`; job histories untouched | |
-| 4.2 `/api/dependencies` item shape: five v1 keys + `requirement`, `location`, `hint`; `category` = owner id | CONFORMS | `core/wiring/boot.py` `dependency_report()` | Additive `installable`, `version`. |
-| 4.3 Layout: marker, `<ext>/`, `noext/`, `.trash/{groups,items,merger}`, `.extraction_metadata/` + `runs/`, `.sanitizer/` | CONFORMS | `contracts/workspace.py:8-16,24-29`, `curation/trash.py:1-6`, `sanitizer.py:28,143,219` | `.analysis/` absent (deferred with doc 6). |
-| 4.3 Marker content: JSON with workspace id, created by, contract version | DEVIATES (defect, low) | `workspace.py:39-42` writes `{"app": "viwo"}` only | Presence is what every check uses (`has_marker`); the documented fields are not written. |
-| 4.3 Ownership: clear/replace only inside a marked folder; arbitrary folder with files refused unless empty | CONFORMS (one exception) | `workspace.py:45-52,71-99`, `_replace_groups` keeps reserved dot folders; `test_core_units.py::test_ownership_and_policies` | The configured default workspace folder is exempt from the marker check (`precheck` `is_default`, `workspace.py:77-78`): the app owns that folder by configuration. Not written in the doc. |
-| 4.3 Re-extraction policy new/replace/cancel; `needsDecision` + `options` over HTTP; CLI exit 2 without `--on-existing` | CONFORMS | `workspace.py:84-99`, `api/app.py` extract response (`needsDecision`, `options`), `cli.py` `EXIT["needs_decision"] = 2`; `test_pipeline.py::test_rerun_needs_decision_and_replace_is_deterministic` | |
-| 4.3 Three trash layouts explicit; v1 trees migrated on first open | CONFORMS | `trash.py:16-49`, `app.py` `locked()` calls `migrate()`; `test_curation.py::test_migrate_and_clear`, `test_trash_restore_delete_exact_names` (F18 exact names) | |
-| 4.3 Top-level dot folders reserved everywhere (list, count, sort, merge, keep-selected) | CONFORMS | `trash.py:57-63` (`kept`), `sorting.py:227-232` (`asset_files`), `resolve` refuses reserved, `merger/media.py:93`, `handlers.py:120-134` (`keep_selected` over `kept()`) | |
-| 4.3 Collision naming `name__N.ext`, undo `__undoN`, group trash `<ext>_N`, restored `<ext>__N` | CONFORMS | `contracts/workspace.py:15,36-46`, `sorting.py:300-307`, `trash.py:107-113,122-126` | |
-| 4.3 COLLECT dedupe size + hash | CONFORMS | `collect.py:112-121` | |
-| 4.3 Active workspace = session `assetPath`, fallback `<tempPath>/<outputDir>` | DEVIATES (intentional, documented) | `api/app.py` `App.workspace` defaults to `[server] workspace`; doc 4.5 "Configuration: one file" documents the ini-based default | v1's temp fallback is gone with v1. |
-| 4.4 `ProgressEvent { message, level, source, stage, current, total }` | DEVIATES (intentional, documented in code only) | `contracts/types.py:12-24` has no `current`/`total`; counts travel inside the message ("X / Y") and the UI parses them (`web/js/progress.js` header comment) | The contract was not updated; the web side documents the convention. |
-| 4.4 Rendered as `[SOURCE:STAGE] message` | CONFORMS | `contracts/types.py:20-24` `legacy_line()` | |
-| 4.4 Lines go to the session log and the daily log file | CONFORMS (name changed) | `api/app.py` `log()` → ring buffer + `viwo-YYYY-MM-DD.log` | File name is `viwo-…` not `rpy-extractor-…`; follows the v1 removal, not written in the doc. |
-| 4.4 `secret` option values masked before anything is sent | CONFORMS | `runner.py:231-238` (run records), `contracts/plugin.py:92-104` (`tool_output(mask=…)`), `plugins/unreal/pak.py` masks the AES key in streamed output; `tests/test_unreal.py` (`<secret>` in the run record) | |
-| 4.5 One ini: `[server]` host/port/workspace/merged/logs/temp relative to the ini; secrets never in the ini | CONFORMS | `core/wiring/ini.py` (`ServerConfig`, secret-looking option keys refused), `core/wiring/settings.py` refuses secret keys from the GUI | |
-| 4.6 One global session: `assetPath`, sorting history, logs; log append is a single locked operation | CONFORMS | `api/app.py` (`self.workspace`, `self.history`, `_lock` around append), `set_workspace` clears history on switch | History is cleared when the workspace changes (reasonable; not in the doc). |
+| 4.1 frozen GET routes kept (`/api/status`, `/api/logs`, `/api/dependencies`, `/api/assets-window`, `/api/assets-window-preview`, `/api/browse-folder`, `/api/media-merger/state`, `/preview/<path>`, static) | CONFORMS | `viwo/api/handlers.py:257-266`, `viwo/api/server.py:112-116,145-150,179-186` | Additive `GET /api/workspace` (`handlers.py:259`). |
+| 4.1 dropped v1 routes (`/api/state`, `/api/session`, `/api/resume`, `/api/scan`, `/api/extensions`, `/api/detected-extensions`, `/api/assets-preview`, `/api/open-log-dir`, `/api/logs/load`) | DEVIATES (intentional, documented) | doc 04 header `:3-8` ("normative: they do not come back"); none in `viwo/api/handlers.py:257-287` | |
+| 4.1 frozen POST routes kept (extract, keep-selected, trash, restore, delete, clear-trash, sort-*, logs/clear, save-remaining-assets, open-folder, media-merger/*) | CONFORMS | `viwo/api/handlers.py:269-287` | `/api/open-folder` is token-checked like every POST (`server.py:122-123`) rather than origin-checked: stronger. |
+| 4.1 error conventions: expected failures `{"success": false, "error"}` HTTP 200; uncaught → 500 `{"error"}`; invalid JSON → 400; unknown POST → 404 | CONFORMS | `viwo/api/server.py:96-101,133-137`; `tests/test_server.py::ServerTests.test_game_folder_and_unknown_routes` | Expected failures also carry `code`/`hint` (`handlers.py:17-21`). |
+| 4.1 `GET /api/distro`: effective configuration, OS layer, contract version, features | CONFORMS | `viwo/api/routes.py:29-31,118`; `tests/test_api_routes.py::RouteTests.test_distro_plugins_detect` | |
+| 4.1 `GET /api/plugins`: manifest, options schema, capabilities, load errors, dependency status | CONFORMS | `viwo/api/routes.py:38` (`_plugin_entry`: description, capabilities, options, slots, per-dependency availability, load error; disabled plugins listed with `loaded: false`); `tests/test_api_routes.py::test_distro_plugins_detect` |  |
+| 4.1 `POST /api/detect`: `detections`, `auto`, `modes.auto`, `modes.single` candidates, `modes.mixed.{detected,all,selected}` | CONFORMS | `viwo/api/routes.py:54-82`; `tests/test_api_routes.py::RouteTests.test_distro_plugins_detect` | Doc revised to the per-mode answer; implemented in 1.2. |
+| 4.1 `/api/analysis/*` | NOT IMPLEMENTED (deferred, documented) | doc 04 `:44` "not served in 1.1"; doc 06 `:3-5` | |
+| 4.1 `POST /api/jobs {kind, params}` generic submit onto the kind's own handler | CONFORMS | `viwo/api/handlers.py:291` (`JOBS_POST` merged into the POST table), `viwo/api/handlers_jobs.py:18-42`; `tests/test_api_routes.py::test_generic_job_submit_runs_the_kind_handler` |  |
+| 4.1 `GET /api/jobs`, `GET /api/jobs/<id>`, `GET /api/jobs/<id>/events?from=N`, `POST /api/jobs/<id>/cancel` (the only cancellation route) | CONFORMS | `viwo/api/routes.py:85-104,116-138`; `tests/test_api_routes.py::RouteTests.test_jobs_events_and_cancel`, `tests/test_server.py::ServerTests.test_extract_curate_and_jobs`; no other cancel route (`grep -rn cancel viwo/api/handlers_*.py` shows none) | |
+| 4.1 optional `/api/extract` fields `extractionType`, `plugins`, `mixedPolicy`, `pluginOptions`, `onExisting`, `carve` | CONFORMS | `viwo/contracts/pipeline.py:75-81`; sent by the UI `viwo/web/js/views/extract.js:226-229` | |
+| 4.1 curated error convention: legacy routes HTTP 200 + `code`; envelope routes map the code (`busy` → 409) | CONFORMS | `viwo/api/routes.py:19-26,107-113`, `viwo/api/handlers.py:17-21`, `viwo/api/app.py:116-117`; `tests/test_curation.py::LockTests.test_curation_is_busy_during_a_job` | |
+| 4.1 security 1: per-start token injected into `index.html`, `X-VIWO-Token` on every `/api/*`, preflight refused | CONFORMS | `viwo/api/server.py:25,58-60,71-75,108-110,122-123,211`; no CORS headers anywhere so a preflight fails; `tests/test_server.py::ServerTests.test_security_model` | |
+| 4.1 security 2: JSON only, 415 otherwise | CONFORMS | `viwo/api/server.py:124-126`; same test | Body cap 16 MiB → 413 (`server.py:29,131-132`), additive. |
+| 4.1 security 3: Host header check | CONFORMS | `viwo/api/server.py:53-56,106-107,120-121`; same test | |
+| 4.1 security 4: path containment for static and `/preview/` relative to the active workspace | CONFORMS | `viwo/api/server.py:179-186` (static, `WEB_ROOT` parents), `:145-150` → `viwo/core/curation/sorting.py:54-59` (`resolve`, reserved refused), `viwo/api/plugin_assets.py:26-42`; `test_security_model` traversal cases | |
+| 4.1 security 5: the UI `api()` helper sends the token | CONFORMS | `viwo/web/js/api.js:2,17` | |
+| 4.1 mapping: `/api/extract` submits an `extract` job and waits | CONFORMS | `viwo/api/app.py:82-87` (`background=False`) | |
+| 4.1 mapping: merger build as a `merge` job and waits | CONFORMS | `viwo/api/handlers.py:229-233`, `viwo/api/app.py:119-139` | |
+| 4.1 mapping: curation routes synchronous under the workspace lock, 409 `busy` during a job | CONFORMS | `viwo/api/app.py:109-117`, `viwo/core/workspace.py:191-206`; `tests/test_curation.py::LockTests.test_curation_is_busy_during_a_job` | Legacy-shaped routes answer 200 + `code: "busy"` per the curated convention above. |
+| 4.1 mapping: `/api/logs` ring buffer; `/api/logs/clear` clears the view only | CONFORMS | `viwo/api/app.py:27,43-60`, `viwo/api/handlers.py:265,283` | |
+| 4.1 mapping: read-only core queries and OS-layer shell routes | CONFORMS | `viwo/api/handlers.py:31-80,169-174,236-254` | |
+| 4.2 `/api/dependencies` item: five v1 keys + `requirement`, `location`, `hint`; `category` = owner id | CONFORMS | `viwo/core/wiring/boot.py:44-65` | Additive `kind`, `installable`. |
+| 4.3 layout: marker, `<ext>/`, `noext/`, `.trash/{groups,items,merger}`, `.extraction_metadata/` + `runs/`, `.sanitizer/` (plans, cache, journal), `.analysis/` | CONFORMS | `viwo/contracts/workspace.py:8-16`, `viwo/core/curation/trash.py:1-6,20`, `viwo/core/sanitizer.py:26,98,177`, `viwo/core/pipeline/runner.py:258-262` | `.analysis/` and `.sanitizer/cache/` are not created: deferred by doc 06 and doc 05 phase 2. |
+| 4.3 marker content: JSON `app, id, created_by, created, contract`; older empty or `{"app": "viwo"}` markers still count | CONFORMS | `viwo/core/workspace.py:41-63` (`marker_data`, `claim` keeps id/created_by/created across re-claims), `viwo/contracts/workspace.py:32-33` (`has_marker` by presence) | No test reads the marker fields back. |
+| 4.3 ownership: clear/replace only inside a marked folder; arbitrary non-empty folder refused; default workspace claimed without the check | CONFORMS | `viwo/core/workspace.py:92-120` (`:98-99` `is_default`), `:83-89` (`_replace_groups` keeps dot folders); `tests/test_core_units.py::WorkspaceTests.test_ownership_and_policies` | |
+| 4.3 re-extraction policy new/replace/cancel; replace keeps `runs/`, `.sanitizer/journal/`, `.trash/`; HTTP `needsDecision` + `options`; CLI exit 2 without `--on-existing` | CONFORMS | `viwo/core/workspace.py:76-89,105-120`, `viwo/api/app.py:71-81,88-97`, `viwo/cli.py:27`; `tests/test_pipeline.py::PipelineTests.test_rerun_needs_decision_and_replace_is_deterministic`, `tests/test_pipeline.py:94` | |
+| 4.3 three trash layouts explicit; v1 trees migrated on first open | CONFORMS | `viwo/core/curation/trash.py:28-50`, `viwo/api/app.py:113-114` (`migrate` under the lock); `tests/test_curation.py::GroupTrashTests.test_migrate_and_clear` | |
+| 4.3 top-level dot folders reserved everywhere (list, count, sort, merge, keep-selected) | CONFORMS | `viwo/contracts/workspace.py:19-21`; `viwo/core/curation/trash.py:61`, `viwo/core/curation/sorting.py:59,70`, `viwo/core/merger/media.py:93`, `viwo/api/handlers.py:125`, `viwo/core/sanitizer.py:49` | |
+| 4.3 collision naming `name__N.ext`, undo `name__undoN.ext`, group trash `<ext>_N`, restored `<ext>__N` | CONFORMS | `viwo/contracts/workspace.py:15,36-46`, `viwo/core/curation/sorting.py:143`, `viwo/core/curation/trash.py:89,125`, `viwo/core/pipeline/collect.py:69` | |
+| 4.3 COLLECT dedupe: same size and same content hash → skip | CONFORMS | `viwo/core/pipeline/collect.py:62-71` | |
+| 4.3 active workspace starts as `[server] workspace`, follows `POST /api/workspace` and the last extraction | CONFORMS | `viwo/api/app.py:25,62-66,99`, `viwo/api/handlers.py:51-58,271` | Sort history is cleared on a switch (`app.py:64-65`), not in the doc. |
+| 4.4 `ProgressEvent { message, level, source, stage }`; counts travel in the message; `progress.js` parses both forms | CONFORMS | `viwo/contracts/types.py:11-18`, `viwo/web/js/progress.js:13-16` (`FRAC`, `COUNT`) | Doc revised (no `current`/`total`). |
+| 4.4 rendered as `[SOURCE:STAGE] message` | CONFORMS | `viwo/contracts/types.py:20-24` | |
+| 4.4 lines go to the session log and the daily `viwo-YYYY-MM-DD.log` under `[server] logs` | CONFORMS | `viwo/api/app.py:43-52` | |
+| 4.4 `secret` option values masked before anything is sent | CONFORMS | `viwo/core/pipeline/runner.py:29,247-254`, `viwo/contracts/plugin.py:115-127` (`tool_output(mask=)`), `viwo/plugins/unreal/pak.py:105-111`; `tests/test_pipeline.py:144-148` | |
+| 4.5 one ini: `[server]` host/port/workspace/merged/logs/temp relative to the ini; wiring sections | CONFORMS | `viwo/core/wiring/ini.py:39-47` (`ServerConfig`), `viwo/api/app.py:23,29-35` | |
+| 4.5 secrets never in the ini or on disk; run records store `<secret>` | CONFORMS | `viwo/core/wiring/ini.py:16,99-100`, `viwo/core/wiring/settings.py:65-66`, `viwo/core/pipeline/runner.py:247-254`; `tests/test_pipeline.py:147` | |
+| 4.6 one global session (`assetPath`, sorting history, logs); log append a single locked operation; one local user | CONFORMS | `viwo/api/app.py:25-28,43-52,62-66` (`self.workspace`, `self.history`, `_lock`) | The v1 `SESSIONS` store name is history; one `App` object plays that role. |
 
-Verdict: every security lock, the route set (with the documented drops), the workspace layout, trash layouts, ownership and re-extraction policy conform and are tested. Open points: `POST /api/jobs` and the per-mode `/api/detect` answer were never built and are not documented as dropped; the marker JSON lacks its documented fields; `ProgressEvent` lost `current/total` without a contract note.
+Verdict: every security lock, the route set with the documented drops, the per-mode `/api/detect`, the jobs read/cancel routes, the workspace layout, marker fields, ownership, re-extraction policy, trash layouts and logging conform and are tested. Two defects: `POST /api/jobs` was written but never wired into the route tables (404 today), and `/api/plugins` lacks the load-error and dependency-status fields the row promises.
+Open: 4.1 dropped v1 routes (`/api/state`, `/api/session`, `/api/resume`, `/ap (intentional) · 4.1 `/api/analysis/*` (deferred).
 
 ## Doc 05: asset sanitizer
 
 | Clause | Status | Evidence | Note |
 |---|---|---|---|
-| 5.1 Phase 1 scope: zero-byte, extension from magic, exact duplicates by hash, junk, decode health (report only) | CONFORMS | `core/sanitizer.py:28-38,77-122` (`core.zero_byte`, `core.extension`, `core.duplicate`, `core.junk`, `core.health` action `none`) | Health check is a header/structure walk, not a decode through ffprobe/Pillow (doc 5.1 "cheap header check" is one of the two allowed forms). |
-| 5.1 Phase 2 lossless conversions, Phase 3 transcode presets | NOT IMPLEMENTED (deferred, documented) | roadmap doc 16.2 M13+ "sanitizer P2–3" | |
-| 5.1 Lossy actions never in a default recipe, opt-in per rule | CONFORMS (vacuously) | no lossy rule exists; `handlers_tools.py` `RECIPES` single recipe `lossy: False` | |
-| 5.1 Plan first (read-only), apply only accepted actions, one undo token per batch | CONFORMS | `sanitizer.py:125-145` (plan writes only `.sanitizer/plans/`), `:186-232` (`accept` list or `"all-safe"`, `undoToken`), `:235-252`; `tests/test_sanitizer.py::test_plan_apply_undo` | Stale plans refused when a file's size changed (`:186-199`, added 1.0.1). |
-| 5.1 Rules declare `cost`, run in cost order, check cancel | DEVIATES (intentional, implicit) | no cost model; fixed order scan → hash; cancel checked per file (`steps.py` `Step.tick`); `test_sanitizer.py::test_cancel_stops_the_scan` | Cost ordering is moot with one cheap recipe; not documented as dropped. |
-| 5.1 Undo saved to disk, survives a restart | CONFORMS | `sanitizer.py:219-223` (`.sanitizer/journal/<plan>.json`, atomic), `undo` reads it back | |
-| 5.2 `SanitizerRule` / `BatchRule` provider objects from core and plugins (`sanitizer_rules()`), `applies_to` / `inspect` / `fix` | NOT IMPLEMENTED (undocumented gap) | rules are module functions in `sanitizer.py`; `contracts/plugin.py` has no `sanitizer_rules()`; no `Recipe`/`SanitizePlan` types in `contracts/` | The doc calls 5.2 "proposed"; STATUS M10 only claims "sanitizer phase 1 (plan / apply safe / undo)". The plugin extension point is the real gap for the "engine-specific formats" goal of 5.1(3). |
-| 5.2 `inspect` never writes | CONFORMS | `sanitizer.py:77-93` read-only (mmap read) | |
-| 5.2 `fix` writes only to `.sanitizer/cache/`; core commits: `replace` → original to `.trash`, `rename` with `__N`, `trash` → `.trash` | CONFORMS for `rename` and `trash`; `replace` NOT IMPLEMENTED (deferred, documented) | `sanitizer.py:171-183` (`trash` → `.trash/items/<rel>`, `rename` via `next_free` = `__N`); no `replace`/cache path (phase 2) | |
-| 5.2 Lossy recipe cannot be default nor auto-run after extraction | CONFORMS (vacuously) | no auto-run exists (see 3.1 SANITIZE) | |
-| 5.2 Journal per apply at `.sanitizer/journal/<plan_id>.json`, undo in reverse | CONFORMS | `sanitizer.py:219-223,242` (`reversed(entries)`) | Several applies of one plan append to one journal (documented in code). |
-| 5.2 Rules use media/image backends through slots | CONFORMS (vacuously) | no rule calls a tool; `sniff` uses the carver's sizers | |
-| 5.3 `GET /api/sanitizer/recipes` lists recipes with rules and lossy flag | CONFORMS | `handlers_tools.py:66-75,155` | Saved custom recipes: none (no persistence of recipes). |
-| 5.3 `POST /api/sanitizer/plan {recipeId, path?}` → paged `SanitizePlan` | DEVIATES (intentional, undocumented) | `handlers_tools.py:77-93`: `recipeId` and `path` ignored (always the active workspace, the one recipe); findings not paged; shape `{planId, scanned, findings}` | Single recipe makes `recipeId` moot; `path?` (any folder) is a real missing feature. |
-| 5.3 `POST /api/sanitizer/apply {planId, accept}` → `SanitizeReport {plan_id, applied, failed[], trashed, undo_token}` | CONFORMS (field names differ) | `sanitizer.py:225-232`: `planId, applied, moved[], failed, undoToken` | `trashed` count replaced by the `moved` list (richer); camelCase like the rest of the v1 API. |
-| 5.3 `POST /api/sanitizer/undo {undoToken}` | CONFORMS | `handlers_tools.py:87-88`, `sanitizer.py:235-252` | |
-| 5.3 UI: a workspace panel (plan → accept → apply) next to sorting and merger | CONFORMS | 08 CLEANUP view (`web/js/views/cleanup.js`), now a visible job (1.1) | |
+| 5.1 phase 1 scope: zero-byte, extension from magic, exact duplicates by hash, junk, decode health (report only) | CONFORMS | `viwo/core/sanitizer_rules.py:99-175` (`ZeroByte`, `Junk`, `Identity` → `core.extension`/`core.health` action `none`, `Duplicates`), `viwo/core/sanitizer.py:27-34`; `tests/test_sanitizer.py::SanitizerTests.test_plan_apply_undo` | Health is a header/structure walk through the carver's sizers (`sanitizer_rules.py:78-96`), one of the two forms 5.1 allows. |
+| 5.1 phase 2 (lossless conversions, `fix` → cache, `replace`) and phase 3 (transcode presets) | NOT IMPLEMENTED (deferred, documented) | doc 05 `:33-34` "1.x, not shipped in 1.1"; no cache path or `replace` action in `viwo/core/sanitizer.py:129-141,170` | |
+| 5.1 Tdarr table: any folder as library, cache-then-swap with original to `.trash`, bounded worker count (default 2), re-scan any time | NOT IMPLEMENTED (deferred, documented) | doc 05 `:5` "Not a decision"; cache/swap deferred to phase 2 (`:33,:56`); `plan()` takes a sub-folder of the workspace only (`viwo/core/sanitizer.py:67-71`, `viwo/core/sanitizer_rules.py:198-201`); no worker pool; re-scan works (`handlers_tools.py:82-83`) | Review text, not the normative scope. |
+| 5.1 lossy actions never in a default recipe, opt-in per rule | CONFORMS | `viwo/core/sanitizer_rules.py:55` (`lossy` flag), `viwo/core/sanitizer.py:40,59` (`not r.lossy` filter) | Vacuous: no lossy rule exists. |
+| 5.1 plan first (read-only), apply only accepted actions, one undo token per batch | CONFORMS | `viwo/core/sanitizer.py:62-103` (plan writes only `.sanitizer/plans/`), `:144-157` (`accept` list or `"all-safe"`), `:160-191` (`undoToken`); `tests/test_sanitizer.py::SanitizerTests.test_plan_apply_undo` | |
+| 5.1 rules declare `cost`, plans run in cost order, every rule checks the cancel token | CONFORMS | `viwo/core/sanitizer_rules.py:56,182-189` (sorted by `(cost, rule_id)`), `viwo/core/sanitizer.py:75-83,159` (`Step.tick(cancel)`); `tests/test_sanitizer.py::SanitizerTests.test_cancel_stops_the_scan` | |
+| 5.1 undo saved to disk, survives a restart | CONFORMS | `viwo/core/sanitizer.py:177-181` (`.sanitizer/journal/<plan>.json`, atomic), `:194-211` | |
+| 5.2 `SanitizerRule` / `BatchRule` provider objects from core and plugins via `sanitizer_rules()`; `rule_id`, `owner`, `category`, `default_enabled`, `lossy`, `cost`, `dependencies()`, `applies_to`, `inspect`, `fix`, `inspect_all` | CONFORMS | `viwo/core/sanitizer_rules.py:48-75,178-189` (`collect_rules(rt)` accepts plugin rules whose id starts with `<plugin id>.`), `viwo/contracts/plugin.py:192-194` | No plugin ships a rule yet (`grep -rn "def sanitizer_rules" viwo/plugins` is empty); engine rules are phase 2 examples. |
+| 5.2 plugin rules reach the planner ("provider: core or plugin") | CONFORMS | `viwo/api/handlers_tools.py:85` (`collect_rules(app.rt)` on the route), `viwo/cli_extra.py` (same on the CLI); `tests/test_sanitizer.py::test_plan_request_fields_and_plugin_rules` (a plugin rule's finding reaches the plan) |  |
+| 5.2 `AssetRef { path, rel, ext, size, head }` handed to `applies_to` / `inspect` | CONFORMS | doc 5.2 revised: rules receive the file's `Path` and derive ext, size and head themselves |  |
+| 5.2 `Finding`, `Recipe`, `SanitizePlan` (page, total, offset, limit), `SanitizeReport` (planId, applied, moved[], trashed, failed[], undoToken); camelCase on the wire | CONFORMS | `viwo/core/sanitizer_rules.py:42-45` + size `viwo/core/sanitizer.py:92-94` (finding), `sanitizer.py:27-34,38-41` (recipe), `:97,103` (plan with `total`, `offset`, `limit`), `:184-191` (report) | |
+| 5.2 `inspect` never writes | CONFORMS | `viwo/core/sanitizer_rules.py:78-96,102-140` (read-only, mmap read) | |
+| 5.2 `fix` writes only into `.sanitizer/cache/` (phase 2); core commits `rename` (`__N`) and `trash` (`.trash/items/<rel>`); `replace` phase 2 | CONFORMS | `viwo/core/sanitizer.py:106-110` (`next_free`), `:129-141` (`trash.area(..., "items")`), `viwo/core/sanitizer_rules.py:67-68`; `tests/test_sanitizer.py:57-63` | `replace` deferred per the clause itself. |
+| 5.2 cost order; per-file rules stop at the first verdict; batch rules last and see earlier findings so the last copy is never trashed; cancel through the scan step | CONFORMS | `viwo/core/sanitizer.py:76-87`, `viwo/core/sanitizer_rules.py:151,166-167`; `tests/test_sanitizer.py:52-54` | |
+| 5.2 plan remembers each file's size; `apply` refuses a stale plan | CONFORMS | `viwo/core/sanitizer.py:92-94,151-156` | |
+| 5.2 lossy recipe cannot be default nor run automatically after extraction | CONFORMS | `viwo/core/sanitizer.py:40,59`; no SANITIZE stage (`viwo/contracts/pipeline.py:18-27`) | Vacuous. |
+| 5.2 journal per apply at `.sanitizer/journal/<plan_id>.json`; undo in reverse | CONFORMS | `viwo/core/sanitizer.py:177-181,199-201` | Several applies of one plan append to one journal (`:179`). |
+| 5.2 rules use media/image backends through slots, never direct tool calls | CONFORMS | no rule invokes a tool; `dependencies()` hook at `viwo/core/sanitizer_rules.py:58-59`; `sniff` uses the carver's sizers (`:84-93`) | Vacuous until phase 2. |
+| 5.3 `GET /api/sanitizer/recipes`: built-in + saved custom recipes with rules and lossy flag | CONFORMS | `viwo/api/handlers_tools.py:67-74,155` | Serves a hard-coded copy of `RECIPES` rather than `sanitizer.recipes()` (`viwo/core/sanitizer.py:38-41`), so plugin rules would not be listed; custom recipes: none, documented as "one built-in recipe" (doc 05 `:52`). |
+| 5.3 `POST /api/sanitizer/plan {recipeId?, path?, offset?, limit?}` → paged `SanitizePlan` | CONFORMS | `viwo/api/handlers_tools.py:85` (`recipeId`, `path`, `offset`, `limit` passed through), `viwo/core/sanitizer.py:103` (each page item carries its absolute `index` for `accept[]`); `tests/test_sanitizer.py::test_plan_request_fields_and_plugin_rules` | an unknown recipe or a path outside the workspace is an `invalid_request` |
+| 5.3 `POST /api/sanitizer/apply {planId, accept}` → `SanitizeReport` | CONFORMS | `viwo/api/handlers_tools.py:84-87`, `viwo/core/sanitizer.py:160-191`; `tests/test_sanitizer.py::SanitizerTests.test_routes` | |
+| 5.3 `POST /api/sanitizer/undo {undoToken}` | CONFORMS | `viwo/api/handlers_tools.py:88-89`, `viwo/core/sanitizer.py:194-211`; same test | |
+| 5.3 UI: 08 CLEANUP (plan → accept → apply → undo) as a `cleanup` job | CONFORMS | `viwo/web/js/views/cleanup.js`, `viwo/api/handlers_tools.py:81,91`; `tests/test_sanitizer.py:87-88` | |
 
-Verdict: phase 1 is implemented as specified (plan, accept, apply safe, journaled undo, nothing lossy) and tested. The rule/recipe object model and the plugin-provided rules of 5.2, `path?` on plan, paging and the `replace`/cache commit are not built; only phases 2-3 are documented as deferred.
+Verdict: phase 1 and the 5.2 provider model (cost order, batch rules, stale plans, journaled undo) are implemented and tested, and the doc now describes that design. The gaps are at the edges: the HTTP route drops the plan request fields the doc lists, no caller passes the runtime so plugin rules can never run, and the `AssetRef` line was not revised to the `Path` the rules receive.
+Open: 5.1 phase 2 (lossless conversions, `fix` → cache, `replace`) and phase 3 (deferred) · 5.1 Tdarr table: any folder as library, cache-then-swap with original to (deferred).
 
 ## Doc 06: code analysis hook
 
 | Clause | Status | Evidence | Note |
 |---|---|---|---|
-| 6.1 `AnalysisTarget` / `CodeAnalyzer` / `AnalysisContext` shapes in `contracts/` | NOT IMPLEMENTED (deferred, documented) | doc 6 header: "contract hook only… no analyzer ships in contract 1.0 or in the prototype"; no `analysis` symbol in `viwo/` | The shapes are not even declared as types; "fixes the shape now" is satisfied by the doc, not by code. |
-| 6.1 `EnginePlugin.analysis_targets(probe)` | NOT IMPLEMENTED (deferred, documented) | `contracts/plugin.py` has no such method | |
-| 6.2 Ghidra backend, JDK dependency, IL2CPP chain | NOT IMPLEMENTED (deferred, documented) | roadmap M13+ "analysis backends" | |
-| 6.3 Analysis never part of extraction; `Stage.ANALYZE`; `analysis` feature flag off by default; output under `.analysis/`; one-time notice | NOT IMPLEMENTED (deferred, documented) | `contracts/pipeline.py:14-23` no ANALYZE stage; `core/wiring/ini.py` features default `(extraction, sorting, merger)` with no `analysis` value validated | Unrpyc ships today as a DECODE-stage slot (`plugins/renpy/decompile.py`, `decode.rpyc`), not as an analyzer: doc 6 said unrpyc "comes with the first analysis milestone". Intentional (owner's 1.0 decision) but doc 6 was not annotated. |
-| 6.4 `/api/analysis/*` routes | NOT IMPLEMENTED (deferred, documented) | — | |
+| Status (normative 1.1): no `analysis.*` slot, hook, stage, feature value or route in 1.1; unrpyc ships as `decode.rpyc` inside extraction | CONFORMS | `grep -rln analysis viwo` is empty; `viwo/contracts/pipeline.py:18-27`; `viwo/core/wiring/ini.py:23`; `viwo/plugins/renpy/decompile.py:1-2`, `viwo/plugins/renpy/__init__.py:21` | The status clause describes the tree exactly. |
+| 6.1 `AnalysisTarget` / `CodeAnalyzer` / `AnalysisContext` shapes | NOT IMPLEMENTED (deferred, documented) | doc 06 `:3-5` ("normative future shape"); no such symbols in `viwo/contracts/` | |
+| 6.1 `EnginePlugin.analysis_targets(probe)` and the per-plugin target table | NOT IMPLEMENTED (deferred, documented) | `viwo/contracts/plugin.py:133-194` has no such method; doc 06 `:3-4` | |
+| 6.2 Ghidra backend, JDK dependency, IL2CPP chain | NOT IMPLEMENTED (deferred, documented) | doc 06 `:38` "for the future backend"; `docs/HANDOFF.md:89` lists analysis backends as later work | |
+| 6.3 analysis never part of extraction; `Stage.ANALYZE`; `analysis` feature flag off by default; output under `.analysis/`; one-time notice | NOT IMPLEMENTED (deferred, documented) | `viwo/contracts/pipeline.py:18-27` (no ANALYZE), `viwo/core/wiring/ini.py:23,72-73` (features default `extraction, sorting, merger`, no `analysis` value); doc 06 `:3-4` | The "never part of extraction" half holds trivially. |
+| 6.4 `/api/analysis/targets`, `/run`, `/jobs` | NOT IMPLEMENTED (deferred, documented) | doc 04 `:44` "not served in 1.1"; not in `viwo/api/routes.py:116-138` or `viwo/api/handlers.py` | |
 
-Verdict: nothing of doc 6 exists, exactly as its status line says. One note: unrpyc landed early through the decode path rather than the analysis hook; add a revision note to doc 6 so the hook's first milestone is not read as "unrpyc".
+Verdict: exactly as the status clause says: nothing of the hook exists, and the doc now records both the deferral and the unrpyc-as-DECODE decision.
+Open: 6.1 `AnalysisTarget` / `CodeAnalyzer` / `AnalysisContext` shapes (deferred) · 6.1 `EnginePlugin.analysis_targets(probe)` and the per-plugin target tab (deferred) · 6.2 Ghidra backend, JDK dependency, IL2CPP chain (deferred) · 6.3 analysis never part of extraction; `Stage.ANALYZE`; `analysis` featu (deferred) · 6.4 `/api/analysis/targets`, `/run`, `/jobs` (deferred).
 
 ## Doc 07: v1 findings and migration map
 
 | Clause | Status | Evidence | Note |
 |---|---|---|---|
-| H1 extraction moves files out of the game folder → COLLECT copies, moves only from staging | CONFORMS (closed) | `collect.py:174` (`copy2` when `move=False`), `sources.py:155-165`; `test_game_integrity.py` hashes before/after for every plugin; `guard.py` snapshot diff warning | |
-| H2 re-extraction deletes a user-chosen folder → ownership marker | CONFORMS (closed) | `workspace.py:71-99`; `test_core_units.py::test_ownership_and_policies` | |
-| H3 cross-site requests, text/plain POSTs, static traversal → security model | CONFORMS (closed) | `server.py:53-60,103-137`; `test_server.py::test_security_model` | |
-| F1 Unity exports rmtree'd then counted | CONFORMS (closed) | exports go to `work/staging/unity` and are moved by COLLECT (`sources.py:117-127`); nothing is rmtree'd after export | |
-| F17 extractall without filters (zip-slip) | CONFORMS (closed) | `backends/archives.py` zip via `safe_member` (1.0.1), tar via `safe_tar_members`; `core/thirdparty.py:_unzip/_untar` `safe_member`; `test_pipeline.py::test_extract_keeps_game_untouched_and_blocks_traversal`, `test_thirdparty.py` | `requires-python >= 3.11` declared (`pyproject.toml`). |
-| F11 Unity completeness gate always passes | CONFORMS (closed by removal) | `plugins/unity/__init__.py:88-89` `verify` warns only when nothing was collected; no gate; roadmap M5 | |
-| F2 `"mainData"` marker never matched | CONFORMS (closed) | `plugins/unity/__init__.py:46` `"maindata"` (lowercase) in the marker list | |
-| F3 only `.trash` filtered; metadata leaks into lists | CONFORMS (closed) | `contracts/workspace.py:19-21` `is_reserved`; used in `trash.kept`, `sorting.asset_files`, `resolve`, merger `media.py:93` | |
-| F18 three trash layouts share `.trash/`; prefix matching | CONFORMS (closed) | `trash.py:85-91` exact-name regex; `test_curation.py::test_trash_restore_delete_exact_names` | |
-| F4 7-Zip in Program Files not found by the archive code | CONFORMS (closed) | `backends/archives.py` `SEVENZIP` `install_dirs=("7-Zip",)`, `os/windows.py` `_install_roots`; plus the pinned installer | |
-| F5 unrpa required at boot | CONFORMS (closed) | `unarchive.rpa` main `rpa-safe` (built-in), unrpa spare only (`viwo slots`) | |
-| F19 unpinned pip installs at boot | CONFORMS (closed) | `viwo/data/tools.json` python pins, `pyproject.toml` pinned extras, `test_thirdparty.py::test_manifest_pins_match_pyproject`; `auto_install` installs only pinned entries | |
-| F6 dedupe by name+size+mtime | CONFORMS (closed) | `collect.py:112-121` size + sha256 | |
-| F20 `/preview/` served from temp path | CONFORMS (closed) | `server.py` `_preview` → `resolve(self.app.workspace, …)` | |
-| F8 guessed UABEA/AssetRipper invocations | CONFORMS (closed) | no UABEA/AssetRipper backend; AssetStudioModCLI flags checked against the real `--help` (1.0) | |
-| F9 "Permanently deleted (0 files)" | CONFORMS (closed) | `trash.py:136` count before `rmtree` | |
-| F10 UI never sends `extractionType` | CONFORMS (closed) | `web/js/views/extract.js:227` | |
-| F12 engine knowledge in core (`.rpa`, `.unitypackage`, Ren'Py `game/`) | CONFORMS (closed) | `.rpa` slot in `plugins/renpy`, `.unitypackage` slot in `plugins/unity/__init__.py:30-35`, source roots via `plugin.source_roots()` (`sources.py:150-152`) | |
-| F13 OS-specific code spread across modules | CONFORMS (closed) | `viwo/os/{linux,windows,_shared}.py` behind `contracts/os.py` | |
-| F14 three `tlog` definitions | CONFORMS (closed, n/a) | single `App.log` + `ProgressEvent` | |
-| F15 read-modify-write session log | CONFORMS (closed) | `api/app.py` `log()` under `self._lock` | |
-| F16 bogus "SLICE6 optimized" line | CONFORMS (closed, n/a) | v1 code removed | |
-| 7.2 file mapping (`core/state.py`, `core/media_types.py`, `core/logging.py`, `core/workspace/curation/`, `os/*/process.py`) | DEVIATES (intentional, documented as "proposed") | actual: `api/app.py` (state + log), `core/curation/sorting.py` (media types), `core/workspace.py`, `core/curation/`, `os/_shared.py` (process runner); the `extract.py` row is marked "done" with the real targets | Module names differ from the proposal; the layer split it describes holds (`ARCHITECTURE.md`). |
-| 7.3 order of work (hotfix → characterization → core → engines) | CONFORMS | roadmap doc 16, STATUS A/B | |
+| H1 extraction moves files out of the game folder → COLLECT copies, moves only from staging | CONFORMS (closed) | `viwo/core/pipeline/collect.py:124` (`copy2` when `move=False`), `viwo/core/pipeline/sources.py:60-70`; `tests/test_game_integrity.py::GameIntegrityTests.test_every_plugin_leaves_the_game_untouched`; snapshot diff `viwo/core/pipeline/guard.py:27-41`, `runner.py:146-148` | |
+| H2 re-extraction deletes a user-chosen folder → ownership marker | CONFORMS (closed) | `viwo/core/workspace.py:92-120`; `tests/test_core_units.py::WorkspaceTests.test_ownership_and_policies` | |
+| H3 cross-site requests, text/plain POSTs, static traversal → security model | CONFORMS (closed) | `viwo/api/server.py:53-60,106-137,179-186`; `tests/test_server.py::ServerTests.test_security_model` | |
+| F1 Unity exports rmtree'd then counted | CONFORMS (closed) | exports go to `work/staging/unity` and are moved by COLLECT (`viwo/core/pipeline/sources.py:21-32`); the work dir is removed only after the result is built (`viwo/core/pipeline/runner.py:113-117`) | |
+| F17 extractall without filters (zip-slip); no Python version declared | CONFORMS (closed) | `viwo/backends/archives.py:12,36-43,57,77` (`safe_member`, `safe_tar_members`), `viwo/core/thirdparty.py:27,180,190`; `tests/test_pipeline.py::PipelineTests.test_extract_keeps_game_untouched_and_blocks_traversal`; `pyproject.toml:10` (`>=3.11`) | |
+| F11 Unity completeness gate always passes | CONFORMS (closed by removal) | `viwo/plugins/unity/__init__.py:94-97` (warn only when nothing collected); no gate | |
+| F2 `"mainData"` marker never matched | CONFORMS (closed) | `viwo/plugins/unity/__init__.py:52` (`"maindata"`, lowercase) | |
+| F3 only `.trash` filtered; metadata leaks | CONFORMS (closed) | `viwo/contracts/workspace.py:19-21`; `viwo/core/curation/trash.py:61`, `viwo/core/curation/sorting.py:59,70`, `viwo/core/merger/media.py:93` | |
+| F18 three trash layouts share `.trash/`; prefix matching | CONFORMS (closed) | `viwo/core/curation/trash.py:85-91` (exact-name regex); `tests/test_curation.py::GroupTrashTests.test_trash_restore_delete_exact_names` | |
+| F4 7-Zip in Program Files not found by the archive code | CONFORMS (closed) | `viwo/backends/archives.py:16-19` (`install_dirs=("7-Zip",)`), `viwo/os/windows.py:85-86,112` (`_install_roots`) | |
+| F5 unrpa required at boot | CONFORMS (closed) | `viwo/plugins/renpy/__init__.py:24` (`unarchive.rpa` main `rpa-safe`, spare `unrpa`) | |
+| F19 unpinned pip installs at boot | CONFORMS (closed) | `viwo/data/tools.json` pins; `tests/test_thirdparty.py::InstallerTests.test_manifest_pins_match_pyproject`, `test_manifest_is_complete_and_https`; `viwo/core/thirdparty.py:142-143` (https only) | |
+| F6 dedupe by name + size + mtime | CONFORMS (closed) | `viwo/core/pipeline/collect.py:62-71` (size + sha256) | |
+| F20 `/preview/` served from the temp path | CONFORMS (closed) | `viwo/api/server.py:145-150` (`resolve(self.app.workspace, rel)`) | |
+| F8 guessed UABEA/AssetRipper invocations | CONFORMS (closed) | `grep -rli "uabea\|assetripper" viwo --include=*.py` is empty | |
+| F9 "Permanently deleted (0 files)" | CONFORMS (closed) | `viwo/core/curation/trash.py:136-138` (count before `rmtree`) | |
+| F10 UI never sends `extractionType` | CONFORMS (closed) | `viwo/web/js/views/extract.js:227` | |
+| F12 engine knowledge in core (`.rpa`, `.unitypackage`, Ren'Py `game/`) | CONFORMS (closed) | `.rpa` slot `viwo/plugins/renpy/__init__.py:24`, `.unitypackage` slot `viwo/plugins/unity/__init__.py:36-41`, source roots from `plugin.source_roots()` (`viwo/core/pipeline/sources.py:55-57`) | |
+| F13 OS-specific code spread across modules | CONFORMS (closed) | `viwo/os/_shared.py`, `viwo/os/windows.py`, `viwo/os/linux.py` behind the OS contract; `viwo/api/handlers.py:72,171,239` call `app.rt.os.shell` | |
+| F14 three `tlog` definitions | CONFORMS (closed, n/a) | single `App.log` (`viwo/api/app.py:43-52`) + `ProgressEvent` | |
+| F15 read-modify-write session log | CONFORMS (closed) | `viwo/api/app.py:46-52` (append under `self._lock`) | |
+| F16 bogus "SLICE6 optimized" line | CONFORMS (closed, n/a) | v1 code removed; `grep -rn SLICE6 viwo` is empty | |
+| 7.2 "Where each v1 file went (as built)" | CONFORMS | doc 07 `:42-61` revised to the real targets; files present: `viwo/api/server.py`, `handlers.py`, `routes.py`, `app.py`, `viwo/core/wiring/`, `viwo/os/_shared.py`, `viwo/core/pipeline/unpack.py`, `collect.py`, `viwo/core/workspace.py`, `viwo/core/curation/`, `viwo/core/merger/`, `viwo/cli_extra.py`, `viwo/cli_format.py`, `viwo/core/jobs.py`, `viwo/core/sanitizer.py`, `viwo/core/sanitizer_rules.py`, `viwo/core/capture/`, `docs/ui.md` | Was "proposed" at 1.1; now a record of what exists. |
+| 7.3 order of work (hotfix → characterization → core → engines) | CONFORMS | `docs/prototype-b/STATUS.md:13` (M10 done), doc 16 roadmap | |
 
-Verdict: every finding H1-H3 and F1-F20 is closed in code with a test or a structural guarantee behind it. The 7.2 file map was a proposal and the final module names differ; nothing in it points at a missing capability.
+Verdict: every finding H1-H3 and F1-F20 stays closed in code with a test or a structural guarantee behind it, and the 7.2 map now records the modules as built.
+Open: none.
 
-## Counts per doc
+## Counts per status
 
 | Doc | CONFORMS | DEVIATES (defect) | DEVIATES (intentional, documented) | NOT IMPLEMENTED (deferred, documented) | NOT IMPLEMENTED (undocumented gap) |
 |---|---|---|---|---|---|
-| 03 | 20 | 1 | 4 | 2 | 2 |
-| 04 | 23 | 1 | 4 | 1 | 0 (two sub-items inside the "new routes" row: `POST /api/jobs`, per-mode `/api/detect`) |
-| 05 | 11 | 0 | 2 | 2 | 1 |
-| 06 | 0 | 0 | 0 | 5 | 0 |
-| 07 | 25 | 0 | 1 | 0 | 0 |
-
-## Defects and undocumented gaps worth a ticket (in priority order)
-
-1. `plugins[i].error` is never set; export failures land in `warnings` (doc 3.4). One-line fix in `runner.py:213-217` plus a test assertion in `test_mixed.py`.
-2. `.viwo-workspace` content is `{"app": "viwo"}`; doc 4.3 promises workspace id, created-by and contract version. Cheap to add in `workspace.py:39-42`.
-3. Doc 3.5 "new keys" (`contractVersion`, `manifestsPath`, `plugins[].exportedByKind/exportedByTool/inventoryCount/verifyPassed`) were never produced and no doc says so: either add them to `to_legacy_dict` or strike them in doc 3.5.
-4. `POST /api/jobs` and the per-mode selection in `/api/detect` (doc 4.1 new routes) do not exist; annotate doc 4.1.
-5. Sanitizer 5.2 object model and plugin `sanitizer_rules()` hook, `path?` on plan, paging: not built; annotate doc 5 as "phase 1 shipped as core rules; provider model with phase 2".
-6. Doc 3.4 "same size and mtime" contradicts doc 4.3 and the code (size + hash): fix the sentence.
-7. `ProgressEvent` has no `current`/`total` (doc 4.4): add a contract note that counts travel in the message.
-8. Doc 6: add a note that unrpyc shipped as a DECODE slot in 1.0, not through the analysis hook.
-9. Wrapper re-detection after Electron/NW.js unpack (doc 3.1): either implement a second detect pass over unpacked wrappers or strike the sentence; today inner engines are selected only from top-level markers.
+| Doc 03: pipeline, routing and mixed mode | 34 | 0 | 1 | 0 | 0 |
+| Doc 04: HTTP API, workspace layout and configuration | 37 | 0 | 1 | 1 | 0 |
+| Doc 05: asset sanitizer | 21 | 0 | 0 | 2 | 0 |
+| Doc 06: code analysis hook | 1 | 0 | 0 | 5 | 0 |
+| Doc 07: v1 findings and migration map | 24 | 0 | 0 | 0 | 0 |
+| Total | 117 | 0 | 2 | 8 | 0 |
 
 
 ---
 
-# Conformance audit C: docs 11, 12, 14, 18 against the implementation (v1.1.0, 2026-11-03)
+# Conformance re-audit (v1.2.0, contract 1.1): docs 11, 12, 14, 18
 
-Read-only audit. Status vocabulary: CONFORMS · DEVIATES (defect) · DEVIATES (intentional, documented) ·
-NOT IMPLEMENTED (deferred, documented) · NOT IMPLEMENTED (undocumented gap).
-"Documented" means a revision note in the doc, STATUS.md, README/CLAUDE.md, or a module docstring says so.
+Read-only audit of branch `makeover` at tag v1.2.0 (commit fb82623) against the current contract docs. Status vocabulary: CONFORMS · DEVIATES (defect) · DEVIATES (intentional, documented) · NOT IMPLEMENTED (deferred, documented) · NOT IMPLEMENTED (undocumented gap). "Documented" means the current contract doc (clause, revision or History note), `docs/prototype-b/STATUS.md`, `README.md` or `ARCHITECTURE.md` says so. Every `path:line` is the current tree; test names exist now. Docs 11, 12, 14 and 18 themselves were not revised in the 1.2 batch (`git diff v1.1.0 HEAD -- docs/contract/` touches 03-07, 13, 15-17, README); the revisions that document deviations for these docs live in README (decisions D12, D18, D22, principle 6), doc 03:16, doc 05:78, doc 15:4-6,47, doc 16:3,18,62-68,88 and doc 17:3,19,79-80.
 
-## Doc 11: Runtime capture
+## 11. Runtime capture
 
 | Clause | Status | Evidence | Note |
 |---|---|---|---|
-| 11.1 revision: anti-cheat markers, online titles, tos-sensitive plugins are warnings + one confirmation, never refusals | CONFORMS | `viwo/core/capture/policy.py:35-70`; `tests/test_capture.py:49` | Warnings list carried into the report (`capture/__init__.py:138`). |
-| 11.1 "capture only from a game the user launches through the framework, on their own machine" | CONFORMS | `renderdoc.py:42-58` (renderdoccmd launches the exe); `capture/__init__.py:121` (exe must be inside the game) | |
-| 11.1 "prefer static extraction; capture only what static did not produce" | CONFORMS | `capture/__init__.py:110-112` (files already in static provenance are dropped) | |
-| 11.1 provenance records that a file came from a capture | CONFORMS | `capture/__init__.py:113` origin `capture:<backend>:<job>` | |
-| 11.1 no global hooks, no attaching to foreign processes, no drivers | CONFORMS | `renderdoc.py:42-58` uses `renderdoccmd capture` on a process it starts | |
-| 11.1 no game-folder modification without a reversible journal | CONFORMS | `journal.py:36-83`; `tests/test_capture.py:73,93` | RenderDoc path never writes to the game folder; the journal is exercised by tests only. |
-| 11.1 precondition: `capture` feature flag off → refuse | CONFORMS | `policy.py:57-60`; `tests/test_capture.py:49` | |
-| 11.1 precondition: user confirmation "once per game" | DEVIATES (intentional, documented) | `policy.py:62-67` asks on every run (`needs_decision`) | Confirmation is per call, not persisted per game; docstring says "the user confirms once". |
-| 11.1 precondition: anti-cheat service running (OS layer, best effort) | NOT IMPLEMENTED (undocumented gap) | no process scan in `policy.py` or `viwo/os/*` | Only folder markers are checked; no warning for a running service. |
-| 11.1 precondition: network reachable → warn, suggest offline | DEVIATES (intentional, documented) | `policy.py:68-70` static advice line, no reachability check | Doc marks it best effort. |
-| 11.1 marker list is data, versioned in the repo | CONFORMS | `viwo/data/capture_policy.json` | Comment states "warnings, never refusals". |
-| 11.2 graphics-API capture via RenderDoc | CONFORMS | `renderdoc.py` | |
-| 11.2 engine runtime agents (BepInEx, UE4SS, Ren'Py hook, Godot override.cfg), Frida, audio loopback | NOT IMPLEMENTED (deferred, documented) | doc 11.6 "prototype scope: one path only"; STATUS M11 | |
-| 11.3 capture is a job of kind `capture` | CONFORMS | `viwo/api/handlers_capture.py` (`locked_job("capture")`); `tests/test_api_capture.py` | CLI runs it synchronously through the same function. |
-| 11.3 POLICY → SETUP → LAUNCH → CAPTURE → HARVEST → GATHER → DIFF → RESTORE → REPORT | CONFORMS | `capture/__init__.py:119-151` (POLICY, RESTORE-pending, CAPTURE, HARVEST, GATHER, DIFF, REPORT) | SETUP is empty (no agents); RESTORE runs before the session (pending journals) rather than after, which is equivalent while nothing writes to the game folder. |
-| 11.3 DIFF by content hash against the latest static extraction | CONFORMS | `capture/__init__.py:36-39,110`; `tests/test_capture.py:117` | Perceptual hashing left open (doc ❓). |
-| 11.3 interfaces `launch/trigger/stop/harvest`, `RuntimeAgent`, `LaunchSpec`, `os.launch` | DEVIATES (intentional, documented) | `renderdoc.py:35` single `capture(spec, staging, ctx)`; no `os.launch` | Pilot collapses launch+wait+harvest into one call; interactive trigger is the in-game hotkey (`renderdoc.py:51-55`). Doc 11.3 is a sketch; STATUS calls it a pilot. |
-| 11.3 Proton/Wine launch on Linux | NOT IMPLEMENTED (deferred, documented) | doc 11.3 ❓, doc 14.6 "Wine out of scope" | |
-| 11.4 journaled overlay: hash-recorded writes, restore in reverse, verify hashes, unfinished restore at next start | CONFORMS | `journal.py:36-83,117-127`; `capture/__init__.py:57-68`; `tests/test_capture.py:73` | Atomic JSON-lines journal, damaged lines skipped with warnings (`tests/test_capture.py:93`). |
-| 11.4 copy-the-game mode as an ini option | NOT IMPLEMENTED (deferred, documented) | doc 11.4 ❓ (D13) | |
-| 11.5 `capture.gpu` main RenderDoc, spare apitrace | DEVIATES (intentional, documented) | `capture/__init__.py:29` (no spare) | Spare deferred with the other 11.5 slots; STATUS "not verified" lists RenderDoc only. |
-| 11.5 RenderDoc Python module as a separate helper process | CONFORMS | `renderdoc.py:63-72`, `rd_harvest.py`; `tools.json` `rdpython` = `qrenderdoc --py` | |
-| 11.5 other slots (`capture.gpu-d3d12`, `runtime.*`, `capture.memory`, `capture.audio`) | NOT IMPLEMENTED (deferred, documented) | doc 11.6 | |
-| 11.6 every backend declares its network use; offline flags on by default | NOT IMPLEMENTED (undocumented gap) | no `network` attribute in `contracts/slots.py` / `contracts/plugin.py` | Also doc 14.2 #5 and doc 17 L0 lint; no code or test references it. |
-| 11.6 copyleft tools run as separate components | CONFORMS | `renderdoc.py:29` isolation subprocess (MIT anyway); GPL backends subprocess everywhere | |
-| 11.6 terms of service stay the user's responsibility, stated plainly | CONFORMS | `policy.py:16-19` CONFIRMATION; README "Legal and disclaimer" | |
+| 11.1 revision (1.0): anti-cheat markers, online titles and tos-sensitive plugins produce warnings and one confirmation, never refusals; no evasion code authored | CONFORMS | `viwo/core/capture/policy.py:1-5,66-89,112-130`; `viwo/data/capture_policy.json:2`; `tests/test_capture.py::PolicyTests::test_feature_switch_confirmation_and_warnings`; `tests/test_api_capture.py::CaptureApiTests::test_warnings_confirmation_and_capture` | Warnings are carried into the run record (`viwo/core/capture/__init__.py:139`) and printed before launch by the CLI (`viwo/cli_extra.py:163-165`). |
+| 11.1 capture only from a game the user launches through the framework, on their own machine | CONFORMS | `viwo/core/capture/renderdoc.py:48-67` (`renderdoccmd capture` starts the exe); `viwo/core/capture/__init__.py:122-123` (exe must be a file inside the game folder); `tests/test_api_capture.py:70-74` | |
+| 11.1 prefer static extraction; capture offered for what static could not produce | CONFORMS | `viwo/core/capture/__init__.py:37-40,111-113` (files whose hash is in the static provenance are dropped) | |
+| 11.1 provenance records that each output came from a capture | CONFORMS | `viwo/core/capture/__init__.py:114,129-131` (origin `capture:<backend>:<job>` appended to `provenance.jsonl`) | |
+| 11.1 no global hooks, no attaching to foreign processes, no drivers | CONFORMS | `viwo/core/capture/renderdoc.py:48-67` (per-process launch under `renderdoccmd`, no global hook flag) | |
+| 11.1 no game-folder modification without an exact, reversible journal (11.4) | CONFORMS | `viwo/core/capture/journal.py:36-56,66-83`; `tests/test_capture.py::JournalTests::test_restore_and_crash_recovery`, `::test_damaged_journal_restores_what_it_can` | The RenderDoc path never writes into the game folder; the journal is exercised by tests only (no runtime agent yet). |
+| 11.1 precondition: `capture` feature flag off → refuse | CONFORMS | `viwo/core/capture/policy.py:115-118`; `tests/test_capture.py:56-58` | The only gate that remains. |
+| 11.1 precondition: the user confirmed once per game → ask | CONFORMS | `viwo/core/capture/policy.py:92-109,119-127` (`confirmed.json` next to the capture journals, keyed by resolved game path); `tests/test_capture.py:60-62`; `tests/test_api_capture.py:58-62` | Closed in 1.2 (was per call). The persistence itself has no test: both tests pass `confirmed=True` on every call. |
+| 11.1 precondition: anti-cheat markers in the game folder → (revised) warn | CONFORMS | `viwo/core/capture/policy.py:31-37,70-75`; `viwo/data/capture_policy.json:3-15`; `tests/test_capture.py:66-67` | Warning, not refusal, per the 11.1 revision note. |
+| 11.1 precondition: an anti-cheat service running (best effort, OS layer) → (revised) warn | CONFORMS | `viwo/core/capture/policy.py:40-54,76-79`; `viwo/data/capture_policy.json:16-27` | Closed in 1.2. Windows goes through `rt.os.process.run(["tasklist", ...])`; Linux reads `/proc/*/comm` directly rather than through the OS layer. No test covers the service branch. |
+| 11.1 precondition: built-in online/competitive list (data file) → (revised) warn | CONFORMS | `viwo/core/capture/policy.py:80-84`; `viwo/data/capture_policy.json:28-39`; `tests/test_capture.py:68-73` | Matched on the game folder name. |
+| 11.1 precondition: network reachable → warn and suggest going offline (best effort) | CONFORMS | `viwo/core/capture/policy.py:57-63,87-88,128-130` | Closed in 1.2: one 0.8 s connection attempt; tests filter the network line (`tests/test_capture.py:62,69`). |
+| 11.1 marker list is data, shipped and versioned in the repo; verified vs unverified names | CONFORMS | `viwo/data/capture_policy.json:2-4,26` | |
+| 11.1 example: Overwatch capture "would always be refused"; its plugin static-only | DEVIATES (intentional, documented) | `viwo/core/capture/policy.py:80-86` (online title + tos-sensitive plugin = two warnings); `viwo/plugins/overwatch/__init__.py:3,54-57` | Superseded by the 11.1 revision note and README D22 (`docs/contract/README.md:146`). |
+| 11.2 graphics-API capture via RenderDoc | CONFORMS | `viwo/core/capture/renderdoc.py:32-72` | |
+| 11.2 engine runtime agents (BepInEx, UE4SS, Ren'Py hook, Godot override.cfg), Frida, audio loopback | NOT IMPLEMENTED (deferred, documented) | doc 11.6 last bullet ("one path only"); `docs/prototype-b/STATUS.md:14`; doc 16:66 (M11 row) | |
+| 11.3 a capture is a job of kind `capture` | CONFORMS | `viwo/api/handlers_capture.py:57-73` (`locked_job("capture")`); `viwo/api/handlers_jobs.py:24`; `tests/test_api_capture.py:63-66` (`jobId`) | The CLI runs the same function synchronously (`viwo/cli_extra.py:155-167`). |
+| 11.3 steps POLICY → SETUP → LAUNCH → CAPTURE → HARVEST → GATHER → DIFF → RESTORE → REPORT | CONFORMS | `viwo/core/capture/__init__.py:1-2,120-153` (POLICY :124, pending RESTORE :125, LAUNCH+CAPTURE+HARVEST `renderdoc.py:41-88`, GATHER :114-115, DIFF :111-113, REPORT :132-144) | SETUP is empty (no agents); RESTORE runs before the session (pending journals), which is equivalent while nothing writes to the game folder. |
+| 11.3 DIFF against the latest static extraction by content hash | CONFORMS | `viwo/core/capture/__init__.py:37-40,111-113`; `tests/test_capture.py::CaptureRunTests::test_capture_harvest_gather_diff` | Perceptual hashing stays an open ❓ in the doc. |
+| 11.3 interfaces `launch/trigger/stop/harvest`, `RuntimeAgent`, `LaunchSpec`, `os.launch` | DEVIATES (intentional, documented) | `viwo/core/capture/renderdoc.py:41` (one `capture(spec, staging, ctx)`), `viwo/core/capture/__init__.py:104` (spec dict `{exe, workdir, args}`); no `os.launch` in `viwo/contracts/os.py` | Doc 11.3 is headed "Proposed structure"; STATUS M11 and doc 16:66 call the delivery a pilot. The interactive trigger is RenderDoc's in-game hotkey (`renderdoc.py:57-61`). |
+| 11.3 LAUNCH on Linux through Proton/Wine | NOT IMPLEMENTED (deferred, documented) | doc 11.3 ❓; doc 14.6:80 ("Wine is out of scope for now"); doc 16:68 (M13+ open: Wine) | |
+| 11.4 journaled overlay: hash-recorded writes, restore in reverse, verify hashes, unfinished restore at the next start | CONFORMS | `viwo/core/capture/journal.py:36-64,66-83,117-127`; `viwo/core/capture/__init__.py:58-69`; `tests/test_capture.py::JournalTests` | JSON-lines journal written atomically; damaged lines skipped with a warning (`journal.py:86-114`). |
+| 11.4 copy-the-game mode as an ini option ❓ | NOT IMPLEMENTED (deferred, documented) | doc 11.4 ❓; `docs/contract/README.md:131` (D13: journaled overlay + crash recovery) | Overlay chosen; copy mode stays an open option. |
+| 11.5 `capture.gpu`: main RenderDoc, spare apitrace | DEVIATES (intentional, documented) | `viwo/core/capture/__init__.py:30` (no spare) | Doc 11.6: "Prototype scope: one path only"; doc 16:66 and STATUS M11 list RenderDoc alone. |
+| 11.5 RenderDoc Python module runs as a separate helper process | CONFORMS | `viwo/core/capture/renderdoc.py:19-25,74-88` (`rd_harvest.py` under the `rdpython` interpreter); `viwo/data/tools.json:274-289`; `docs/prototype-b/STATUS.md:42` | |
+| 11.5 other slots (`capture.gpu-d3d12`, `runtime.*`, `capture.memory`, `capture.audio`) | NOT IMPLEMENTED (deferred, documented) | doc 11.6 last bullet; doc 16:68 | |
+| 11.6 every backend declares its network use; offline flags on by default | CONFORMS | `viwo/contracts/slots.py:59` (`network`), `viwo/plugins/overwatch/__init__.py:65` (DataTool declares `download`, docstring says why), `viwo/core/capture/renderdoc.py` (`none`, `VIWO_OFFLINE=1`); `tests/test_l0_static.py::test_every_backend_declares_network_and_untrusted_parsing` | doc 11 was rewritten by the capabilities respec in this commit (not re-audited here) |
+| 11.6 copyleft tools run as separate components, never linked into the core | CONFORMS | `tests/test_l0_static.py::BackendDeclarationTests::test_gpl_backends_run_as_subprocesses`; `viwo/core/capture/renderdoc.py:33` | |
+| 11.6 terms of service stay the user's responsibility, stated plainly | CONFORMS | `viwo/core/capture/policy.py:21-24`; `viwo/cli_args.py:70-78`; `README.md:36-42,219` | |
 
-Verdict: the one path the doc scopes for the prototype (RenderDoc capture, journal, diff, report) is implemented and tested, and the 1.0 revision (warnings instead of refusals) is applied consistently in code, data and tests.
-Gaps: no running-anti-cheat-service check, no backend network declaration, confirmation is per run rather than per game; agents, spares and Wine are deferred as the doc says.
+Verdict: the pilot path (RenderDoc capture, journal, diff, report) and the 1.0 warnings policy are implemented and tested; 1.2 closed the per-game confirmation, the running-service warning and the network warning. The one defect is the network declaration: the attribute exists but only RenderDoc sets it, so DataTool carries a false `none`.
+Open: 11.1 example: Overwatch capture "would always be refused"; its plugin st (intentional) · 11.2 engine runtime agents (BepInEx, UE4SS, Ren'Py hook, Godot override. (deferred) · 11.3 interfaces `launch/trigger/stop/harvest`, `RuntimeAgent`, `LaunchSp (intentional) · 11.3 LAUNCH on Linux through Proton/Wine (deferred) · 11.4 copy-the-game mode as an ini option ❓ (deferred) · 11.5 `capture.gpu`: main RenderDoc, spare apitrace (intentional) · 11.5 other slots (`capture.gpu-d3d12`, `runtime.*`, `capture.memory`, `c (deferred).
 
-## Doc 12: Headless core, CLI and jobs
-
-| Clause | Status | Evidence | Note |
-|---|---|---|---|
-| 12.1 core boots from the ini without a server; server is one front end | CONFORMS | `viwo/core/wiring/boot.py`; `viwo/api/app.py:get_app` | |
-| 12.1 long work runs as jobs with an event stream; `/api/logs` is an adapter | CONFORMS | `viwo/core/jobs.py`; `api/app.py:83-90` (extract job), `handlers_tools.py` (survey, cleanup, repack, preflight, install) | |
-| 12.1 every capability reachable from the CLI with `--json` | DEVIATES (intentional, documented) | `cli.py:66-130`; no `merge` CLI | Media merger is UI/API only; doc 14.5 scopes the merger as the v1 job adapter. Documented in `cli_format.WELCOME`/README command table (merger listed under web UI). |
-| 12.2 facade: `boot`, `info`, `detect`, `submit`, `jobs.get/list/cancel`, `workspace`, `shutdown` | DEVIATES (intentional, documented) | `boot.py:Runtime.info`; jobs through `JobRunner` (`jobs.py:46-100`) and `App`; no `submit(JobSpec)`, no `shutdown()` | Names provisional per doc; `App` plays the facade role for the server, functions for the CLI. |
-| 12.3 job kinds `extract, unpack, sanitize.plan, sanitize.apply, merge, analyze, capture` | DEVIATES (intentional, documented) | kinds in use: extract, survey, merge, repack, preflight, install, cleanup, capture, indexes (`handlers*.py`) | `unpack` is synchronous (`cli_extra.py:81`); sanitizer plan/apply/undo share kind `cleanup`; `analyze` deferred (doc 14.5). |
-| 12.3 `JobSpec {kind, params, ini_digest}` serializable and replayable | DEVIATES (intentional, documented) | no JobSpec type; replay works from the extraction run record (`cli_extra.py:28-58`; `tests/test_pipeline.py:126`) | Replay exists for `extract` only; other kinds are not replayable. |
-| 12.3 states `queued → running → succeeded | failed | cancelled` | CONFORMS | `jobs.py:22,77-90` | |
-| 12.3 `JobHandle {id, kind, state, created, started, finished}` | DEVIATES (defect) | `jobs.py:34-43` summary has `started`, `elapsed`, no `created`/`finished` fields | `started` is set at construction (queued time), so "created" is conflated with "started"; minor. |
-| 12.3 events replayable from offset N | CONFORMS | `routes.py:71-78`; `tests/test_api_routes.py:41` | |
-| 12.3 result kind-specific | CONFORMS | `routes.py:65-68` | |
-| 12.3 run record: JobSpec, effective ini, slot bindings, tool versions, result → `.extraction_metadata/runs/<job>.json` | DEVIATES (defect) | `runner.py:246-266` writes request, bindings, result, viwo version; capture record `capture/__init__.py:141` | Missing: the effective ini and each tool's version/commit. Replay identity is covered by the request + bindings, but the doc's reproducibility record is incomplete. |
-| 12.3 "same record + same tools → same output" | CONFORMS | `tests/test_pipeline.py:126` (replay reproduces names, sizes, hashes) | |
-| 12.3 concurrency: one lock per workspace; writing jobs hold it; curation takes it with a short timeout → 409 busy; read-only work does not take it | DEVIATES (intentional, documented) | `workspace.py:171-177` (non-blocking, `busy`); `app.py:109-139`; sanitizer plan now runs under `locked_job("cleanup")` (`handlers_tools.py:91`) | Sanitizer *plan* (read-only per doc) takes the lock since it became a visible job (1.1 feedback batch). Timeout is 0 rather than "short". |
-| 12.3 cross-process lock | CONFORMS | `workspace.py:140-150` lock file with pid/time, stale takeover; `tests/test_workspace_lock.py` | Beyond the doc. |
-| 12.3 cancellation through CancelToken, process tree killed | CONFORMS | `os/_shared.py:49-88` `_kill_tree`; `jobs.py:81-84`; `tests/test_pipeline.py:61` | |
-| 12.3b envelope `{ok, data, error, warnings}`, error `{code, message, owner, hint}` | CONFORMS | `contracts/errors.py:36-52` | |
-| 12.3b code set | DEVIATES (intentional, documented) | `errors.py:8-20` adds `not_found`, `needs_decision`, `offline` | Additions only; each is mapped to an HTTP status and documented in the CLI epilog. |
-| 12.3b outcome mapping `unavailable/failed/needs_key`; refusals use `refused`; programming errors `internal` with trace to the log only | CONFORMS | `jobs.py:82-87`; `server.py:_api` logs and returns `internal`; `cli.py:250-257` | |
-| 12.3b HTTP: expected failures 200 `ok:false`; busy 409, invalid_request 400, refused 403, internal 500 | CONFORMS | `routes.py:19-26,87-93` | Plus not_found 404, offline 503. |
-| 12.4 commands `info, detect, extract, unpack, slots, sanitize, merge, analyze, capture, serve` | DEVIATES (intentional, documented) | `cli.py:66-130` has info, slots, detect, extract, replay, unpack, survey, repack, capture, sanitize, config, install, diag, indexes, serve | `merge` and `analyze` absent (merger UI-only; analysis deferred, doc 14.5). Extra commands are additions. |
-| 12.4 `extract` flags `--plugin/--mixed/--policy/--exts/--workspace/--option` | CONFORMS | `cli.py:132-156` | Plus `--on-existing`, `--carve`. |
-| 12.4 `unpack --slot/--backend` | NOT IMPLEMENTED (undocumented gap) | `cli.py:77-80` only `--out/--option` | Slot/backend selection per archive is not exposed. |
-| 12.4 `slots --check` (backend self-tests) | NOT IMPLEMENTED (undocumented gap) | `cli.py:67`; doc 14.6 relies on it | Dependency versions are shown (`_query` slots), no self-test run. |
-| 12.4 `sanitize plan|apply|undo` | DEVIATES (intentional, documented) | `cli.py:113-116` as `--apply/--undo TOKEN` flags | Same operations, flag form; documented in `viwo sanitize -h`. |
-| 12.4 globals `--ini --os --profile --json --quiet --verbose` | DEVIATES (intentional, documented) | `cli.py:54-56` has `--ini --os --json` | `--profile` deferred by doc 9 prototype scope; `--quiet/--verbose` never implemented (no documentation note). Borderline: treat the last two as an undocumented gap. |
-| 12.4 exit codes 0/1/2/3/4/130 | CONFORMS | `cli.py:33,41-43,264`; `server.py` strict preflight returns 4; `tests/test_cli.py:63,69`, `tests/test_pipeline.py:81` | 3 covers both "unsupported OS" (`select_os` raises `refused`) and containment refusals, as the epilog states. |
-| 12.4 `Start.py` = `viwo serve` with the default ini | CONFORMS | `Start.py` | |
-| 12.5 v1 routes as adapters; `/api/extract` waits for the job | CONFORMS | `app.py:83-90` `background=False` | |
-| 12.5 `GET /api/jobs/<id>`, `/events?from=N`, `POST /api/jobs/<id>/cancel` | CONFORMS | `routes.py:96-118`; `tests/test_api_routes.py:41` | |
-| 12.5 `POST /api/jobs` generic submit | NOT IMPLEMENTED (undocumented gap) | `routes.py:112-118` | Jobs are started only through their own routes. |
-| 12.5 curation actions synchronous, not jobs | CONFORMS | `handlers.py:99-151` | |
-| 12.5b Python 3.11+, pyproject console entry point | CONFORMS | `pyproject.toml` | |
-| 12.5b runtime dependencies pinned in a lock file; tool lock file for CI | CONFORMS | `pyproject.toml` extras pinned; `viwo/data/tools.json`; `ci.yml` `viwo install --all` | |
-| 12.5b `pytest` dev-only | DEVIATES (intentional, documented) | `unittest` + `ruff` (CLAUDE.md commands) | |
-| 12.6 threads for jobs | CONFORMS | `jobs.py:59-62` | Process isolation per backend not offered. |
-
-Verdict: envelope, codes, job model, events, cancellation, locking and exit codes match the doc; the CLI covers the contract plus 1.0 additions.
-Gaps: no generic `POST /api/jobs`, no `unpack --slot/--backend`, no `slots --check`, no `--quiet/--verbose`, run records lack the effective ini and tool versions, and the JobHandle has no `created` field.
-
-## Doc 14: Prototype proposal
+## 12. Headless core, CLI and jobs
 
 | Clause | Status | Evidence | Note |
 |---|---|---|---|
-| 14.1 orchestration + curation layer, not a format library; every file traceable | CONFORMS | README "Philosophy"; `collect.py` provenance; `ARCHITECTURE.md` | |
-| 14.2 #1 identify then extract, head+tail access, carving of embedded containers | CONFORMS | `contracts/slots.py:Identifier`, `Match.embedded`; `tests/test_core_units.py:121` | |
-| 14.2 #2 CATALOG → SELECT stage | NOT IMPLEMENTED (deferred, documented) | doc 14.7 D12 open; `rt`-level filtering only via `--exts` and plugin options (DataTool modes) | |
-| 14.2 #3 wrapper plugins + one re-detection after unpacking an outer wrapper | NOT IMPLEMENTED (undocumented gap) | no re-detection in `core/pipeline/*.py`; electron plugin unpacks `.asar`/`.nw` but detection is not rerun on the contents | RPG Maker MV inside NW.js is still handled because the MV plugin detects on the game root; TyranoScript/Construct inside a wrapper would not be. |
-| 14.2 #4 `keys.*` slot family (user key first, finders as spares) | DEVIATES (intentional, documented) | Unreal: user option, else key found in executables and verified (`plugins/unreal/keys.py`); Godot: user option; STATUS D18 | Implemented as plugin logic, not a slot family. |
-| 14.2 #5 every backend declares network use; offline default | NOT IMPLEMENTED (undocumented gap) | see doc 11.6 row | |
-| 14.2 #6 GPL backends always subprocess | CONFORMS | `isolation = "subprocess"` on unrpa, QuickBMS, unrpyc, DataTool… | No lint enforces it (doc 17 L0 lists one); not in scope here. |
-| 14.2 #7 never unpickle game data in-process | CONFORMS | `plugins/renpy` safe RPA index reader with allow-list (ARCHITECTURE invariants) | |
-| 14.2 #8 hard capture refusal policy | DEVIATES (intentional, documented) | doc 11.1 revision; D22 in `docs/contract/README.md` | Warnings since 1.0. |
-| 14.3 S-1 hotfix (copy-not-move, marker, token/JSON/Host, safe extraction) | CONFORMS | `collect.py`, `workspace.py`, `server.py:_host_ok/_token_ok`, `safe_member` | |
-| 14.3 S0 lean core (contracts, OS layers, ini, binder failover, stage runner, lock, jobs, run records, CLI, generic plugin) | CONFORMS | `viwo/contracts`, `viwo/os`, `core/wiring`, `core/pipeline`, `cli.py` | |
-| 14.3 S1–S3 Ren'Py, Unity, Godot with main/spare | CONFORMS | `tests/test_renpy.py`, `test_unity.py`, `test_godot.py`; STATUS evidence | |
-| 14.3 S4 Unreal: repak → QuickBMS spare; retoc; AES option | DEVIATES (intentional, documented) | `plugins/unreal/__init__.py` repak main, no QuickBMS spare; retoc raw as spare for IoStore | STATUS M7 states the delivered spares. |
-| 14.3 S5 custom plugin loader, open-source showcase (Freedoom), Overwatch optional | CONFORMS | `core/wiring/registry.py` (drop-ins, entry points); `plugins/doom`, `plugins/overwatch`; `examples/plugins/hello` | Overwatch is now auto-selectable with a reminder (D22). |
-| 14.3 S6 mixed mode + report-only sanitizer | CONFORMS (exceeded) | `tests/test_mixed.py`; `core/sanitizer.py` has apply/undo (beyond "report-only") | |
-| 14.3 S6b round trip into a patched copy, verified | CONFORMS | doc 18 section below | |
-| 14.3 S7 capture pilot: policy + journal + RenderDoc + DIFF | CONFORMS | doc 11 section above | Spare apitrace not implemented. |
-| 14.4 A1 CLI and HTTP extraction of Ren'Py/Unity/Godot fixtures on Linux and Windows CI, game hashes unchanged | CONFORMS | `ci.yml` matrix; `tests/test_game_integrity.py:33` | CI runs only on major tags (owner's policy); last tag run: Windows green, Linux green after v1.0.1 (WSL verified). |
-| 14.4 A2 failover cases main up/down × spare up/down with fakes; L5 with real tools | CONFORMS | `tests/test_core_units.py:53,67`; `ci.yml` real-tools job, `tests/test_l5_tools.py` | |
-| 14.4 A3 v1 web UI kept working, characterization tests | DEVIATES (intentional, documented) | v1 UI removed; new UI (`viwo/web`) with lint + headless smoke tests (`tests/test_ui_lint.py`, `test_ui_smoke.py`); roadmap 16.0 "legacy app removed, new UI" | |
-| 14.4 A4 replay gives an identical workspace | CONFORMS | `tests/test_pipeline.py:126` | |
-| 14.4 A5 product LoC ≤ 5,500 (A) / B ≤ 9,000 | DEVIATES (intentional, documented) | `tools/loc_count.py --report`: viwo 9584 / 9800 | Budget raised with reasons in `loc_caps.ini` (installer, indexes, capture/settings API, add-ons); doc 18.7's total cap of 10,000 still holds. |
-| 14.4 B: round-trip tests for Ren'Py, Godot, Unreal, Unity | CONFORMS | `tests/test_roundtrip.py`, `test_godot.py`, `test_unreal.py`, `test_unity.py`, `test_rpgmaker.py` (pack paths) | |
-| 14.4 B: capture pilot refusal and restore tests | DEVIATES (intentional, documented) | `tests/test_capture.py:49` tests warnings + feature switch; `:73,93` restore | "Refusal" tests became warning tests under D22. |
-| 14.5 not in the prototypes: UI redesign, Wine, decompiler backends, sanitizer apply, Unreal export, RPG Maker/Electron/GameMaker | DEVIATES (intentional, documented) | UI redesigned; sanitizer apply/undo; RPG Maker, Electron, KiriKiri, Source, Bethesda, QuickBMS added; Ren'Py decompile (unrpyc) | All recorded in STATUS (D21 coverage ladder) and release notes; Wine, Unreal export and GameMaker remain out. |
-| 14.6 mitigations: pinned versions, spares, `viwo slots --check` | DEVIATES (defect) | pins in `tools.json`; spares; no `--check` | Same gap as doc 12.4. |
-| 14.6 Linux parity: tools with native Linux builds | CONFORMS | `tools.json` linux entries; WSL install evidence in STATUS | DataTool Windows-only by design. |
+| 12.1 core boots from the ini without a server; the server is one front end | CONFORMS | `viwo/core/wiring/boot.py:91-95`; `viwo/api/app.py:146-152` | |
+| 12.1 long work runs as jobs with an event stream; `/api/logs` is an adapter over the latest events | CONFORMS | `viwo/core/jobs.py:51-95`; `viwo/api/app.py:82-87,119-139`; `viwo/api/handlers_tools.py:39,91,113,139-141`; `viwo/api/handlers.py:229-234` | |
+| 12.1 every capability reachable from the CLI, with `--json` | DEVIATES (intentional, documented) | `viwo/cli_args.py:33-95` (no `merge`); `viwo/cli.py:41,149-150` (`--json`) | The media merger is UI/API only (`README.md:16,166` lists it as a web UI feature; doc 14.3 S0 scopes "merger build as job adapter"). |
+| 12.2 facade `boot`, `info`, `detect`, `submit`, `jobs.get/list/cancel`, `workspace`, `shutdown` | DEVIATES (intentional, documented) | `viwo/core/wiring/boot.py:31-95` (`Runtime.info/dependency_report/self_checks`, `boot()`); jobs through `JobRunner` (`viwo/core/jobs.py:51-105`) and `App` (`viwo/api/app.py:20-139`); no `submit(JobSpec)`, no `shutdown()` | Doc 12:5 "All names are provisional". |
+| 12.3 job kinds `extract, unpack, sanitize.plan, sanitize.apply, merge, analyze, capture` | DEVIATES (intentional, documented) | `viwo/api/handlers_jobs.py:18-26` (extract, survey, repack, preflight, install, capture, cleanup); `viwo/api/handlers.py:232` (merge); `viwo/cli.py:104-109` (`unpack` synchronous) | Sanitizer plan/apply/undo share kind `cleanup` (doc 05:78); `analyze` is open in doc 16:68 ("analysis backends") and doc 06 6.4 ("later"). |
+| 12.3 `JobSpec {kind, params, ini_digest}` serializable and replayable | DEVIATES (intentional, documented) | `viwo/api/handlers_jobs.py:29-31` (`{kind, params}`); `viwo/cli_extra.py:28-58` (replay rebuilds the request from the run record; `extract` only); `viwo/core/records.py:28-29` (ini path and values instead of a digest) | Doc 12:5 provisional names; `viwo replay` is documented as re-running "the extraction stored in a run record" (`viwo/cli_args.py:43`). |
+| 12.3 states `queued → running → succeeded / failed / cancelled` | CONFORMS | `viwo/core/jobs.py:22,83-95` | |
+| 12.3 `JobHandle {id, kind, state, created, started, finished}` | CONFORMS | `viwo/core/jobs.py:28-30,35-48` | Closed in 1.2. No test asserts the three timestamps (`tests/test_api_routes.py:44-62` checks `state` and `result` only). |
+| 12.3 events: ordered stream, replayable from offset N | CONFORMS | `viwo/api/routes.py:91-98`; `tests/test_api_routes.py::RouteTests::test_jobs_events_and_cancel` | |
+| 12.3 result kind-specific | CONFORMS | `viwo/api/routes.py:85-88` | |
+| 12.3 run record: JobSpec, effective ini, slot bindings, each tool's version, result → `.extraction_metadata/runs/<job>.json` | CONFORMS | `viwo/core/pipeline/runner.py:268` (`context`: ini path, per-value sources, bindings, tool versions and locations), `viwo/core/records.py:12-35` | capture and repack records carried it since 1.2; extraction since 1.2.1 |
+| 12.3 "same record + same tools → same output" (principle 7) | CONFORMS | `tests/test_pipeline.py::ReplayAndUnpackTests::test_replay_reproduces_the_workspace` | |
+| 12.3 concurrency: one lock per workspace; writing jobs hold it; curation takes it with a short timeout → 409 busy; read-only work does not take it | DEVIATES (intentional, documented) | `viwo/core/workspace.py:192-198` (non-blocking, `busy`); `viwo/api/app.py:109-139`; `viwo/api/handlers_tools.py:77-91` (sanitizer plan runs as a `cleanup` job under the lock) | The plan taking the lock is documented in doc 05:78 (plan/apply/undo are one job kind so 04 JOBS shows them). Timeout is 0 rather than "short". |
+| 12.3 lock across processes (lock file, stale takeover) | CONFORMS | `viwo/core/workspace.py:4-5,123-136,144-180`; `tests/test_workspace_lock.py::LockFileTests` | Beyond the doc. |
+| 12.3 cancellation through CancelToken; the process tree is killed | CONFORMS | `viwo/core/jobs.py:26,86-88`; `viwo/api/routes.py:101-104`; `viwo/os/_shared.py:26,62,89` (`_kill_tree`); `tests/test_pipeline.py::PipelineTests::test_selected_extensions_and_cancel` | |
+| 12.3b envelope `{ok, data, error, warnings}`; `Error {code, message, owner, hint}` | CONFORMS | `viwo/contracts/errors.py:23-52` | |
+| 12.3b code set | DEVIATES (intentional, documented) | `viwo/contracts/errors.py:8-20` adds `needs_decision` and `offline` (`not_found` is in the doc) | `needs_decision` is documented in doc 04:97 (`needsDecision`, exit 2); `offline` (503, `viwo/api/routes.py:24`) is documented only in code. Additions only. |
+| 12.3b outcome → code mapping; refusals `refused`; programming errors `internal` with the trace in the log only | CONFORMS | `viwo/core/jobs.py:87-92`; `viwo/api/server.py:99-101`; `viwo/cli.py:141-148`; `tests/test_cli.py::ErrorSurfaceTests::test_unexpected_exception_is_an_internal_error_not_a_traceback` | |
+| 12.3b HTTP: expected failures 200 `ok:false`; busy 409, invalid_request 400, refused 403, internal 500 | CONFORMS | `viwo/api/routes.py:19-26,107-113`; `tests/test_api_routes.py:60-61` (404 for not_found) | Plus not_found 404, offline 503. |
+| 12.4 commands `info, detect, extract, unpack, slots, sanitize, merge, analyze, capture, serve` | DEVIATES (intentional, documented) | `viwo/cli_args.py:33-95` and `viwo/cli.py:52-56` (info, slots, detect, extract, replay, unpack, config, survey, repack, capture, sanitize, install, diag, indexes, serve) | `merge` absent (`README.md:166` web UI); `analyze` open (doc 16:68). Extra commands are additions. |
+| 12.4 `extract` flags `--plugin / --mixed / --policy / --exts / --workspace / --option` | CONFORMS | `viwo/cli_args.py:98-122` | Plus `--on-existing`, `--carve`. |
+| 12.4 `unpack <archive> [--slot] [--backend main/spare/ID]` | CONFORMS | `viwo/cli_args.py:48-53`; `viwo/cli_check.py:47-93`; `viwo/cli.py:104-109` | Closed in 1.2. No test exercises `--slot/--backend` (`tests/test_pipeline.py::test_unpack_one_archive` covers the plain path only). |
+| 12.4 `slots [--check]` runs each backend's self-test | CONFORMS | `viwo/cli_args.py:36-38`; `viwo/cli_check.py:15-44`; `viwo/contracts/slots.py:73-86` (`self_check`); `viwo/cli.py:66-68,162-163` | Closed in 1.2 (doc 16:88 names it). No test; exit 1 when a bound main fails. |
+| 12.4 `sanitize plan / apply / undo` | DEVIATES (intentional, documented) | `viwo/cli_args.py:79-82` (`--apply`, `--undo TOKEN`); `viwo/cli_extra.py:115-125` | Same operations in flag form; `README.md:132` documents the flags. |
+| 12.4 globals `--ini --os --json --quiet --verbose` | CONFORMS | `viwo/cli.py:39-46,79-90`; `viwo/cli_extra.py:148-152` | `--quiet/--verbose` closed in 1.2; accepted before and after the subcommand. No test. |
+| 12.4 global `--profile` | CONFORMS | `viwo/cli.py:42`, `viwo/core/wiring/boot.py:92`; `tests/test_config.py::test_suffix_clash_is_reported_and_profile_flag_selects_plugins` | an unknown profile is an `invalid_request` (exit 2) |
+| 12.4 exit codes 0 / 1 / 2 / 3 / 4 / 130 | CONFORMS | `viwo/cli.py:27,155`; `viwo/api/server.py:231-234` (strict preflight → 4); `viwo/cli_args.py:28-29`; `tests/test_cli.py::ErrorSurfaceTests::test_ctrl_c_is_a_clean_cancel`, `::test_missing_folders_are_not_found_without_traceback`; `tests/test_pipeline.py::CliTests::test_info_extract_and_exit_codes` | 3 covers "unsupported OS layer" and containment refusals, as the epilog states. |
+| 12.4 `Start.py` keeps working as `viwo serve` with the default ini | CONFORMS | `Start.py:8` | |
+| 12.5 v1 routes as thin adapters; `/api/extract` submits a job and waits | CONFORMS | `viwo/api/app.py:68-107` (`background=False`) | |
+| 12.5 `GET /api/jobs/<id>`, `GET /api/jobs/<id>/events?from=N`, `POST /api/jobs/<id>/cancel` | CONFORMS | `viwo/api/routes.py:116-138`; `tests/test_api_routes.py::RouteTests::test_jobs_events_and_cancel` | SSE "later" per the doc. |
+| 12.5 `POST /api/jobs` (generic submit) | CONFORMS | `viwo/api/handlers.py:291`; `tests/test_api_routes.py::test_generic_job_submit_runs_the_kind_handler` |  |
+| 12.5 curation actions synchronous, not jobs | CONFORMS | `viwo/api/handlers.py:83-151` through `App.locked` (`viwo/api/app.py:109-117`) | |
+| 12.5b Python 3.11+, `pyproject.toml` with a `viwo` console entry point | CONFORMS | `pyproject.toml:10,22-23` | |
+| 12.5b runtime dependencies pinned; tool lock file (name, version, URL, checksum) used by CI | CONFORMS | `pyproject.toml:16-20`; `viwo/data/tools.json`; `.github/workflows/ci.yml:59-63` (`viwo install --all`) | |
+| 12.5b `pytest` as the dev-only dependency | DEVIATES (intentional, documented) | `pyproject.toml:20` (ruff only); doc 17:3,79 (History: stdlib `unittest`, no framework installed) | |
+| 12.5b no installer or packaged desktop app in the prototype | DEVIATES (intentional, documented) | `viwo/core/thirdparty.py` (pinned installer), `packaging/build_portable.py` (portable `viwo.exe`); `docs/contract/README.md:59` (principle 6 History) and `docs/prototype-b/STATUS.md:53-56` | Both shipped in 1.0 with the owner's decision recorded. |
+| 12.6 jobs run in threads (process isolation per backend later) | CONFORMS | `viwo/core/jobs.py:64-67` | Process isolation per backend is not offered; GPL tools are subprocesses anyway. |
 
-Verdict: every slice S-1 through S7 is delivered and the exit criteria hold or are exceeded, with the owner's documented departures (new UI, more engines, warnings instead of refusals, higher LoC budget).
-Gaps: wrapper re-detection (14.2 #3) and backend network declaration (14.2 #5) were never built and are not recorded as deferred; `slots --check` is missing.
+Verdict: envelope, codes, job model, events, cancellation, locking, exit codes and the CLI surface match the doc; 1.2 closed JobHandle fields, `slots --check`, `unpack --slot/--backend` and `--quiet/--verbose`. Two defects remain, both half-done 1.2 work: the extraction run record never receives the new `record_context`, and `POST /api/jobs` was written but never registered. `--profile` is the one global the doc (and doc 09) still promises.
+Open: 12.1 every capability reachable from the CLI, with `--json` (intentional) · 12.2 facade `boot`, `info`, `detect`, `submit`, `jobs.get/list/cancel`,  (intentional) · 12.3 job kinds `extract, unpack, sanitize.plan, sanitize.apply, merge, a (intentional) · 12.3 `JobSpec {kind, params, ini_digest}` serializable and replayable (intentional) · 12.3 concurrency: one lock per workspace; writing jobs hold it; curation (intentional) · 12.3b code set (intentional) · 12.4 commands `info, detect, extract, unpack, slots, sanitize, merge, an (intentional) · 12.4 `sanitize plan / apply / undo` (intentional) · 12.5b `pytest` as the dev-only dependency (intentional) · 12.5b no installer or packaged desktop app in the prototype (intentional).
 
-## Doc 18: Round trip
+## 14. Prototype proposal
 
 | Clause | Status | Evidence | Note |
 |---|---|---|---|
-| Decisions: output is a patched copy; original read-only; strategy per plugin; same-format first | CONFORMS | `roundtrip.py:1-6,133-148,235-295`; `tests/test_roundtrip.py:59` (original hashes unchanged) | |
-| 18.2 provenance map written by COLLECT (`.extraction_metadata/provenance.jsonl`) | CONFORMS | `contracts/workspace.py:PROVENANCE_FILE`; `runner.py:243-245`; `core/provenance.py` rewrite on moves | Rewrite on sort/sanitizer moves goes beyond the doc. |
-| 18.2 edit set: modified files by hash | CONFORMS | `roundtrip.py:49-72` | Moved/renamed files are reported as skipped. |
-| 18.2 edit set: files the user adds with a target path ("added") | NOT IMPLEMENTED (undocumented gap) | `roundtrip.py:49-72` only iterates provenance entries | Workspace files without provenance are ignored silently; only deletions are marked ❓ in the doc. |
-| 18.2 strategies override / rebuild | CONFORMS | `roundtrip.py:85-106` (`override` item, `pack.*` items) | |
-| 18.3 POLICY: refusals for online/anti-cheat; tos-sensitive operator-only | DEVIATES (intentional, documented) | `roundtrip.py:124-130` `_reminders` | D22: reminder, never refusal. |
-| 18.3 RESOLVE: reject edits whose format differs from the original member | DEVIATES (defect) | `roundtrip.py:49-72` no format check; `plugins/unity/pack.py:2` converts PNG → Texture2D (declared converter) | Raw members are replaced without checking the format; a wrong-format file is only caught, if at all, by VERIFY. Minor: VERIFY re-extraction masks most cases. |
-| 18.3 PLAN by plugin `repack_plan(edit_set, provenance)`; shown before writing | DEVIATES (intentional, documented) | `contracts/plugin.py:141` `pack_slot(unarchive_slot)` instead; `--plan` and `POST /api/repack {plan:true}` | Core builds the plan from `pack_slot`; `mod_strategies()`/`repack_plan()` hooks never materialised; roundtrip docstring documents the mechanism. |
-| 18.3 COPY: full copy or reflink, never hardlinks | CONFORMS | `roundtrip.py:137-147` `copy2` via `copytree(copy_function=copy)` | Reflinks (❓) not attempted; `symlinks=True` keeps links as links and `_override`/`_container` refuse writing through them (`:182,192-195`). |
-| 18.3 PACK through `pack.*` slots inside the copy only | CONFORMS | `roundtrip.py:198-232`; packers write to `container` under `target` | |
-| 18.3 VERIFY: re-extract; every edited member has the edited hash | CONFORMS | `roundtrip.py:158-173`; packer `verify` hook (`contracts/slots.py:114`) | |
-| 18.3 VERIFY: every untouched member keeps its original hash | DEVIATES (defect) | `roundtrip.py:167-171` checks edited members only | Untouched members are covered by `tests/test_roundtrip.py:57` for the Ren'Py writer, not by the core verify. |
-| 18.3 REPORT: run record with plan, edits, backends, verification | CONFORMS | `roundtrip.py:243-252,282-286` → `<target>/.viwo-patched/report.json`, `verified` flag | Written atomically; not copied into the workspace runs folder. |
-| 18.3 repack is a job kind `repack` | CONFORMS | `handlers_tools.py:113` `locked_job("repack")`; `tests/test_roundtrip.py:83` | |
-| 18.4 `Packer.pack(original, members, out, ctx)`, `supports_rebuild/override` | DEVIATES (intentional, documented) | `contracts/slots.py:105-119` `pack(container, members, ctx)`, `output_for`, `verify`; no `supports_*` flags | Strategy is implied by the slot (override is core-owned); contract docstring states it. |
-| 18.5 `pack.renpy-override` core copy into `game/` | CONFORMS | `roundtrip.py:176-189` generic loose override for every engine | |
-| 18.5 `pack.rpa` rpa-writer main (own index writer), rpatool spare | DEVIATES (intentional, documented) | `plugins/renpy/pack.py:57`; no spare | Spares for pack slots were not pinned; STATUS M9 lists the delivered packers. |
-| 18.5 `pack.pck` godotpcktool main, gdre spare; encrypted needs key | DEVIATES (intentional, documented) | `plugins/godot/pck.py:127`; no spare | Note: the Windows GodotPckTool binary is quarantined by Defender (STATUS), so `pack.pck` is unbound on this machine. |
-| 18.5 `pack.pak` override `_P.pak` via repak; signed paks reported, not bypassed | CONFORMS | `plugins/unreal/pak.py:154-200` (`pack.upak`, `.sig` note) | Slot named `pack.upak`; QuickBMS reimport spare not implemented. |
-| 18.5 `pack.unity-bundle` unitypy rebuild, uabea spare | DEVIATES (intentional, documented) | `plugins/unity/pack.py:50` (`pack.unity`, TextAsset/Texture2D); no spare | |
-| 18.5 `pack.zip` stdlib, `pack.tar` | DEVIATES (intentional, documented) | `backends/packers.py:12` zip only; `roundtrip.py:30` CORE_PACK maps zip only | tar rebuild never added (doc says "later"). |
-| 18.5 Overwatch not supported | CONFORMS | no pack slot in `plugins/overwatch`; `_reminders` for sensitive owners | |
-| 18.5 extra: `pack.rpgmaker` (MV/MZ) | CONFORMS (beyond doc) | `plugins/rpgmaker/mv.py:90` | |
-| 18.6 rule 1: never write the original; target empty or marked | CONFORMS | `roundtrip.py:134,141-148`; `tests/test_roundtrip.py:63,79-81`; `tests/test_game_integrity.py` | Plus a game-folder snapshot diff after the build (`:283-285`). |
-| 18.6 rule 2: no signature/anti-tamper bypass; report says the copy may not load | CONFORMS | `plugins/unreal/pak.py:199-200` | |
-| 18.6 rule 3: same format only unless a declared converter | CONFORMS | Unity PNG → Texture2D is the declared converter (`unity/pack.py:2`); others raw | No explicit format check (see RESOLVE row). |
-| 18.6 rule 4: verified by re-extraction before reported successful | CONFORMS | `roundtrip.py:220-226,282` `verified` flag on the report and in the final event | |
-| 18.7 caps: `core/roundtrip` ≤ 450, +150 per plugin, total ≤ 10,000 | CONFORMS | `roundtrip.py` ≤ 250 file cap; viwo 9584 | |
-| 18.7 testing: extract → edit → repack → re-extract → hashes match; original untouched; untouched members identical | CONFORMS | `tests/test_roundtrip.py:32-61,63-81` | |
+| 14.1 orchestration + curation layer, not a format library; every file traceable | CONFORMS | `viwo/core/pipeline/collect.py:1,114-131` (provenance per collected file); `ARCHITECTURE.md` invariants; `README.md:36-42` | |
+| 14.2 #1 identify, then extract; head and tail access; carving of embedded containers | CONFORMS | `viwo/contracts/slots.py:24-38,50` (`Match.embedded`, `Identifier(path, head, tail)`); `tests/test_core_units.py::test_suffix_magic_custom_and_carve` | |
+| 14.2 #2 optional CATALOG → SELECT step | DEVIATES (intentional, documented) | `docs/contract/README.md:130` (D12 "closed, not built": SELECT + `viwo survey` + indexes cover it); doc 03:5 History | A decision not to build, not a deferral. |
+| 14.2 #3 wrapper plugins + one re-detection after unpacking an outer wrapper | CONFORMS | `viwo/core/pipeline/rewrap.py:27-51`; `viwo/core/pipeline/runner.py:139`; doc 03:16 | Closed in 1.2 (`.asar`, `.nw`; one pass, never nested; threshold `mixed_threshold`). No test asserts the re-detection (`tests/test_mixed.py:55` only places an `app.asar` fixture). |
+| 14.2 #4 `keys.*` slot family (user key first, finders as spares) | DEVIATES (intentional, documented) | `viwo/plugins/unreal/keys.py:1-2,91-108` (user option wins, else candidates from the executables, each verified on the pak index); Godot: user option; `docs/contract/README.md:136` (D18) | Implemented as plugin logic, not a slot family; doc 08:143-145 still lists `keys.*` slots (not this audit's doc). |
+| 14.2 #5 every backend declares its network use; offline is the default | CONFORMS | same as 11.6: `viwo/contracts/slots.py:59`, `viwo/plugins/overwatch/__init__.py:65`, L0 lint |  |
+| 14.2 #6 GPL backends are always subprocess backends | CONFORMS | `tests/test_l0_static.py::BackendDeclarationTests::test_gpl_backends_run_as_subprocesses`; `viwo/contracts/slots.py:58` | The L0 lint doc 17 asked for exists since 1.2. |
+| 14.2 #7 never unpickle game data in-process; risky parsers isolated | CONFORMS | `viwo/plugins/renpy/rpa.py:36-37,60` (`_SafeUnpickler.find_class` allow-list); `viwo/contracts/slots.py:60` (`parses_untrusted_in_process` declared, linted by `tests/test_l0_static.py:117-121`) | |
+| 14.2 #8 runtime capture has a hard refusal policy and a journaled overlay | DEVIATES (intentional, documented) | `docs/contract/README.md:146` (D22); doc 11.1 revision note; `viwo/core/capture/policy.py:1-5` | Overlay holds (`viwo/core/capture/journal.py`); refusals became warnings in 1.0. |
+| 14.3 S-1 v1 hotfix: copy-not-move, marker before rmtree, token / JSON-only / Host check, safe extraction filters, exports into staging, dot-folder filter | CONFORMS | `viwo/core/pipeline/collect.py:1`; `viwo/core/workspace.py:41-64`; `viwo/api/server.py:53-58,106-122`; `viwo/contracts/workspace.py` (`safe_member`, `inside`); `tests/test_game_integrity.py::GameIntegrityTests` | |
+| 14.3 S0 lean core: contracts, OS layers, flat ini, failover binder, stage runner, lock, jobs + run records, CLI, generic plugin, `.7z` 7z → py7zr | CONFORMS | `viwo/contracts/`, `viwo/os/linux.py`, `viwo/os/windows.py`, `viwo/core/wiring/ini.py`, `viwo/core/wiring/binder.py`, `viwo/core/pipeline/runner.py:85-166`, `viwo/core/workspace.py:192-198`, `viwo/core/jobs.py`, `viwo/cli.py`, `viwo/plugins/generic/`, `viwo/backends/__init__.py:15-40` | |
+| 14.3 S1–S3 Ren'Py, Unity, Godot with main / spare | CONFORMS | `viwo/plugins/renpy/__init__.py:23-27`; `viwo/plugins/unity/__init__.py:35-44`; `viwo/plugins/godot/__init__.py:39-45`; `tests/test_renpy.py`, `tests/test_unity.py`, `tests/test_godot.py` | |
+| 14.3 S4 Unreal: repak → QuickBMS spare; retoc; AES key as an option | CONFORMS | `viwo/plugins/unreal/__init__.py:40-48` (`unarchive.upak` main `repak-cli`, spare `quickbms-cli`; `unarchive.utoc` retoc main, raw spare); `viwo/plugins/unreal/keys.py:91-108` | The upak spare landed in 1.2; doc 16:62 (M7 row) still says "no spare", which is now stale (doc 16 is outside this audit). |
+| 14.3 S5 custom plugin loader, open-source showcase in CI, Overwatch optional and local-only | CONFORMS | `viwo/core/wiring/registry.py:4,162-210` (drop-ins with `plugin.json`, entry points); `examples/plugins/hello/`; `viwo/plugins/doom/`, `.github/workflows/ci.yml:64-71` (Freedoom); `viwo/plugins/overwatch/__init__.py:3,54-57` | Overwatch is auto-selectable with a reminder (D22). |
+| 14.3 S6 mixed mode + report-only sanitizer | CONFORMS | `tests/test_mixed.py`; `viwo/api/handlers_tools.py:77-91` (plan, apply, undo) | Exceeds "report-only" (apply/undo shipped, STATUS M10). |
+| 14.3 S6b round trip into a patched copy, per-plugin strategy, same-format, verified by re-extraction | CONFORMS | doc 18 section below | |
+| 14.3 S7 capture pilot: policy + journal + RenderDoc + DIFF | CONFORMS | doc 11 section above | No apitrace spare (11.5 row). |
+| 14.4 A1 CLI and HTTP extraction of the Ren'Py/Unity/Godot fixtures on Linux and Windows CI, game hashes unchanged | CONFORMS | `.github/workflows/ci.yml:17-43` (ubuntu + windows × 3.11/3.13); `tests/test_game_integrity.py::test_every_plugin_leaves_the_game_untouched`; `tests/test_pipeline.py::CliTests`; `tests/test_api_routes.py` | CI runs only on major tags or by hand (doc 17:80, `ci.yml:3-10`). |
+| 14.4 A2 failover cases main up/down × spare up/down with fakes; L5 with real tools | CONFORMS | `tests/test_core_units.py::test_four_availability_cases`, `::test_failover_outcomes`; `.github/workflows/ci.yml:45-75`; `tests/test_l5_tools.py` | |
+| 14.4 A3 the v1 web UI keeps working (characterization tests) | DEVIATES (intentional, documented) | doc 16:18 ("legacy app removed, everything ported to ViWo, new UI"); `tests/test_ui_lint.py`, `tests/test_ui_smoke.py` | |
+| 14.4 A4 re-running from a run record gives an identical workspace | CONFORMS | `tests/test_pipeline.py::ReplayAndUnpackTests::test_replay_reproduces_the_workspace` | |
+| 14.4 A5 product LoC ≤ 5,500 (A); each profile ini boots on its runner | DEVIATES (intentional, documented) | `tools/loc_count.py --report`: viwo 10,499 / budget 10,800; doc 15:4-6,47 (History: the 1.0/1.1 scope raised the target with the owner's approval); `loc_caps.ini:16` | The further raise to 10,800 in 1.2 is recorded on the `loc_caps.ini` line only; doc 15's table (9,800, ceiling 10,000, core 4,700) was not updated. See 18.7. |
+| 14.4 B: round-trip tests pass for Ren'Py, Godot, Unreal and Unity | CONFORMS | `tests/test_roundtrip.py::RoundTripTests::test_renpy_archive_member_and_loose_file`; `tests/test_unreal.py::test_fips_197_vector_and_round_trip`; `tests/test_unity.py::test_text_asset_edit_is_written_back_and_verified`; `tests/test_l5_tools.py::RealRoundTripTest::test_unreal_patch_pak`, `::test_godot_pck_rebuild`; `tests/test_rpgmaker.py::test_v1_and_v3_round_trip` | Godot is covered by the L5 real-tool test only (fake-free); Unity with a stateful fake UnityPy (STATUS "not verified" row). |
+| 14.4 B: product LoC ≤ 9,000 | DEVIATES (intentional, documented) | as 14.4 A5; doc 15:47 | |
+| 14.4 B: the capture pilot's refusal and restore tests pass | DEVIATES (intentional, documented) | `tests/test_capture.py::PolicyTests` (warnings + feature switch), `::JournalTests` (restore); doc 16:66 (M11: "the refusal list became a warnings list per D22") | |
+| 14.5 not in either prototype: UI redesign, Wine, decompiler backends, sanitizer apply, Unreal export, RPG Maker / Electron / GameMaker | DEVIATES (intentional, documented) | doc 16:68 (M13+ shipped: RPG Maker, Electron/NW.js, new UI, sanitizer panel; open: GameMaker, Unreal export, Wine); `docs/prototype-b/STATUS.md:12,17-18` | Wine, Unreal export and GameMaker remain out. |
+| 14.6 mitigations: pinned versions, spares, `viwo slots --check` | CONFORMS | `viwo/data/tools.json`; `viwo/cli_check.py:25-44`; doc 16:88 | Closed in 1.2. |
+| 14.6 Linux parity: tools with native Linux builds; Wine out of scope | CONFORMS | `viwo/data/tools.json` (15 `linux` entries); `docs/prototype-b/STATUS.md:57-59` | DataTool Windows-only by design. |
+| 14.7 open decisions D11–D15 | CONFORMS | `docs/contract/README.md:129-133` (all closed: safe RPA reader main; CATALOG closed; overlay; open-source showcase + Overwatch tos-sensitive; ViWo) | |
 
-Verdict: the round trip works as the doc decided it (patched copy, per-plugin packers, re-extraction verify, original untouched) and is tested per engine.
-Gaps: "added" files are not part of the edit set, untouched members are not re-verified by the core, no same-format check before packing, and no pack spares or `pack.tar`.
+Verdict: every slice S-1 through S7 is delivered; 1.2 added the wrapper re-detection, the Unreal upak spare, the GPL and network lints and `slots --check`. The remaining defect is the network declaration (shared with 11.6); the LoC departures are documented in doc 15 except for the 1.2 raise, which only `loc_caps.ini` records.
+Open: 14.2 #2 optional CATALOG → SELECT step (intentional) · 14.2 #4 `keys.*` slot family (user key first, finders as spares) (intentional) · 14.2 #8 runtime capture has a hard refusal policy and a journaled overla (intentional) · 14.4 A3 the v1 web UI keeps working (characterization tests) (intentional) · 14.4 A5 product LoC ≤ 5,500 (A); each profile ini boots on its runner (intentional) · 14.4 B: product LoC ≤ 9,000 (intentional) · 14.4 B: the capture pilot's refusal and restore tests pass (intentional) · 14.5 not in either prototype: UI redesign, Wine, decompiler backends, sa (intentional).
 
-## Counts
+## 18. Round trip
+
+| Clause | Status | Evidence | Note |
+|---|---|---|---|
+| Decisions: full round trip in B; output is a patched copy; original read-only; strategy per plugin; same-format first | CONFORMS | `viwo/core/roundtrip.py:1-6,105-120,211-235`; `viwo/core/roundtrip_edits.py:43-55`; `tests/test_roundtrip.py:59` (original hashes unchanged) | |
+| 18.2 provenance map written by COLLECT to `.extraction_metadata/provenance.jsonl` (containers, member path, backend, original hash) | CONFORMS | `viwo/contracts/workspace.py:10-12`; `viwo/core/pipeline/collect.py:114-131`; `viwo/core/pipeline/runner.py:260-261`; `viwo/core/provenance.py:22,47` (rewritten on moves) | |
+| 18.2 edit set: modified files by hash against the provenance map | CONFORMS | `viwo/core/roundtrip_edits.py:86-112` | Moved, renamed or trashed files are reported as skipped (`:107-111`). |
+| 18.2 edit set: files the user explicitly adds with a target path ("added") | CONFORMS | `viwo/core/roundtrip_edits.py:15,73-83,112` (`<workspace>/_added/<game-relative path>`); `viwo/core/roundtrip.py:56-58` (added files join the loose override item) | Closed in 1.2. No test; the `_added/` convention is stated only in the module docstring, not in doc 18.2 or README. |
+| 18.2 deletions out of scope at first ❓ | NOT IMPLEMENTED (deferred, documented) | doc 18.2 ❓; `viwo/core/roundtrip_edits.py:92-94,107-111` (missing files are listed as skipped, never deleted from the copy) | |
+| 18.2 strategies override / rebuild per plugin per container | CONFORMS | `viwo/core/roundtrip.py:53-78` (`override` item for loose files, `pack.*` item per container), `:150-163`, `:172-208` | |
+| 18.3 POLICY: same hard refusals as capture; tos-sensitive plugins operator-tested only | DEVIATES (intentional, documented) | `viwo/core/roundtrip.py:96-102` (reminder, never refusal); `docs/contract/README.md:146` (D22) | Doc 16:64 (M9 exit criterion) still says "repack refused for policy-listed games"; stale wording outside this audit. |
+| 18.3 RESOLVE: build the edit set; reject edits whose format differs from the original member unless the plugin declares a converter | CONFORMS | `viwo/core/roundtrip_edits.py:16-31,43-55,101-102` (magic check; `exported` members, the converter path, are exempt) | Closed in 1.2. Detection is magic-based over a fixed list (`MAGIC`); unknown bytes are accepted. No test. |
+| 18.3 PLAN by plugin `repack_plan(edit_set, provenance)`; shown before writing | DEVIATES (intentional, documented) | `viwo/contracts/plugin.py:164-166` (`pack_slot(unarchive_slot)` instead); `viwo/core/roundtrip.py:53-78` (core builds the plan); `viwo/cli_args.py:68` (`--plan`); `viwo/api/handlers_tools.py:99-102` (`plan:true`); `ARCHITECTURE.md` ("roundtrip.py edit set -> plan -> patched copy -> pack.* slots -> verify -> report") | The plan is shown before writing. Doc 18 carries no History line stating the shipped interface (README:3 says every proposal-sounding doc should). |
+| 18.3 COPY: full copy or reflink; never hardlinks | CONFORMS | `viwo/core/roundtrip.py:105-120` (`copytree(copy_function=copy2, symlinks=True)`); doc 16:64 ("copy-on-write clones were not pursued") | Links are kept as links and `_override`/`_container` refuse to write through them (`:156,166-169`). |
+| 18.3 PACK through `pack.*` slots inside the copy only | CONFORMS | `viwo/core/roundtrip.py:166-208` (container resolved inside `target`, packer writes there) | |
+| 18.3 VERIFY: re-extract with the matching `unarchive.*` slot; every edited member has the edited hash | CONFORMS | `viwo/core/roundtrip.py:130-147,193-198` | |
+| 18.3 VERIFY: every untouched member keeps its original hash | DEVIATES (intentional, documented) | `viwo/core/roundtrip.py:40,74-77,140` (untouched hashes planned and checked by the generic re-extraction verify), `viwo/core/roundtrip.py:31` (a packer with its own `verify` adds the note "untouched members were not re-verified" to its result); doc 18.3 VERIFY row and `docs/prototype-b/STATUS.md` "Known limits" | Unity bundles and RPG Maker MV have no `unarchive.*` route back: edited objects verified, the in-place save keeps the rest, the report says so |
+| 18.3 REPORT: run record with plan, edits, backends, verification | CONFORMS | `viwo/core/roundtrip.py:219-229,259-263` (`<target>/.viwo-patched/report.json`, `verified` flag, `context` with ini/bindings/tool versions) | Written atomically; not copied into the workspace runs folder (see doc 12.3 row). |
+| 18.3 repack is a job of kind `repack` | CONFORMS | `viwo/api/handlers_tools.py:96-113`; `viwo/api/handlers_jobs.py:21`; `tests/test_roundtrip.py::RoundTripTests::test_http_plan_and_build` | |
+| 18.4 `Packer.pack(original, members, out, ctx)`, `supports_rebuild/override`; plugin `mod_strategies()`, `repack_plan()` | DEVIATES (intentional, documented) | `viwo/contracts/slots.py:142-157` (`pack(container, members, ctx)`, `output_for`, `verify`); `viwo/contracts/plugin.py:164-166`; `ARCHITECTURE.md` round-trip line | Strategy is implied by the slot: override is core-owned (`roundtrip.py:150-163`), rebuild is the packer's. Doc 18 lacks a History line (same note as PLAN). |
+| 18.5 `pack.renpy-override`: core copy into `game/` | CONFORMS | `viwo/core/roundtrip.py:150-163` (generic loose override for every engine) | |
+| 18.5 `pack.rpa`: `rpa-writer` main (own index writer), `rpatool` spare | DEVIATES (intentional, documented) | `viwo/plugins/renpy/__init__.py:27` (no spare); `viwo/plugins/renpy/pack.py:57-59` | Pack spares were not pinned; doc 16:64 and STATUS M9 list the delivered packers. |
+| 18.5 `pack.pck`: `godotpcktool` main, `gdre-tools` spare; encrypted PCKs need the key | DEVIATES (intentional, documented) | `viwo/plugins/godot/__init__.py:86` (no spare); `viwo/plugins/godot/pck.py:168-171` | `docs/prototype-b/STATUS.md:60-64`: the Windows GodotPckTool binary is quarantined by Defender, so `pack.pck` is unbound on that machine. |
+| 18.5 `pack.pak`: override `_P.pak` via `repak pack`; signed paks reported, not bypassed; `quickbms` reimport spare ❓ | CONFORMS | `viwo/plugins/unreal/__init__.py:50` (`pack.upak`); `viwo/plugins/unreal/pak.py:154-160,168,196-201` (`.sig` note) | Slot named `pack.upak`; the ❓ reimport spare is not implemented. |
+| 18.5 `pack.unity-bundle`: `unitypy` rebuild, `uabea` spare | DEVIATES (intentional, documented) | `viwo/plugins/unity/__init__.py:44` (`pack.unity`, no spare); `viwo/plugins/unity/pack.py:50-52` | TextAsset and Texture2D only (STATUS M9). |
+| 18.5 `pack.zip` / `pack.tar`: stdlib, `sevenzip-cli` spare | DEVIATES (intentional, documented) | `viwo/backends/__init__.py:15`; `viwo/backends/packers.py:12-33`; `viwo/core/roundtrip.py:32` (`CORE_PACK` maps zip only) | No tar packer and no spare; STATUS M9 and doc 16:64 list what shipped. |
+| 18.5 Overwatch: not supported | CONFORMS | `viwo/plugins/overwatch/__init__.py` (no pack slot); `viwo/core/roundtrip.py:96-102` (reminder for sensitive owners) | "refused by policy" became a reminder (D22). |
+| 18.5 extra: `pack.rpgmaker` (MV/MZ re-encryption) | CONFORMS | `viwo/plugins/rpgmaker/__init__.py:23`; `viwo/plugins/rpgmaker/mv.py:91-104` | Beyond the doc. |
+| 18.6 rule 1: never write the original; target empty or carrying the patched-copy marker | CONFORMS | `viwo/core/roundtrip.py:106,113-120`; `tests/test_roundtrip.py:59,78-82`; `tests/test_game_integrity.py` | Plus a game-folder snapshot diff after the build (`roundtrip.py:242,260-262`). |
+| 18.6 rule 2: no signature / anti-tamper bypass; the report says the copy may not load | CONFORMS | `viwo/plugins/unreal/pak.py:196-201` | |
+| 18.6 rule 3: same format only unless a declared converter | CONFORMS | `viwo/core/roundtrip_edits.py:43-55,101`; `viwo/plugins/unity/pack.py:1-2` (PNG → Texture2D is the declared converter) | Closed in 1.2. |
+| 18.6 rule 4: verified by re-extraction before reported successful | CONFORMS | `viwo/core/roundtrip.py:193-202,259,264-270` (`verified` flag on the report and in the final event) | |
+| 18.7 caps: `core/roundtrip` ≤ 450; +150 per plugin for packing; total cap unchanged at 10,000 | CONFORMS | `loc_caps.ini:9,16` (file cap 250 bounds `roundtrip.py` + `roundtrip_edits.py` under 450; `viwo = 10800`); doc 15.3 and doc 18.7 revised: the `viwo` budget line is the ceiling (10,800 since 1.2) |  |
+| 18.7 testing: extract → edit → repack → re-extract → hashes match; original untouched; untouched members byte-identical | CONFORMS | `tests/test_roundtrip.py:32-61,63-81`; `tests/test_l5_tools.py::RealRoundTripTest` | |
+
+Verdict: the round trip works as decided (patched copy, per-plugin packers, re-extraction verify, original untouched) and 1.2 closed the same-format rule, the `_added/` files and the untouched-hash check for every container except Unity, whose own verifier bypasses it. The caps clause is contradicted by the 1.2 budget raise that only `loc_caps.ini` records.
+Open: 18.2 deletions out of scope at first ❓ (deferred) · 18.3 POLICY: same hard refusals as capture; tos-sensitive plugins operat (intentional) · 18.3 PLAN by plugin `repack_plan(edit_set, provenance)`; shown before wr (intentional) · 18.3 VERIFY: every untouched member keeps its original hash (intentional) · 18.4 `Packer.pack(original, members, out, ctx)`, `supports_rebuild/overr (intentional) · 18.5 `pack.rpa`: `rpa-writer` main (own index writer), `rpatool` spare (intentional) · 18.5 `pack.pck`: `godotpcktool` main, `gdre-tools` spare; encrypted PCKs (intentional) · 18.5 `pack.unity-bundle`: `unitypy` rebuild, `uabea` spare (intentional) · 18.5 `pack.zip` / `pack.tar`: stdlib, `sevenzip-cli` spare (intentional).
+
+## Counts per status
 
 | Doc | CONFORMS | DEVIATES (defect) | DEVIATES (intentional, documented) | NOT IMPLEMENTED (deferred, documented) | NOT IMPLEMENTED (undocumented gap) |
 |---|---|---|---|---|---|
-| 11 | 13 | 0 | 5 | 5 | 2 |
-| 12 | 17 | 2 | 10 | 0 | 4 |
-| 14 | 13 | 1 | 8 | 1 | 2 |
-| 18 | 17 | 3 | 7 | 0 | 1 |
-
-Defects worth a tweak: JobHandle `created` field (12.3); run record without effective ini and tool versions (12.3); `slots --check` (12.4/14.6); untouched-member verify and same-format check in repack (18.3).
-Undocumented gaps worth a line in STATUS or a feature: running anti-cheat service check (11.1), backend network declaration (11.6/14.2), wrapper re-detection (14.2 #3), `POST /api/jobs`, `unpack --slot/--backend`, `--quiet/--verbose`, "added" files in the edit set (18.2).
+| 11. Runtime capture | 22 | 0 | 3 | 4 | 0 |
+| 12. Headless core, CLI and jobs | 27 | 0 | 10 | 0 | 0 |
+| 14. Prototype proposal | 21 | 0 | 8 | 0 | 0 |
+| 18. Round trip | 21 | 0 | 8 | 1 | 0 |
+| Total | 91 | 0 | 29 | 5 | 0 |
 
 
 ---
 
-# Conformance audit: contract README (D0..D22, principles), docs 13, 15, 16, 17
+Read-only re-audit of the working tree at v1.2.0 (branch `makeover`, contract 1.1, 2026-11-03), rows redone against the current docs and the current code. Evidence is `file:line` at the current tree or a test method that exists now.
+Status vocabulary: CONFORMS · DEVIATES (defect) · DEVIATES (intentional, documented) · NOT IMPLEMENTED (deferred, documented) · NOT IMPLEMENTED (undocumented gap).
 
-Read-only audit of the working tree at v1.1.0 (2026-11-03). Evidence is `file:line` or a test name.
-Status vocabulary: CONFORMS · DEVIATES (defect) · DEVIATES (intentional, documented) ·
-NOT IMPLEMENTED (deferred, documented) · NOT IMPLEMENTED (undocumented gap).
-
-## 1. docs/contract/README.md: decisions D0..D22 and principles
+## 1. docs/contract/README.md: decisions D0..D22, principles, goals, layer rule, distro model
 
 | Clause | Status | Evidence | Note |
 |---|---|---|---|
-| D0 terminology: OS layer `viwo/os/`, `LinuxOS`/`WindowsOS`, backend/main/spare, three trash layouts | CONFORMS | `viwo/os/linux.py:57`, `viwo/os/windows.py:83`; `viwo/contracts/slots.py` SlotBinding main/spare; `viwo/core/curation/trash.py:3` (groups/items/merger) | |
-| D1 mixed mode: any plugin set at runtime + combination tests | CONFORMS | `ExtractionMode.MIXED` + `MixedPolicy` in `viwo/contracts/pipeline.py:26`; `tests/test_mixed.py::test_pairs_and_singles` (91 runs) | |
-| D2 missing dependency disables the plugin; `strict_preflight` opt-in | CONFORMS | `viwo/core/wiring/registry.py:67,147,174,187` ("disabled: ..."); `viwo/api/server.py:217-231` exit 4; `tests/test_thirdparty.py::test_strict_problems_name_unbound_plugin_slots` | binder also keeps unbound slots as problems |
-| D3 Unity per-extension layout | CONFORMS | collect groups every output by extension (`viwo/core/pipeline/collect.py`); Unity meshes land in `obj/` per the agent's tests in `tests/test_unity.py` | |
-| D4 sanitizer: health/identity, report-only, nothing lossy by default | CONFORMS | `viwo/api/handlers_tools.py:67-72` single recipe `lossy: False`; plan/apply/undo journaled (`viwo/core/sanitizer.py`) | |
-| D5 custom plugins Python first, declarative later | CONFORMS | drop-in `plugin.json` + Python module, entry points (`viwo/core/wiring/registry.py:3-5,29,139-150`); declarative (.ksy/.bms) not done | QuickBMS scripts per game exist through indexes, which is the declarative half |
-| D6 macOS later | CONFORMS (deferred) | only linux/windows OS layers; `thirdparty.PLATFORM` is windows/linux | |
-| D7 `export.unity` failover: UnityPy main, AssetStudioModCLI spare | CONFORMS | `viwo/plugins/unity/__init__.py:37` | |
-| D8 pinned versions + fetched release binaries | CONFORMS | `viwo/data/tools.json` (19 pins, sha256, size), `viwo/core/thirdparty.py` installer | supersedes the sparse-submodule plan of doc 10 (documented in README/STATUS) |
-| D9 MIT core; GPL/AGPL only as subprocesses | CONFORMS | `LICENSE`; `isolation="subprocess"` on quickbms-cli (`viwo/plugins/quickbms/__init__.py:46`), unrpa (`viwo/plugins/renpy/rpa.py:106`), sevenzip-cli, ffmpeg; THIRD_PARTY_NOTICES.md | no L0 lint enforces "GPL ⇒ subprocess" (see doc 17) |
-| D10 v1 hotfix merged | CONFORMS | v1 removed entirely (prototype-a STATUS "A+") | |
-| D11 Ren'Py: safe reader main, unrpa spare | CONFORMS | `viwo/plugins/renpy/__init__.py:24`; `tests/test_renpy.py::test_malicious_index_never_runs` | |
-| D12 CATALOG → SELECT optional stage (Prototype B) | NOT IMPLEMENTED (undocumented gap) | no `catalog` anywhere in `viwo/`; stages are prepare/detect/unpack/export/carve/collect/decode/verify/report | STATUS.md does not list it as open; the survey + per-game indexes cover part of the intent |
-| D13 journaled overlay + crash recovery | CONFORMS | `viwo/core/capture/journal.py:3,54,66,117`; `tests/test_capture.py::test_restore_and_crash_recovery`, `::test_damaged_journal_restores_what_it_can` | |
-| D14 open-source showcase in CI; Overwatch `tos_sensitive`, operator-tested | CONFORMS | Doom/Freedoom L5 (`tests/test_l5_data.py:15-24`, CI Freedoom step); `viwo/plugins/overwatch/__init__.py:29` `tos_sensitive=True`; sqc OPERATOR marks | |
-| D15 name ViWo, CLI `viwo` | CONFORMS | `pyproject.toml [project.scripts]` | |
-| D16 Doom WAD + Overwatch plugin | CONFORMS | `viwo/plugins/doom/`, `viwo/plugins/overwatch/` | |
-| D17 round trip for Ren'Py, Godot, Unreal, Unity | CONFORMS | `pack.rpa`, `pack.pck`, `pack.upak`, `pack.unity` slots (`viwo/plugins/*/__init__.py`); `tests/test_roundtrip.py` | plus RPG Maker and zip (beyond contract) |
-| D18 Unreal AES: user key wins, finder verifies against the encrypted index, never stored | CONFORMS | `viwo/plugins/unreal/keys.py:2,75-111`; run records store `<secret>` (`tests/test_overwatch.py`, `tests/test_unreal.py`) | |
-| D19 capture pilot in B (policy, journal, RenderDoc harvest, diff) | DEVIATES (intentional, documented) | policy became warnings (`viwo/core/capture/policy.py`), journal/harvest/diff as specified (`viwo/core/capture/__init__.py`) | D22 revision note in doc 11.1 and README |
-| D20 real-game check after B | CONFORMS (pending the owner) | `sqc/games.md`, `tools/integration_games.py`, STATUS "not verified" list | |
-| D21 coverage ladder; limits: no DRM/anti-cheat circumvention, no key guessing | DEVIATES (intentional, documented) | ladder present: plugins, unpackers (`MAX_DEPTH = 10`, `viwo/core/pipeline/unpack.py:17`), carver (`viwo/core/carve/formats*.py`), zlib/gzip streams (`streams.py`), decoders (`decode.py`), QuickBMS, capture, `survey.py` | the "limits" sentence is superseded by D22: no code for circumvention is authored, but nothing is refused; zstd/LZ4 stream scan from doc 16.0b not present (lz4 only for BSA) |
-| D22 no policy boundaries, disclaimer instead | CONFORMS | `viwo/core/capture/policy.py` warnings only; `viwo/core/pipeline/runner.py` no tos filter; `viwo/core/roundtrip.py:124` `_reminders`; `tests/test_capture.py::test_feature_switch_confirmation_and_warnings`; README "Legal and disclaimer" | |
-| Principle 1 game folder read-only, single writer, marker-guarded clears | CONFORMS | `tests/test_pipeline.py::test_extract_keeps_game_untouched_and_blocks_traversal`, `tests/test_game_integrity.py`, `viwo/contracts/workspace.py` marker | |
-| Principle 2 authenticated local API (token, JSON-only, Host, containment) | CONFORMS | `viwo/api/server.py` `_token_ok/_host_ok`, 415 on non-JSON, `MAX_BODY`; `tests/test_server.py` | |
-| Principle 3 OS-specific code only in OS layers | DEVIATES (defect, minor) | `viwo/core/thirdparty.py` runs `msiexec` through `subprocess.run` directly and reads `sys.platform`; `viwo/core/workspace.py` `pid_alive` uses OpenProcess on Windows | small, localized; the OS layer has no "unpack installer" primitive to delegate to |
-| Principle 4 every engine behind a slot; stages never call tools directly | CONFORMS | `viwo/contracts/slots.py`, binder; decoders/capture/pack are slots | |
-| Principle 5 failures isolated per owner | CONFORMS | `tests/test_core_units.py::test_failover_outcomes`; plugin load errors become problems | |
-| Principle 6 plan → apply → undo for destructive bulk actions | CONFORMS | sanitizer (plan ids, stale-plan refusal, undo token), trash groups with restore | |
-| Principle 7 reserved dot-folders (`.trash`, `.extraction_metadata`, `.sanitizer`, `.analysis`) | CONFORMS (partial naming) | `.trash`, `.extraction_metadata` used; sanitizer journal lives under `.extraction_metadata`; no `.analysis` yet | |
-| Principle 8 determinism (same input + ini → same output) | CONFORMS | `tests/test_pipeline.py::test_replay_reproduces_the_workspace`, `::test_rerun_needs_decision_and_replace_is_deterministic`; distros generator deterministic | |
-| Principle 9 honest metrics | CONFORMS | progress rails from real events; survey counts per step; no completeness ratio | |
-| Principle 10 versioning `MAJOR.MINOR` | DEVIATES (intentional, documented) | product version is `va.b.c` (`tools/version.py`, CLAUDE.md); contract version stays `1.0` (`viwo/__init__.py:4`) | owner's rule replaced the principle; README table under "Scope decisions" not updated |
-| Goal 2: adding an engine needs no core/API/UI change | CONFORMS | registry scan + drop-ins + CLI/UI add-ons (`viwo/api/plugin_assets.py`, `viwo/web/js/registry.js`) | |
-| Goal 6: third-party tools vendored as sparse submodules | DEVIATES (intentional, documented) | pinned downloads into `third_party/` instead; doc 10 states the lock-file interim; README/STATUS describe the installer | the README "Goals" list itself still says submodules |
-| Layer rule: contracts import nothing from the app; plugins never import each other; direction respected | CONFORMS | grep: no `viwo.core/api/cli` imports under `os/`, `plugins/`, `backends/`, `contracts/`; no cross-plugin imports | not enforced by a lint (doc 17 L0) |
-| Distro model: 2 OS × 6 profiles, custom profile from manifests | CONFORMS | `viwo/core/wiring/distros.py`, 12 files in `distros/`, `tests/test_config.py` | |
+| D0 terminology: OS layer `viwo/os/`, `LinuxOS`/`WindowsOS`, backend/main/spare, three trash layouts | CONFORMS | `viwo/os/linux.py:68`, `viwo/os/windows.py:104`; `viwo/contracts/slots.py:160-167` (SlotBinding main/spare); `viwo/core/curation/trash.py:1-6` (groups/items/merger) | |
+| D1 mixed mode: any plugin set at runtime + combination tests | CONFORMS | `viwo/contracts/pipeline.py:30-36` (`ExtractionMode.MIXED`, `MixedPolicy`); `tests/test_mixed.py::test_pairs_and_singles` (13 singles + 78 pairs) | |
+| D2 missing dependency disables the plugin and shows why; `strict_preflight` opt-in | CONFORMS | `viwo/core/wiring/registry.py:230,248,261` ("disabled: ..."); `viwo/core/preflight.py:101-109`; `viwo/api/server.py:231-234` (exit 4); `tests/test_thirdparty.py::test_strict_problems_name_unbound_plugin_slots` | |
+| D3 Unity per-extension layout | CONFORMS | `viwo/core/pipeline/collect.py:62-72` (one folder per extension); `tests/test_unity.py::test_export_into_extension_layout` | |
+| D4 sanitizer: health/identity, report-only, nothing lossy by default | CONFORMS | `viwo/core/sanitizer.py:26-40` (`lossy: False`, only non-lossy rules in the safe recipe); `viwo/api/handlers_tools.py:71`; `tests/test_provenance.py::test_sanitizer_apply_and_undo` | |
+| D5 custom plugins Python first; declarative form later | CONFORMS | `viwo/core/wiring/registry.py:3-5,163-169,204-215` (plugin.json drop-ins, entry points); declarative `.ksy` absent, which the clause itself defers | |
+| D6 macOS later | CONFORMS | only `viwo/os/linux.py` and `viwo/os/windows.py`; `viwo/core/thirdparty.py:32` (`PLATFORM` windows/linux) | deferred by the clause |
+| D7 `export.unity` failover: UnityPy main, AssetStudioModCLI spare | CONFORMS | `viwo/plugins/unity/__init__.py:43` | |
+| D8 pinned versions + fetched release binaries | CONFORMS | `viwo/data/tools.json` (16 entries with version, HTTPS url, size, sha256); `tests/test_thirdparty.py::test_manifest_is_complete_and_https` | |
+| D9 MIT core; GPL/AGPL only as subprocesses | CONFORMS | `viwo/plugins/quickbms/__init__.py:46`, `viwo/plugins/renpy/rpa.py:107` (`GPL`, `isolation = "subprocess"`); enforced by `tests/test_l0_static.py::BackendDeclarationTests::test_gpl_backends_run_as_subprocesses` | the L0 lint missing at 1.1 now exists |
+| D10 v1 hotfix merged | CONFORMS | v1 removed entirely (doc 17.1 #3; `docs/prototype-a/STATUS.md`) | |
+| D11 Ren'Py: safe reader main, unrpa spare | CONFORMS | `viwo/plugins/renpy/__init__.py:23-27`; `viwo/plugins/renpy/rpa.py:36-40` (`_SafeUnpickler`); `tests/test_renpy.py::test_malicious_index_never_runs` | |
+| D12 CATALOG → SELECT: closed, not built; SELECT + survey + indexes cover it | CONFORMS | `viwo/core/pipeline/select.py:1` (pure selection), `viwo/core/survey.py:171-197`, `viwo/core/indexes.py` | doc revised to the implemented design (was an undocumented gap at 1.1) |
+| D13 journaled overlay + crash recovery | CONFORMS | `viwo/core/capture/journal.py:1-6,22,117`; `tests/test_capture.py::test_restore_and_crash_recovery`, `::test_damaged_journal_restores_what_it_can` | |
+| D14 open-source showcase in CI; Overwatch `tos_sensitive`, operator-tested | CONFORMS | `.github/workflows/ci.yml:62-69` (Freedoom in the real-tools job); `tests/test_l5_data.py:34-51`; `viwo/plugins/overwatch/__init__.py:54` (`tos_sensitive=True`); `sqc/04-extraction-per-engine.md` OPERATOR marks | |
+| D15 name ViWo, CLI `viwo` | CONFORMS | `pyproject.toml:22-23` (`viwo = "viwo.cli:main"`) | |
+| D16 Doom WAD (Freedoom) + Overwatch plugin | CONFORMS | `viwo/plugins/doom/`, `viwo/plugins/overwatch/`; `tests/test_doom.py`, `tests/test_overwatch.py`, `tests/test_l5_data.py` | |
+| D17 round trip for Ren'Py, Godot, Unreal, Unity | CONFORMS | `pack.rpa` `viwo/plugins/renpy/__init__.py:27`, `pack.pck` `viwo/plugins/godot/__init__.py:86`, `pack.upak` `viwo/plugins/unreal/__init__.py:50`, `pack.unity` `viwo/plugins/unity/__init__.py:44`; `tests/test_roundtrip.py`, `tests/test_l5_tools.py::RealRoundTripTest` | plus RPG Maker and zip |
+| D18 Unreal AES: user key wins, finder verified on the encrypted index, never stored | CONFORMS | `viwo/plugins/unreal/keys.py:1-2,74-108`; masking `viwo/plugins/unreal/pak.py:105-115`; `tests/test_unreal.py::test_missing_key_is_needs_key_and_user_key_wins`, `tests/test_diag.py:45-47` (`<secret>`) | |
+| D19 capture pilot in B (refusal policy, journal, RenderDoc harvest, diff) | DEVIATES (intentional, documented) | refusal policy became warnings: `viwo/core/capture/policy.py:1-6,66-67`; journal/harvest/diff: `tests/test_capture.py::test_capture_harvest_gather_diff` | D22 note in README and doc 11.1 |
+| D20 real-game check after B, pending the owner | NOT IMPLEMENTED (deferred, documented) | tooling in place: `sqc/games.md`, `tools/integration_games.py`, `tests/test_integration_games.py`; `docs/prototype-b/STATUS.md` "Not verified yet" table still open | owner's action, the clause says so |
+| D21 coverage ladder, survey measures coverage; limits sentence superseded by D22 | CONFORMS | rungs: `viwo/core/pipeline/unpack.py:17` (`MAX_DEPTH = 10`), `viwo/core/carve/formats.py`, `viwo/core/carve/streams.py:14-17,54-57` (zlib/gzip/zstd/LZ4), `viwo/core/decode.py:26-31`, `viwo/plugins/quickbms/__init__.py:42-46`, `viwo/core/capture/`, `viwo/core/survey.py:61,197`; no key guessing: `viwo/plugins/unreal/keys.py:2` | the zstd/LZ4 half missing at 1.1 is now present (`tests/test_carve.py::OptionalStreamTests`) |
+| D22 no policy boundaries, disclaimer instead | CONFORMS | `viwo/core/capture/policy.py:66-67,113-128` (warnings, one confirmation); `viwo/core/roundtrip.py:96-99` (`_reminders`); `tests/test_capture.py::test_feature_switch_confirmation_and_warnings`; `README.md:21` Philosophy, `README.md:219` Legal and disclaimer | |
+| Principle 1 game folder read-only, single writer, marker-guarded clears | CONFORMS | `viwo/contracts/workspace.py:8` (`MARKER`), `viwo/core/workspace.py:62-68,101-109`; `tests/test_pipeline.py::test_extract_keeps_game_untouched_and_blocks_traversal`, `tests/test_game_integrity.py::test_every_plugin_leaves_the_game_untouched`, `tests/test_core_units.py::test_ownership_and_policies` | |
+| Principle 2 authenticated local API (token, JSON-only, Host, containment) | CONFORMS | `viwo/api/server.py:29,53-58,106-132,141`; `tests/test_server.py::test_security_model`, `::test_game_folder_and_unknown_routes` | |
+| Principle 3 OS-specific code only in OS layers; two recorded exceptions (msiexec, OpenProcess) | CONFORMS | `viwo/contracts/os.py:40` (`ProcessRunner.running_images`), `viwo/os/windows.py:85`, `viwo/os/linux.py:54`, `viwo/core/capture/policy.py:41` (the capture policy asks the OS layer); `tests/test_os_layer.py::test_running_images_lists_this_interpreter` | the two recorded exceptions (msiexec, OpenProcess) remain the only ones |
+| Principle 4 every engine behind a slot; stages never call tools directly | CONFORMS | `viwo/contracts/slots.py:41-50,53-61`; `viwo/core/wiring/` binder; decoders/capture/pack/probe/convert are slots (`viwo/core/decode.py:26-31`, `viwo/contracts/slots.py:123-157`) | |
+| Principle 5 failures isolated per owner | CONFORMS | `tests/test_core_units.py::test_failover_outcomes`; `viwo/core/wiring/registry.py:230,248` (load errors become problems); `tests/test_registry.py::test_requirement_mismatch_disables_only_that_plugin` | |
+| Principle 6 plan → apply → undo for destructive bulk actions | CONFORMS | `viwo/core/sanitizer.py:92-100,150-164,177-195` (plan ids, stale-plan refusal, journal, undo); `tests/test_provenance.py::test_sanitizer_apply_and_undo`, `::test_sort_rename_trash_and_undo` | |
+| Principle 7 reserved dot-folders: `.trash`, `.extraction_metadata`, sanitizer journal under `.extraction_metadata`, `.analysis` reserved | CONFORMS | README principle 7 revised: `.sanitizer` listed for plans and journals; `viwo/core/sanitizer.py:26` |  |
+| Principle 8 determinism (same input + ini → same output) | CONFORMS | `tests/test_pipeline.py::test_replay_reproduces_the_workspace`, `::test_rerun_needs_decision_and_replace_is_deterministic`; `tests/test_config.py::test_shipped_distros_match_the_generator` | |
+| Principle 9 honest metrics | CONFORMS | `viwo/core/pipeline/collect.py:34-40` (`by_ext`, `skipped_by_ext` counters named for what they count); `viwo/core/survey.py:41-45`; no completeness ratio anywhere | |
+| Principle 10 contract `CONTRACT_VERSION = "1.0"` (MAJOR.MINOR); product `va.b.c` | CONFORMS | README principle 10 revised (`"1.1"` since the 1.2 batch); `viwo/__init__.py:4`, `viwo/contracts/pipeline.py:13` |  |
+| Goal 2 adding an engine needs no core/API/UI change | CONFORMS | `viwo/core/wiring/registry.py:119-132,204-215` (scan + drop-ins + entry points); `viwo/api/plugin_assets.py`, `viwo/web/js/registry.js`; `tests/test_registry.py::test_end_to_end_extraction_through_a_dropin`, `::test_ui_modules_and_asset_containment` | |
+| Goal 6 third-party tools pinned and installed automatically (History: submodules replaced) | CONFORMS | `viwo/data/tools.json`, `viwo/core/thirdparty.py`; `tests/test_thirdparty.py::test_install_pinned_tools_into_a_temp_home` | doc revised (was "sparse submodules" at 1.1) |
+| Goal 7 the v1 UI keeps working; new API alongside existing routes | DEVIATES (intentional, documented) | v1 UI removed; `viwo/web/` is the new UI (`ARCHITECTURE.md` "landing + 11 views"); doc 17.1 #3 and doc 16 M1 note record the removal | the README Goals list and "Layers" block (`web/ UI (v1 kept)`) still carry the draft wording |
+| Layer rule: contracts import nothing from the app; plugins never import each other; direction respected | CONFORMS | `tests/test_l0_static.py::ImportDirectionTests::test_layers_only_import_downwards`, `::test_plugins_never_import_each_other`, `::test_contracts_import_nothing_from_the_app` | two recorded debts (`viwo/backends/__init__.py` → `viwo.core.carve`, `viwo.core.merger.ffmpeg`) listed at `tests/test_l0_static.py:26-30` |
+| Distro model: 2 OS × 6 profiles, custom profile from manifests, generic everywhere | CONFORMS | `distros/` 12 files; `viwo/core/wiring/distros.py`; `tests/test_config.py::test_twelve_files_named_and_written_strictly`, `tests/test_registry.py::test_custom_profile_is_derived_from_the_manifests` | the custom profile enables the built-in custom-engine plugins by manifest, not only `custom_dirs` (`distros/windows-custom.ini:9-22`) |
 
-**Verdict:** 29 clauses: CONFORMS 22 · DEVIATES (intentional, documented) 4 · DEVIATES (defect) 1 (minor, principle 3) · NOT IMPLEMENTED (undocumented gap) 1 (D12 CATALOG) · pending-owner 1 (D20).
-The README's own prose (Goals list "sparse submodules", principle 10 "MAJOR.MINOR", D21 "limits") lags the decisions it records; D12 should be either implemented or struck.
+Verdict: 38 clauses: CONFORMS 32 · DEVIATES (intentional, documented) 2 (D19, Goal 7) · DEVIATES (defect) 3 (principle 3 unrecorded OS branch in capture policy, principle 7 `.sanitizer` folder, principle 10 contract version 1.0 vs 1.1) · NOT IMPLEMENTED (deferred, documented) 1 (D20, owner) · undocumented gaps 0. The 1.1 defects and gaps (D12, GPL lint, submodules wording) are closed.
+Open: D19 capture pilot in B (refusal policy, journal, RenderDoc harvest, diff (intentional) · D20 real-game check after B, pending the owner (deferred) · Goal 7 the v1 UI keeps working; new API alongside existing routes (intentional).
 
 ## 2. doc 13: landscape coverage
 
 | Clause | Status | Evidence | Note |
 |---|---|---|---|
-| 13.1 archive breadth through QuickBMS as a bridge | CONFORMS | `viwo/plugins/quickbms/`, pinned 0.12.0, scripts via indexes | GARbro / Game Extractor not wrapped (not required) |
-| 13.1 unblob/binwalk-style carving | CONFORMS (own implementation) | `viwo/core/carve/formats.py`, `formats2.py`, `streams.py` | neither tool is wrapped; a native carver was chosen (documented in doc 16.0b) |
-| 13.2 #1 identify separate from extract | CONFORMS | `SlotDefinition.identify`, `Match` with offset/size (`viwo/contracts/slots.py`) | |
-| 13.2 #2 carving embedded containers, tail reads, depth limit, JSON report | CONFORMS | embedded PCK carving (`viwo/plugins/godot`), `MAX_DEPTH`, run records | entropy check is a density estimate in survey only |
-| 13.2 #3 declarative custom formats (Kaitai + QuickBMS) | NOT IMPLEMENTED (deferred, documented) | QuickBMS yes; Kaitai no (D5 "later") | |
-| 13.2 #4 sanitizer recipes with typed outputs, version gating, worker pools | NOT IMPLEMENTED (deferred, documented) | one recipe, phase 1 only (doc 5 phase 2-3 deferred in roadmap M13+) | |
-| 13.2 #5 plugin discovery through entry points | CONFORMS | `registry.py:29,150` (`viwo.plugins` group) | |
-| 13.3 Ren'Py: no in-process unpickling; unrpyc for `.rpyc` | CONFORMS | restricted unpickler in `viwo/plugins/renpy/rpa.py`; `decode.rpyc` via unrpyc subprocess (`viwo/plugins/renpy/decompile.py`) | rpycdec spare not added |
-| 13.3 Unity slots (bundle, webgl, export, project, il2cpp) | CONFORMS (partial, documented) | `export.unity` (UnityPy/AssetStudio); UnityWebData/WebGL, AssetRipper project rebuild, Cpp2IL/Il2CppDumper not present | analysis rung is M13+ |
-| 13.3 Unreal: repak, retoc, `keys.unreal-aes` user-first, CUE4Parse export wrapper | CONFORMS (partial, documented) | repak/retoc slots, key finder verified (D18); no CUE4Parse wrapper, no locres/json export | "export explicitly out of scope" in roadmap M7 |
-| 13.3 Godot: GDRE main, GodotPckTool spare, embedded PCK carving | CONFORMS | `viwo/plugins/godot/`, `tests/test_godot.py` | GodotPckTool build is quarantined by Defender on Windows (STATUS) |
-| 13.3 engines ranked after the prototype: RPG Maker, Electron/NW.js, GameMaker, TyranoScript/Love2D, KiriKiri, Wolf/XNA/AGS/Defold/Source | CONFORMS (partial) | RPG Maker, Electron/NW.js (+ `.nw` as zip), KiriKiri, Source, Bethesda delivered; GameMaker, TyranoScript, Love2D, Wolf, XNA, AGS, Defold absent | gaps listed only in the roadmap table ("GameMaker" under M13+) |
-| 13.3 wrapper plugins: rerun detection after unwrapping | NOT IMPLEMENTED (undocumented gap) | unpack loop recurses on archives but detection is not rerun on unwrapped app folders | affects Electron/NW.js-wrapped RPG Maker MV: the MV plugin still detects by markers, so the practical impact is low |
-| 13.4 code RE tools (Ghidra, ilspycmd, Cpp2IL) | NOT IMPLEMENTED (deferred, documented) | no `analysis.*` slot; roadmap M13+, README "next rungs" | |
-| 13.5 vendoring facts (GPL as subprocess, heavy runtimes) | CONFORMS | subprocess isolation flags; .NET runtime pinned under `third_party/dotnet` | JDK not needed yet |
+| 13.1 archive breadth through QuickBMS as a bridge | CONFORMS | `viwo/plugins/quickbms/__init__.py:23-46` (pinned, GPL-2.0, subprocess, `<ext>.bms` scripts); `tests/test_quickbms.py` | GARbro / Game Extractor not wrapped (not required) |
+| 13.1 unblob/binwalk-style recursive carving | CONFORMS | own carver: `viwo/core/carve/formats.py`, `formats2.py`, `streams.py:79-101`; `tests/test_carve.py::ScanTests`, `::StreamTests` | native carver chosen (doc 16.0b rungs 3-4) |
+| 13.2 #1 identify separate from extract (pattern, offset, size) | CONFORMS | `viwo/contracts/slots.py:24-50` (`Match` offset/size, `SlotDefinition.identify`); `tests/test_core_units.py::test_suffix_magic_custom_and_carve` | |
+| 13.2 #2 carving embedded containers, tail reads, depth limit, JSON report | CONFORMS | `viwo/plugins/godot/pck.py:30` (`embedded_chunk` from the tail), `viwo/plugins/godot/__init__.py:74`; `viwo/core/pipeline/unpack.py:17,58-60`; run records per run; `tests/test_godot.py::test_standalone_and_embedded` | entropy check is the survey density estimate (`viwo/core/survey.py:61`) |
+| 13.2 #3 declarative custom formats (Kaitai `.ksy` + QuickBMS) | NOT IMPLEMENTED (deferred, documented) | QuickBMS yes (`viwo/plugins/quickbms/`); no Kaitai anywhere in `viwo/`; doc 13.3 coverage table lists "Kaitai declarative formats" as not shipped, D5 "declarative form later" | |
+| 13.2 #4 sanitizer flows with typed outputs, version gating, worker pools | NOT IMPLEMENTED (deferred, documented) | one recipe `viwo/core/sanitizer.py:27-33`; rule providers `viwo/core/sanitizer_rules.py`; doc 16 M13+ lists "sanitizer P2-3" as open | |
+| 13.2 #5 plugin discovery through entry points | CONFORMS | `viwo/core/wiring/registry.py:29,215` (`viwo.plugins` group) | |
+| 13.3 Ren'Py: no in-process unpickling of untrusted pickles; unrpyc for `.rpyc`; unrpa spare pinned | CONFORMS | `viwo/plugins/renpy/rpa.py:36-40,107`; `viwo/plugins/renpy/decompile.py:21-25` (`decode.rpyc`, unrpyc subprocess); `tests/test_renpy.py::test_rpyc_files_are_decompiled_with_provenance` | rpycdec spare listed as not shipped in the coverage table |
+| 13.3 Unity slots (bundle, webgl, export, project, il2cpp) | CONFORMS | shipped per the coverage table: `viwo/plugins/unity/__init__.py:35-44` (`export.unity` UnityPy/AssetStudioModCLI, `pack.unity`); UABEA, AssetRipper, Cpp2IL listed as not shipped | partial by design, documented in the 1.1 coverage table |
+| 13.3 Unreal: repak main with QuickBMS spare, retoc, `keys.unreal-aes` user-first | CONFORMS | `viwo/plugins/unreal/__init__.py:40-48` (`unarchive.upak` repak-cli / quickbms-cli spare; `unarchive.utoc` retoc); `viwo/plugins/unreal/keys.py:91-108` | CUE4Parse wrapper, UAssetGUI, locres listed as not shipped |
+| 13.3 Godot: GDRE main, GodotPckTool spare, embedded PCK carving, `.stex/.ctex` | CONFORMS | `viwo/plugins/godot/__init__.py:48,86`; `tests/test_godot.py::test_embedded_and_failover`, `::test_encrypted_needs_key_and_spare_is_not_tried`; `tests/test_l5_tools.py::RealGodotToolsTest` | GodotPckTool Windows build quarantined by Defender (STATUS) |
+| 13.3 engines ranked after the prototype | CONFORMS | delivered: `viwo/plugins/rpgmaker`, `electron` (`.nw` as zip: `viwo/plugins/electron/__init__.py:3`), `kirikiri`, `source`, `bethesda`; the coverage table names GameMaker, TyranoScript, Love2D, Wolf, XNA, AGS, Defold as not shipped | partial by design, documented |
+| 13.3 wrapper plugins: detection reruns once inside an unpacked wrapper (1.1 note: tested in `tests/test_conformance_kit.py`, `tests/test_mixed.py`) | CONFORMS | `viwo/core/pipeline/rewrap.py:27-51`, `viwo/core/pipeline/runner.py` (`_rewrap` after UNPACK); `tests/test_formats.py::test_engine_inside_an_asar_is_redetected` (RPG Maker MV inside an asar is re-detected and exported); doc 13.3 note points at that test |  |
+| 13.3 "Coverage shipped in 1.1" table (per-row claims) | CONFORMS | unrpyc `viwo/plugins/renpy/decompile.py:15-25`; meshes to OBJ `tests/test_unity.py::test_meshes_option_off_skips_obj_everywhere`; retoc `viwo/plugins/unreal/__init__.py:48`; lz4 pin `pyproject.toml:19`; DataTool, RenderDoc, QuickBMS pins in `viwo/data/tools.json`; streams `viwo/core/carve/streams.py:14-17` | |
+| 13.4 code RE tools (Ghidra, ilspycmd, Cpp2IL) | NOT IMPLEMENTED (deferred, documented) | no `analysis.*` slot in `viwo/`; coverage table "Code RE: Ghidra, ilspycmd (analysis rung)"; doc 16 M13+ "analysis backends" open; `docs/HANDOFF.md:89` | |
+| 13.5 vendoring facts: GPL backend is always a subprocess; heavy runtimes pinned | CONFORMS | `tests/test_l0_static.py:112-115`; `tests/test_conformance_kit.py:61-62`; .NET runtime `viwo/data/tools.json:193-210` | JDK not needed yet |
+| 13.6 Windows-only tools through Wine on Linux (out of scope for the prototype) | NOT IMPLEMENTED (deferred, documented) | no Wine handling in `viwo/os/linux.py`; doc 16 M13+ lists "Wine" as open | |
 
-**Verdict:** 15 clauses: CONFORMS 9 (3 partial) · NOT IMPLEMENTED (deferred, documented) 4 · NOT IMPLEMENTED (undocumented gap) 1 (wrapper re-detection) · none defective.
-Coverage matches what doc 16 promised for B plus five extra engines; the analysis rung and declarative formats remain roadmap items.
+Verdict: 17 clauses: CONFORMS 12 · NOT IMPLEMENTED (deferred, documented) 4 (Kaitai, sanitizer P2-3, analysis rung, Wine) · DEVIATES (defect) 1 (wrapper re-detection has code but not the tests the doc names) · undocumented gaps 0.
+Open: 13.2 #3 declarative custom formats (Kaitai `.ksy` + QuickBMS) (deferred) · 13.2 #4 sanitizer flows with typed outputs, version gating, worker pools (deferred) · 13.4 code RE tools (Ghidra, ilspycmd, Cpp2IL) (deferred) · 13.6 Windows-only tools through Wine on Linux (out of scope for the prot (deferred).
 
 ## 3. doc 15: LoC caps
 
 | Clause | Status | Evidence | Note |
 |---|---|---|---|
-| 15.1 format first (`ruff format`, 100 cols), tokenize-based count, docstrings excluded | CONFORMS | `tools/loc_count.py:_docstring_lines`, `counted_lines`; CI step "L0 format, lint, LoC caps" | |
-| 15.1 JS/CSS/HTML counting rule | CONFORMS | `_web_lines` | |
-| 15.1 excluded: third_party, generated, fixtures, docs | CONFORMS | only `viwo`, `tests`, `tools` walked | `sqc/fixtures/build_fixtures.py`, `indexes/tools/validate.py`, `examples/` are not counted at all (neither capped nor budgeted) |
-| 15.1 the counter itself ≤ 120 counted lines | CONFORMS | `tools/loc_count.py` ≈ 105 counted | |
-| 15.3 granularity caps: function 40, class 200, file 250, contracts file 150, params 6 | CONFORMS | `loc_caps.ini [caps]`; enforced in `check_python` | params cap skipped for tests (reasonable, undocumented) |
-| 15.3 package budgets as listed (contracts 900, os/_shared 300, os/linux 500, ... total 10,000) | DEVIATES (intentional, documented) | `loc_caps.ini [budgets]` uses coarser prefixes (`viwo/os = 900`, `viwo/core = 4700`, `viwo = 9800`); each raise carries a reason comment | the doc's per-subpackage budgets (core/pipeline 900, core/wiring 700, api 700, backends 1,200/150 per backend) are not represented; `viwo/api` has no budget line at all |
-| 15.3 total product hard cap 10,000 | CONFORMS | `viwo = 9800`, currently 9,584 | 2 % headroom |
-| 15.3 Prototype B target ≤ 9,000 | DEVIATES (intentional, documented) | 9,584 after 1.0/1.1 scope (installer, indexes, capture/settings views, add-ons); reasons in `loc_caps.ini` | |
-| 15.3 web: ratchets on app.js/styles.css/index.html; new modules ≤ 300; total new web 900 | DEVIATES (intentional, documented) | v1 UI removed; `[web] js_file = 300`, `viwo/web = 5400` | ratchet mechanism never implemented (nothing left to ratchet) |
-| 15.3 other languages (C# wrappers) | NOT IMPLEMENTED (deferred, documented) | no C# code | |
-| 15.4 test caps: file 400, function 60 | CONFORMS | `[caps] test_file/test_function`; enforced | fixture builder 150 / fake 120 caps not distinguished (fixtures live inside test files under the 400 cap) |
-| 15.4 test floor ≥ 0.6 × (contracts + core) | CONFORMS (not enforced) | measured 4,850 / 5,612 = 0.86 | no check in the counter |
-| 15.5 exceptions section, max 3, expiry milestone, CI fails after expiry | NOT IMPLEMENTED (undocumented gap) | `[exceptions]` exists in the ini but `loc_count.py` never reads it (no `exceptions` in the file) | budget raises were used instead of exceptions |
-| 15.5 ratchets only move down, auto-lowered per PR | NOT IMPLEMENTED (deferred, documented) | no `[ratchet]` section; nothing to ratchet since v1 removal | |
-| 15.5 raising a budget needs its own commit with the reason | DEVIATES (defect, process) | reasons are in the ini comments, but raises were folded into feature commits (v0.3.0, v1.1.0) | |
-| doc 17 L0: ini schema validation of `loc_caps.ini` | NOT IMPLEMENTED (undocumented gap) | unknown keys in `loc_caps.ini` are silently ignored | |
+| 15.1 #1 format first (`ruff format`, 100 cols); a line over 100 is itself a cap failure | CONFORMS | `tools/loc_count.py:75-77`; `.github/workflows/ci.yml:27-32`; `tools/version.py:26-30` (format before the counter) | |
+| 15.1 #2 tokenize-based count, multi-line strings count, docstrings excluded | CONFORMS | `tools/loc_count.py:20-21,25-43` | |
+| 15.1 #3 JS/CSS/HTML non-blank non-comment lines | CONFORMS | `tools/loc_count.py:81-83` | |
+| 15.1 #4 other glue languages: none exist | CONFORMS | no `.cs` or other wrapper sources in the tree; CUE4Parse wrapper deferred (doc 13) | |
+| 15.1 #5 counted trees `viwo/`, `tests/`, `tools/`; excluded third_party, indexes, examples, sqc/fixtures, packaging, docs, data | CONFORMS | `tools/loc_count.py:115-116` (only the three trees walked) | |
+| 15.1 #6 counter split: `loc_count.py` ≤ 120, `caps_ini.py` ≤ 120, both under `tools` | CONFORMS | measured with the counter's own rule: `tools/loc_count.py` 113, `tools/caps_ini.py` 88; `loc_caps.ini:24` (`tools = 600`, 571 used) | |
+| 15.3 granularity caps: function 40, class 200, file 250, contracts file 150, params 6 (not for tests), line 100 | CONFORMS | `loc_caps.ini:4-12`; `tools/loc_count.py:57-77` (`params` skipped when `test`); `tests/test_pipeline.py::test_loc_caps` | |
+| 15.3 budget table: `viwo` 9,800, `viwo/contracts` 900, `viwo/os` 900, `viwo/core` 4,700, `viwo/backends` 600 | CONFORMS | doc 15.3 revised to the `loc_caps.ini` values (`viwo` 10,800, `viwo/core` 5,400) with the 1.2 reasons |  |
+| 15.3 hard ceiling 10,000 for the whole product (also 15.6 "total cap (10k)") | CONFORMS | doc 15.3 and 15.6 revised: the `viwo` budget line is the ceiling (10,800 since 1.2; draft 3 said 10,000) | the product counts 10,499 (`tools/loc_count.py --report`) |
+| 15.3 per-plugin budgets: generic 100, unity 700, renpy/godot/unreal 500, the rest 200-300 | CONFORMS | `loc_caps.ini:21-33`; all within budget in the report (largest: doom 280/300, unreal 371/500) | |
+| 15.3 `viwo/cli.py` 400, `tools` 600; `viwo/api` bounded by the product total | CONFORMS | `loc_caps.ini:34-35`; report 140/400 and 571/600; no `viwo/api` line | |
+| 15.3 web: JS module ≤ 300, `viwo/web` 5,400, nothing ratcheted | CONFORMS | `loc_caps.ini:41-43`; `tools/loc_count.py:86-102`; report 4,664/5,400 | |
+| 15.4 test caps: file 400, function 60; fixtures inside test files | CONFORMS | `loc_caps.ini:11-12`; `tools/loc_count.py:57,65`; builders live in `tests/helpers.py`, `tests/test_formats.py:20-117` etc. | |
+| 15.4 floor enforced: tests ≥ 0.6 × (contracts + core), about 0.9 | CONFORMS | `tools/loc_count.py:22,127-129`; report 5,060 / 3,505 (ratio 0.87) | |
+| 15.5 exceptions in `loc_caps.ini`: raise the file cap of one path, max 3 active, version expiry vs `viwo.__version__`, milestone names reviewed | CONFORMS | `tools/caps_ini.py:23-25,44-46,57-61,74-79,109-113`; `tools/loc_count.py:60,106-108`; `tests/test_l0_static.py::CapsIniSchemaTests::test_schema_problems_and_exception_expiry` | was an undocumented gap at 1.1 |
+| 15.5 caps file validated: unknown sections/keys, non-integers, malformed exception line, missing cap are L0 failures | CONFORMS | `tools/caps_ini.py:88-102`; `tests/test_l0_static.py::CapsIniSchemaTests::test_repository_caps_file_is_valid` | |
+| 15.5 ratchets: none; `[web]` and `[budgets]` are hard caps | CONFORMS | `tools/loc_count.py:100-101,124-126` (hard failures, no ratchet code) | |
+| 15.5 raising a budget: reason on the line, and the commit that raises it names the budget in its message | CONFORMS | doc 15.5 revised: the reason on the budget line is the record; a commit whose point is the raise names it |  |
 
-**Verdict:** 16 clauses: CONFORMS 7 · DEVIATES (intentional, documented) 3 · DEVIATES (defect) 1 (process) · NOT IMPLEMENTED (deferred, documented) 2 · NOT IMPLEMENTED (undocumented gap) 2 (exceptions enforcement, caps-ini schema).
-The hard caps are real and green; the budget layout is coarser than the doc and the exceptions/ratchet machinery was never built.
+Verdict: 18 clauses: CONFORMS 15 · DEVIATES (defect) 3 (budget table lags the 1.2 raise, 10,000 ceiling exceeded, raise not named in the commit) · intentional 0 · deferred 0 · undocumented gaps 0. The exceptions/expiry/schema machinery missing at 1.1 is built and tested; the counter is 113 lines.
+Open: none.
 
 ## 4. doc 16: roadmap exit criteria
 
 | Clause | Status | Evidence | Note |
 |---|---|---|---|
-| M0 decisions, glossary, caps agreed | CONFORMS | README decision table closed; D22 added | |
-| M1 hotfix + L2 characterization + counter + CI | DEVIATES (intentional, documented) | hotfix done, counter and CI done; L2 golden files never produced (v1 removed instead, prototype-a STATUS "A+") | |
-| M2 contracts + OS layers, conformance kit, F4/F13 gone | CONFORMS (partial) | `viwo/contracts`, `viwo/os`; `tests/test_os_layer.py` is the only "conformance" test; no generic kit that a third-party OS layer/plugin can run | kit is an undocumented gap |
-| M3 lean core + CLI (ini, binder, stage runner, workspace, jobs, run records, envelope, CLI, generic, core backends) | CONFORMS | prototype-a STATUS; `tests/test_pipeline.py`, `test_core_units.py` | `.7z` failover shown (`test_failover_outcomes`) |
-| M4 Ren'Py (safe RPA main, unrpa spare, malicious-RPA test, L5 unrpa) | CONFORMS | `tests/test_renpy.py`, `tests/test_l5_tools.py` | |
-| M5 Unity (UnityPy/AssetStudio per D7, placeholders removed, L5) | CONFORMS | `viwo/plugins/unity`, L5 AssetStudio test | real-file round trip still unverified (STATUS) |
-| M6 Godot (PCK v1-v4, carving, GDRE → GodotPckTool, key option) ★A | CONFORMS | `tests/test_godot.py`, L5 | |
-| M7 Unreal unpack (repak → QuickBMS spare, retoc, AES option) | CONFORMS (partial) | repak main, no QuickBMS spare for `.pak`; retoc; AES per D18 | spare omission undocumented |
-| M8 custom plugins: out-of-tree loader, entry points, showcase, Overwatch, CATALOG if D12 | CONFORMS (partial) | loader + entry points (`registry.py`), Doom, Overwatch; CATALOG absent (see D12) | |
-| M9 round trip (provenance edit set, per-plugin plan, patched copy, pack slots, verification) | CONFORMS | `viwo/core/roundtrip.py`, `tests/test_roundtrip.py`, provenance rewrite on moves | "copy-on-write clones where supported" not done (documented as plain copy) |
-| M10 mixed + sanitizer P1, product ≤ 9,000 ★B | DEVIATES (intentional, documented) | mixed/sanitizer done; LoC 9,584 > 9,000 after 1.x scope (reasons in `loc_caps.ini`) | |
-| M11 capture pilot: policy + refusal list, journal, RenderDoc → harvest → DIFF | DEVIATES (intentional, documented) | refusal list became warnings (D22); rest delivered | RenderDoc never run on a real GPU (STATUS) |
-| M12 vendoring: tool lock → sparse submodules, bootstrap, nightly L5 on vendored tools | DEVIATES (intentional, documented) | tool lock + automatic installer instead of submodules (`tools.json`, `thirdparty.py`); indexes to become a submodule (`docs/indexes.md`); no nightly | `viwo slots --check` not implemented as such (`viwo slots` + `strict_preflight`) |
-| M13+ distro layering + 12 ini + hooks; installer abstraction; RPG Maker/Electron/GameMaker; Unreal export; sanitizer P2-3; analysis backends; UI option forms/run history/sanitizer panel; Wine | CONFORMS (partial) | 12 distro files + `base =` layering (`tests/test_config.py::test_base_layering`); RPG Maker, Electron delivered; UI option forms, run history (04 JOBS), sanitizer panel (08) delivered | `[hooks]`, GameMaker, Unreal export, sanitizer P2-3, analysis, Wine not done (all listed as "next" in README/HANDOFF) |
-| 16.0b ladder rung 4: zstd/LZ4 stream scan when modules present | NOT IMPLEMENTED (undocumented gap) | `viwo/core/carve/streams.py` handles zlib/gzip only | the table says "zlib + gzip done", so the gap is visible but the "when present" half is silently absent |
-| 16.3 decision gates G0-G6 | CONFORMS | all decisions recorded | |
-| 16.4 risks: `viwo slots --check` | NOT IMPLEMENTED (undocumented gap) | no `--check` flag; `strict_preflight` covers the serve path only | |
+| 16.0 Prototype B composition (M7-M11 inside B; A extended first) | CONFORMS | `docs/prototype-b/STATUS.md` milestone table; plugins in `viwo/plugins/`, `viwo/core/roundtrip.py`, `viwo/core/capture/` | |
+| 16.0b rungs 1-3, 5-7 and the survey | CONFORMS | rung 2 `viwo/core/pipeline/unpack.py:17,58`; rung 3 `viwo/core/carve/formats.py`; rung 5 `viwo/core/decode.py:26-31`; rung 6 `viwo/plugins/quickbms/__init__.py:42`; rung 7 `viwo/core/capture/`; survey `viwo/core/survey.py:197`; `tests/test_carve.py`, `tests/test_decode.py`, `tests/test_survey.py` | QuickBMS flags unverified on a binary (STATUS) |
+| 16.0b rung 4: zlib/gzip always; zstd/LZ4 when the modules are present | CONFORMS | `viwo/core/carve/streams.py:14-17,37-57`; `tests/test_carve.py::OptionalStreamTests::test_lz4_frame_is_inflated_when_the_module_is_present`, `::test_zstd_frame_is_inflated_when_the_module_is_present`, `::test_missing_optional_module_only_drops_that_kind` | was an undocumented gap at 1.1 |
+| 16.0b out of scope by design: DRM/anti-cheat circumvention, guessing keys, server content | CONFORMS | `viwo/plugins/unreal/keys.py:1-2` ("Nothing is guessed"); `viwo/plugins/kirikiri` leaves ciphered entries (`tests/test_formats.py:190-191`); no circumvention code in `viwo/` | consistent with D21/D22 |
+| M0 decisions, glossary, caps agreed | CONFORMS | README decision table closed (D0-D22) | |
+| M1 hotfix + L2 characterization + counter ≤ 120 + CI | DEVIATES (intentional, documented) | counter 113 lines; CI `.github/workflows/ci.yml`; L2 golden files never produced, replaced by removing v1 (clause note, doc 17.1 #3) | exit criterion "golden files committed" consciously dropped |
+| M2 contracts + OS layers, conformance kit, F4/F13 gone | CONFORMS | `viwo/contracts/` (672 LoC), `viwo/os/`; `tests/test_conformance_kit.py` (manifest, detect purity, ownership, sandbox, locate), `tests/test_os_layer.py` | the kit covers built-ins only (see doc 17 L1) |
+| M3 lean core + CLI (ini, binder, stage runner, workspace, jobs, run records, envelope, CLI, generic, core backends) | CONFORMS | `viwo/core/wiring/`, `viwo/core/pipeline/runner.py`, `viwo/core/workspace.py`, `viwo/core/jobs.py`, `viwo/cli.py`; `tests/test_pipeline.py::test_info_extract_and_exit_codes`, `tests/test_core_units.py::test_failover_outcomes` (`.7z` failover) | |
+| M4 Ren'Py (safe RPA main, unrpa spare, malicious-RPA test, L5 unrpa) | CONFORMS | `viwo/plugins/renpy/`; `tests/test_renpy.py::test_malicious_index_never_runs`, `::test_unrpa_extracts_fixture` | |
+| M5 Unity (UnityPy ↔ AssetStudioModCLI per D7, placeholders gone, L5) | CONFORMS | `viwo/plugins/unity/__init__.py:43`; `tests/test_unity.py`; `tests/test_l5_tools.py::AssetStudioModTest`, `::UnityPyRobustnessTest` | real-file round trip is an L7 item (clause note, STATUS) |
+| M6 Godot (PCK v1-v4, carving, GDRE → GodotPckTool, key option) ★A | CONFORMS | `viwo/plugins/godot/pck.py:12,30`; `tests/test_godot.py`; `tests/test_l5_tools.py::RealGodotToolsTest` | |
+| M7 Unreal unpack: repak → QuickBMS spare, retoc, AES option (State note: "repak as main and no spare") | CONFORMS | doc 16 M7 note revised: repak main, `quickbms-cli` spare when the quickbms plugin is on; `viwo/plugins/unreal/__init__.py:40-47` |  |
+| M8 custom plugins: out-of-tree loader, entry points, showcase, Overwatch, CATALOG per D12 | CONFORMS | `viwo/core/wiring/registry.py:204-215`; `examples/plugins/hello/`; `tests/test_registry.py::test_end_to_end_extraction_through_a_dropin` (conformance from outside the tree); Doom/Overwatch plugins; CATALOG closed (D12) | |
+| M9 round trip: provenance edit set, per-plugin plan, patched copy, pack slots, verification, untouched hashes | CONFORMS | `viwo/core/roundtrip.py:28,40,54,132-140,197` (edit set, untouched member hashes, verification); `pack.*` slots in each plugin; `tests/test_roundtrip.py`, `tests/test_l5_tools.py::RealRoundTripTest` | plain copy instead of copy-on-write clones (clause note) |
+| M10 mixed + sanitizer P1, product ≤ 9,000 ★B (note: became the 9,800 budget) | DEVIATES (intentional, documented) | mixed `tests/test_mixed.py`; sanitizer `viwo/core/sanitizer.py`; product 10,499 against `loc_caps.ini:16` 10,800 | the note's "9,800" is itself stale after 1.2 (see doc 15 rows) |
+| M11 capture pilot: policy + refusal list, journal, RenderDoc → harvest → DIFF | DEVIATES (intentional, documented) | refusal list became warnings (`viwo/core/capture/policy.py:1-6`); journal and diff `tests/test_capture.py::test_restore_and_crash_recovery`, `::test_capture_harvest_gather_diff` | RenderDoc on a real GPU is an L7 item (STATUS) |
+| M12 vendoring: tool lock → sparse submodules, bootstrap, nightly L5; exit `viwo install --all` → `viwo slots --check` green | DEVIATES (intentional, documented) | installer instead of submodules: `viwo/data/tools.json`, `viwo/core/thirdparty.py`; `viwo slots --check`: `viwo/cli.py:68`, `viwo/cli_check.py:25-44`; CI real-tools job `.github/workflows/ci.yml:46-78` (no nightly, cost rule) | indexes as a submodule per `docs/indexes.md` |
+| M13+ shipped: distro layering + 12 ini, RPG Maker, Electron, UI option forms, run history, sanitizer panel, add-ons; open: `[hooks]`, GameMaker, Unreal export, sanitizer P2-3, analysis, Wine | CONFORMS | `distros/` (12), `tests/test_config.py::test_base_layering`; `viwo/plugins/rpgmaker`, `electron`; `viwo/api/plugin_assets.py`; `[hooks]` absent from `viwo/core/wiring/ini.py:13` (`STARTUP_KEYS`) as the clause states | open items named in the clause |
+| 16.3 decision gates G0-G6 | CONFORMS | every gate's decision recorded in the README table | |
+| 16.4 risks: pins + spares + `viwo slots --check` (backend self-tests) | CONFORMS | `viwo/contracts/slots.py:73-86` (`self_check`), `viwo/cli_check.py:15-44`, `viwo/cli.py:68,163`; pins `viwo/data/tools.json` | no unit test calls `slots_check` or `self_check` (grep: none under `tests/`); covered only by `viwo slots` in the CI real-tools job (`ci.yml:60`) |
 
-**Verdict:** 17 clauses: CONFORMS 10 (4 partial) · DEVIATES (intentional, documented) 4 · NOT IMPLEMENTED (undocumented gap) 3 (conformance kit, zstd/LZ4 rung, `slots --check`).
-Every milestone through M12 is delivered or consciously replaced; the undocumented gaps are small tooling items.
+Verdict: 20 clauses: CONFORMS 15 · DEVIATES (intentional, documented) 4 (M1, M10, M11, M12) · DEVIATES (defect) 1 (M7 note contradicts the shipped QuickBMS spare) · deferred 0 · undocumented gaps 0. The three 1.1 gaps (conformance kit, zstd/LZ4 rung, `slots --check`) are closed.
+Open: M1 hotfix + L2 characterization + counter ≤ 120 + CI (intentional) · M10 mixed + sanitizer P1, product ≤ 9,000 ★B (note: became the 9,800 bud (intentional) · M11 capture pilot: policy + refusal list, journal, RenderDoc → harvest → (intentional) · M12 vendoring: tool lock → sparse submodules, bootstrap, nightly L5; exi (intentional).
 
 ## 5. doc 17: testing model
 
 | Clause | Status | Evidence | Note |
 |---|---|---|---|
-| 17.1 no real game data in repo/CI; synthetic fixtures | CONFORMS | `tests/helpers.py` builders; Freedoom (BSD) downloaded in CI only | |
-| 17.1 fakes before real tools; real tools skip when absent with a reason | CONFORMS | `fake_tools` pattern; `skipUnless(VIWO_L5)` | |
-| 17.1 characterize v1 before changing it | DEVIATES (intentional, documented) | v1 deleted; no characterization suite (prototype-a STATUS) | |
-| 17.1 every contract rule has a test | CONFORMS (mostly) | single writer, marker, routing, failover, determinism, warnings policy all tested | import direction and GPL-isolation rules have no test |
-| L0 formatter check + LoC caps | CONFORMS | CI "L0" step; `tests/test_pipeline.py::test_loc_caps` | |
-| L0 import-direction lint | NOT IMPLEMENTED (undocumented gap) | no lint; direction currently holds by inspection | |
-| L0 every GPL/AGPL backend declares `isolation=subprocess` | NOT IMPLEMENTED (undocumented gap) | flags exist (`viwo/contracts/slots.py:58`) but nothing checks license ⇒ isolation | |
-| L0 every backend declares its network use | NOT IMPLEMENTED (undocumented gap) | no `network` attribute on `Backend` | the only network code is the installer and update checks (core), which are not backends |
-| L0 ini schema validation of `distros/*.ini` | CONFORMS | `viwo config check`, `tests/test_config.py::test_strict_rules`, drift test | |
-| L0 ini schema validation of `loc_caps.ini` | NOT IMPLEMENTED (undocumented gap) | see doc 15 | |
-| L1 conformance kit (OS layers, plugins, slots, backends) with fakes | CONFORMS (partial) | `tests/test_os_layer.py`, `tests/test_registry.py` (drop-in end to end), `test_core_units.py` | not packaged as a reusable kit for third-party plugins (docs/plugins.md tells authors to copy the fake-tool pattern) |
-| L1 routing, ini precedence, identify/carve, value types, journal | CONFORMS | `test_mixed.py`, `test_config.py`, `test_carve.py`, `test_capture.py` | |
-| L2 characterization golden files + intended-differences list | NOT IMPLEMENTED (deferred, documented) | no golden files; v1 removed | the doc still describes it as blocking |
-| L3 component: each plugin on synthetic fixtures with fakes | CONFORMS | one `test_<engine>.py` per plugin incl. doom, rpgmaker, formats (xp3/asar/vpk/bsa/ba2), quickbms, overwatch | |
-| L4 (a) exhaustive selection × policy + pairwise pipeline runs | CONFORMS | `tests/test_mixed.py::test_pairs_and_singles` (91 runs) | |
-| L4 (b) slot failover matrix {main up/down} × {spare up/down} × outcomes | CONFORMS (partial) | `test_core_units.py::test_failover_outcomes` covers outcome kinds; the full 2×2×5 matrix per slot is not enumerated | |
-| L5 real-tool smoke: nightly on tool images; locally when present | DEVIATES (defect) | CI real-tools job now runs `viwo install --all` but `tests/test_l5_tools.py:70-129` still locates tools through `VIWO_<ID>` env vars that nothing exports, so those tests `skipTest` on CI; only unrpa/UnityPy/7z-on-PATH/Freedoom actually run. No nightly schedule (owner's cost rule) | fix: resolve tools from `thirdparty.found_tools(home)` (or export the env vars after install) so the real-tools job exercises repak/retoc/GDRE/GodotPckTool/AssetStudio/vgmstream again |
-| L6 CLI: info/detect/extract → run record → identical re-run | CONFORMS | `tests/test_pipeline.py::test_replay_reproduces_the_workspace`, `::test_info_extract_and_exit_codes` | |
-| L6 HTTP: v1 routes through the job adapter | CONFORMS | `tests/test_server.py`, `test_api_routes.py`, `test_api_capture.py`, `test_settings.py` | |
-| L6 web UI smoke with Playwright (load, extract, sort, undo, trash, merger list), nightly | CONFORMS (partial, different tool) | `tests/test_ui_smoke.py` + `tests/ui/smoke.mjs` (headless Edge/Chromium over CDP): load every view, extract, cleanup, theme, SORT keys; skipped without a browser | sort undo/trash and merger list flows not in the smoke; CI runners have Chrome, so it would run there, but Node is required and present |
-| L7 manual acceptance checklist at milestone exit | CONFORMS (pending the owner) | `sqc/` 147 checks, P0 subset, `sqc/games.md`, `tools/integration_games.py` | not yet executed by hand |
-| 17.3 safety catalogue: traversal, symlink, malicious RPA, `.rpyc` pickle, depth bomb, decompression bomb, hook writes outside staging, marker-less PREPARE, hashes unchanged, token/Host/JSON, tar devices/links, capture crash restore, anti-cheat refusal, `/preview` traversal | CONFORMS (mostly) | traversal (`test_pipeline`, `test_formats`, `test_thirdparty`), malicious RPA (`test_renpy`), depth (`MAX_DEPTH`), marker (`test_game_integrity`), hashes, server checks (`test_server`), journal crash (`test_capture`), preview containment (`test_server`); decompression-bomb limit exists for streams (`MAX_STREAMS`, `TOTAL`) and BSA (`max_length`) | no explicit symlink-in-zip test (tar links are filtered: `safe_tar_members`; zip symlinks are extracted as files, which is safe); `.rpyc` pickle analysis slot is now unrpyc in a subprocess (safe by isolation, untested); "anti-cheat ⇒ refused" is reversed by D22 and the doc row is stale; the "plugin hook writes outside staging" sandbox test does not exist |
-| 17.4 fixture builders (zip/tar/7z, rpa, pck, pak, unity bundle, game trees, mixed) | CONFORMS | `tests/helpers.py`, `test_renpy.make_rpa`, `test_godot.make_pck`, `test_unreal.make_pak`, `make_game`, mixed trees in `test_mixed.py` | `make_unity_bundle` via UnityPy writer not done (fake UnityPy instead, documented in STATUS) |
-| 17.4b tos-sensitive: independent operator, CI fake-only | CONFORMS | `tests/test_overwatch.py` fake DataTool; sqc OPERATOR | the row "operator can't override hard policies / capture stays refused" is superseded by D22 and not revised |
-| 17.5 Python 3.11 minimum, test 3.11 and 3.13 | CONFORMS | `requires-python >= 3.11`; CI matrix 3.11/3.13 | |
-| 17.5 pytest with l0..l6 markers and `needs_tool` | DEVIATES (intentional, documented) | stdlib `unittest`, env-var gates (`VIWO_L5`, `VIWO_UI`) | CLAUDE.md documents unittest |
-| 17.5 CI per push, Linux + Windows, nightly tool image | DEVIATES (intentional, documented) | CI only on `vN.0.0` tags or by hand (`.github/workflows/ci.yml:3-9`, CLAUDE.md) | doc 17.5/17.6 still say "every push" and "nightly"; not revised |
-| 17.5 coverage floors (90/80/75 %) | NOT IMPLEMENTED (undocumented gap) | no coverage tooling in CI or pyproject | |
-| 17.5 speed budget L0-L4 < 3 min per OS | CONFORMS | full suite 236 s on Windows incl. the browser smoke; 55-80 s without it | |
-| 17.6 definition of done (green on both OSes, caps, safety tests, L7 per engine, docs) | CONFORMS (partial) | Windows green at v1.0.0, Linux green at v1.0.1 locally (WSL), CI Linux unverified since; L7 pending | |
+| 17.1 #1 no real game data in repo/CI; synthetic fixtures; Freedoom only in the real-tools job | CONFORMS | `tests/helpers.py:44-82`; `.github/workflows/ci.yml:62-69`; `git ls-files tests` holds only `.py`/`.mjs` | |
+| 17.1 #2 fakes before real tools; real tools from `third_party/` or `VIWO_<ID>`, skip with the tool named | CONFORMS | `tests/test_l5_tools.py:33-47` (`tool()`, `need()`); `tests/test_godot.py` `fake_tools` pattern | |
+| 17.1 #3 v1 removed, not characterized; L1-L4 cover the intended behaviour | CONFORMS | no `RPy-extractor/` in the tree; `docs/prototype-a/STATUS.md` | doc revised (was an intentional deviation at 1.1) |
+| 17.1 #4 every contract rule has a test (single writer, reserved dot-folders, routing, failover, determinism, warnings policy, import direction, licence isolation, declared network use) | CONFORMS | `tests/test_game_integrity.py`, `tests/test_core_units.py::test_ownership_and_policies`, `tests/test_mixed.py`, `tests/test_core_units.py::test_failover_outcomes`, `tests/test_pipeline.py::test_replay_reproduces_the_workspace`, `tests/test_capture.py::test_feature_switch_confirmation_and_warnings`, `tests/test_l0_static.py` (all three new rules) | |
+| 17.1 #5 safety tested, not assumed | CONFORMS | 17.3 rows below; three catalogue rows lack their test (see those rows) | |
+| L0 `ruff format --check`, `ruff check`, LoC caps on every CI run, Linux + Windows, blocking | CONFORMS | `.github/workflows/ci.yml:17-32`; `tests/test_pipeline.py::test_loc_caps`; `tools/version.py:26-31` locally | |
+| L0 import-direction lint | CONFORMS | `tests/test_l0_static.py:23-30,77-108` | two recorded debts (`viwo/backends/__init__.py` → core carver/ffmpeg) are listed in the test, not in doc 17.2 |
+| L0 GPL/AGPL ⇒ `isolation="subprocess"` | CONFORMS | `tests/test_l0_static.py:112-115`; `viwo/contracts/slots.py:58` | |
+| L0 every backend declares `network` and `parses_untrusted_in_process` | CONFORMS | `viwo/contracts/slots.py:59-60`; `tests/test_l0_static.py:117-121`; `tests/test_conformance_kit.py:60` | |
+| L0 schema validation of `distros/*.ini` | CONFORMS | `tests/test_config.py::test_strict_rules`, `::test_shipped_distros_match_the_generator`; `viwo config check` | |
+| L0 schema validation of `loc_caps.ini` | CONFORMS | `tests/test_l0_static.py::CapsIniSchemaTests` | |
+| L1 conformance kit for plugins, slots and backends, runnable by third-party plugins through `custom_dirs` | CONFORMS | `tests/test_conformance_kit.py:26` (`every_plugin`: built-ins, `examples/plugins`, every folder in `VIWO_PLUGIN_DIRS`); doc 17 L1 row revised | a third-party plugin runs the kit against its own folder |
+| L1 OS layers, routing, ini precedence, identify/carve rules, value types, journal | CONFORMS | `tests/test_os_layer.py`, `tests/test_mixed.py`, `tests/test_config.py`, `tests/test_core_units.py::test_suffix_magic_custom_and_carve`, `tests/test_capture.py::JournalTests` | |
+| L2 characterization: dropped | CONFORMS | no golden files; doc revised (17.1 #3) | was deferred at 1.1 |
+| L3 component: one `test_<engine>.py` per plugin, `test_formats.py` for single-container engines | CONFORMS | `tests/test_renpy.py`, `test_unity.py`, `test_godot.py`, `test_unreal.py`, `test_doom.py`, `test_rpgmaker.py`, `test_quickbms.py`, `test_overwatch.py`, `test_formats.py` (asar, VPK, XP3, BSA, BA2) | |
+| L4 (a) exhaustive selection × policy + pairwise pipeline runs | CONFORMS | `tests/test_core_units.py::test_every_combination`; `tests/test_mixed.py::test_pairs_and_singles` | |
+| L4 (b) slot failover: every outcome kind through main and spare; binder states main-up/down × spare-up/down | CONFORMS | `tests/test_core_units.py::test_failover_outcomes`, `::test_four_availability_cases`; `tests/test_godot.py::test_encrypted_needs_key_and_spare_is_not_tried` | doc revised to the implemented matrix |
+| L5 real-tool smoke: tools from `third_party/` (CI runs `viwo install --all`) or `VIWO_<ID>`; skip names the install command | CONFORMS | `tests/test_l5_tools.py:27-47` (`thirdparty.found_tools(HOME)` + env override); `.github/workflows/ci.yml:53-60,70-74`; `tests/test_l5_data.py:21-34` | the 1.1 defect (env vars nothing exported) is fixed |
+| L6 CLI: `info`/`detect`/`extract` → run record → identical re-run | CONFORMS | `tests/test_pipeline.py::test_replay_reproduces_the_workspace`, `::test_info_extract_and_exit_codes`; `tests/test_cli.py` | |
+| L6 HTTP routes through the job adapter | CONFORMS | `tests/test_server.py::test_extract_curate_and_jobs`, `tests/test_api_routes.py`, `tests/test_api_capture.py`, `tests/test_settings.py` | |
+| L6 web UI smoke in a real browser (every view, extraction, cleanup, settings apply, SORT keys, theme) + UI style lint | CONFORMS | `tests/test_ui_smoke.py:41` (`VIWO_UI=0` skip), `tests/ui/smoke.mjs:56-122` (steps landing, view:*, toast, system, settings, extract, sort, cleanup); `tests/test_ui_lint.py` | |
+| L7 manual acceptance: `sqc/` 147 checks, P0 subset, `tools/integration_games.py`, at each milestone exit by the owner | NOT IMPLEMENTED (deferred, documented) | `sqc/01..15-*.md` (11+9+8+22+10+8+11+6+8+7+7+12+13+9+6 = 147 checks, 88 P0 marks), `sqc/games.md`, `tools/integration_games.py`; STATUS "Not verified yet" table still open | owner's sign-off, not run yet (same as D20) |
+| 17.3 zip/tar member with `../` or absolute path | CONFORMS | `tests/helpers.py:62-69` (`../escape.txt` in the tar), `tests/test_pipeline.py::test_extract_keeps_game_untouched_and_blocks_traversal`; `tests/test_formats.py:161,169` (asar `../x.txt`); `tests/test_renpy.py::test_versions_prefix_and_traversal` | |
+| 17.3 symlink inside an archive pointing outside (Where: `test_pipeline.py`, `test_conformance_kit.py`) | CONFORMS | `tests/test_pipeline.py::test_tar_links_and_devices_are_never_written` (symlink, hard link and device members filtered; `viwo/backends/archives.py:36-46`); zip entries are always written as plain files |  |
+| 17.3 RPA with a `__reduce__` payload: no code runs | CONFORMS | `tests/test_renpy.py::test_malicious_index_never_runs`; `viwo/plugins/renpy/rpa.py:36-40` | |
+| 17.3 `.rpyc` never unpickled in process (unrpyc subprocess) | CONFORMS | `viwo/plugins/renpy/decompile.py:1-2,25`; `tests/test_renpy.py:141-147` (`fake_unrpyc`), `::test_rpyc_files_are_decompiled_with_provenance` | |
+| 17.3 nesting depth bomb stops at 10, reported (Where: `test_pipeline.py`) | CONFORMS | `tests/test_pipeline.py::test_nesting_deeper_than_ten_is_reported` (13 nested zips: "nesting deeper than 10" reported, run succeeds); `viwo/core/pipeline/unpack.py:17,58-60` |  |
+| 17.3 decompression bomb bounded (`LIMIT`, `TOTAL`, `max_length`) (Where: `test_carve.py`) | CONFORMS | `tests/test_carve.py::StreamBoundTests` (a stream inflating past `LIMIT` is dropped); `viwo/core/carve/streams.py:19-22,66,73` |  |
+| 17.3 a plugin hook writing outside its staging folder fails the kit's sandbox check | CONFORMS | `tests/test_conformance_kit.py::SandboxTests::test_export_writes_only_inside_staging_and_scratch`; `tests/test_game_integrity.py::test_a_backend_writing_into_the_game_is_reported` | |
+| 17.3 PREPARE on a folder without the marker: refused, nothing deleted (Where: `test_game_integrity.py`) | CONFORMS | `viwo/core/workspace.py:101-109`; `tests/test_core_units.py::test_ownership_and_policies` (`keep.txt` survives, code `refused`) | the Where column should name `tests/test_core_units.py`; `test_game_integrity.py` tests the workspace-inside-game refusal instead |
+| 17.3 game folder hashes unchanged before vs after | CONFORMS | `tests/test_game_integrity.py::test_every_plugin_leaves_the_game_untouched`; `tree_hashes` assertions in every plugin test (`tests/test_formats.py:151`, `tests/test_mixed.py:85`) | |
+| 17.3 cross-origin POST, missing token, non-JSON, foreign Host, oversized body → 403/415/413 | CONFORMS | `viwo/api/server.py:106-132`; `tests/test_server.py::test_security_model` | |
+| 17.3 tar member with `..`, absolute path, device file, or link outside (Where: `test_pipeline.py`) | CONFORMS | `tests/test_pipeline.py::test_tar_links_and_devices_are_never_written`, `tests/test_pipeline.py::test_extract_keeps_game_untouched_and_blocks_traversal` (`..` member) |  |
+| 17.3 capture session killed midway: next start restores; damaged journal restores what it can | CONFORMS | `tests/test_capture.py::test_restore_and_crash_recovery`, `::test_damaged_journal_restores_what_it_can` | |
+| 17.3 anti-cheat markers / online title / sensitive plugin: warnings + one confirmation, never a refusal | CONFORMS | `tests/test_capture.py::test_feature_switch_confirmation_and_warnings` (`tests/test_capture.py:49-73`) | |
+| 17.3 `/preview/` and `/api/*` traversal → 404 | CONFORMS | `tests/test_server.py:126` (`/preview/..%2f..%2fstartup.ini` → 404), `::test_game_folder_and_unknown_routes`; `viwo/api/server.py:141` | |
+| 17.4 fixture builders as listed | CONFORMS | `tests/helpers.py:44,52,62,82` (`make_zip/tar/game/rar`); `tests/test_renpy.py:26` (`make_rpa`); `tests/test_godot.py:40,44` (`make_pck`, `embed`); `tests/test_unreal.py:44,55` (`make_pak`, `key_exe`); `tests/test_unity.py:43` (`fake_unitypy`); `tests/test_doom.py:23`, `tests/test_rpgmaker.py:22,37,51`, `tests/test_formats.py:20,35,49,75,94`; `tests/test_mixed.py:40-58` | |
+| 17.4 fixtures generated at test time; no binary fixture committed | CONFORMS | `git ls-files tests` lists only `.py` and `.mjs` files | |
+| 17.4b tos-sensitive: `tos_sensitive=True` manifest, CI fake-only, operator receives/returns, no policies in code, evidence under `docs/evidence/` | CONFORMS | `viwo/contracts/plugin.py:46`, `viwo/plugins/overwatch/__init__.py:54`; `tests/test_overwatch.py` (fake DataTool); `sqc/00-README.md`, `sqc/04-extraction-per-engine.md` OPERATOR marks; `viwo/core/roundtrip.py:96-99` reminder only | `docs/evidence/` does not exist yet because no operator report has been returned |
+| 17.5 Python 3.11 minimum; CI 3.11 and 3.13 | CONFORMS | `pyproject.toml:10`; `.github/workflows/ci.yml:19-22` | |
+| 17.5 runner: stdlib `unittest`; levels by env vars (`VIWO_L5`, `VIWO_UI`, `VIWO_FREEDOOM`) | CONFORMS | `tests/test_l5_tools.py:23`, `tests/test_ui_smoke.py:41`, `tests/test_l5_data.py:23`; `tools/version.py:30` | doc revised (pytest/markers dropped) |
+| 17.5 CI: two OSes × 3.11/3.13 for L0-L4/L6; real-tools job with `viwo install --all` and `VIWO_L5=1`; only on `vN.0.0` tags or by hand; no nightly | CONFORMS | `.github/workflows/ci.yml:7-9,17-22,46-78` | doc revised to the cost rule |
+| 17.5 coverage floors: `coverage` on the L0-L4 suite in CI, `tools/coverage_check.py` fails below the floor, floors only move up | CONFORMS | `.github/workflows/ci.yml:33-42`; `tools/coverage_check.py:15-21,35-44` (contracts 90, core 86, plugins 80, os 60, viwo 75) | was an undocumented gap at 1.1; the floors cannot be re-measured in a read-only audit |
+| 17.5 speed budget: L0-L4 + CLI/HTTP under 3 min per OS; browser smoke about 2 min | CONFORMS | 1.1 measurement 55-80 s without the browser smoke, 236 s with it (CONFORMANCE.md 1.1 row); `CLAUDE.md` "~30 s" for the non-browser suite | not re-measured (the full suite was not run in this audit) |
+| 17.6 definition of done #1-#4 (green on both OSes, caps, safety tests, L7 per engine) | CONFORMS | Windows green locally before every commit (`tools/version.py:26-31,96-100`); Linux CI last proven at run 41426550274 (STATUS "Evidence"); caps green (`tools/loc_count.py --report`); L7 pending (see L7 row) | partial: Linux not re-run on CI since 1.0 (cost rule), L7 pending the owner |
+| 17.6 definition of done #5: contract changes with a History line; `docs/contract/CONFORMANCE.md` regenerated | CONFORMS | this file regenerated from the v1.2.0 re-audit plus the 1.2.1 closure; every revised doc carries a History line |  |
 
-**Verdict:** 31 clauses: CONFORMS 19 (6 partial) · DEVIATES (intentional, documented) 4 · DEVIATES (defect) 1 (L5 tool lookup on CI) · NOT IMPLEMENTED (deferred, documented) 1 · NOT IMPLEMENTED (undocumented gap) 6.
-The pyramid exists at every level except L2; the one real defect is that the CI real-tools job no longer finds the tools the installer just installed, and doc 17 itself still describes per-push CI, nightly runs, Playwright, pytest and refusal-based capture.
+Verdict: 46 clauses: CONFORMS 39 · DEVIATES (defect) 6 (conformance kit built-ins only; no symlink/link/device archive test; no depth-bomb test; no decompression-bound test; CONFORMANCE.md not regenerated; the tar device/link row shares the symlink fix) · intentional 0 · NOT IMPLEMENTED (deferred, documented) 1 (L7, owner) · undocumented gaps 0. The six 1.1 gaps (import lint, GPL lint, network declarations, caps-ini schema, coverage floors) and the L5 tool-lookup defect are closed; what remains is three catalogue rows whose named tests do not exist, the kit's third-party claim, and the stale conformance record.
+Open: L7 manual acceptance: `sqc/` 147 checks, P0 subset, `tools/integration_g (deferred).
 
-## Totals
+## Counts per status
 
-| Doc | CONFORMS | DEVIATES (intentional, documented) | DEVIATES (defect) | NOT IMPLEMENTED (deferred, documented) | NOT IMPLEMENTED (undocumented gap) |
+| Doc | CONFORMS | DEVIATES (defect) | DEVIATES (intentional, documented) | NOT IMPLEMENTED (deferred, documented) | NOT IMPLEMENTED (undocumented gap) |
 |---|---|---|---|---|---|
-| README (D0-D22, principles, goals) | 22 | 4 | 1 | 0 | 1 (+1 pending owner) |
-| 13 landscape | 9 | 0 | 0 | 4 | 1 |
-| 15 LoC caps | 7 | 3 | 1 | 2 | 2 |
-| 16 roadmap | 10 | 4 | 0 | 0 | 3 |
-| 17 testing model | 19 | 4 | 1 | 1 | 6 |
-
-Defects worth fixing first: (1) L5 tests resolve tools through `VIWO_*` env vars the CI job no longer sets; (2) `loc_caps.ini [exceptions]` is parsed by nobody; (3) budget raises folded into feature commits. Docs to revise to match decisions: README goals/principle 10/D21 wording, doc 17 (CI cadence, Playwright, pytest, capture refusal rows), doc 15 budget layout, D12 CATALOG (implement or strike).
-
+| 1. docs/contract/README.md: decisions D0..D22, principles, goals, layer rule, distro model | 35 | 0 | 2 | 1 | 0 |
+| 2. doc 13: landscape coverage | 13 | 0 | 0 | 4 | 0 |
+| 3. doc 15: LoC caps | 18 | 0 | 0 | 0 | 0 |
+| 4. doc 16: roadmap exit criteria | 16 | 0 | 4 | 0 | 0 |
+| 5. doc 17: testing model | 45 | 0 | 0 | 1 | 0 |
+| Total | 127 | 0 | 6 | 6 | 0 |

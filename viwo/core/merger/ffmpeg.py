@@ -7,6 +7,7 @@ from pathlib import Path
 
 from viwo.contracts.slots import Backend
 from viwo.contracts.types import DependencySpec
+from viwo.core.pipeline.failover import run_with_failover
 
 FFMPEG = DependencySpec(
     "ffmpeg",
@@ -49,22 +50,24 @@ class Timeline:
     hold_last: float = 0.0
 
 
-def probe(os, path: Path) -> tuple[float, bool]:
-    """(duration in seconds, has an audio stream) via ffprobe; (0, False) when unknown."""
-    tool = os.tools.locate(FFPROBE)
-    if tool is None:
+def probe(rt, path: Path, ctx) -> tuple[float, bool]:
+    """(duration in seconds, has an audio stream) through the `media.probe` slot (doc 8.5);
+    (0, False) when the slot is unbound or the backend cannot tell."""
+    binding = rt.bindings.get("media.probe")
+    if binding is None or not binding.bound:
         return 0.0, False
-    base = [*tool.argv_prefix, "-v", "error", "-of", "default=noprint_wrappers=1:nokey=1"]
-    duration = os.process.run([*base, "-show_entries", "format=duration", str(path)], timeout=60)
-    audio = os.process.run(
-        [*base, "-select_streams", "a:0", "-show_entries", "stream=codec_type", str(path)],
-        timeout=60,
-    )
-    try:
-        seconds = max(float(duration.stdout.strip() or 0), 0.0) if duration.ok else 0.0
-    except ValueError:
-        seconds = 0.0
-    return seconds, audio.ok and "audio" in audio.stdout.lower()
+    outcome, _ = run_with_failover(binding, rt.backends, lambda b: b.probe(path, ctx))
+    if not outcome.ok:
+        return 0.0, False
+    facts = [str(n).strip() for n in outcome.notes]
+    seconds = 0.0
+    for fact in facts:
+        if fact.startswith("duration="):
+            try:
+                seconds = max(float(fact.split("=", 1)[1] or 0), 0.0)
+            except ValueError:
+                seconds = 0.0
+    return seconds, "codec_type=audio" in facts
 
 
 def _inputs(t: Timeline) -> list[str]:

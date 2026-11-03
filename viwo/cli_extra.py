@@ -119,7 +119,9 @@ def workspace_command(rt, args) -> Envelope:
             raise ViwoError("not_found", f"workspace not found: {args.workspace}")
         if args.undo:
             return Envelope.success(sanitizer.undo(args.workspace, args.undo))
-        result = sanitizer.plan(args.workspace)
+        from viwo.core.sanitizer_rules import collect_rules
+
+        result = sanitizer.plan(args.workspace, rules=collect_rules(rt))
         if args.apply:
             result["applied"] = sanitizer.apply(args.workspace, result["planId"])
         return Envelope.success(result)

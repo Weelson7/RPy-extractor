@@ -22,6 +22,8 @@ apply when the ini doesn't say otherwise.
 SlotDefinition
   slot_id        "<family>.<name>"          e.g. "unarchive.rpa", "export.unity"
   family         unarchive | export | media.probe | media.encode | image | analysis
+                 | capture | runtime | debug | trace | memory | hook | net | profile   (dynamic arm, doc 11)
+                 | pack | patch | mod                                                   (authoring arm, doc 18)
   interface      the interface every backend in this slot implements
   owner          "core" or plugin id that introduces the slot
   matches        how the stage decides the slot applies (suffixes / magic / target kind)
@@ -97,7 +99,49 @@ ImageCodec                     (family: image)
   decode(path) -> ok/kind ; convert(src, dst_format, ctx) -> Outcome
 
 CodeAnalyzer                   (family: analysis)  — doc 6
+DynamicBackend                 (families capture/runtime/debug/trace/memory/hook/net/profile)  — doc 11
+Packer                         (family: pack)  — doc 18
+BinaryPatcher                  (families patch.bytes, patch.sig)  — doc 18.8
 ```
+
+Backends in the dynamic families (doc 11) additionally carry `touches_running_game: true`, so the
+core routes them through the capture journal (`core/capture/journal.py`) and the `dynamic.policy`
+warnings-and-opt-in step before they run.
+
+## 8.3a Interactive handoff: "continue in &lt;tool&gt;"
+
+Much of the real work in reverse engineering happens in GUI tools (Ghidra's listing, x64dbg,
+ReClass.NET, RenderDoc's viewer, dnSpyEx, FModel, a hex editor). ViWo does not reimplement them and
+cannot drive them headless, but it is the right place to **prepare the target and hand off**. Any
+slot, backend or `AnalysisTarget`/capture artifact may offer a **handoff**: a "continue in Ghidra",
+"open in x64dbg", "inspect in RenderDoc" action in the UI and CLI.
+
+```text
+Handoff
+  handoff_id     "ghidra-gui", "x64dbg", "reclass", "renderdoc-ui", "dnspy", "fmodel", "hex"
+  label          "Continue in Ghidra"
+  accepts        the target kinds / artifact kinds it opens
+  prepare(target, ctx) -> PreparedSession    # import the project, build a launch-suspended spec,
+                                             # point the tool at the capture file — the glue ViWo owns
+  launch_spec                                # handed to os.launch; the tool runs as a tracked child
+```
+
+Rules:
+- The GUI tool runs as a **child subprocess** launched by the OS layer, inside ViWo's process tree,
+  so `os.process` tree-kill and timeouts still reach it (doc 1); closing ViWo or cancelling the job
+  tears down the child.
+- `prepare()` is the only part ViWo writes: create/import the Ghidra project from a prior
+  `analysis.native` run, assemble the launch-suspended `LaunchSpec` for a debugger (doc 11.4), copy
+  the target to the patched-copy/scratch area a tool may write to, or just resolve the artifact path.
+- A handoff that runs code in the game (a debugger, an injector) is a **dynamic** action: it goes
+  through `dynamic.policy` (doc 11.1) and the journal exactly like a backend. A handoff that only
+  opens a static file (Ghidra on a copy, a hex editor, FModel on an extracted archive) is a static
+  action with no opt-in.
+- Handoffs are declared, discoverable and overridable like backends; a plugin or the ini can add
+  one (open this engine's files in that engine's community GUI) or repoint the tool path.
+
+This keeps ViWo the orchestrator: headless backends for batch and automation (docs 6, 11, 18),
+handoffs for the interactive work, both over the same pinned-tool and OS-layer plumbing.
 
 ## 8.4 Default slot table (revised with research, doc 13)
 
@@ -133,7 +177,7 @@ PCKs embedded in executables, AGS, Love2D and NW.js need this.
 | `export.unity` | unity | `unitypy` (v1 parity) or `assetstudiomod-cli` ❓ D7 | the other one | AssetStudioModCLI has a real CLI and native Linux build |
 | `export.unity-project` | unity | `assetripper` (GPL-3.0, driven over its local HTTP API) | `assetstudiomod-cli` | full project rebuild; optional |
 | `export.unreal` | unreal | our CUE4Parse .NET wrapper (Apache-2.0 lib) | `umodel` (UE4 only, dormant) | deferred after the prototype |
-| `export.godot` | godot | `gdre-tools --recover` | `godotdec` (Godot 3 only) | |
+| `export.godot` | godot | `gdre-tools --recover` (opt-in `recover` option, 1.2) | none (`godotdec` is Godot 3 only; deferred) | |
 | `export.overwatch` | overwatch | `datatool extract-*` | — | catalog → select first |
 
 **Keys:**

@@ -1,10 +1,16 @@
 # ViWo // Vidya Wormhole
 
-**A community-owned, local-first orchestrator for game reverse engineering, oriented towards asset extraction.**
+**A community-owned, local-first orchestrator for game reverse engineering.**
 
 Point ViWo at a game folder. It recognizes the engine, routes every container to the best
 available tool (with a spare when that tool is missing or fails), collects everything into one
-curated workspace, and records where every file came from. Your game is never modified.
+curated workspace, and records where every file came from. Your game is never modified. Asset
+extraction is the mature arm; the orchestrator spans three (see "What a reverse engineer can do"):
+**static** (extraction + code/data analysis), **dynamic/runtime** (capture, debugging,
+instrumentation, memory, hooking, own-traffic networking, profiling), and **authoring** (round trip,
+binary patching, mod packaging). Each arm runs headless for batch work or hands off to a GUI tool
+with a **"continue in &lt;tool&gt;"** button that opens Ghidra, x64dbg, RenderDoc or the like,
+pre-loaded, as a child process.
 
 - **Engines:** Ren'Py, Unity, Godot, Unreal, Doom engine, plain archives (zip, tar, 7z, rar), and a
   carver that pulls standard files (images, audio, video, archives) out of anything unrecognized.
@@ -63,11 +69,23 @@ Today and as it grows:
   fonts, script decompilation, localization tables.
 - **Runtime capture:** GPU frames through RenderDoc for content that only exists at runtime,
   then a diff against static extraction.
-- **Code and data analysis (next rungs, same slot system):** executable and engine metadata,
-  Unity IL2CPP and Mono metadata, Unreal class layouts, string tables, save and config formats,
-  headless analysis backends such as Ghidra.
+- **Static code and data analysis (next rungs, same slot system):** executable and engine metadata,
+  Unity IL2CPP and Mono metadata, Unreal class layouts, string and localization tables, save and
+  config formats; headless analysis backends (Ghidra, ilspycmd, Cpp2IL), library/middleware
+  signatures, protector identification, version diffing for update-resilient offsets, and emulation
+  of isolated routines. Everything reads a copy; the game is never run.
+- **Dynamic and runtime (opt-in, journaled):** GPU frame capture through RenderDoc for content that
+  only exists at runtime, engine agents (BepInEx, UE4SS) that dump live objects or feed the static
+  arm, plus debugging, instrumentation and tracing, memory inspection, runtime hooking, your-own-
+  traffic networking and profiling. Off by default behind the `runtime` flag, with warnings and one
+  confirmation; ViWo authors no anti-cheat evasion or copy-protection defeat.
+- **Continue in &lt;tool&gt;:** any target hands off to its GUI tool pre-loaded — Ghidra on an
+  imported project, x64dbg launched suspended, RenderDoc on a capture, ReClass.NET on a live struct
+  — as a child process ViWo tracks and tears down with the job.
 - **Curation:** sort, deduplicate, rename, sanitize and trash with undo; provenance per file.
-- **Modding and round trip:** edit assets and repack them into a verified patched copy.
+- **Modding, round trip and patching:** edit assets and repack into a verified patched copy; author
+  byte- and assembly-level binary patch sets with AOB signatures and portable patch export; package
+  mods with a loader, a stable hook API, a crash handler and an update checker.
 - **Reproducibility and automation:** run records and replay, a pinned toolchain, per-game
   indexes the community can extend, a CLI with JSON envelopes and a local API.
 

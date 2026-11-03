@@ -20,77 +20,15 @@ from pathlib import Path
 from typing import Callable, Iterable
 
 import viwo.plugins as _builtins
-from viwo import CONTRACT_VERSION, __version__
-from viwo.contracts.plugin import OPTION_KINDS, CliCommand, EnginePlugin
+from viwo import __version__
+from viwo.contracts.plugin import CliCommand, EnginePlugin
 from viwo.contracts.slots import Backend, SlotDefinition
 from viwo.contracts.workspace import safe_member
 
+from .conformance import RESERVED, SLUG, suffix_clashes, validate_plugin
+
 ALWAYS_ON = "generic"
 ENTRY_POINT_GROUP = "viwo.plugins"
-RESERVED = {"mixed", "auto", "core", "none"}
-SLUG = re.compile(r"[a-z][a-z0-9_-]{1,31}")
-OS_LAYERS = {"windows", "linux"}
-
-
-class EmptyProbe:
-    """Doc 2.8: the probe every plugin must survive at load (an empty game folder)."""
-
-    root = Path(".")
-
-    def has_name(self, *names: str) -> bool:
-        return False
-
-    def find(self, pattern: str, limit: int = 100) -> list[Path]:
-        return []
-
-    def with_suffix(self, *suffixes: str) -> list[Path]:
-        return []
-
-    def head(self, path: Path, size: int = 64) -> bytes:
-        return b""
-
-    def tail(self, path: Path, size: int = 64) -> bytes:
-        return b""
-
-
-def validate_plugin(plugin: EnginePlugin, os_id: str = "") -> list[str]:
-    """Doc 2.9 checks that run at load for built-ins and drop-ins alike. A non-empty result
-    disables the plugin; every message names what to fix."""
-    m, problems = plugin.manifest, []
-    if not SLUG.fullmatch(m.plugin_id) or m.plugin_id in RESERVED:
-        problems.append(f"id '{m.plugin_id}' is not a valid slug")
-    if str(m.contract).split(".")[0] != CONTRACT_VERSION.split(".")[0]:
-        problems.append(f"contract {m.contract} does not match {CONTRACT_VERSION}")
-    if not m.engine_type or not isinstance(m.engine_type, str):
-        problems.append("engine_type is empty")
-    keys = [o.key for o in m.options]
-    if len(set(keys)) != len(keys):
-        problems.append("option keys are not unique")
-    problems += [
-        f"option {o.key}: unknown kind {o.kind}" for o in m.options if o.kind not in OPTION_KINDS
-    ]
-    if os_id and m.os_layers and os_id not in m.os_layers:
-        problems.append(f"not for this OS layer ({os_id}); declares {', '.join(m.os_layers)}")
-    if any(layer not in OS_LAYERS for layer in m.os_layers):
-        problems.append(f"unknown os_layers {m.os_layers}")
-    try:
-        first, second = plugin.detect(EmptyProbe()), plugin.detect(EmptyProbe())
-        if first != second or (first.plugin_id and first.plugin_id != m.plugin_id):
-            problems.append("detect() on an empty probe is not pure or names another plugin")
-    except Exception as exc:  # noqa: BLE001
-        problems.append(f"detect() raised on an empty probe: {exc}")
-    return problems + _dependency_problems(plugin)
-
-
-def _dependency_problems(plugin: EnginePlugin) -> list[str]:
-    """Dependency ids are unique per plugin: one id, one label (doc 2.9)."""
-    seen: dict[str, str] = {}
-    problems = []
-    for backend in plugin.backends():
-        for spec in backend.dependencies():
-            if seen.setdefault(spec.dep_id, spec.label) != spec.label:
-                problems.append(f"dependency {spec.dep_id} declared twice with different labels")
-    return problems
 
 
 _REQ = re.compile(r"^\s*(>=|<=|==|>|<)?\s*(\d+(?:\.\d+){0,2})\s*$")
@@ -312,4 +250,4 @@ def collect(
                 problems.append(f"backend {backend.backend_id} from {owner} clashes; ignored")
                 continue
             backends[backend.backend_id] = backend
-    return slots, backends, problems
+    return slots, backends, problems + suffix_clashes(slots)

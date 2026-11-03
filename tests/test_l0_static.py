@@ -108,6 +108,14 @@ class ImportDirectionTests(unittest.TestCase):
                 self.assertTrue(module.startswith("viwo.contracts"), f"{path.name}: {module}")
 
 
+class ContractVersionTests(unittest.TestCase):
+    def test_contracts_mirror_matches_the_package(self) -> None:
+        from viwo import CONTRACT_VERSION
+        from viwo.contracts.pipeline import CONTRACT_VERSION as MIRROR
+
+        self.assertEqual(MIRROR, CONTRACT_VERSION)
+
+
 class BackendDeclarationTests(unittest.TestCase):
     def test_gpl_backends_run_as_subprocesses(self) -> None:
         for backend in all_backends().values():

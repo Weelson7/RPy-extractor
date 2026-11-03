@@ -81,10 +81,9 @@ def render(os_id: str, profile: str) -> str:
     ]
     for sid in sorted(s for s, d in slots.items() if d.owner in owners):
         d = slots[sid]
-        lines.append(
-            f"{sid} = {d.default_main or 'none'}"
-            + (f", {d.default_spare}" if d.default_spare else "")
-        )
+        spare = d.default_spare if d.default_spare in backends else ""
+        spare = spare if spare and backends[spare].owner in owners else ""  # its plugin is on
+        lines.append(f"{sid} = {d.default_main or 'none'}" + (f", {spare}" if spare else ""))
     deps = {
         spec.dep_id: spec
         for b in backends.values()

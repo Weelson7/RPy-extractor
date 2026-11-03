@@ -105,7 +105,7 @@ This suggests one more structural point: **wrapper plugins**. A wrapper
 plugin such as Electron/NW.js unwraps the outer container, and then
 detection runs again on what's inside. **1.1:** the unpack loop does exactly that: after an
 outer wrapper (asar, `package.nw`) is unpacked, the probe is rebuilt over the unwrapped tree and
-detection reruns once (doc 14.2 #3; `tests/test_conformance_kit.py`, `tests/test_mixed.py`).
+detection reruns once (doc 14.2 #3; `viwo/core/pipeline/rewrap.py`, `tests/test_formats.py::test_engine_inside_an_asar_is_redetected`).
 
 ### Coverage shipped in 1.1 (against the tables above)
 

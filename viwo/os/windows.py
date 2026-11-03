@@ -82,6 +82,13 @@ class WindowsShell(DesktopShell):
 LONG_PATH_LIMIT = 248  # MAX_PATH minus room for a file name: beyond it, extended-length form
 
 
+def _running_images(runner: SubprocessRunner) -> set[str]:
+    """Image names from `tasklist` (CSV, no header), lowercased."""
+    result = runner.run(["tasklist", "/FO", "CSV", "/NH"], timeout=10)
+    rows = (line.split('","')[0].strip('"') for line in result.stdout.splitlines())
+    return {name.lower() for name in rows if name}
+
+
 def _install_roots() -> list[Path]:
     """Doc 1.2: Program Files (both), LOCALAPPDATA\\Programs, scoop apps, chocolatey tools."""
     env = os.environ
@@ -107,7 +114,9 @@ class WindowsOS(OS):
 
     def __init__(self, tool_overrides: Mapping[str, str | Sequence[str]] | None = None) -> None:
         flags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
-        self._process = SubprocessRunner(32767, {"creationflags": flags}, _kill_tree)
+        self._process = SubprocessRunner(
+            32767, {"creationflags": flags}, _kill_tree, _running_images
+        )
         suffixes = [".exe", ".bat", ".cmd", ""]
         self._tools = Locator(tool_overrides or {}, _install_roots(), suffixes, _wrap, "windows")
         self._fs = WindowsFs()

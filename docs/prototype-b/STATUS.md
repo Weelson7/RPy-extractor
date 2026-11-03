@@ -85,3 +85,9 @@ noise), streams, survey, sanitizer, round trip, capture policy, the journal with
   Philosophy, Legal and disclaimer). Keys come from the user or from the game's own files and are
   verified (D18); ViWo authors no code for defeating copy protection or brute-forcing keys.
 - Secrets and found keys are never logged or written to disk.
+
+## Known limits (1.2.1)
+- Round trip: packers with their own `verify` (Unity bundles, RPG Maker MV) have no `unarchive.*`
+  route back, so re-extraction checks the edited members only; the in-place save keeps the other
+  objects and the repack report says "untouched members were not re-verified" (doc 18.3). Ren'Py,
+  zip, Godot and Unreal containers are re-extracted and every untouched member's hash is checked.

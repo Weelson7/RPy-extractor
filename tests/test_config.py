@@ -78,6 +78,37 @@ class CheckTests(unittest.TestCase):
             with self.subTest(name=name, text=text):
                 self.assertTrue(self.problems(name, text))
 
+    def test_engine_distros_boot_without_spare_problems(self) -> None:
+        """Doc 8.2 / 8.4: a distro never names a spare whose plugin it switches off."""
+        from viwo.core.wiring.boot import boot
+
+        with tempfile.TemporaryDirectory() as tmp:
+            generate(Path(tmp) / "distros")
+            for name in ("windows-unreal.ini", "windows-godot.ini"):  # this host's OS layer
+                rt = boot(Path(tmp) / "distros" / name, temp_root=Path(tmp) / "t")
+                self.assertFalse([p for p in rt.problems if "unknown backend" in p], rt.problems)
+            text = (Path(tmp) / "distros" / "windows-unreal.ini").read_text()
+            self.assertIn("unarchive.upak = repak-cli\n", text)
+            self.assertIn("unarchive.upak = repak-cli, quickbms-cli", render("windows", "mixed"))
+
+    def test_suffix_clash_is_reported_and_profile_flag_selects_plugins(self) -> None:
+        from viwo.contracts.slots import SlotDefinition
+        from viwo.core.wiring.boot import boot
+        from viwo.core.wiring.conformance import suffix_clashes
+
+        a = SlotDefinition("unarchive.a", "unarchive", "p1", "x", suffixes=(".pak",))
+        b = SlotDefinition("unarchive.b", "unarchive", "p2", "y", suffixes=(".pak", ".zip"))
+        [problem] = suffix_clashes({"unarchive.a": a, "unarchive.b": b})
+        self.assertIn("unarchive.a wins", problem)
+        with tempfile.TemporaryDirectory() as tmp:
+            ini = Path(tmp) / "startup.ini"
+            ini.write_text("[plugins]\nrenpy = on\nunity = on\n")
+            rt = boot(ini, temp_root=Path(tmp) / "t", profile="godot")
+            self.assertEqual(rt.config.sources["startup.profile"], "cli")
+            self.assertTrue("godot" in rt.plugins and "unity" not in rt.plugins)
+            with self.assertRaises(ViwoError):
+                boot(ini, temp_root=Path(tmp) / "t", profile="spicy")
+
     def test_base_layering(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

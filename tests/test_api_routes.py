@@ -34,12 +34,33 @@ class RouteTests(unittest.TestCase):
         body, _ = handle_get("/api/plugins", {})
         godot = next(p for p in body["data"] if p["id"] == "godot")
         self.assertEqual(godot["options"][0]["kind"], "secret")
+        self.assertEqual(godot["capabilities"][:2], ["detect", "unpack"])  # doc 4.1 fields
+        self.assertIn("gdre", godot["dependencies"])
+        self.assertEqual((godot["error"], godot["loaded"]), ("", True))
         with tempfile.TemporaryDirectory() as tmp:
             game = make_game(Path(tmp))
             body, status = handle_post("/api/detect", {"gamePath": str(game)})
             self.assertEqual((status, body["data"]["auto"]), (200, ["generic"]))
         body, status = handle_post("/api/detect", {"gamePath": "/nope/missing"})
         self.assertEqual((status, body["error"]["code"]), (400, "invalid_request"))
+
+    def test_generic_job_submit_runs_the_kind_handler(self) -> None:
+        """Doc 12.5: POST /api/jobs {kind, params} lands on the same handler as the route."""
+        from viwo.api.handlers import POST
+        from viwo.api.handlers_jobs import KINDS
+
+        self.assertIn("/api/jobs", POST)
+        bad = POST["/api/jobs"](self.app, {"kind": "nope"})
+        self.assertEqual((bad["success"], bad["code"]), (False, "invalid_request"))
+        self.assertEqual(
+            set(KINDS),
+            {"extract", "survey", "repack", "preflight", "install", "capture", "cleanup"},
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            make_game(Path(tmp))
+            body = POST["/api/jobs"](self.app, {"kind": "survey", "params": {"folder": tmp}})
+        self.assertTrue(body.get("success"), body)
+        self.assertEqual(self.app.jobs.get(body["jobId"]).kind, "survey")
 
     def test_jobs_events_and_cancel(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

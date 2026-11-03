@@ -41,13 +41,13 @@ SanitizerRule                         (provider: core or plugin, via sanitizer_r
   owner, category health|identity|dedupe|normalize|transcode|naming|junk
   default_enabled, lossy, cost (1 header .. 10 transcode)
   dependencies() -> [DependencySpec]     # usually slots: media.probe, image.convert
-  applies_to(asset: AssetRef) -> bool    # cheap: ext/size/magic only
-  inspect(asset, ctx) -> [Finding]       # read-only, may decode
+  applies_to(path: Path) -> bool         # cheap: suffix only
+  inspect(path, ctx) -> [Finding]        # read-only, may read the head or decode
   fix(finding, ctx) -> FixOutcome        # writes ONLY into ctx.cache; default: report-only
 
 BatchRule (dedupe, numbering): inspect_all(assets, ctx) -> [Finding]
 
-AssetRef  { path, rel, ext, size, head }
+(rules receive the file's `Path` and derive ext, size and head themselves; draft 3's AssetRef record is not built)
 Finding   { rule, path, severity info|warn|error, message, action none|rename|trash, to?, size }
 Recipe    { id, name, lossy, rules[] }            (1.1: one built-in recipe, phase1-safe)
 SanitizePlan   { planId, recipeId, scanned, findings[] (page), total, offset, limit }

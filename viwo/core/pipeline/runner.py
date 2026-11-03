@@ -6,7 +6,7 @@ import json
 import shutil
 import tempfile
 import time
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from viwo import __version__
@@ -40,6 +40,7 @@ class Run:
     work: Path
     detections: dict[str, DetectionResult] = field(default_factory=dict)
     logs: list[str] = field(default_factory=list)
+    probe: FolderProbe | None = None  # the shared index (doc 2.3), built once by DETECT
 
     def emit(self, event: ProgressEvent) -> None:
         self.logs.append(event.legacy_line())
@@ -63,10 +64,12 @@ class Run:
             self.emit,
             self.cancel,
             "core" if owner == "core" else f"plugin:{owner}",
+            probe=self.probe if game is None else None,
         )
 
 
-from .checks import _verify  # noqa: E402
+from ..records import record_context  # noqa: E402
+from .checks import _verify, verified  # noqa: E402
 from .rewrap import _kinds, _rewrap  # noqa: E402  (rewrap imports the runner lazily)
 
 
@@ -119,7 +122,8 @@ def extract(
 
 def _select(run: Run) -> tuple[str, ...]:
     rt = run.rt
-    run.detections = detect_all(rt, FolderProbe(run.game))
+    run.probe = FolderProbe(run.game)
+    run.detections = detect_all(rt, run.probe)
     priorities = {pid: p.manifest.priority for pid, p in rt.plugins.items()}
     chosen = select_plugins(run.request, list(run.detections.values()), priorities)
     run.log(f"Selected plugin(s): {', '.join(chosen)}", "detect")
@@ -146,7 +150,7 @@ def _stages(run: Run, workspace: Path) -> ExtractionResult:
     touched = changes(before, snapshot(run.game))
     if touched:  # ViWo never writes there; a running game may (saves, logs)
         warnings.append(f"GAME FOLDER CHANGED during extraction: {', '.join(touched[:10])}")
-    runs = _verified(run, runs, collected.collected)
+    runs = verified(run, runs, collected.collected)
     warnings += [w[8:] for r in runs for w in r.warnings if w.startswith("verify: ")]
     result = ExtractionResult(
         True,
@@ -229,21 +233,6 @@ def _export(run: Run, plugin_id: str, game: Path | None = None) -> PluginRun:
     )
 
 
-def _verified(run: Run, runs: list[PluginRun], collected: int) -> list[PluginRun]:
-    """Plugin `verify()` warnings land on the plugin's own entry (doc 3.4 failure isolation)."""
-    out = []
-    for r in runs:
-        plugin = run.rt.plugins[r.plugin_id]
-        try:
-            found = tuple(f"verify: {w}" for w in plugin.verify(run.ctx(r.plugin_id), collected))
-            error = r.error
-        except Exception as exc:  # one plugin's verify never takes the run down
-            found = (f"verify: {type(exc).__name__}: {exc}",)
-            error = r.error or found[0]
-        out.append(replace(r, warnings=(*r.warnings, *found), error=error, verify_passed=not found))
-    return out
-
-
 def _masked_options(run: Run) -> dict[str, dict[str, str]]:
     """Plugin option values for replay; secret options are never written to disk."""
     out: dict[str, dict[str, str]] = {}
@@ -276,6 +265,7 @@ def _report(run: Run, workspace: Path, result: ExtractionResult, provenance: lis
             "options": _masked_options(run),
         },
         "bindings": {sid: [b.main, b.spare] for sid, b in sorted(run.rt.bindings.items())},
+        "context": record_context(run.rt),  # doc 12.3: effective ini, tool versions
         "result": {k: v for k, v in result.to_legacy_dict().items() if k != "logs"},
     }
     write_atomic(record_path, json.dumps(record, indent=2, sort_keys=True))
