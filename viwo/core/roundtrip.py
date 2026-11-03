@@ -107,13 +107,18 @@ def _reminders(rt, items: list[PlanItem]) -> list[str]:
     return []
 
 
-def prepare_copy(game: Path, target: Path, temp: Path, say=None) -> None:
-    """The patched copy (doc 18): a full copy of the game, marked, never a link into it."""
+def prepare_copy(game: Path, target: Path, temp: Path, say=None) -> list[str]:
+    """The patched copy (doc 18): a full copy of the game, marked, never a link into it.
+    A file the OS refuses to read (an antivirus hold, a lock) is left out and returned."""
     refuse_writes_inside(game, workspace=target, temp_folder=temp)
     ticker = Ticker(say, "Copied game files:")
+    skipped: list[str] = []
 
     def copy(src, dst):  # copies (never links), with a throttled count for the progress rail
-        shutil.copy2(src, dst)
+        try:
+            shutil.copy2(src, dst)
+        except OSError as exc:
+            skipped.append(f"{Path(src).name} ({exc.strerror or exc.errno})")
         ticker.tick()
 
     if target.exists() and any(p.name != ws.METADATA_DIR for p in target.iterdir()):
@@ -124,6 +129,7 @@ def prepare_copy(game: Path, target: Path, temp: Path, say=None) -> None:
                 shutil.rmtree(entry) if entry.is_dir() else entry.unlink()
     shutil.copytree(game, target, symlinks=True, dirs_exist_ok=True, copy_function=copy)
     (target / MARKER).mkdir(exist_ok=True)
+    return skipped
 
 
 def _ctx(rt, target: Path, work: Path, sink, cancel):
@@ -250,7 +256,12 @@ def _build(rt, game: Path, target: Path, items: list[PlanItem], report: dict, co
     work = Path(tempfile.mkdtemp(prefix="viwo-repack-", dir=rt.temp_root))
     try:
         say(ProgressEvent(f"Copying the game to {target}", "info", "core", "repack"))
-        prepare_copy(game, target, rt.temp_root, teller(say, "repack") or (lambda m: None))
+        left = prepare_copy(game, target, rt.temp_root, teller(say, "repack") or (lambda m: None))
+        if left:
+            shown = ", ".join(left[:5])
+            report["warnings"].append(
+                f"{len(left)} file(s) not copied (antivirus or lock): {shown}"
+            )
         ctx = _ctx(rt, target, work, sink, cancel)
         (work / "scratch").mkdir(parents=True, exist_ok=True)
         report["results"] = []

@@ -15,7 +15,15 @@ from unittest import mock
 
 from tests.helpers import runtime, tree_hashes
 from viwo.contracts import ViwoError
-from viwo.core.analysis import AnalysisRequest, analyze, extras_for, ghidra, open_in, targets_for
+from viwo.core.analysis import (
+    AnalysisRequest,
+    analyze,
+    extras_for,
+    ghidra,
+    handoffs_for,
+    open_in,
+    targets_for,
+)
 from viwo.os import select_os
 
 FAKE_HEADLESS = """#!{python}
@@ -256,6 +264,32 @@ for f in [Path(v) for k, v in pairs if k == "--decompile"]:
         ):
             report = analyze(rt, AnalysisRequest(game, self.ws, key))
             self.assertEqual((report["backend"], report["artifacts"]), (backend, [artifact]), key)
+
+    def test_debugger_and_memory_handoffs(self) -> None:
+        x64 = script(
+            self.root / "x64dbg" / "release" / "x64",
+            "x64dbg",
+            FAKE_GUI.format(python=sys.executable),
+        )
+        ce = script(self.root / "ce", "cheatengine-x86_64", FAKE_GUI.format(python=sys.executable))
+        ini = "[startup]\nfeatures = extraction, analysis\n[plugins]\nunity = on\n"
+        rt = runtime(
+            _folder(self.root / "d3"), ini + f"[tools]\nx64dbg = {x64}\ncheatengine = {ce}\n"
+        )
+        labels = [h["label"] for h in handoffs_for(rt, "native_binary")]
+        self.assertEqual(
+            labels, ["Continue in x64dbg", "Continue in Cheat Engine"]
+        )  # no Ghidra here
+        from viwo.os._shared import CHILDREN
+
+        for handoff in ("x64dbg-gui", "cheatengine-gui"):
+            opened = open_in(rt, AnalysisRequest(self.unity, self.ws, "g-exe"), handoff)
+            tracked = next(c for c in CHILDREN if c.pid == opened["pid"])
+            tracked.kill()
+        table = self.ws / ".analysis" / "cheatengine-gui" / "g-exe" / "G.CT"
+        self.assertIn('local name = "G.exe"', table.read_text(encoding="utf-8"))
+        with self.assertRaises(ViwoError):
+            open_in(rt, AnalysisRequest(self.unity, self.ws, "g-exe"), "ghidra-gui")
 
     def test_gui_prompts_pre_answered_other_preferences_kept(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {"APPDATA": tmp}):

@@ -23,7 +23,7 @@ EPILOG = """examples:
   viwo install --game skyrim-se        what an index entry needs (tools, scripts)
   viwo capture D:/Games/Foo --exe Foo.exe --workspace out/foo --confirm
 
-global flags: --ini PATH, --os auto|linux|windows, --json (envelope on stdout),
+global flags: --ini PATH, --os auto|linux|windows, --features a,b, --json (envelope on stdout),
 --quiet (no progress lines on stderr), --verbose (also the effective ini and bindings).
 exit codes: 0 ok | 1 failed or not found | 2 bad request or config | 3 refused (folder
 containment, unsupported OS layer) | 4 strict preflight failed | 130 cancelled (Ctrl+C).
@@ -52,6 +52,35 @@ def core_commands(command) -> None:
     up.add_argument("--slot", help="force one slot, e.g. unarchive.7z (no nested unpack)")
     up.add_argument("--backend", help="main | spare | <backend id> for that slot")
     tool_commands(command)
+
+
+def runtime_commands(command) -> None:
+    """viwo dump / viwo trace (D3): a running game's memory, or its API calls through Frida."""
+    texts = {
+        "dump": "write a memory dump of a running game (D3)",
+        "trace": "trace a running game's API calls with Frida (D3)",
+    }
+    for name, text in texts.items():
+        cmd = command(name, text)
+        cmd.add_argument("--pid", type=int, default=0, help="the process id")
+        cmd.add_argument("--name", default="", help="or its image name, e.g. ULTRAKILL.exe")
+        cmd.add_argument("--workspace", type=Path, required=True, help="where .runtime/ lands")
+        if name == "trace":
+            cmd.add_argument("--functions", default="CreateFileW", help="frida-trace -i globs")
+            cmd.add_argument("--seconds", type=float, default=10, help="how long to trace")
+
+
+def agent_commands(command) -> None:
+    """viwo agent / viwo record (D2): the engine's runtime agent in a copy, the game's sound."""
+    ag = command("agent", "run the engine's runtime agent in a patched copy (UE4SS, BepInEx)")
+    ag.add_argument("game", type=Path, help="the game folder (read-only; a copy runs)")
+    ag.add_argument("--exe", type=Path, required=True, help="the game executable")
+    ag.add_argument("--workspace", type=Path, required=True, help="where .runtime/agent/ lands")
+    ag.add_argument("--copy", type=Path, help="the patched copy to use (default: beside it)")
+    ag.add_argument("--timeout", type=float, default=600, help="seconds to wait for the agent")
+    rc = command("record", "record the game's sound (system output) to WAV")
+    rc.add_argument("--workspace", type=Path, required=True, help="where .runtime/audio/ lands")
+    rc.add_argument("--seconds", type=float, default=10, help="how long to record")
 
 
 def capture_command(command) -> None:
@@ -88,6 +117,8 @@ def tool_commands(command) -> None:
     rk.add_argument("--out", type=Path, help="target folder for the patched copy")
     rk.add_argument("--plan", action="store_true", help="only show what would be written")
     capture_command(command)
+    runtime_commands(command)
+    agent_commands(command)
     analysis_command(command)
     diff_command(command)
     patch_command(command)

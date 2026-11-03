@@ -26,6 +26,12 @@ Pinned tools (version / kind / how it runs), for the checks below:
 | unluac | 2025-12-23 | raw | `unluac.jar`, run as `java -jar` on the pinned JDK |
 | keystone | 0.9.2 | zip | `kstool.exe` (GPL-2, run as a process) for `asm` patches |
 | capstone | 5.0.9 | python | the disassembly in patch plans |
+| x64dbg | 2026.05.27 | zip | `release\x64\x64dbg.exe` and `release\x32\x32dbg.exe` (GPL-3, a process) |
+| cheatengine | 7.6 | 7z (Scoop's build) | `cheatengine-x86_64.exe`; no installer, no elevation |
+| frida-tools | 14.11.0 (+ frida 17.25.2) | python | `python -m frida_tools.tracer` |
+| ue4ss | 3.0.1 | zip | `UE4SS.dll` + `dwmapi.dll` (installed into patched copies only) |
+| bepinex | 6.0.0-be.785 | zip | `winhttp.dll` doorstop + `BepInEx\` (patched copies only) |
+| soundcard | 0.4.6 (+ numpy 2.5.4) | python | loopback recording |
 | die | 3.21 | zip | `diec.exe` (console) next to the GUI `die.exe` and the signature `db\` |
 | unitypy, py7zr, unrpa, lz4 | pinned | python | `pip --target third_party\python` |
 

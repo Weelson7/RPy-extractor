@@ -88,8 +88,8 @@ time.
 | Static | A3 (**shipped 1.4.1-1.4.5**: DIE `diec` in `analysis.protector`; FID inside the Ghidra headless pass; the version diff on mnemonic fingerprints, `viwo diff`) | `analysis.signatures`, `analysis.diff` (update resilience), `analysis.protector` | Ghidra FID, BinDiff, DIE | §4, §14, §16 |
 | Static | A4 | `analysis.emulate`, `analysis.symbolic` (isolated routines) | Unicorn/Qiling, angr | §15 |
 | Dynamic | D1 (**shipped 1.3.6**: `--auto` unattended trigger, shader disassembly, verified on ULTRAKILL) | capture pilot hardened to a real GPU; shader disasm | RenderDoc | §11 |
-| Dynamic | D2 | `runtime.<engine>` agents feeding static extraction; `capture.audio` | BepInEx, UE4SS, Frida | §5, §11 |
-| Dynamic | D3 | `debug.*`, `trace.*`, `memory.*` headless backends + handoffs | x64dbg, Frida, Cheat Engine | §6, §7, §8 |
+| Dynamic | D2 (**shipped 1.4.7**: `runtime.unreal` UE4SS, `runtime.unity` BepInEx IL2CPP, `capture.audio` loopback; UE4SS verified on Void's Cave) | `runtime.<engine>` agents feeding static extraction; `capture.audio` | BepInEx, UE4SS, Frida | §5, §11 |
+| Dynamic | D3 (**shipped 1.4.7**: x64dbg and Cheat Engine handoffs, memory dumps through the OS layer, frida-trace; verified on ULTRAKILL) | `debug.*`, `trace.*`, `memory.*` headless backends + handoffs | x64dbg, Frida, Cheat Engine | §6, §7, §8 |
 | Dynamic | D4 | `hook.inject` loader + hot-reload; `net.*` own-traffic tooling; `profile.*` | our loader, tshark, Tracy | §9, §10, §20 |
 | Authoring | T1 (**shipped 1.4.5-1.4.6**: `viwo/core/patchsets.py`, `patch_tools.py`; offset, rva and AOB addresses, asm through kstool, capstone plans, export) | `patch.bytes` + `patch.sig` (AOB), patch export (18.8) | our writer, Keystone (kstool, a process: GPL) | §9, §16 |
 | Authoring | T2 (**shipped 1.4.5-1.4.6**: `viwo/core/mods.py`; pack, check with the AOB update check, ordered and conflict-checked apply; the runtime loader side is D2's pinned loaders) | `mod.package`: loader, stable API layer, crash handler, update checker (18.9) | — (glue + SDK) | §19 |

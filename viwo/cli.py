@@ -15,6 +15,7 @@ from viwo.cli_extra import (
     event_printer,
     replay_request,
     run_plugin_command,
+    split_features,
     unpack_one,
     workspace_command,
 )
@@ -31,6 +32,10 @@ TOOL_COMMANDS = (
     "sanitize",
     "survey",
     "capture",
+    "dump",
+    "trace",
+    "agent",
+    "record",
     "analyze",
     "diff",
     "patch",
@@ -55,6 +60,10 @@ def _parser(rt=None) -> argparse.ArgumentParser:
     ap.add_argument(
         "--profile",
         help="renpy | unity | unreal | godot | custom | mixed: that distro's plugin set",
+    )
+    ap.add_argument(
+        "--features",
+        help="comma-separated [startup] features for this run (e.g. extraction,analysis)",
     )
     ap.add_argument("--json", action="store_true", help="print a JSON envelope")
     ap.add_argument("--quiet", action="store_true", help="no progress lines on stderr")
@@ -102,7 +111,7 @@ def _verbose_header(rt, args) -> None:
 
 
 def _run(args, rt=None) -> Envelope:
-    rt = rt or boot(args.ini, args.os_id, profile=args.profile)
+    rt = rt or boot(args.ini, args.os_id, profile=args.profile, features=split_features(args))
     _verbose_header(rt, args)
     plugin_command = getattr(args, "plugin_command", None)
     if plugin_command is not None:  # an add-on, possibly overriding a core command

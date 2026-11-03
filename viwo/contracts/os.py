@@ -143,3 +143,11 @@ class OS(ABC):
 
     def include_in_scan(self, paths: Sequence[Path]) -> None:
         """Undo exclude_from_scan for exactly these folders."""
+
+    def pids_of(self, image: str) -> list[int]:
+        """Process ids whose image name is `image` (case-insensitive)."""
+        return []
+
+    def dump_process(self, pid: int, out: Path) -> Path:
+        """A memory dump of a running process into the folder `out`; returns the main file."""
+        raise NotImplementedError("this OS layer cannot dump a process")

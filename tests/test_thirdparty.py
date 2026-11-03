@@ -181,7 +181,8 @@ class InstallerTests(unittest.TestCase):
     def test_manifest_pins_match_pyproject(self) -> None:
         text = (Path(__file__).resolve().parent.parent / "pyproject.toml").read_text()
         for pin in thirdparty.manifest()["python"].values():
-            self.assertIn(f'"{pin}"', text)
+            for requirement in pin.split():
+                self.assertIn(f'"{requirement}"', text)
 
     def test_manifest_is_complete_and_https(self) -> None:
         tools = thirdparty.manifest()["tools"]

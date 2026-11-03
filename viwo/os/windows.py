@@ -123,6 +123,30 @@ def _ps_list(paths) -> str:
     return ",".join("'" + str(p).replace("'", "''") + "'" for p in paths)
 
 
+def _minidump(pid: int, path: Path) -> None:
+    """MiniDumpWithFullMemory through dbghelp (part of Windows)."""
+    import ctypes
+    import msvcrt
+    from ctypes import wintypes
+
+    k32, dbghelp = ctypes.WinDLL("kernel32", use_last_error=True), ctypes.WinDLL("dbghelp")
+    k32.OpenProcess.restype = wintypes.HANDLE
+    k32.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+    write = dbghelp.MiniDumpWriteDump
+    write.argtypes = (wintypes.HANDLE, wintypes.DWORD, wintypes.HANDLE, wintypes.DWORD) + (
+        ctypes.c_void_p,
+    ) * 3
+    handle = k32.OpenProcess(0x0410, False, pid)  # QUERY_INFORMATION | VM_READ
+    if not handle:
+        raise OSError(ctypes.get_last_error(), f"cannot open process {pid}")
+    try:
+        with open(path, "wb") as fh:
+            if not write(handle, pid, msvcrt.get_osfhandle(fh.fileno()), 0x2, None, None, None):
+                raise OSError(ctypes.get_last_error(), f"MiniDumpWriteDump failed for {pid}")
+    finally:
+        k32.CloseHandle(handle)
+
+
 class WindowsOS(OS):
     os_id = "windows"
     display_name = "Windows"
@@ -164,6 +188,17 @@ class WindowsOS(OS):
     @property
     def fs(self) -> WindowsFs:
         return self._fs
+
+    def pids_of(self, image: str) -> list[int]:
+        result = self._process.run(["tasklist", "/FO", "CSV", "/NH"], timeout=10)
+        rows = [line.strip('"').split('","') for line in result.stdout.splitlines() if line]
+        return [int(r[1]) for r in rows if len(r) > 1 and r[0].lower() == image.lower()]
+
+    def dump_process(self, pid: int, out: Path) -> Path:
+        out.mkdir(parents=True, exist_ok=True)
+        path = out / f"{pid}.dmp"
+        _minidump(pid, path)
+        return path
 
     def exclude_from_scan(self, paths) -> tuple[list[Path], str]:
         """Windows Defender: only an elevated process may read or change its exclusions, so a

@@ -178,7 +178,7 @@ def apply(rt, game: Path, set_path: Path, target: Path, say=None) -> dict:
         say(ProgressEvent(f"Copying the game to {target}", "info", "core", "patch"))
         rt.temp_root.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(dir=rt.temp_root) as tmp:
-            prepare_copy(game, target, Path(tmp))
+            report["notCopied"] = prepare_copy(game, target, Path(tmp))
     for patch, result in zip(patch_set["patches"], report["results"]):
         if result["status"] == "ready":
             result["written"] = write(target, patch, result)

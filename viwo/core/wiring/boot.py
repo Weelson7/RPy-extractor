@@ -98,10 +98,13 @@ def boot(
     os_id: str | None = None,
     temp_root: Path | None = None,
     profile: str | None = None,
+    features: tuple[str, ...] | None = None,
 ) -> Runtime:
     config = load_ini(ini_path if ini_path is not None else DEFAULT_INI)
     if profile:
         _apply_profile(config, profile)
+    if features is not None:  # `--features` (doc 9.1 value source cli) over [startup] features
+        config.features, config.sources["startup.features"] = tuple(features), "cli"
     home = thirdparty.home_of(config)
     thirdparty.activate(home)  # pinned Python packages installed under third_party/python
     tools = {**thirdparty.found_tools(home), **config.tools}  # the ini wins over third_party/

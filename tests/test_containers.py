@@ -40,7 +40,7 @@ def pack(files: dict[str, bytes], magic: bytes = b"PFH4", stamps: bool = False) 
     for name, blob in files.items():
         index += struct.pack("<I", len(blob)) + (struct.pack("<I", 7) if stamps else b"")
         index += name.replace("/", "\\").encode() + b"\0"
-    kind = 2 | (0x10 if stamps else 0)
+    kind = 2 | (0x40 if stamps else 0)
     head = magic + struct.pack("<6I", kind, 0, 0, len(files), len(index), 1533548507)
     return head + index + b"".join(files.values())
 

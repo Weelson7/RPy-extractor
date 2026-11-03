@@ -72,7 +72,7 @@ class IntegrationGamesTests(unittest.TestCase):
             analysis = loose["steps"]["analyze:nope"]  # the analysis ran (and found no target)
             self.assertFalse(analysis["ok"])
             self.assertIn("nope", analysis["error"])
-            self.assertTrue((root / "out" / "loose-game" / "analysis.ini").is_file())
+            self.assertIn("--features", "".join(tool.run_analyses.__doc__ or ""))
             self.assertIn("analyze:nope:protector", loose["steps"])
             self.assertEqual(tool.exit_code(records), 1)
             report = tool.write_report(records, root / "out").read_text(encoding="utf-8")

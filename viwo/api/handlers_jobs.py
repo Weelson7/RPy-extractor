@@ -7,7 +7,7 @@ from typing import Any, Callable
 
 from .app import App
 from .handlers_analysis import run_analysis
-from .handlers_capture import run_capture
+from .handlers_capture import run_capture, runtime_job
 from .handlers_tools import (
     apply_patch_set,
     install_dependency,
@@ -27,6 +27,10 @@ KINDS: dict[str, Callable[[App, dict], dict]] = {
     "preflight": run_preflight,
     "install": install_dependency,
     "capture": run_capture,
+    "dump": lambda app, p: runtime_job(app, p, "dump"),
+    "trace": lambda app, p: runtime_job(app, p, "trace"),
+    "agent": lambda app, p: runtime_job(app, p, "agent"),
+    "record": lambda app, p: runtime_job(app, p, "record"),
     "analyze": run_analysis,
     "cleanup": lambda app, params: sanitize_handler(str(params.get("op") or "plan"))(app, params),
 }

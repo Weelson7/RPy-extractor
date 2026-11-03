@@ -13,6 +13,7 @@ from viwo.contracts.plugin import (
 from viwo.contracts.slots import SlotDefinition
 from viwo.contracts.types import DetectionResult
 
+from .agent import BepInExAgent
 from .exporters import AssetStudioModCli, UnityPyExporter
 from .pack import UnityPyPacker
 
@@ -91,10 +92,10 @@ class UnityPlugin(EnginePlugin):
         return out
 
     def slot_definitions(self):
-        return SLOTS
+        return (*SLOTS, SlotDefinition("runtime.unity", "runtime", "unity", "bepinex-agent"))
 
     def backends(self):
-        return (UnityPyExporter(), AssetStudioModCli(), UnityPyPacker())
+        return (UnityPyExporter(), AssetStudioModCli(), UnityPyPacker(), BepInExAgent())
 
     def pack_slot(self, unarchive_slot: str) -> str:
         return "pack.unity" if unarchive_slot == "exported" else ""

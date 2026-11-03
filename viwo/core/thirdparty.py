@@ -23,6 +23,7 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
+from viwo import __version__
 from viwo.contracts.errors import ViwoError
 from viwo.contracts.workspace import inside, safe_member
 from viwo.os import host_os_id
@@ -164,7 +165,9 @@ def _download(url: str, target: Path, size: int, say, cancel) -> str:
 def _fetch_once(url: str, target: Path, size: int, say, cancel) -> tuple[str, int]:
     digest, ticker = hashlib.sha256(), Ticker(say, f"Downloading {target.name}, KB:", size // 1024)
     got = 0
-    with urllib.request.urlopen(url, timeout=60) as response, open(target, "wb") as out:
+    request = urllib.request.Request(url, headers={"User-Agent": f"ViWo/{__version__}"})  # some
+    # build servers refuse Python's default agent (builds.bepinex.dev answers 403)
+    with urllib.request.urlopen(request, timeout=60) as response, open(target, "wb") as out:
         while chunk := response.read(1 << 20):
             if cancel is not None and cancel.cancelled:
                 raise ViwoError("cancelled", "download cancelled")
@@ -290,7 +293,7 @@ def install_python(dep_id: str, home: Path, runner) -> str:
         "--disable-pip-version-check",
         "--target",
         str(target),
-        pin,
+        *pin.split(),  # a pin may name several exact requirements
     ]
     result = runner.run(argv, timeout=1800)
     if not result.ok:

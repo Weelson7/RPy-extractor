@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import signal
 import subprocess
@@ -73,6 +74,39 @@ def _install_roots() -> list[Path]:
     ]
 
 
+def _proc_dump(pid: int, out: Path) -> Path:
+    """Every readable mapping of /proc/<pid>/mem, back to back, with regions.json saying where
+    each one starts in the dump (ptrace rules apply: same user, or a permissive ptrace_scope)."""
+    regions, dump = [], out / f"{pid}.mem"
+    with (
+        open(f"/proc/{pid}/maps", encoding="utf-8") as maps,
+        open(f"/proc/{pid}/mem", "rb") as mem,
+        open(dump, "wb") as fh,
+    ):
+        for line in maps:
+            parts = line.split()
+            start, end = (int(x, 16) for x in parts[0].split("-"))
+            if "r" not in parts[1]:
+                continue
+            try:
+                mem.seek(start)
+                data = mem.read(end - start)
+            except OSError:
+                continue
+            regions.append(
+                {
+                    "start": hex(start),
+                    "end": hex(end),
+                    "perms": parts[1],
+                    "path": parts[5] if len(parts) > 5 else "",
+                    "at": fh.tell(),
+                }
+            )
+            fh.write(data)
+    (out / "regions.json").write_text(json.dumps(regions, indent=1), encoding="utf-8")
+    return dump
+
+
 class LinuxOS(OS):
     os_id = "linux"
     display_name = "Linux"
@@ -118,6 +152,23 @@ class LinuxOS(OS):
 
     def data_home(self) -> Path:
         return Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share")
+
+    def pids_of(self, image: str) -> list[int]:
+        found = []
+        for comm in Path("/proc").glob("[0-9]*/comm"):
+            try:
+                if (
+                    comm.read_text(encoding="utf-8", errors="replace").strip().lower()
+                    == image.lower()[:15]
+                ):
+                    found.append(int(comm.parent.name))
+            except OSError:
+                continue
+        return found
+
+    def dump_process(self, pid: int, out: Path) -> Path:
+        out.mkdir(parents=True, exist_ok=True)
+        return _proc_dump(pid, out)
 
     @property
     def shell(self) -> LinuxShell:

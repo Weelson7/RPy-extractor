@@ -5,7 +5,9 @@
   "py7zr": "py7zr==1.1.4",
   "unrpa": "unrpa==2.3.0",
   "lz4": "lz4==4.4.5",
-  "capstone": "capstone==5.0.9"
+  "capstone": "capstone==5.0.9",
+  "frida-tools": "frida-tools==14.11.0 frida==17.25.2",
+  "soundcard": "soundcard==0.4.6 numpy==2.5.4"
  },
  "tools": {
   "repak": {
@@ -487,6 +489,57 @@
     "size": 8097572,
     "kind": "zip",
     "find": "kstool.exe"
+   }
+  },
+  "x64dbg": {
+   "version": "2026.05.27",
+   "license": "GPL-3.0",
+   "_note": "x64dbg snapshot (x64dbg.exe and x32dbg.exe) for the Continue in x64dbg handoff; GPL, always a separate process; Windows only",
+   "windows": {
+    "url": "https://github.com/x64dbg/x64dbg/releases/download/2026.05.27/snapshot_2026-05-27_12-11.zip",
+    "sha256": "d41966dfc5b435a372798245300ca0ab7bb8e48bdbf48512c6fb20fcca427697",
+    "size": 31526833,
+    "kind": "zip",
+    "find": "x64dbg.exe"
+   }
+  },
+  "cheatengine": {
+   "version": "7.6",
+   "license": "Cheat Engine license (source available, freeware)",
+   "_note": "Scoop's unpacked build of Dark Byte's release (ScoopInstaller/Binary, sha256 as in Scoop's extras manifest): 7-Zip unpacks it into third_party/ with no installer, no elevation and no registry entry. The vendor installer (7.7) cannot be unpacked (its Inno Setup data defeats innoextract and innounp) and needs administrator rights, so it is not used.",
+   "windows": {
+    "url": "https://raw.githubusercontent.com/ScoopInstaller/Binary/master/cheat-engine/CheatEngine76.7z",
+    "sha256": "87d58e73fac883aea6c3a09e7497acbf1c6ebdd12a8a76152f0438e9f9927559",
+    "size": 23828242,
+    "kind": "sfx",
+    "find": "cheatengine-x86_64.exe",
+    "needs": [
+     "sevenzip"
+    ]
+   }
+  },
+  "ue4ss": {
+   "version": "3.0.1",
+   "license": "MIT",
+   "_note": "UE4SS, the Unreal runtime agent (rung D2): installed by ViWo into a patched copy's Binaries/Win64, never into the game; supports UE 4.12-5.3; Windows only",
+   "windows": {
+    "url": "https://github.com/UE4SS-RE/RE-UE4SS/releases/download/v3.0.1/UE4SS_v3.0.1.zip",
+    "sha256": "4b47d4bceddd2f561a4e395bfa00924ccfc945af576a2d0c613e6537846c57ec",
+    "size": 5523402,
+    "kind": "zip",
+    "find": "UE4SS.dll"
+   }
+  },
+  "bepinex": {
+   "version": "6.0.0-be.785",
+   "license": "LGPL-2.1",
+   "_note": "BepInEx 6 bleeding edge for Unity IL2CPP (rung D2), from the BepInEx build server (the same sha256 as the copy shipped with a game in the owner's library); installed into a patched copy only; loaded by the game, never by ViWo",
+   "windows": {
+    "url": "https://builds.bepinex.dev/projects/bepinex_be/785/BepInEx-Unity.IL2CPP-win-x64-6.0.0-be.785%2B6abdba4.zip",
+    "sha256": "2a7cbf74d26abe4765c3e662db1721b923bac39849ebfef2ca5dc7de7e2d9b7f",
+    "size": 34335572,
+    "kind": "zip",
+    "find": "winhttp.dll"
    }
   }
  }

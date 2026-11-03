@@ -11,6 +11,7 @@ from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest, Plugi
 from viwo.contracts.slots import SlotDefinition
 from viwo.contracts.types import DetectionResult
 
+from .agent import Ue4ssAgent
 from .pak import (
     PAK_MAGIC,
     UTOC_MAGIC,
@@ -84,10 +85,14 @@ class UnrealPlugin(EnginePlugin):
         return (AnalysisTarget("shipping-exe", "native_binary", paths, "unreal", exes[0].name),)
 
     def slot_definitions(self):
-        return (*SLOTS, PACK_SLOT)
+        return (
+            *SLOTS,
+            PACK_SLOT,
+            SlotDefinition("runtime.unreal", "runtime", "unreal", "ue4ss-agent"),
+        )
 
     def backends(self):
-        return (RepakCli(), RetocLegacy(), RetocUnpack(), RepakPatch())
+        return (RepakCli(), RetocLegacy(), RetocUnpack(), RepakPatch(), Ue4ssAgent())
 
     def pack_slot(self, unarchive_slot: str) -> str:
         return "pack.upak" if unarchive_slot == "unarchive.upak" else ""

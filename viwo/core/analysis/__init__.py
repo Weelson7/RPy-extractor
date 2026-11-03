@@ -23,6 +23,7 @@ from ..records import record_context
 from ..scan_exclusions import excluded
 from ..workspace import write_atomic
 from .ghidra import GhidraGui, GhidraHeadless
+from .handoffs import CheatEngineGui, X64dbgGui
 from .identify import DetectItEasy
 from .managed import Cpp2Il, IlSpy, Unluac
 
@@ -43,11 +44,22 @@ SLOTS = (
     SlotDefinition("analysis.il2cpp", "analysis", "core", "cpp2il"),
     SlotDefinition("analysis.script", "analysis", "core", "unluac"),
     SlotDefinition("analysis.protector", "analysis", "core", "die"),
+    SlotDefinition("handoff.debug", "handoff", "core", "x64dbg-gui"),
+    SlotDefinition("handoff.memory", "handoff", "core", "cheatengine-gui"),
 )
 
 
 def backends() -> list:
-    return [GhidraHeadless(), GhidraGui(), IlSpy(), Cpp2Il(), Unluac(), DetectItEasy()]
+    return [
+        GhidraHeadless(),
+        GhidraGui(),
+        IlSpy(),
+        Cpp2Il(),
+        Unluac(),
+        DetectItEasy(),
+        X64dbgGui(),
+        CheatEngineGui(),
+    ]
 
 
 @dataclass
@@ -189,12 +201,18 @@ def analyze(rt, req: AnalysisRequest, sink=None, cancel: CancelToken | None = No
 
 
 def handoffs_for(rt, kind: str) -> list[dict]:
-    """The handoffs that accept this target kind and are bound (doc 8.3a)."""
-    binding = rt.bindings.get(slot_for(kind).replace("analysis.", "handoff."))
-    if binding is None or not binding.bound:
-        return []
-    backend = rt.backends[binding.main]
-    return [{"id": backend.backend_id, "label": backend.label}]
+    """Every bound handoff that accepts this target kind (doc 8.3a), the kind's own first
+    (Ghidra for a native binary), then the others (x64dbg, Cheat Engine)."""
+    own = slot_for(kind).replace("analysis.", "handoff.")
+    found = []
+    for slot_id in sorted(rt.bindings, key=lambda s: (s != own, s)):
+        binding = rt.bindings[slot_id]
+        if not slot_id.startswith("handoff.") or not binding.bound:
+            continue
+        backend = rt.backends[binding.main]
+        if kind in getattr(backend, "accepts", ()):
+            found.append({"id": backend.backend_id, "label": backend.label, "slot": slot_id})
+    return found
 
 
 LAUNCHED: dict[int, object] = {}  # pid -> Child, for callers that wait on the tool
@@ -215,13 +233,18 @@ def open_in(rt, req: AnalysisRequest, handoff_id: str = "") -> dict:
     """Prepare the target and start the GUI tool as a tracked child; returns the pid."""
     _check_enabled(rt)
     target, slot = _pick(rt, req)
-    binding = rt.bindings.get(slot.replace("analysis.", "handoff."))
-    if binding is None or not binding.bound:
-        raise ViwoError("unavailable", f"no handoff for {target.kind} targets")
-    backend = rt.backends[handoff_id or binding.main]
-    out = output_dir(req.workspace, rt.bindings[slot].main, target.key)  # the analyzer's project
+    offered = {h["id"]: h for h in handoffs_for(rt, target.kind)}
+    choice = handoff_id or next(iter(offered), "")
+    if choice not in offered:
+        raise ViwoError(
+            "unavailable",
+            f"no handoff {handoff_id or ''} for {target.kind} targets".replace("  ", " "),
+        )
+    backend = rt.backends[choice]
+    own = offered[choice]["slot"] == slot.replace("analysis.", "handoff.")
     ctx = core_context(rt, "handoff", req.game, rt.temp_root)
-    ctx.staging = out
+    # the kind's own handoff opens the analyzer's project; the others get a folder of their own
+    ctx.staging = output_dir(req.workspace, rt.bindings[slot].main if own else choice, target.key)
     spec = backend.prepare(target, ctx)
     if isinstance(spec, Outcome):
         raise ViwoError(spec.kind.value if spec.kind.value != "ok" else "failed", spec.error)

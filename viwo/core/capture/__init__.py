@@ -25,15 +25,21 @@ from ..records import record_context
 from ..scan_exclusions import excluded
 from ..steps import teller
 from ..workspace import claim, write_atomic
+from .audio import LoopbackRecorder
 from .journal import pending
 from .policy import DEFAULT_AUTO, check, warnings_for
 from .renderdoc import RENDERDOCCMD, RenderDocCapture
+from .runtime import FridaTrace
 
-SLOTS = (SlotDefinition("capture.gpu", "capture", "core", "renderdoc"),)
+SLOTS = (
+    SlotDefinition("capture.gpu", "capture", "core", "renderdoc"),
+    SlotDefinition("trace.api", "trace", "core", "frida-trace"),
+    SlotDefinition("capture.audio", "capture", "core", "soundcard-loopback"),
+)
 
 
 def backends() -> list:
-    return [RenderDocCapture()]
+    return [FridaTrace(), LoopbackRecorder(), RenderDocCapture()]
 
 
 def _known_hashes(workspace: Path) -> set[str]:

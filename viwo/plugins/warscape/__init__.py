@@ -2,7 +2,8 @@
 
 Header: magic PFH4/PFH5/PFH6, pack type, dependency count and index size, file count and
 index size, timestamp. Index entries: u32 size (+ u32 timestamp when the type carries the
-0x10 bit), zero-terminated path; the file data follows the index in entry order, uncompressed.
+0x40 bit, as boot.pack does), zero-terminated path; the file data follows the index in entry
+order, uncompressed. An encrypted index (0x80) is reported, not guessed.
 """
 
 from __future__ import annotations
@@ -17,7 +18,7 @@ from viwo.contracts.workspace import count_files, safe_member
 
 MAGICS = (b"PFH4", b"PFH5", b"PFH6")
 HEADER = 28
-TIMESTAMPS = 0x10
+TIMESTAMPS, ENCRYPTED_INDEX = 0x40, 0x80  # pack type bits (RPFM's names)
 LIMIT = 1 << 31
 MANIFEST = PluginManifest(
     "warscape", "Warscape (Total War)", "0.1.0", engine_type="warscape", priority=10
@@ -31,6 +32,8 @@ def entries(fh):
     if head[:4] not in MAGICS:
         raise ValueError("not a PFH pack")
     kind, deps, deps_size, count, index_size, _stamp = struct.unpack_from("<6I", head, 4)
+    if kind & ENCRYPTED_INDEX:
+        raise ValueError("encrypted index")
     if count > 1 << 22 or index_size > 1 << 28:
         raise ValueError("index out of range")
     fh.seek(HEADER + deps_size)

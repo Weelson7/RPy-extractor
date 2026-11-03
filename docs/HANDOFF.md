@@ -294,6 +294,56 @@ so `progress.js` stops parsing message text, let `list_window` return the type c
   later declares `after`. The in-game half of 18.9 (loader, hook API, overlay, crash handler) is
   what the pinned runtime loaders do (BepInEx, UE4SS: rung D2), not ViWo code.
 
+## 1.4.7 (rung D3, Cheat Engine, first-run rule, 2026-11-03)
+- Owner's critical rule (2026-11-03): whatever a tool needs on first run or after a config
+  change happens by itself, off screen: no dialogs, no wizards, no UAC. Applied: x64dbg's
+  release notes (`[Gui] ReleaseNotesEpoch` in its ini), Cheat Engine's CEShare setup
+  (`autorun/ceshare/server.txt`) and its table-Lua question (`LuaScriptAction = 0`), each set
+  before launch and only when the user has not chosen already.
+- Cheat Engine is pinned as Scoop's unpacked 7.6 build (`ScoopInstaller/Binary`, sha256 as in
+  Scoop's manifest), unpacked by the pinned 7-Zip: no installer, no elevation. The vendor 7.7
+  installer was tried first: its Inno Setup data defeats innoextract 1.9 and innounp 2.71, and it
+  needs administrator rights (one UAC prompt, which the owner rejected); that route is removed.
+- D3 handoffs (`viwo/core/analysis/handoffs.py`): `handoff.debug` = x64dbg (pinned snapshot,
+  GPL-3, a separate process; x32dbg for 32-bit PEs), `handoff.memory` = Cheat Engine with a
+  ViWo table that attaches to the game when it runs. A kind now offers every bound handoff that
+  accepts it (Ghidra first for native binaries). Real: x64dbg opened ULTRAKILL at the system
+  breakpoint; Cheat Engine attached to the running game (its pid matched).
+- D3 headless (`viwo/core/capture/runtime.py`, `viwo dump`, `viwo trace`, `/api/runtime/*`, job
+  kinds `dump` and `trace`): a memory dump through the OS layer (Windows `MiniDumpWriteDump`,
+  Linux the readable `/proc/<pid>/mem` mappings with `regions.json`) and an API trace through
+  frida-trace (pins `frida-tools==14.11.0 frida==17.25.2`, core slot `trace.api`), behind the
+  `capture` switch. Real: a 635 MB dump of ULTRAKILL; 28,250 calls traced in 10 s.
+- Global `--features a,b` (doc 9.1 value source cli); the early boot that lets plugin commands
+  join the parser now also honours `--profile` and `--features` (it ignored `--profile`). The
+  integration runner turns analysis on with it instead of a throwaway ini.
+- The CLI's arm handlers live in `viwo/cli_patch.py` (patch, mod) and `viwo/cli_dynamic.py`
+  (capture, dump, trace, agent, record).
+- Rung D2: runtime agents (`viwo/contracts/runtime.py` `RuntimeAgent`; `viwo agent GAME --exe
+  EXE --workspace W`, `/api/runtime/agent`, job kind `agent`). The engine's plugin owns its
+  agent: `runtime.unreal` = UE4SS 3.0.1 (`viwo/plugins/unreal/agent.py`: GUI console and the
+  bundled mods off, a ViWo Lua mod writes `Mappings.usmap` and the UObject dump, then a done
+  file), `runtime.unity` = BepInEx 6 be.785 for IL2CPP (`viwo/plugins/unity/agent.py`: console
+  off; interop assemblies and the log). Core (`viwo/core/capture/agents.py`) makes or reuses a
+  patched copy, installs the agent there, starts the copy windowed as a tracked child, stops it
+  once the agent is finished, and collects the outputs into `.runtime/agent/<agent>/`; the game
+  folder is only read. `capture.audio` = system loopback through soundcard (`viwo record`).
+- Real: UE4SS on a copy of Void's Cave (UE 5.3) wrote a 1.3 MB `Mappings.usmap` and a 12 MB
+  object dump in about 25 s; the loopback recorded a system sound (peak 0.48). BepInEx is
+  covered by tests only on this machine: the library's two IL2CPP titles are online-fix builds
+  whose loader DLLs Windows Defender holds (`Custom.dll`, `winmm.dll`, `OnlineFix64.dll`), so their
+  copies do not start their loaders; the copy step now leaves such files out and reports them
+  (`notCopied`, repack warnings) instead of failing.
+- Downloads send `User-Agent: ViWo/<version>` (BepInEx's build server answers 403 to Python's
+  default agent).
+- Games pass fixes: a VPK whose data part is absent (a subset) skips that part's entries
+  instead of failing on close (TF2); the PFH timestamp bit is 0x40, not 0x10 (Rome II
+  `boot.pack` now parses; an encrypted index is reported); the integration runner prints its
+  report as UTF-8 with replacement; Rome II's DB-table flag looks in `noext/`.
+- Leftover on the owner's machine from the rejected installer route (needs one elevated
+  command to remove, see the morning notes): the `Cheat Engine 7.7` uninstall entry, the `.CT`
+  file association and `third_party/.cheatengine-7.7-installer-leftover`.
+
 ## Morning deliverable (owner, 2026-11-04)
 A PDF presentation of the project status, the sqc suite and the CTF flags (`sqc/ctf.json`,
 `sqc/17-ctf.md`: five basic objectives per game plus one per GB), with no known limitation or

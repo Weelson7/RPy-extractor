@@ -166,14 +166,13 @@ def check_flags(record: dict, ws: Path | None, flags: list[dict]) -> None:
 
 def run_analyses(record: dict, game: Path, ws: Path | None, flags, runner: Runner, out: Path):
     """One `viwo analyze` per distinct `analyze` (+ `slot`) named by the flags, with the
-    analysis feature on through a throwaway ini; the flags then glob `.analysis/...`."""
+    analysis feature on for that run (`--features`); the flags then glob `.analysis/...`."""
     wanted = sorted({(f["analyze"], f.get("slot", "")) for f in flags if "analyze" in f})
     if not wanted or ws is None:
         return
-    ini = out / "analysis.ini"
-    ini.write_text("[startup]\nfeatures = extraction, analysis\n", encoding="utf-8")
     for key, slot in wanted:
-        args = ["--ini", str(ini), "analyze", str(game), "--workspace", str(ws), "--target", key]
+        args = ["--features", "extraction,analysis", "analyze", str(game), "--workspace", str(ws)]
+        args += ["--target", key]
         name = f"analyze:{key}" + (f":{slot.rsplit('.', 1)[-1]}" if slot else "")
         step(record, name, args + (["--slot", slot] if slot else []), runner)
 
@@ -274,6 +273,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--skip-extract", action="store_true", help="detect and survey only")
     ap.add_argument("--only", default="", help="comma-separated slugs (default: every folder)")
     args = ap.parse_args(argv)
+    if hasattr(sys.stdout, "reconfigure"):  # game names may hold any character
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
     folders = game_folders(args.games)
     flags = load_flags()
     if args.only:

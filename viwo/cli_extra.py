@@ -24,6 +24,9 @@ from viwo.core.pipeline.unpack import unpack_all
 from viwo.core.wiring.boot import boot
 from viwo.core.wiring.registry import cli_commands
 
+from .cli_dynamic import capture, runtime
+from .cli_patch import mod, patch
+
 
 def replay_request(
     record_path: Path, workspace: Path, on_existing: OnExisting, secrets: dict[str, dict[str, str]]
@@ -103,18 +106,6 @@ def unpack_one(rt, archive: Path, out: Path, options: dict, sink) -> dict:
     }
 
 
-def patch_command(rt, args) -> Envelope:
-    from .cli_patch import patch
-
-    return patch(rt, args, event_printer(args))
-
-
-def mod_command(rt, args) -> Envelope:
-    from .cli_patch import mod
-
-    return mod(rt, args)
-
-
 def _repack(rt, args) -> Envelope:
     from viwo.core.roundtrip import repack
 
@@ -167,11 +158,15 @@ def workspace_command(rt, args) -> Envelope:
         "repack": _repack,
         "sanitize": _sanitize,
         "survey": _survey,
-        "capture": _capture,
+        "capture": capture,
+        "dump": runtime,
+        "trace": runtime,
+        "agent": runtime,
+        "record": runtime,
         "analyze": _analyze,
         "diff": _diff,
-        "patch": patch_command,
-        "mod": mod_command,
+        "patch": lambda r, a: patch(r, a, event_printer(a)),
+        "mod": mod,
         "config": lambda _rt, a: _config(a),
         "install": _install,
         "diag": _system,
@@ -187,20 +182,6 @@ def event_printer(args):
     if args.json or getattr(args, "quiet", False):
         return None
     return lambda e: print(e.legacy_line(), file=sys.stderr)
-
-
-def _capture(rt, args) -> Envelope:
-    """viwo capture: the warnings are printed before anything launches (never refusals)."""
-    from viwo.core.capture import CaptureRequest, capture, warnings
-
-    note = event_printer(args)
-    if not args.game.is_dir():
-        raise ViwoError("not_found", f"game folder not found: {args.game}")
-    if note:
-        for warning in warnings(rt, args.game):
-            print(f"[CAPTURE:WARN] {warning}", file=sys.stderr)
-    req = CaptureRequest(args.game, args.exe, args.workspace, args.confirm, args.auto)
-    return Envelope.success(capture(rt, req, note))
 
 
 def _system(rt, args) -> Envelope:
@@ -280,15 +261,24 @@ def _config(args) -> Envelope:
     return Envelope.success({"checked": sorted(problems), "problems": problems})
 
 
+def split_features(args) -> tuple[str, ...] | None:
+    """`--features a,b` as a tuple (None when the flag is absent: the ini decides)."""
+    text = getattr(args, "features", None)
+    return tuple(f.strip() for f in text.split(",") if f.strip()) if text else None
+
+
 def boot_for_cli(argv: list[str]):
-    """Boot early so plugin add-on commands can join the parser (`--ini`/`--os` are read first).
+    """Boot early so plugin add-on commands can join the parser (the global overrides
+    `--ini`, `--os`, `--profile` and `--features` are read first).
     A bad configuration returns None here; the command itself reports it."""
     pre = argparse.ArgumentParser(add_help=False)
     pre.add_argument("--ini", type=Path)
     pre.add_argument("--os", dest="os_id")
+    pre.add_argument("--profile")
+    pre.add_argument("--features")
     known, _ = pre.parse_known_args(argv)
     try:
-        return boot(known.ini, known.os_id)
+        return boot(known.ini, known.os_id, profile=known.profile, features=split_features(known))
     except Exception:  # noqa: BLE001 (reported by the real boot in _run)
         return None
 

@@ -550,8 +550,8 @@
     "min": 1
    },
    {
-    "name": "database tables out of data.pack",
-    "glob": "**/db/**/*",
+    "name": "database tables out of data.pack (extensionless: noext/)",
+    "glob": "noext/*",
     "min": 50
    },
    {

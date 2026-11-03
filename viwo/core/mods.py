@@ -223,7 +223,7 @@ def apply(rt, game: Path, mods: list[Path], copy: Path) -> dict:
     if not (copy / MARKER).is_dir():
         rt.temp_root.mkdir(parents=True, exist_ok=True)
         with tempfile.TemporaryDirectory(dir=rt.temp_root) as tmp:
-            prepare_copy(game, copy, Path(tmp))
+            prepare_copy(game, copy, Path(tmp))  # held files: reported by check() as missing
     reports = [_apply_one(game, mod, copy) for mod in mods]
     return {
         "copy": str(copy),

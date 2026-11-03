@@ -56,6 +56,10 @@ class RouteTests(unittest.TestCase):
             set(KINDS),
             {
                 "patch",
+                "dump",
+                "agent",
+                "record",
+                "trace",
                 "mod",
                 "extract",
                 "survey",

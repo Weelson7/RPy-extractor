@@ -78,20 +78,25 @@ class VpkBuiltin(Unarchiver):
         except (OSError, ValueError, struct.error) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"bad VPK: {exc}")
         finally:
-            for handle in handles.values():
-                handle.close()
+            _close(handles)
         return Outcome(OutcomeKind.OK, written)
 
 
 def _part(handles: dict, archive: Path, stem: str, index: int):
     """Open data part files lazily, keeping only one open at a time."""
     if index not in handles:
-        for handle in handles.values():
-            handle.close()
-        handles.clear()
+        _close(handles)
         part = archive.with_name(f"{stem}_{index:03d}.vpk")
         handles[index] = open(part, "rb") if part.is_file() else None
     return handles[index]
+
+
+def _close(handles: dict) -> None:
+    """Close the open part (a missing part file is kept as None, its entries skipped)."""
+    for handle in handles.values():
+        if handle is not None:
+            handle.close()
+    handles.clear()
 
 
 SLOT = SlotDefinition("unarchive.vpk", "unarchive", "source", "vpk-builtin", identify=identify_vpk)

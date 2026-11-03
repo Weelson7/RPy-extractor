@@ -194,6 +194,11 @@ class FormatPipelineTests(unittest.TestCase):
                 (PNG, b"RIFFwav"),
             )
             self.assertFalse((ws / "vpk").exists())  # parts are not copied raw
+            vdir, _ = vpk({"materials/a.png": (PNG, 0), "sound/gone.wav": (b"RIFFwav", 1)})
+            result, ws = self.run_game(root, "source-subset", {"tf/pak01_dir.vpk": vdir})
+            self.assertEqual(  # a missing part file skips its entries, the rest extracts
+                ((ws / "png" / "a.png").read_bytes(), (ws / "wav").exists()), (PNG, False)
+            )
             entries = [
                 ("bg/sky.png", PNG, False),
                 ("scenario/first.ks", b"*start", False),
