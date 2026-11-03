@@ -86,6 +86,9 @@ def spec_of(dep_id: str) -> dict | None:
     return manifest()["tools"].get(dep_id, {}).get(PLATFORM)
 
 
+RUNTIMES = {"{dotnet}": "dotnet", "{java}": "jdk"}
+
+
 def tool_argv(dep_id: str, home: Path, spec: dict | None = None) -> Argv | None:
     """How to run an installed entry (None when it is not installed)."""
     spec = spec or spec_of(dep_id)
@@ -98,13 +101,14 @@ def tool_argv(dep_id: str, home: Path, spec: dict | None = None) -> Argv | None:
     for part in spec.get("argv") or ["{path}"]:
         if part == "{python}":  # pure-Python tools run by ViWo's own interpreter
             part = sys.executable
-        if part == "{dotnet}":
-            dotnet = _hit(
-                home / "third_party" / "dotnet", manifest()["tools"]["dotnet"][PLATFORM]["find"]
+        if part in RUNTIMES:  # a pinned runtime runs the tool ({dotnet} + dll, {java} -jar)
+            runtime_id = RUNTIMES[part]
+            found = _hit(
+                home / "third_party" / runtime_id, manifest()["tools"][runtime_id][PLATFORM]["find"]
             )
-            if dotnet is None:
+            if found is None:
                 return None
-            part = str(dotnet)
+            part = str(found)
         argv.append(part.replace("{path}", str(hit)))
     return tuple(argv)
 

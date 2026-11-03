@@ -82,8 +82,9 @@ class UnityPlugin(EnginePlugin):
         out = []
         assembly = probe.find("GameAssembly.dll", limit=1)
         meta = probe.find("global-metadata.dat", limit=1)
-        if assembly and meta:
-            paths = (assembly[0], meta[0])
+        exes = [p for p in probe.with_suffix(".exe") if (p.parent / f"{p.stem}_Data").is_dir()]
+        if assembly and meta and exes:  # the executable carries the Unity version (Cpp2IL)
+            paths = (assembly[0], meta[0], exes[0])
             out.append(AnalysisTarget("gameassembly", "il2cpp", paths, "unity", "IL2CPP"))
         for dll in probe.find("Assembly-CSharp.dll", limit=1):
             out.append(AnalysisTarget("assembly-csharp", "dotnet_assembly", (dll,), "unity"))

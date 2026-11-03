@@ -117,6 +117,12 @@ extraction. Found on the way: qrenderdoc's first-run analytics prompt is a modal
 qrenderdoc leaves behind keeps the output pipes open (the OS layer now reads through pump threads
 and returns on exit). The attended path (F12) uses the same launch and harvest.
 
+**Managed-code analyzers (1.4.0, 2026-11-03):** `viwo analyze Test-games/baldi-cr --target
+assembly-csharp` wrote 646 C# files (ilspycmd, project mode) in 3 s; `viwo analyze <IL2CPP copy>
+--target gameassembly` on the library's Unity 6000.4 title wrote 80 stub assemblies (Cpp2IL,
+`dummydll`) in 8 s, and `--list` on that output proposes the stub `Assembly-CSharp.dll` as a
+dotnet target. unluac is wired and fake-tested; no game in the library ships Lua bytecode.
+
 ## Rules that hold everywhere
 
 - The game folder is only read: extraction copies, repack writes a separate marked copy, capture

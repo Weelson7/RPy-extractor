@@ -22,6 +22,7 @@ from ..pipeline.probe import FolderProbe
 from ..records import record_context
 from ..workspace import write_atomic
 from .ghidra import GhidraGui, GhidraHeadless
+from .managed import Cpp2Il, IlSpy, Unluac
 
 
 def slot_for(kind: str) -> str:
@@ -36,11 +37,14 @@ def output_dir(workspace: Path, backend_id: str, key: str) -> Path:
 SLOTS = (
     SlotDefinition("analysis.native", "analysis", "core", "ghidra-headless"),
     SlotDefinition("handoff.native", "handoff", "core", "ghidra-gui"),
+    SlotDefinition("analysis.dotnet", "analysis", "core", "ilspycmd"),
+    SlotDefinition("analysis.il2cpp", "analysis", "core", "cpp2il"),
+    SlotDefinition("analysis.script", "analysis", "core", "unluac"),
 )
 
 
 def backends() -> list:
-    return [GhidraHeadless(), GhidraGui()]
+    return [GhidraHeadless(), GhidraGui(), IlSpy(), Cpp2Il(), Unluac()]
 
 
 @dataclass
@@ -106,7 +110,11 @@ def _copy_inputs(target: AnalysisTarget, scratch: Path) -> AnalysisTarget:
     """The analyzer reads a copy (doc 6.5): the game folder is never handed to a tool."""
     folder = scratch / "input"
     folder.mkdir(parents=True, exist_ok=True)
-    copies = tuple(Path(shutil.copy2(p, folder / p.name)) for p in target.paths)
+    copies: list[Path] = []
+    for index, path in enumerate(target.paths):  # same-named chunks from different folders
+        name = path.name if path.name not in {c.name for c in copies} else f"{index}-{path.name}"
+        copies.append(Path(shutil.copy2(path, folder / name)))
+    copies = tuple(copies)
     return AnalysisTarget(target.key, target.kind, copies, target.owner, target.label, target.hints)
 
 

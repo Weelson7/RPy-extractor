@@ -84,7 +84,7 @@ time.
 | Arm | Rung | Content (doc) | Pinned tools (main) | temp.md |
 |-----|------|---------------|---------------------|---------|
 | Static | A1 (**shipped 1.3**: `viwo/core/analysis/`, fake-tool tests; Ghidra 12.2 + Temurin JDK 25 pinned, installed on demand) | `analysis.native` + Ghidra GUI handoff; `.analysis/` output; `analysis` flag | Ghidra headless, JDK 25 | §1–4 |
-| Static | A2 | managed/bytecode: `analysis.dotnet`, `analysis.il2cpp`, `analysis.script` | ilspycmd, Cpp2IL, unluac | §5, §13 |
+| Static | A2 (**shipped 1.4.0**: `viwo/core/analysis/managed.py`, three pins, verified on Baldi and the library's IL2CPP title) | managed/bytecode: `analysis.dotnet`, `analysis.il2cpp`, `analysis.script` | ilspycmd, Cpp2IL, unluac | §5, §13 |
 | Static | A3 | `analysis.signatures`, `analysis.diff` (update resilience), `analysis.protector` | Ghidra FID, BinDiff, DIE | §4, §14, §16 |
 | Static | A4 | `analysis.emulate`, `analysis.symbolic` (isolated routines) | Unicorn/Qiling, angr | §15 |
 | Dynamic | D1 (**shipped 1.3.6**: `--auto` unattended trigger, shader disassembly, verified on ULTRAKILL) | capture pilot hardened to a real GPU; shader disasm | RenderDoc | §11 |

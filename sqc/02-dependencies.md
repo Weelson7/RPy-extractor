@@ -21,6 +21,9 @@ Pinned tools (version / kind / how it runs), for the checks below:
 | datatool | 2.25.0.0+1151 | zip | Windows only, self-contained .NET |
 | renderdoccmd | 1.47 | zip | `renderdoccmd.exe` |
 | rdpython | 1.47 | alias of renderdoccmd | `qrenderdoc.exe --py` |
+| ilspycmd | 11.2.0.10050 | zip (NuGet nupkg) | `tools\any\win-x64\ilspycmd.exe` |
+| cpp2il | 2022.1.0-pre-release.21 | raw | `Cpp2IL.exe`, self-contained |
+| unluac | 2025-12-23 | raw | `unluac.jar`, run as `java -jar` on the pinned JDK |
 | unitypy, py7zr, unrpa, lz4 | pinned | python | `pip --target third_party\python` |
 
 ## SQC-DEP-01 (P0) Every pinned tool binds and answers

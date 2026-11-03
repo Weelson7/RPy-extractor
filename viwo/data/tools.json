@@ -387,6 +387,75 @@
      "jdk"
     ]
    }
+  },
+  "ilspycmd": {
+   "version": "11.2.0.10050",
+   "license": "MIT",
+   "_note": "ILSpy's command line as the RID-specific dotnet-tool packages (NuGet nupkg = zip; one native executable each)",
+   "windows": {
+    "url": "https://api.nuget.org/v3-flatcontainer/ilspycmd.win-x64/11.2.0.10050/ilspycmd.win-x64.11.2.0.10050.nupkg",
+    "sha256": "b67478eb22fedff149c37e7dd4512d716c5e1dbe7425a591ae8cf8eb773da158",
+    "size": 9134969,
+    "kind": "zip",
+    "find": "ilspycmd.exe"
+   },
+   "linux": {
+    "url": "https://api.nuget.org/v3-flatcontainer/ilspycmd.linux-x64/11.2.0.10050/ilspycmd.linux-x64.11.2.0.10050.nupkg",
+    "sha256": "5be3af86839e93075d103e5b4fec73a637b8d70e49c97eaf043ebe55b7c7800d",
+    "size": 10064057,
+    "kind": "zip",
+    "find": "ilspycmd"
+   }
+  },
+  "cpp2il": {
+   "version": "2022.1.0-pre-release.21",
+   "license": "MIT",
+   "_note": "the pre-release line is the one that understands current Unity (6000.x); self-contained Windows build, no Linux asset in this release (PATH lookup there)",
+   "windows": {
+    "url": "https://github.com/SamboyCoding/Cpp2IL/releases/download/2022.1.0-pre-release.21/Cpp2IL-2022.1.0-pre-release.21-Windows.exe",
+    "sha256": "663fb432433b4371fd1ee0ebc321a8fff2a9aac5ac4230c843f9e03ddee4e04c",
+    "size": 15137811,
+    "kind": "raw",
+    "save_as": "Cpp2IL.exe",
+    "find": "Cpp2IL.exe"
+   }
+  },
+  "unluac": {
+   "version": "2025-12-23 (1.2.3.569)",
+   "license": "MIT",
+   "_note": "one jar for every platform, run on the pinned JDK; SourceForge redirects to a mirror over HTTPS, the checksum is what counts",
+   "windows": {
+    "url": "https://sourceforge.net/projects/unluac/files/Unstable/unluac_2025_12_23.jar/download",
+    "sha256": "98be0fa84ac73ca66dce2842a2e4512226f4c611b6500dc96415571fc5538fcc",
+    "size": 796256,
+    "kind": "raw",
+    "save_as": "unluac.jar",
+    "find": "unluac.jar",
+    "argv": [
+     "{java}",
+     "-jar",
+     "{path}"
+    ],
+    "needs": [
+     "jdk"
+    ]
+   },
+   "linux": {
+    "url": "https://sourceforge.net/projects/unluac/files/Unstable/unluac_2025_12_23.jar/download",
+    "sha256": "98be0fa84ac73ca66dce2842a2e4512226f4c611b6500dc96415571fc5538fcc",
+    "size": 796256,
+    "kind": "raw",
+    "save_as": "unluac.jar",
+    "find": "unluac.jar",
+    "argv": [
+     "{java}",
+     "-jar",
+     "{path}"
+    ],
+    "needs": [
+     "jdk"
+    ]
+   }
   }
  }
 }

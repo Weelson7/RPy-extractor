@@ -12,6 +12,18 @@ MANIFEST = PluginManifest("generic", "Generic", "0.1.0", engine_type="generic", 
 PLUGIN = "GenericPlugin"  # discovered by viwo.core.wiring.registry
 
 
+LUA_SUFFIXES = (".lua", ".luac", ".lub", ".luc", ".out")
+
+
+def lua_targets(probe: GameProbe) -> list[AnalysisTarget]:
+    """Compiled Lua chunks (`\\x1bLua` header) as one script_vm target for unluac."""
+    chunks = [p for p in probe.with_suffix(*LUA_SUFFIXES)[:2000] if probe.head(p, 4) == b"\x1bLua"]
+    if not chunks:
+        return []
+    label = f"{len(chunks)} Lua bytecode chunk(s)"
+    return [AnalysisTarget("lua-bytecode", "script_vm", tuple(chunks[:500]), "generic", label)]
+
+
 class GenericPlugin(EnginePlugin):
     @property
     def manifest(self) -> PluginManifest:
@@ -23,8 +35,8 @@ class GenericPlugin(EnginePlugin):
         )
 
     def analysis_targets(self, probe: GameProbe):
-        """Executables at the root or one level down (doc 6.1, generic row)."""
-        out = []
+        """Executables at the root or one level down (doc 6.1, generic row), and Lua bytecode."""
+        out = lua_targets(probe)
         for path in probe.with_suffix(".exe", ".x86_64", ".x86", ".elf")[:50]:
             rel = path.relative_to(probe.root)
             if len(rel.parts) <= 2 and "crashhandler" not in path.name.lower():

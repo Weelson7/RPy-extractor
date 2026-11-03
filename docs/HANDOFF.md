@@ -194,6 +194,21 @@ so `progress.js` stops parsing message text, let `list_window` return the type c
   (`CollectReport.unreadable`); the integration runner lists such files as `blockedFiles` and
   keeps them out of the read-only comparison.
 
+## 1.4.0 (managed-code analyzers, rung A2, 2026-11-03)
+- Three analyzer slots next to `analysis.native`, one module (`viwo/core/analysis/managed.py`):
+  `analysis.dotnet` = ilspycmd 11.2 (C# project from any .NET assembly), `analysis.il2cpp` =
+  Cpp2IL 2022.1 pre-release 21 (stub assemblies from GameAssembly.dll + global-metadata.dat;
+  the game executable travels with the target so Cpp2IL reads the Unity version from it),
+  `analysis.script` = unluac 2025-12-23 on the pinned JDK (Lua bytecode chunks, proposed by the
+  generic plugin from the `\x1bLua` header). All three pinned in `tools.json`; `{java}` joins
+  `{dotnet}` as an argv runtime prefix.
+- Chain: the Cpp2IL output folder is itself a game folder for `viwo analyze --list` (its stub
+  `Assembly-CSharp.dll` is a dotnet target), so IL2CPP games get C# stubs in two runs.
+- Verified for real: Baldi's `Assembly-CSharp.dll` to 646 C# files in 3 s; the IL2CPP game of
+  the owner's library (Unity 6000.4, 93 MB binary) to 80 stub assemblies in 8 s. unluac has
+  fake-tool coverage only (no Lua-bytecode game in the library).
+- Roadmap: A3 (signatures, BinDiff, protector id), A4, D2-D3, T1-T2 remain.
+
 ## Morning deliverable (owner, 2026-11-04)
 A PDF presentation of the project status, the sqc suite and the CTF flags (`sqc/ctf.json`,
 `sqc/17-ctf.md`: five basic objectives per game plus one per GB), with no known limitation or

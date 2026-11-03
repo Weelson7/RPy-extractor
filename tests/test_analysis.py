@@ -38,6 +38,35 @@ FAKE_GUI = """#!{python}
 import time
 time.sleep(30)
 """
+FAKE_ILSPY = """#!{python}
+import sys
+from pathlib import Path
+args = sys.argv[1:]
+out, dll = Path(args[args.index("-o") + 1]), Path(args[-1])
+assert "-p" in args and dll.read_bytes().startswith(b"MZ"), args
+out.mkdir(parents=True, exist_ok=True)
+(out / "Game.cs").write_text("class Game {{}}")
+(out / "Game.csproj").write_text("<Project/>")
+"""
+FAKE_CPP2IL = """#!{python}
+import sys
+from pathlib import Path
+args = sys.argv[1:]
+game, out = Path(args[args.index("--game-path") + 1]), Path(args[args.index("--output-to") + 1])
+assert (game / "GameAssembly.dll").is_file() and (game / "G.exe").is_file(), list(game.iterdir())
+assert (game / "G_Data" / "il2cpp_data" / "Metadata" / "global-metadata.dat").is_file()
+out.mkdir(parents=True, exist_ok=True)
+(out / "Assembly-CSharp.dll").write_bytes(b"MZ")
+print("[Info] [Program] Done.")
+"""
+FAKE_UNLUAC = """#!{python}
+import sys
+from pathlib import Path
+args = sys.argv[1:]
+out, chunk = Path(args[args.index("--output") + 1]), Path(args[-1])
+assert chunk.read_bytes().startswith(b"\\x1bLua"), args
+out.write_text("-- decompiled\\nprint('hi')\\n")
+"""
 
 
 def _folder(path: Path) -> Path:
@@ -66,6 +95,8 @@ def make_games(root: Path) -> tuple[Path, Path]:
     (unity / "GameAssembly.dll").write_bytes(b"MZ" + b"\0" * 32)
     (unity / "G_Data" / "il2cpp_data" / "Metadata" / "global-metadata.dat").write_bytes(b"AF1B")
     (unity / "G_Data" / "Managed" / "Assembly-CSharp.dll").write_bytes(b"MZ")
+    (unity / "scripts").mkdir()
+    (unity / "scripts" / "init.luac").write_bytes(b"\x1bLua\x51\0\1\4\4\4\\8\0")
     unreal = root / "ue-game"
     (unreal / "Foo" / "Binaries" / "Win64").mkdir(parents=True)
     (unreal / "Foo" / "Binaries" / "Win64" / "Foo-Win64-Shipping.exe").write_bytes(
@@ -89,9 +120,10 @@ class TargetTests(unittest.TestCase):
                     "g-exe": "native_binary",
                     "gameassembly": "il2cpp",
                     "assembly-csharp": "dotnet_assembly",
+                    "lua-bytecode": "script_vm",
                 },
             )
-            self.assertEqual(len(found["gameassembly"].paths), 2)  # dll + metadata companion
+            self.assertEqual(len(found["gameassembly"].paths), 3)  # dll, metadata, the exe
             self.assertNotIn("unitycrashhandler64-exe", found)
             keys = {t.key: t for t in targets_for(rt, unreal)}
             self.assertEqual(keys["shipping-exe"].owner, "unreal")
@@ -112,8 +144,12 @@ class AnalyzeTests(unittest.TestCase):
         jar.write_bytes(b"PK")
         self.gui = script(tools.parent, "ghidraRun", FAKE_GUI.format(python=sys.executable))
         java = script(self.root / "jdk" / "bin", "java", FAKE_GUI.format(python=sys.executable))
+        ilspy = script(self.root / "ilspy", "ilspycmd", FAKE_ILSPY.format(python=sys.executable))
+        cpp2il = script(self.root / "cpp2il", "Cpp2IL", FAKE_CPP2IL.format(python=sys.executable))
+        unluac = script(self.root / "unluac", "unluac", FAKE_UNLUAC.format(python=sys.executable))
         ini = "[startup]\nfeatures = extraction, analysis\n[plugins]\nunity = on\n"
-        ini += f"[tools]\nghidra = {self.headless}\njdk = {java}\n"
+        ini += f"[tools]\nghidra = {self.headless}\njdk = {java}\ndotnet = {java}\n"
+        ini += f"ilspycmd = {ilspy}\ncpp2il = {cpp2il}\nunluac = {unluac}\n"
         self.rt = runtime(self.root, ini)
         self.ws = self.root / "ws"
 
@@ -148,6 +184,18 @@ class AnalyzeTests(unittest.TestCase):
             time.sleep(0.1)
         self.assertFalse(tracked.alive())
 
+    def test_managed_and_script_analyzers(self) -> None:
+        runs = (
+            ("assembly-csharp", "ilspycmd", "Game.cs"),
+            ("gameassembly", "cpp2il", "Assembly-CSharp.dll"),
+            ("lua-bytecode", "unluac", "init.lua"),
+        )
+        for key, backend, artifact in runs:
+            report = analyze(self.rt, AnalysisRequest(self.unity, self.ws, key))
+            self.assertEqual(report["backend"], backend, key)
+            self.assertIn(artifact, report["artifacts"], key)
+            self.assertTrue((self.ws / ".analysis" / backend / key / "record.json").is_file())
+
     def test_gui_prompts_pre_answered_other_preferences_kept(self) -> None:
         with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {"APPDATA": tmp}):
             prefs = Path(tmp) / "ghidra" / "ghidra_12.2_PUBLIC" / "preferences"
@@ -167,9 +215,6 @@ class AnalyzeTests(unittest.TestCase):
         with self.assertRaises(ViwoError) as err:
             analyze(self.rt, AnalysisRequest(self.unity, self.ws, "nope"))
         self.assertEqual(err.exception.code, "not_found")
-        with self.assertRaises(ViwoError) as err:
-            analyze(self.rt, AnalysisRequest(self.unity, self.ws, "gameassembly"))
-        self.assertEqual(err.exception.code, "unavailable")  # no il2cpp slot in A1
         with self.assertRaises(ViwoError) as err:
             open_in(self.rt, AnalysisRequest(self.unity, self.ws, "g-exe"))
         self.assertIn("run the analysis first", err.exception.message)

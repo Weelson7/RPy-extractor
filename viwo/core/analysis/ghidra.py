@@ -31,7 +31,7 @@ ARTIFACTS = ("functions.csv", "decompiled.c", "strings.txt", "symbols.tsv")
 DEFAULT_TIMEOUT = 4 * 3600
 
 
-def _java_env(ctx) -> dict[str, str] | None:
+def java_env(ctx) -> dict[str, str] | None:
     """JAVA_HOME and PATH for Ghidra's launchers, from the pinned (or found) JDK."""
     java = ctx.os.tools.locate(JDK)
     if java is None:
@@ -96,7 +96,7 @@ class GhidraHeadless(Analyzer):
         return (GHIDRA, JDK)
 
     def analyze(self, target: AnalysisTarget, ctx) -> Outcome:
-        tool, env = ctx.os.tools.locate(GHIDRA), _java_env(ctx)
+        tool, env = ctx.os.tools.locate(GHIDRA), java_env(ctx)
         if tool is None or env is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=GHIDRA.hint if tool is None else JDK.hint)
         project = project_dir(ctx.staging)
@@ -134,7 +134,7 @@ class GhidraGui(Handoff):
         return (GHIDRA, JDK)
 
     def prepare(self, target: AnalysisTarget, ctx) -> LaunchSpec | Outcome:
-        tool, env = ctx.os.tools.locate(GHIDRA), _java_env(ctx)
+        tool, env = ctx.os.tools.locate(GHIDRA), java_env(ctx)
         if tool is None or env is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=GHIDRA.hint if tool is None else JDK.hint)
         gpr = project_dir(ctx.staging) / f"{PROJECT}.gpr"
