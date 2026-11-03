@@ -13,6 +13,7 @@ import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
+from viwo.contracts.plugin import option_bool
 from viwo.contracts.slots import Converter, Decoder, Prober, SlotDefinition
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 
@@ -213,15 +214,14 @@ def _wanted(run, options: dict) -> dict[str, str]:
     """suffix -> bound decode slot: core slots (video opt-in) and plugin-owned decompilers
     (switched by the plugin's `decompile` option, default on)."""
     rt, wanted = run.rt, {}
-    video = str(options.get("decode_video", "off")).lower() in ("on", "true", "1", "yes")
+    video = option_bool(options, "decode_video")
     for sid, slot in rt.slots.items():
         if slot.family != "decode" or not (sid in rt.bindings and rt.bindings[sid].bound):
             continue
         if sid == "decode.video" and not video:
             continue
         if slot.owner != "core":
-            choice = str(run.ctx(slot.owner).options.get("decompile", "on")).lower()
-            if choice in ("off", "false", "0", "no"):
+            if not option_bool(run.ctx(slot.owner).options, "decompile", True):
                 continue
         wanted.update(dict.fromkeys(slot.suffixes, sid))
     return wanted
@@ -230,7 +230,7 @@ def _wanted(run, options: dict) -> dict[str, str]:
 def decode_all(run, workspace: Path, provenance: list[dict]):
     """Decode collected files in place; returns the collect report of the new files."""
     ctx, rt = run.ctx("core"), run.rt
-    if str(ctx.options.get("decode", "on")).lower() in ("off", "false", "0", "no"):
+    if not option_bool(ctx.options, "decode", True):
         return None
     wanted = _wanted(run, ctx.options)
     todo = [p["path"] for p in provenance if Path(p["path"]).suffix.lower() in wanted]

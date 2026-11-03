@@ -12,10 +12,10 @@ from pathlib import Path
 
 from viwo.contracts import workspace as ws
 from viwo.contracts.errors import ViwoError
-from viwo.contracts.plugin import ExtractionContext
 from viwo.contracts.slots import SlotDefinition
 from viwo.contracts.types import CancelToken, DetectionResult, ProgressEvent
 
+from ..context import core_context
 from ..pipeline.collect import Source, collect, sha256
 from ..pipeline.failover import run_with_failover
 from ..pipeline.guard import refuse_writes_inside
@@ -93,19 +93,7 @@ def _run(rt, req: CaptureRequest, known: set[str], sink, cancel) -> tuple:
     rt.temp_root.mkdir(parents=True, exist_ok=True)
     work = Path(tempfile.mkdtemp(prefix="viwo-capture-", dir=rt.temp_root))
     try:
-        detection = DetectionResult("core", 0.0, (), "core")
-        ctx = ExtractionContext(
-            "capture",
-            req.game,
-            work / "staging",
-            work / "scratch",
-            rt.os,
-            detection,
-            None,
-            {},
-            sink,
-            cancel or CancelToken(),
-        )
+        ctx = core_context(rt, "capture", req.game, work, sink, cancel)
         ctx.staging.mkdir(parents=True)
         spec = {"exe": str(req.exe), "workdir": str(req.exe.parent), "args": []}
         outcome, used = run_with_failover(

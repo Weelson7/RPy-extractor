@@ -9,7 +9,7 @@ from pathlib import Path
 
 from viwo.contracts.slots import Unarchiver
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
-from viwo.contracts.workspace import safe_member
+from viwo.contracts.workspace import count_files, safe_member
 
 SEVENZIP = DependencySpec(
     "sevenzip",
@@ -22,10 +22,6 @@ UNRAR = DependencySpec("unrar", "unrar", executables=("unrar",), hint="install u
 PY7ZR = DependencySpec(
     "py7zr", "py7zr", kind="python", import_name="py7zr", hint="pip install py7zr"
 )
-
-
-def count_files(folder: Path) -> int:
-    return sum(1 for p in folder.rglob("*") if p.is_file())
 
 
 def _done(dest: Path, skipped: int = 0) -> Outcome:

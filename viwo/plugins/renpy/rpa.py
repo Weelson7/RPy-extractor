@@ -15,6 +15,7 @@ from pathlib import Path
 
 from viwo.contracts.slots import Unarchiver
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
+from viwo.contracts.workspace import count_files
 
 UNRPA = DependencySpec(
     "unrpa",
@@ -118,4 +119,4 @@ class Unrpa(Unarchiver):
         if not result.ok:
             text = (result.stderr or result.stdout).strip()
             return Outcome(OutcomeKind.FAILED, error=text[:300] or f"exit {result.returncode}")
-        return Outcome(OutcomeKind.OK, sum(1 for p in dest.rglob("*") if p.is_file()))
+        return Outcome(OutcomeKind.OK, count_files(dest))

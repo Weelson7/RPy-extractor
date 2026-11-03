@@ -8,8 +8,10 @@ import re
 from pathlib import Path
 
 from viwo.contracts import workspace as ws
+from viwo.contracts.plugin import option_bool
 from viwo.contracts.slots import Exporter
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
+from viwo.contracts.workspace import count_files
 
 UNITYPY = DependencySpec(
     "unitypy", "UnityPy", kind="python", import_name="UnityPy", hint="pip install UnityPy"
@@ -88,10 +90,7 @@ def _wanted(ctx, ext: str) -> bool:
 
 
 def _flag(ctx, key: str, default: bool) -> bool:
-    value = (getattr(ctx, "options", None) or {}).get(key)
-    if value is None or value == "":
-        return default
-    return str(value).lower() in ("1", "true", "yes", "on")
+    return option_bool(getattr(ctx, "options", None), key, default)
 
 
 def _write(ctx, kind: str, name: str, ext: str, payload: bytes) -> Path | None:
@@ -243,4 +242,4 @@ class AssetStudioModCli(Exporter):
         result = ctx.os.process.run(self.argv(ctx, tool), timeout=7200, cancel=ctx.cancel)
         if not result.ok:
             return Outcome(OutcomeKind.FAILED, error=(result.stderr or result.stdout)[-300:])
-        return Outcome(OutcomeKind.OK, sum(1 for p in ctx.staging.rglob("*") if p.is_file()))
+        return Outcome(OutcomeKind.OK, count_files(ctx.staging))

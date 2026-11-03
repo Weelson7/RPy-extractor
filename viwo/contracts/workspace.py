@@ -16,6 +16,11 @@ COLLISION = "{stem}__{index}{suffix}"
 EXPORT_MAP = ".viwo-export-map.json"  # staging: exported file -> [container, member]
 
 
+def count_files(folder: Path) -> int:
+    """Regular files under a folder, recursively."""
+    return sum(1 for p in folder.rglob("*") if p.is_file())
+
+
 def is_reserved(name: str) -> bool:
     """Top-level names starting with "." are never asset groups."""
     return name.startswith(".")

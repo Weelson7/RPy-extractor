@@ -18,6 +18,7 @@ from viwo.contracts.plugin import (
 )
 from viwo.contracts.slots import Exporter, SlotDefinition
 from viwo.contracts.types import DependencySpec, DetectionResult, Outcome, OutcomeKind
+from viwo.contracts.workspace import count_files
 
 DATATOOL = DependencySpec(
     "datatool",
@@ -81,7 +82,7 @@ class DataToolExporter(Exporter):
             argv = [*tool.argv_prefix, str(ctx.game_root), mode, str(out)]
             if not ctx.os.process.run(argv, timeout=12 * 3600, cancel=ctx.cancel).ok:
                 failed.append(mode)
-        files = sum(1 for p in ctx.staging.rglob("*") if p.is_file())
+        files = count_files(ctx.staging)
         if failed and not files:
             return Outcome(OutcomeKind.FAILED, error=f"DataTool failed: {', '.join(failed)}")
         notes = (REMINDER,) + ((f"failed modes: {', '.join(failed)}",) if failed else ())

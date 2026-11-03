@@ -9,6 +9,7 @@ from viwo.contracts.plugin import (
     PluginManifest,
     PluginOption,
     VerifyReport,
+    option_bool,
 )
 from viwo.contracts.slots import SlotDefinition
 from viwo.contracts.types import DetectionResult
@@ -75,7 +76,7 @@ class GodotPlugin(EnginePlugin):
         return MANIFEST
 
     def configure(self, options) -> None:
-        self._recover = str(options.get("recover", "off")).lower() in ("on", "true", "1", "yes")
+        self._recover = option_bool(options, "recover")
 
     def export_slot(self) -> str:
         return "export.godot" if self._recover else ""

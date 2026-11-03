@@ -9,6 +9,7 @@ from pathlib import Path
 
 from viwo.contracts.slots import Match, Packer, Unarchiver
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
+from viwo.contracts.workspace import count_files
 
 from .aes import decrypt_block
 from .keys import resolve_key
@@ -80,7 +81,7 @@ def key_opens(path: Path, info: PakInfo, key: bytes) -> bool:
 
 
 def _files(dest: Path) -> int:
-    return sum(1 for p in dest.rglob("*") if p.is_file())
+    return count_files(dest)
 
 
 class _UnrealCli(Unarchiver):

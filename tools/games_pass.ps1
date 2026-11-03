@@ -4,7 +4,8 @@
 param(
     [string]$Source = "C:\Users\weel-\Games",
     [double]$SkipExtractOverGB = 40,
-    [string[]]$Skip = @("ApproximatelyUp-Modding", "CYPMods", "bannerlord", "AU")
+    [string[]]$Skip = @("ApproximatelyUp-Modding", "CYPMods", "bannerlord", "AU"),
+    [string[]]$Only = @()
 )
 $ErrorActionPreference = "Continue"
 $root = Split-Path -Parent $PSScriptRoot
@@ -18,6 +19,7 @@ function Say($text) { $line = "{0} {1}" -f (Get-Date -Format "HH:mm:ss"), $text;
 
 foreach ($dir in Get-ChildItem $Source -Directory) {
     if ($Skip -contains $dir.Name) { Say "skip $($dir.Name)"; continue }
+    if ($Only.Count -gt 0 -and -not ($Only -contains $dir.Name)) { continue }
     # a wrapper folder holding exactly one sub-folder and no files is unwrapped (AoE, zipped data)
     $src = $dir.FullName
     while ((Get-ChildItem $src -File).Count -eq 0 -and (Get-ChildItem $src -Directory).Count -eq 1) {

@@ -6,6 +6,7 @@ import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from viwo import CONTRACT_VERSION
 from viwo.contracts.errors import ViwoError
 from viwo.contracts.os import OS
 from viwo.contracts.plugin import EnginePlugin
@@ -69,19 +70,14 @@ class Runtime:
             "os": self.os.os_id,
             "osName": self.os.display_name,
             "ini": self.config.source,
-            "contract": self.config.contract,
+            "contract": CONTRACT_VERSION,  # what this ViWo implements
+            "iniContract": self.config.contract,
+            "features": list(self.config.features),
             "sources": dict(self.config.sources),  # doc 9.1: provenance of every value
             "plugins": sorted(self.plugins),
             "slots": {sid: b.__dict__ for sid, b in sorted(self.bindings.items())},
             "problems": list(self.problems),
         }
-
-
-def _default_scripts(config, home: Path) -> None:
-    """The installed QuickBMS scripts folder is the default `[options.quickbms] scripts`."""
-    scripts = home / "third_party" / "quickbms" / "scripts"
-    if scripts.is_dir() and not config.options.get("quickbms", {}).get("scripts"):
-        config.options.setdefault("quickbms", {})["scripts"] = str(scripts)
 
 
 def _apply_profile(config, profile: str) -> None:
@@ -106,12 +102,12 @@ def boot(
     home = thirdparty.home_of(config)
     thirdparty.activate(home)  # pinned Python packages installed under third_party/python
     tools = {**thirdparty.found_tools(home), **config.tools}  # the ini wins over third_party/
-    _default_scripts(config, home)
     layer = select_os(os_id or config.os_id, tools)
     if os_id:
         config.sources["startup.os"] = "cli"
     plugins, problems = load_enabled(config.plugins, config.custom_dirs, layer.os_id)
     for plugin_id, plugin in plugins.items():
+        plugin.home = home
         try:
             plugin.configure(config.options.get(plugin_id, {}))
         except Exception as exc:  # a bad option disables only that plugin's extras

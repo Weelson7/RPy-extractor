@@ -10,8 +10,8 @@ from pathlib import Path
 from typing import Any
 
 from viwo.contracts.errors import ViwoError
-from viwo.contracts.plugin import ExtractionContext
-from viwo.contracts.types import DetectionResult, ProgressEvent
+from viwo.contracts.types import ProgressEvent
+from viwo.core.context import core_context
 from viwo.core.curation.trash import trash_files
 
 from .ffmpeg import FFMPEG, Timeline, filtergraph, probe
@@ -71,11 +71,9 @@ def output_name(raw: str, fs) -> str:
     return name if name.lower().endswith(".mp4") else f"{name}.mp4"
 
 
-def _probe_ctx(rt, workdir: Path, sink) -> ExtractionContext:
-    """A core context for the `media.probe` backends (doc 8.5)."""
-    core = DetectionResult("core", 0.0, (), "core")
-    scratch = rt.temp_root
-    return ExtractionContext("merge", workdir, scratch, scratch, rt.os, core, None, {}, sink)
+def _probe_ctx(rt, workdir: Path, sink):
+    """A core context for the `media.probe` backends (doc 8.5); nothing is written."""
+    return core_context(rt, "merge", workdir, rt.temp_root, sink)
 
 
 def _inputs(workdir: Path, rels: list[str]) -> list[Path]:

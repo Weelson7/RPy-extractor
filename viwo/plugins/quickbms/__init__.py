@@ -13,6 +13,7 @@ from pathlib import Path
 from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest
 from viwo.contracts.slots import Match, SlotDefinition, Unarchiver
 from viwo.contracts.types import DependencySpec, DetectionResult, Outcome, OutcomeKind
+from viwo.contracts.workspace import count_files
 
 QUICKBMS = DependencySpec(
     "quickbms",
@@ -57,7 +58,7 @@ class QuickBmsCli(Unarchiver):
             return Outcome(OutcomeKind.UNAVAILABLE, error=QUICKBMS.hint)
         argv = [*tool.argv_prefix, "-o", "-Y", str(script), str(archive), str(dest)]
         result = ctx.os.process.run(argv, timeout=3600, cancel=ctx.cancel)
-        files = sum(1 for p in dest.rglob("*") if p.is_file())
+        files = count_files(dest)
         if not result.ok or not files:
             return Outcome(OutcomeKind.FAILED, error=(result.stderr or result.stdout)[-300:])
         return Outcome(OutcomeKind.OK, files, notes=(f"script {script.name}",))
@@ -75,8 +76,12 @@ class QuickBmsPlugin(EnginePlugin):
         return MANIFEST
 
     def configure(self, options) -> None:
-        if options.get("scripts"):
-            self.table.load(str(options["scripts"]))
+        """`[options.quickbms] scripts`, else the pinned scripts folder under third_party/."""
+        folder = options.get("scripts") or (
+            self.home / "third_party" / "quickbms" / "scripts" if self.home else ""
+        )
+        if folder and Path(folder).is_dir():
+            self.table.load(str(folder))
 
     def detect(self, probe: GameProbe) -> DetectionResult:
         return DetectionResult("any", 0.0, (), "quickbms")  # never picks a game: it serves all

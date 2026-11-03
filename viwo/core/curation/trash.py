@@ -12,6 +12,7 @@ import shutil
 from pathlib import Path
 
 from viwo.contracts import workspace as ws
+from viwo.contracts.workspace import count_files
 
 AREAS = ("groups", "items", "merger")
 LEGACY_MERGER = "media-merger"
@@ -22,7 +23,7 @@ def area(workspace: Path, name: str) -> Path:
 
 
 def _count(folder: Path) -> int:
-    return sum(1 for p in folder.rglob("*") if p.is_file())
+    return count_files(folder)
 
 
 def migrate(workspace: Path) -> int:

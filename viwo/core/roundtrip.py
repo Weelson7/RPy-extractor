@@ -16,9 +16,9 @@ from pathlib import Path
 
 from viwo.contracts import workspace as ws
 from viwo.contracts.errors import ViwoError
-from viwo.contracts.plugin import ExtractionContext
-from viwo.contracts.types import CancelToken, DetectionResult, ProgressEvent
+from viwo.contracts.types import CancelToken, ProgressEvent
 
+from .context import core_context
 from .pipeline.collect import sha256
 from .pipeline.failover import run_with_failover
 from .pipeline.guard import changes, refuse_writes_inside, snapshot
@@ -124,11 +124,10 @@ def _prepare(game: Path, target: Path, temp: Path, say=None) -> None:
     (target / MARKER).mkdir(exist_ok=True)
 
 
-def _ctx(rt, target: Path, work: Path, sink, cancel) -> ExtractionContext:
-    detection = DetectionResult("core", 0.0, (), "core")
-    return ExtractionContext(
-        "repack", target, work / "out", work / "scratch", rt.os, detection, None, {}, sink, cancel
-    )
+def _ctx(rt, target: Path, work: Path, sink, cancel):
+    ctx = core_context(rt, "repack", target, work, sink, cancel)
+    ctx.staging = work / "out"
+    return ctx
 
 
 def _verify(rt, packed: Path, item: PlanItem, ctx) -> list[str]:

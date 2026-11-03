@@ -8,6 +8,7 @@ from pathlib import Path
 
 from viwo.contracts.slots import Exporter, Match, Packer, Unarchiver
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
+from viwo.contracts.workspace import count_files
 
 MAGIC = b"GDPC"
 GDRE = DependencySpec(
@@ -75,13 +76,10 @@ TOOL_NOISE = {"gdre_export.log"}
 
 def _files(dest: Path) -> int:
     """Extracted files, without the tools' own logs."""
-    count = 0
     for p in dest.rglob("*"):
         if p.is_file() and p.name in TOOL_NOISE:
             p.unlink()
-        elif p.is_file():
-            count += 1
-    return count
+    return count_files(dest)
 
 
 class _PckCli(Unarchiver):

@@ -13,10 +13,10 @@ from pathlib import Path
 
 from viwo.contracts.analysis import ANALYSIS_DIR, AnalysisTarget, LaunchSpec
 from viwo.contracts.errors import ViwoError
-from viwo.contracts.plugin import ExtractionContext
 from viwo.contracts.slots import SlotDefinition
-from viwo.contracts.types import CancelToken, DetectionResult, Outcome
+from viwo.contracts.types import CancelToken, Outcome
 
+from ..context import core_context
 from ..pipeline.failover import run_with_failover
 from ..pipeline.probe import FolderProbe
 from ..records import record_context
@@ -95,11 +95,11 @@ def _pick(rt, req: AnalysisRequest) -> tuple[AnalysisTarget, str]:
 
 
 def _context(rt, req: AnalysisRequest, out: Path, scratch: Path, sink, cancel):
+    """Exports go to `out` (under .analysis/); the copy of the input sits in `scratch`."""
     out.mkdir(parents=True, exist_ok=True)
-    detection = DetectionResult("core", 1.0, (), "core")
-    return ExtractionContext(
-        "analyze", req.game, out, scratch, rt.os, detection, None, req.options, sink, cancel
-    )
+    ctx = core_context(rt, "analyze", req.game, scratch, sink, cancel)
+    ctx.staging, ctx.scratch, ctx.options = out, scratch, req.options
+    return ctx
 
 
 def _copy_inputs(target: AnalysisTarget, scratch: Path) -> AnalysisTarget:
@@ -180,9 +180,8 @@ def open_in(rt, req: AnalysisRequest, handoff_id: str = "") -> dict:
         raise ViwoError("unavailable", f"no handoff for {target.kind} targets")
     backend = rt.backends[handoff_id or binding.main]
     out = output_dir(req.workspace, rt.bindings[slot].main, target.key)  # the analyzer's project
-    ctx = ExtractionContext(
-        "handoff", req.game, out, rt.temp_root, rt.os, DetectionResult("core", 1.0, (), "core")
-    )
+    ctx = core_context(rt, "handoff", req.game, rt.temp_root)
+    ctx.staging = out
     spec = backend.prepare(target, ctx)
     if isinstance(spec, Outcome):
         raise ViwoError(spec.kind.value if spec.kind.value != "ok" else "failed", spec.error)

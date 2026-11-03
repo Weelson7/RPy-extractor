@@ -12,8 +12,16 @@ from viwo.contracts.types import ProgressEvent
 
 from . import thirdparty
 
-VERSION_ARGS = {"sevenzip": [], "ffmpeg": ["-version"], "ffprobe": ["-version"], "unrar": []}
 NO_RUN = {"rdpython", "datatool"}  # a GUI host or a slow start: never run just for a version
+
+
+def _version_args(rt) -> dict[str, tuple[str, ...]]:
+    """dep id -> how its backend pokes the tool (`Backend.self_check_args`, doc 8.6)."""
+    return {
+        spec.dep_id: backend.self_check_args
+        for backend in rt.backends.values()
+        for spec in backend.dependencies()
+    }
 
 
 def _version(rt, item: dict) -> str:
@@ -28,9 +36,8 @@ def _version(rt, item: dict) -> str:
     pinned = thirdparty.installed_version(item["id"], thirdparty.home_of(rt.config))
     if pinned or item["id"] in NO_RUN:
         return pinned
-    result = rt.os.process.run(
-        [item["location"], *VERSION_ARGS.get(item["id"], ["--version"])], timeout=4
-    )
+    args = _version_args(rt).get(item["id"], ("--version",))
+    result = rt.os.process.run([item["location"], *args], timeout=4)
     text = (result.stdout or result.stderr or "").strip().splitlines()
     return text[0][:80] if text else ""
 
@@ -39,7 +46,6 @@ def check(rt, say) -> list[dict]:
     items = rt.dependency_report()
     for index, item in enumerate(items, 1):
         item["version"] = _version(rt, item)
-        item["installable"] = thirdparty.installable(item["id"], item["kind"])
         state = f"found {item['version']}".strip() if item["available"] else "missing"
         say(
             ProgressEvent(

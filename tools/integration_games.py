@@ -59,9 +59,13 @@ def tree_hashes(folder: Path) -> dict[str, str]:
     out: dict[str, str] = {}
     for path in sorted(p for p in folder.rglob("*") if p.is_file()):
         digest = hashlib.sha256()
-        with path.open("rb") as handle:
-            for chunk in iter(lambda: handle.read(1 << 20), b""):
-                digest.update(chunk)
+        try:
+            with path.open("rb") as handle:
+                for chunk in iter(lambda: handle.read(1 << 20), b""):
+                    digest.update(chunk)
+        except OSError as exc:  # a file the OS refuses to open (quarantined, locked) still counts
+            out[path.relative_to(folder).as_posix()] = f"unreadable:{exc.errno}"
+            continue
         out[path.relative_to(folder).as_posix()] = digest.hexdigest()
     return out
 

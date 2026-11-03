@@ -69,36 +69,6 @@ class ExtractionRequest:
     on_existing: OnExisting = OnExisting.ASK
     carve: CarveMode = CarveMode.UNKNOWN
 
-    @classmethod
-    def from_payload(cls, data: Mapping[str, Any], workspace: str = "") -> "ExtractionRequest":
-        """Map a v1-style /api/extract payload (doc 3.2)."""
-        raw = str(data.get("extractionType") or "auto").strip().lower()
-        exts = data.get("selectedExts")
-        selected = frozenset(str(e).lower() for e in exts) if isinstance(exts, list) else None
-        plugins = tuple(str(p).strip().lower() for p in data.get("plugins") or ())
-        policy = str(data.get("mixedPolicy") or "selected").lower()
-        on_existing = str(data.get("onExisting") or "ask").lower()
-        carve = str(data.get("carve") or "unknown").lower()
-        mode = {"": ExtractionMode.AUTO, "auto": ExtractionMode.AUTO}.get(raw)
-        if mode is None:
-            mode = ExtractionMode.MIXED if raw == "mixed" else ExtractionMode.SINGLE
-            plugins = plugins if raw == "mixed" else (raw,)
-        return cls(
-            game_path=str(data.get("gamePath", "")),
-            workspace=workspace,
-            selected_exts=selected or None,
-            mode=mode,
-            plugins=plugins,
-            mixed_policy=MixedPolicy(policy)
-            if policy in MixedPolicy._value2member_map_
-            else MixedPolicy.SELECTED,
-            plugin_options=dict(data.get("pluginOptions") or {}),
-            on_existing=OnExisting(on_existing)
-            if on_existing in OnExisting._value2member_map_
-            else OnExisting.ASK,
-            carve=CarveMode(carve) if carve in CarveMode._value2member_map_ else CarveMode.UNKNOWN,
-        )
-
 
 @dataclass(frozen=True)
 class PluginRun:

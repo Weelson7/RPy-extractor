@@ -25,11 +25,12 @@ from pathlib import Path
 
 from viwo.contracts.errors import ViwoError
 from viwo.contracts.workspace import inside, safe_member
+from viwo.os import host_os_id
 
 from .pipeline.ticker import Ticker
 
 MANIFEST = Path(__file__).resolve().parent.parent / "data" / "tools.json"
-PLATFORM = "windows" if sys.platform == "win32" else "linux"
+PLATFORM = host_os_id()
 FROZEN = bool(getattr(sys, "frozen", False))
 Argv = tuple[str, ...]
 

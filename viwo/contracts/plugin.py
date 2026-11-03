@@ -18,6 +18,15 @@ from .slots import Backend, SlotDefinition
 from .types import CancelToken, DetectionResult, ProgressEvent, ProgressSink
 
 OPTION_KINDS = ("string", "secret", "bool", "int", "float", "choice", "path")
+TRUE_WORDS = ("on", "true", "1", "yes")
+
+
+def option_bool(options: Mapping[str, Any] | None, key: str, default: bool = False) -> bool:
+    """The one reading of a `kind=\"bool\"` option (doc 2.1): on/true/1/yes, else off."""
+    value = (options or {}).get(key)
+    if value is None or value == "":
+        return default
+    return str(value).strip().lower() in TRUE_WORDS
 
 
 @dataclass(frozen=True)
@@ -140,6 +149,8 @@ class EnginePlugin(ABC):
 
     @abstractmethod
     def detect(self, probe: GameProbe) -> DetectionResult: ...
+
+    home: Path | None = None  # the ViWo install folder (third_party/ beside it), set at boot
 
     def configure(self, options: Mapping[str, Any]) -> None:
         """Startup options from [options.<plugin id>] in the ini (before slots are read)."""

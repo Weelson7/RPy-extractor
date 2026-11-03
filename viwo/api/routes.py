@@ -8,7 +8,6 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
-from viwo import CONTRACT_VERSION
 from viwo.contracts.errors import Envelope, ViwoError
 from viwo.contracts.pipeline import ExtractionMode, ExtractionRequest, MixedPolicy
 from viwo.core.pipeline.probe import FolderProbe
@@ -31,8 +30,7 @@ STATUS = {
 
 
 def _distro() -> dict:
-    rt = get_app().rt
-    return {**rt.info(), "contract": CONTRACT_VERSION, "features": list(rt.config.features)}
+    return get_app().rt.info()
 
 
 def _plugin_entry(plugin_id: str, plugin, deps: list[dict], error: str) -> dict:

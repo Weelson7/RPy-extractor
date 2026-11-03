@@ -47,16 +47,6 @@ def _plugin_info(app: App) -> dict[str, dict]:
     return out
 
 
-def _summary(app: App) -> dict:
-    rt = app.rt
-    return {
-        "features": list(rt.config.features),
-        "plugins": sorted(rt.plugins),
-        "slots": {sid: b.__dict__ for sid, b in sorted(rt.bindings.items())},
-        "problems": list(rt.problems),
-    }
-
-
 def get_settings(app: App, q: dict) -> dict:
     path = ini_path(app)
     try:
@@ -64,7 +54,7 @@ def get_settings(app: App, q: dict) -> dict:
         data = read_settings(path, sorted(BUILTIN_PLUGINS), dep_ids)
     except ViwoError as exc:
         return {"success": False, "error": exc.message, "code": exc.code, "hint": exc.hint}
-    return {"success": True, **data, "pluginInfo": _plugin_info(app), "effective": _summary(app)}
+    return {"success": True, **data, "pluginInfo": _plugin_info(app), "effective": app.rt.info()}
 
 
 def save_settings(app: App, d: dict) -> dict:
@@ -76,7 +66,7 @@ def save_settings(app: App, d: dict) -> dict:
         return {"success": False, "error": exc.message, "code": exc.code, "hint": exc.hint}
     app.reload()
     app.log(f"[SETTINGS] {path} updated: {', '.join(sorted(k for k in d if d[k])) or 'nothing'}")
-    return {"success": True, "ini": str(path), "problems": problems, "effective": _summary(app)}
+    return {"success": True, "ini": str(path), "problems": problems, "effective": app.rt.info()}
 
 
 SETTINGS_GET: dict[str, Callable[[App, dict], Any]] = {"/api/settings": get_settings}
