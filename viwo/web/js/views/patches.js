@@ -15,10 +15,13 @@ const pickFile = (field, key) => browseBtn(field, (p) => pref(key, p), (p) => ap
 function mount(root) {
   el.game = gameField("pt-game");
   el.set = input("pt-set", "/path/to/fix.patch.json", "patchSet");
-  el.out = input("pt-out", "patched copy folder (empty: only check)", "patchOut");
+  el.out = input("pt-out", "patched copy folder (APPLY writes there)", "patchOut");
   el.mods = input("pt-mods", "one or more mod zips, comma-separated", "modZips");
   el.copy = input("pt-copy", "patched copy folder", "modCopy");
-  el.name = input("pt-name", "the mod's name (pack)", "modName");
+  el.name = input("pt-name", "the mod's name", "modName");
+  el.modsLbl = h("label", { class: "lbl", for: "pt-mods" });
+  el.copyLbl = h("label", { class: "lbl", for: "pt-copy" });
+  el.nameRow = h("div", {}, h("label", { class: "lbl", for: "pt-name" }, "NAME"), h("div", { class: "row" }, el.name));
   el.progHost = h("div", {});
   el.result = h("div", {});
   root.append(
@@ -29,16 +32,32 @@ function mount(root) {
     h("label", { class: "lbl", for: "pt-game" }, "GAME FOLDER (THE TOP BAR'S GAME)"), h("div", { class: "row" }, el.game, browseBtn(el.game, setGame)),
     h("div", { class: "grid2" },
       h("div", { class: "col" },
-        panel(`${code("patches")}.A`, "PATCH SET (T1)", badge("PATCHED COPY", "ok"),
+        panel(`${code("patches")}.A`, "PATCH SET", badge("PATCHED COPY", "ok"),
           h("label", { class: "lbl", for: "pt-set" }, "PATCH SET FILE"), h("div", { class: "row" }, el.set, pickFile(el.set, "patchSet")),
           h("label", { class: "lbl", for: "pt-out" }, "PATCHED COPY (AN EXISTING ONE IS PATCHED IN PLACE)"), h("div", { class: "row" }, el.out, browseBtn(el.out, (p) => pref("patchOut", p))),
           h("div", { class: "row" }, btn("CHECK", () => patch(true), ""), btn("APPLY", () => patch(false), "primary"))),
-        panel(`${code("patches")}.B`, "MOD PACKAGE (T2)", seg([["check", "CHECK"], ["pack", "PACK"], ["apply", "APPLY"]], S.action, (v) => { S.action = v; pref("modAction", v); }, { class: "seg sm" }),
-          h("label", { class: "lbl", for: "pt-mods" }, "MOD ZIP(S)"), h("div", { class: "row" }, el.mods, pickFile(el.mods, "modZips")),
-          h("label", { class: "lbl", for: "pt-copy" }, "PATCHED COPY (PACK: THE SOURCE; APPLY: THE TARGET)"), h("div", { class: "row" }, el.copy, browseBtn(el.copy, (p) => pref("modCopy", p))),
-          h("label", { class: "lbl", for: "pt-name" }, "NAME"), h("div", { class: "row" }, el.name),
+        panel(`${code("patches")}.B`, "MOD PACKAGE", seg([["check", "CHECK"], ["pack", "PACK"], ["apply", "APPLY"]], S.action, (v) => { S.action = v; pref("modAction", v); modLabels(); }, { class: "seg sm" }),
+          el.modsLbl, h("div", { class: "row" }, el.mods, pickFile(el.mods, "modZips")),
+          el.copyLbl, h("div", { class: "row" }, el.copy, browseBtn(el.copy, (p) => pref("modCopy", p))),
+          el.nameRow,
           h("div", { class: "row" }, btn("RUN", mod, "primary")))),
       h("div", { class: "col" }, el.progHost, el.result)));
+  modLabels();
+}
+
+/** The mod fields mean something else per action: their labels and hints follow it. */
+const MOD_FIELDS = {
+  check: ["MOD ZIP", "the mod zip to check against this game", "PATCHED COPY (NOT USED BY CHECK)"],
+  pack: ["MOD ZIP TO WRITE", "where to write the mod zip, e.g. C:\\Mods\\my-mod.zip", "PATCHED COPY TO PACK (ITS CHANGES BECOME THE MOD)"],
+  apply: ["MOD ZIPS IN LOAD ORDER", "one or more mod zips, comma-separated, first applied first", "PATCHED COPY TO APPLY THEM INTO"],
+};
+
+function modLabels() {
+  const [mods, hint, copy] = MOD_FIELDS[S.action] || MOD_FIELDS.check;
+  el.modsLbl.textContent = mods;
+  el.mods.placeholder = hint;
+  el.copyLbl.textContent = copy;
+  el.nameRow.hidden = S.action !== "pack";
 }
 
 /** Scalars as key/values, lists of rows as a table: every T1/T2 report has that shape. */
@@ -73,8 +92,10 @@ async function job(kind, call, title) {
   }
 }
 
-const patch = (plan) => job("patch", () => api.patch({ gamePath: el.game.value.trim(), patchSet: el.set.value.trim(),
-  out: plan ? "" : el.out.value.trim(), plan }), plan ? "PATCH CHECK" : "PATCH APPLY");
+const patch = (plan) => (!plan && !el.out.value.trim()
+  ? toast("Pick the patched copy folder APPLY writes into (CHECK only reads the game).", "warn")
+  : job("patch", () => api.patch({ gamePath: el.game.value.trim(), patchSet: el.set.value.trim(),
+  out: plan ? "" : el.out.value.trim(), plan }), plan ? "PATCH CHECK" : "PATCH APPLY"));
 
 const mod = () => job("mod", () => api.mod({ action: S.action, gamePath: el.game.value.trim(), copy: el.copy.value.trim(),
   mods: el.mods.value.split(",").map((m) => m.trim()).filter(Boolean), mod: el.mods.value.split(",")[0].trim(), name: el.name.value.trim() }),

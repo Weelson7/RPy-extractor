@@ -92,9 +92,16 @@ ExtractionContext           per request and per plugin
 A plugin introduces `unarchive.*` slots for its formats and ships their backends; core owns
 `unarchive.zip`, `.tar`, `.7z`, `.rar`. Core runs the recursive unpack loop (queue, seen-set, one
 `archive_NNNNN_<uuid8>` folder per archive, depth limit 10) and picks the slot for each file by
-longest suffix, then magic bytes, then the slot's own identifier (head and tail bytes, embedded
-chunks). Every unarchive backend rejects traversal, absolute paths and links in member names
-(`contracts.workspace.safe_member`, `inside`).
+the slots' own identifiers (head and tail bytes, embedded chunks), then the longest suffix, then
+magic bytes, then the identifiers of `fallback` slots (QuickBMS scripts never take a format a
+reader already claims). The queue and every stage stop on cancel; a cancelled main never starts
+the spare. Every in-process unarchive backend writes members through
+`contracts.workspace.Names`: a name that leads out (absolute, `..`, a link inside the
+destination) is skipped and counted; a name Windows cannot write (`< > " | ? * :`, control
+characters, device names, a trailing dot or space) is altered to a writable one and recorded in
+`.viwo-names.json` beside the files, so COLLECT gives provenance the archive's own name and the
+round trip writes the member back under it. Every skip, alteration and short read is a note the
+unpack stage says.
 
 ## 2.6 Dependencies
 

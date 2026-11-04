@@ -1,6 +1,6 @@
 // SORT: keyboard-first triage of workspace assets with a large preview stage.
 import { api } from "../api.js";
-import { h, fill, btn, panel, meter, viewHead, empty, errorBox, toast, toastErr, promptBox, modal, fmtBytes, fmtNum, pad, bus, emit, goBtn } from "../ui.js";
+import { h, fill, btn, panel, meter, viewHead, empty, errorBox, toast, toastErr, promptBox, modal, fmtBytes, fmtNum, pad, bus, emit, goBtn, pref } from "../ui.js";
 import { audioStage } from "./sort-audio.js";
 import { skeleton, withSkeleton } from "../progress.js";
 
@@ -28,8 +28,19 @@ function mount(root) {
       panel(`${code("sort")}.A`, "QUEUE", el.pager, el.filters, el.list, el.review),
       panel(`${code("sort")}.B`, "PREVIEW", el.meta, el.stage, el.acts)));
   document.addEventListener("keydown", onKey);
-  bus.addEventListener("workspace", () => { S.loaded = false; S.kept.clear(); S.trashed = 0; S.done = []; });
+  S.kept = restoreKept();
+  bus.addEventListener("workspace", (e) => {
+    if (e.detail?.from === "sort") return; // SORT's own trash/undo: the session goes on
+    S.loaded = false; S.kept = restoreKept(); S.trashed = 0; S.done = [];
+  });
 }
+
+/** KEEP marks persist per workspace (this browser), so a reopened SORT shows what was reviewed. */
+const keptKey = () => `sortKept.${bus.ws?.path || ""}`;
+function restoreKept() {
+  try { return new Set(JSON.parse(pref(keptKey()) || "[]")); } catch { return new Set(); }
+}
+const saveKept = () => pref(keptKey(), JSON.stringify([...S.kept].slice(-20000)));
 
 async function load(keepIdx = false, last = false) {
   try {
@@ -168,6 +179,7 @@ function keep() {
   return act(async () => {
     await api.sort("keep", { path: a.path });
     S.kept.add(a.path);
+    saveKept();
     S.done.push({ kind: "keep", path: a.path });
     const last = shown().pop() === S.idx && S.offset + S.items.length >= S.total;
     renderList();
@@ -190,7 +202,7 @@ function trash() {
     S.idx = vis.find((i) => i >= S.idx) ?? vis[vis.length - 1] ?? 0;
     renderList();
     preview();
-    emit("workspace");
+    emit("workspace", { from: "sort" });
   });
 }
 
@@ -199,13 +211,13 @@ function undo() {
     const res = await api.sort("undo", {});
     toast(`Undid ${String(res.undone || "action").toUpperCase()}.`, "ok");
     const prev = S.done.pop();
-    if (prev?.kind === "keep") S.kept.delete(prev.path);
+    if (prev?.kind === "keep") { S.kept.delete(prev.path); saveKept(); }
     if (prev?.kind === "trash") S.trashed -= 1;
     if (res.undone === "keep") return renderList();
     await load(true);
     const back = S.items.findIndex((x) => x.path === res.path);
     if (back >= 0) select(back);
-    emit("workspace");
+    emit("workspace", { from: "sort" });
   });
 }
 

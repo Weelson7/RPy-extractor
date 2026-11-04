@@ -11,7 +11,6 @@ import codecs
 import io
 import pickle
 import zlib
-from pathlib import Path
 
 from viwo.contracts import workspace as ws
 from viwo.contracts.slots import Unarchiver
@@ -83,12 +82,6 @@ def _chunk(chunk, key: int) -> tuple[int, int, bytes]:
     return int(chunk[0]) ^ key, int(chunk[1]) ^ key, prefix
 
 
-def _target(dest: Path, name: str) -> Path | None:
-    """safe_member + inside: traversal, drive letters, NTFS streams (`a.png:x`), device names
-    and links never get a file."""
-    return ws.member_path(dest, name.replace("\\", "/"))
-
-
 class RpaSafe(Unarchiver):
     backend_id, owner, license = "rpa-safe", "renpy", "MIT"
     parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
@@ -96,8 +89,8 @@ class RpaSafe(Unarchiver):
     def extract(self, archive, dest, ctx) -> Outcome:
         try:
             with open(archive, "rb") as fh:
-                index = read_index(fh)
-                said = [self._write(fh, dest, name, chunks) for name, chunks in index.items()]
+                index, names = read_index(fh), ws.Names(dest)
+                said = [self._write(fh, names, name, chunks) for name, chunks in index.items()]
         except (
             ValueError,
             OSError,
@@ -107,17 +100,15 @@ class RpaSafe(Unarchiver):
             EOFError,
         ) as exc:
             return Outcome(OutcomeKind.FAILED, error=str(exc)[:300])
-        notes = []
-        if unsafe := said.count("unsafe"):
-            notes.append(f"{unsafe} member(s) with an unsafe name skipped")
+        notes = list(names.save())
         if short := said.count("short"):
             notes.append(f"{short} member(s) shorter than the index says (a cut archive)")
         return Outcome(OutcomeKind.OK, said.count("ok") + short, notes=tuple(notes))
 
     @staticmethod
-    def _write(fh, dest: Path, name: str, chunks) -> str:
+    def _write(fh, names: ws.Names, name: str, chunks) -> str:
         """ "ok", "short" (written, but the archive ended early) or "unsafe" (skipped)."""
-        target = _target(dest, name)
+        target = names.target(name)
         if target is None:
             return "unsafe"
         target.parent.mkdir(parents=True, exist_ok=True)

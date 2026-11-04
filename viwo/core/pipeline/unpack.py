@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Iterable
 
+from viwo.contracts import workspace as ws
 from viwo.contracts.plugin import ExtractionContext
 
 from .failover import run_with_failover
@@ -28,8 +29,9 @@ class UnpackReport:
 
 
 def _candidates(root: Path, skip: set[str]) -> Iterable[Path]:
-    for path in sorted(root.rglob("*")):
-        if path.is_file() and not skip.intersection(p.lower() for p in path.parts):
+    """Files under root, never through a junction or link; skip names folders inside root."""
+    for path in ws.files(root):
+        if not skip.intersection(p.lower() for p in path.relative_to(root).parts[:-1]):
             yield path
 
 
@@ -42,12 +44,14 @@ def unpack_all(
     items: list[tuple[Path, str]],
     out_root: Path,
     make_ctx: Callable[[str], ExtractionContext],
+    cancel=None,
 ) -> UnpackReport:
-    """items: (file, origin label). Nested archives are unpacked up to MAX_DEPTH."""
+    """items: (file, origin label). Nested archives are unpacked up to MAX_DEPTH; a cancel
+    stops the queue (the stage after says it)."""
     report = UnpackReport()
     seen: set[str] = set()
     queue = deque((path, origin, 0) for path, origin in items)
-    while queue:
+    while queue and not (cancel is not None and cancel.cancelled):
         path, origin, depth = queue.popleft()
         match = identify(path, runtime.slots.values())
         key = runtime.os.fs.path_key(path.resolve())
@@ -81,6 +85,7 @@ def _unpack_one(runtime, match, dest: Path, make_ctx, report: UnpackReport, orig
         runtime.backends,
         lambda backend: backend.extract(source, dest, ctx),
         reset,
+        getattr(ctx, "cancel", None),
     )
     if not outcome.ok:
         report.failures.append(f"{origin}: {outcome.kind.value}: {outcome.error}")

@@ -92,7 +92,10 @@ class X64dbgGui(Handoff):
             if not debugger.is_file():  # an x64dbg of the user's own may come without it
                 why = f"{exe.name} is a 32-bit program and this x64dbg has no {debugger}"
                 return Outcome(OutcomeKind.UNAVAILABLE, error=why)
-        quiet_x64dbg(debugger)
+        if "third_party" in debugger.parts:  # ViWo's own copy, never the user's install
+            quiet_x64dbg(debugger)
+        else:
+            ctx.log("x64dbg is your own install: its first-run windows are left to you", "info")
         return LaunchSpec((str(debugger), str(exe)), exe.parent)
 
 
@@ -127,6 +130,9 @@ class CheatEngineGui(Handoff):
         ctx.staging.mkdir(parents=True, exist_ok=True)
         table = (ctx.staging / f"{exe.stem}.CT").resolve()
         table.write_text(TABLE.format(name=table_name(exe.name)), encoding="utf-8")
-        if ctx.os.os_id == "windows":
+        owned = "third_party" in Path(tool.path).resolve().parts  # never the user's own install
+        if ctx.os.os_id == "windows" and owned:
             quiet_cheatengine(ctx.os, Path(tool.path).resolve().parent)
+        elif not owned:
+            ctx.log("Cheat Engine is your own install: its first-run questions are left to you")
         return LaunchSpec((*tool.argv_prefix, str(table)), table.parent)

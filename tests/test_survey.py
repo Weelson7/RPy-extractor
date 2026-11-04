@@ -27,6 +27,8 @@ def make_library(root: Path) -> Path:
     (lib / "Doomish").mkdir(parents=True)
     make_wad(lib / "Doomish" / "game.wad", [("X", b"x")], b"IWAD")
     (lib / "Doomish" / "readme.txt").write_text("hello")
+    (lib / "Doomish" / "port" / "x64").mkdir(parents=True)
+    (lib / "Doomish" / "port" / "x64" / "doom.exe").write_bytes(b"MZ")  # its source port
     odd = lib / "Odd"
     odd.mkdir()
     (odd / "secret.pak").write_bytes(os.urandom(200_000))
@@ -142,6 +144,11 @@ class SurveyTests(unittest.TestCase):
             rt = runtime(Path(tmp))
             self.assertEqual([g.name for g in games_in(lib, rt)], ["Doomish", "Odd"])
             self.assertEqual(games_in(lib / "Doomish", rt), [lib / "Doomish"])
+            one = Path(tmp) / "one"  # one game whose files sit in folders (bin/, archive/)
+            for sub in ("bin/x64/Game.exe", "archive/pc/a.archive", "r6/cache/x.bin"):
+                (one / sub).parent.mkdir(parents=True, exist_ok=True)
+                (one / sub).write_bytes(b"x")
+            self.assertEqual(games_in(one, rt), [one])
             doom, odd = survey(rt, lib)
             self.assertEqual((doom["engine"], doom["coverage"]), ("doom", 1.0))
             cats = odd["categories"]

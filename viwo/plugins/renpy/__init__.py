@@ -47,7 +47,7 @@ class RenPyPlugin(EnginePlugin):
 
     def analysis_targets(self, probe: GameProbe):
         """`.rpyc` scripts as one python_bytecode target (analysis.python, unrpyc)."""
-        files = tuple(probe.with_suffix(".rpyc")[:500])
+        files = tuple(probe.with_suffix(".rpyc"))  # every script: unrpyc works on the folder
         label = f"{len(files)} .rpyc"
         return (AnalysisTarget("rpyc", "python_bytecode", files, "renpy", label),) if files else ()
 

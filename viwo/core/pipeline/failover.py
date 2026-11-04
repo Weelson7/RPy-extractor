@@ -14,8 +14,10 @@ def run_with_failover(
     backends: dict[str, Backend],
     call: Callable[[Backend], Outcome],
     reset: Callable[[], None] | None = None,
+    cancel=None,
 ) -> tuple[Outcome, str]:
-    """Try main, then spare when the outcome is retryable. Returns (outcome, backend id)."""
+    """Try main, then spare when the outcome is retryable. Returns (outcome, backend id). A
+    cancelled run never starts the spare (the main failed because it was stopped)."""
     if not binding.bound:
         reasons = "; ".join(binding.reasons) or "no backend available"
         return Outcome(OutcomeKind.UNAVAILABLE, error=reasons), ""
@@ -24,6 +26,8 @@ def run_with_failover(
     for backend_id in (binding.main, binding.spare):
         if not backend_id:
             continue
+        if used and cancel is not None and cancel.cancelled:
+            break
         if used:
             failed = f"{used} {last.kind.value}: {last.error or 'no reason given'}"
             if reset is not None:

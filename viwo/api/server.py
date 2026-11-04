@@ -6,11 +6,11 @@ import hmac
 import ipaddress
 import json
 import mimetypes
-import re
 import secrets
 import sys
 import threading
 import webbrowser
+from http.cookies import SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
@@ -21,26 +21,12 @@ from viwo.core.curation.sorting import resolve
 from . import plugin_assets, routes
 from .app import App, get_app
 from .handlers import GET, POST
+from .ranges import ABORTED, _copy, byte_range
 
 WEB_ROOT = Path(__file__).resolve().parent.parent / "web"
 TOKEN_HEADER = "X-VIWO-Token"
-RANGE = re.compile(r"bytes=(\d*)-(\d*)")
-# The player seeked away or the tab closed mid-stream: normal, never worth a traceback.
-ABORTED = (BrokenPipeError, ConnectionResetError, ConnectionAbortedError)
+COOKIE = "viwo_token"  # the same token, for media the page loads without headers
 MAX_BODY = 16 << 20  # JSON requests only; anything bigger is not a ViWo request
-
-
-def byte_range(header: str, size: int) -> tuple[int, int] | None:
-    """Parse a single "bytes=a-b" range; None means "send everything", (-1, -1) unsatisfiable."""
-    match = RANGE.fullmatch(header.strip())
-    if not match or not any(match.groups()):
-        return None
-    first, last = match.groups()
-    if not first:  # suffix range: the last N bytes
-        start, end = max(0, size - int(last)), size - 1
-    else:
-        start, end = int(first), min(size - 1, int(last)) if last else size - 1
-    return (start, end) if start <= end and start < size else (-1, -1)
 
 
 WILDCARD_OR_LOOPBACK = {"0.0.0.0", "::", "", "127.0.0.1", "localhost", "::1"}
@@ -98,6 +84,8 @@ class Handler(BaseHTTPRequestHandler):
         )
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store" if html_token else "no-cache")
+        if html_token:  # previews load as <img>/<video>, which send no header: a cookie
+            self.send_header("Set-Cookie", f"{COOKIE}={self.token}; HttpOnly; SameSite=Strict")
         self.end_headers()
         self.wfile.write(body)
 
@@ -173,8 +161,19 @@ class Handler(BaseHTTPRequestHandler):
             return self.send_error(404)
         self._preview(url.path[len("/preview/") :], head=True)
 
+    def _cookie_ok(self) -> bool:
+        """This machine, or a peer that was given the page with the token (its cookie)."""
+        if _loopback(str(self.client_address[0])):
+            return True
+        jar = SimpleCookie(str(self.headers.get("Cookie", "")))
+        sent = jar[COOKIE].value if COOKIE in jar else ""
+        return bool(self.token) and hmac.compare_digest(sent, self.token)
+
     def _preview(self, rel: str, head: bool = False) -> None:
-        """Workspace files, streamed, with single byte ranges so media can seek."""
+        """Workspace files, streamed, with single byte ranges so media can seek; a LAN peer
+        needs the token's cookie (the workspace is the user's data)."""
+        if not self._cookie_ok():
+            return self.send_error(403)
         try:
             path = resolve(self.app.workspace, rel)
         except ViwoError:
@@ -219,18 +218,6 @@ class Handler(BaseHTTPRequestHandler):
         local = _loopback(str(self.client_address[0]))
         keyed = bool(key) and hmac.compare_digest(key, self.token)
         self.send_file(target, html_token=target.name == "index.html" and (local or keyed))
-
-
-def _copy(src, dst, remaining: int) -> None:
-    try:
-        while remaining > 0:
-            chunk = src.read(min(1 << 16, remaining))
-            if not chunk:
-                return
-            dst.write(chunk)
-            remaining -= len(chunk)
-    except ABORTED:
-        pass
 
 
 class QuietServer(ThreadingHTTPServer):

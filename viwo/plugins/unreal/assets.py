@@ -11,6 +11,7 @@ import re
 import shutil
 from pathlib import Path
 
+from viwo.contracts import workspace as ws
 from viwo.contracts.slots import Exporter, SlotDefinition
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 from viwo.contracts.workspace import count_files
@@ -39,7 +40,7 @@ NEEDS_MAPPINGS = "could not load package"
 
 def engine(game_root: Path) -> str:
     """`GAME_UE5_1` from the build string in the game's binaries (largest executables first)."""
-    exes = sorted(game_root.rglob("*.exe"), key=lambda p: -p.stat().st_size)[:4]
+    exes = sorted(ws.files(game_root, "*.exe"), key=lambda p: -p.stat().st_size)[:4]
     for exe in exes:
         with open(exe, "rb") as fh:
             found = BUILD.search(fh.read())
@@ -52,7 +53,7 @@ def engine(game_root: Path) -> str:
 def paks_folders(game_root: Path) -> list[Path]:
     """Absolute: the tool runs in the scratch folder."""
     hits = {
-        p.parent.resolve() for p in game_root.rglob("*") if p.suffix.lower() in (".pak", ".utoc")
+        p.parent.resolve() for p in ws.files(game_root) if p.suffix.lower() in (".pak", ".utoc")
     }
     return sorted(hits)
 

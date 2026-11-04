@@ -107,7 +107,8 @@ Rules:
 
 `viwo slots` prints the effective table; `viwo config generate` writes it into the distros.
 
-**Unarchive** (UNPACK picks by longest suffix, then magic, then the identifier):
+**Unarchive** (UNPACK picks by identifier, then longest suffix, then magic, then a `fallback`
+slot's identifier; doc 2.5):
 
 | Slot | Owner | Main | Spare | Notes |
 |------|-------|------|-------|-------|

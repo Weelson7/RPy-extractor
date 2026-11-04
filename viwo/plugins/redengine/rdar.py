@@ -7,7 +7,7 @@ import struct
 from dataclasses import dataclass
 from pathlib import Path
 
-from viwo.contracts.workspace import safe_member
+from viwo.contracts import workspace as ws
 
 KARK = b"KARK"
 LIMIT = 1 << 30  # one segment, inflated
@@ -90,7 +90,7 @@ class Archive:
         (raw_size,) = struct.unpack_from("<I", data, 4)
         return oodle.decompress(data[8:], min(raw_size, size))
 
-    def write(self, entry: Entry, dest: Path, oodle: "Oodle | None", name: str = "") -> bool:
+    def write(self, entry: Entry, out, oodle: "Oodle | None", name: str = "") -> bool:
         """The game's own file at its path when the name is known (else `<hash>.<ext>`): the
         main segment inflated, then the buffer segments exactly as stored (the CR2W buffer
         table gives their on-disk sizes and the reader inflates them itself), the form the
@@ -100,18 +100,18 @@ class Archive:
         main = self._read(entry.segments[0], oodle)
         if main is None:
             return False
-        rel = safe_member(name) if name else None
-        target = dest.joinpath(*rel.parts) if rel else dest / f"{entry.name_hash:016x}"
+        out = out if isinstance(out, ws.Names) else ws.Names(out)  # a folder: its own record
+        target = out.target(name) if name else None  # a name that escapes: kept by its hash
+        if target is None:
+            target = out.dest / f"{entry.name_hash:016x}.{extension(main)}"
         target.parent.mkdir(parents=True, exist_ok=True)
-        if not rel:
-            target = target.with_name(f"{target.name}.{extension(main)}")
-        with open(target, "wb") as out:
-            out.write(main)
+        with open(target, "wb") as fh:
+            fh.write(main)
             for offset, packed, size in entry.segments[1:]:
                 if offset > FAR or packed > LIMIT:
                     raise ValueError("segment out of range")
                 self.fh.seek(offset)
-                out.write(self.fh.read(packed))
+                fh.write(self.fh.read(packed))
         return True
 
 

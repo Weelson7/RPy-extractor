@@ -22,7 +22,8 @@ tools.json
 
 `sfx` self-extractors are opened by the pinned 7-Zip; `msi` is unpacked with `msiexec /a` (the one
 recorded `subprocess` call outside the OS layer). `hidden` entries (the .NET runtime) are not a
-dependency of their own. `on_demand` entries (Ghidra, angr) are installed only when asked by name.
+dependency of their own. `on_demand` entries (Ghidra, angr) are installed only when asked by name,
+or when a feature that needs them is turned on (doc 6.4).
 
 ## 10.2 Install
 

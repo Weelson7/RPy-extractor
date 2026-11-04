@@ -13,6 +13,7 @@ from __future__ import annotations
 import struct
 from pathlib import Path
 
+from viwo.contracts import workspace as ws
 from viwo.contracts.plugin import (
     EnginePlugin,
     GameProbe,
@@ -60,6 +61,7 @@ class RdarBuiltin(Unarchiver):
         oodle = Oodle.beside(archive, ctx.os)
         names, notes = _names(ctx, oodle)
         skipped = unnamed = 0
+        out = ws.Names(dest)
         try:
             with open(archive, "rb") as fh:
                 rdar = Archive(fh)
@@ -68,7 +70,7 @@ class RdarBuiltin(Unarchiver):
                         break
                     name = names.get(entry.name_hash) if names else None
                     unnamed += name is None
-                    skipped += not rdar.write(entry, dest, oodle, name or "")
+                    skipped += not rdar.write(entry, out, oodle, name or "")
         except (OSError, ValueError, struct.error) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"bad RDAR: {exc}")
         finally:
@@ -79,7 +81,8 @@ class RdarBuiltin(Unarchiver):
             notes.append(f"{skipped} Kraken-compressed member(s) skipped: {why}")
         if unnamed and names:
             notes.append(f"{unnamed} member(s) not in the path list: kept as <hash>.<ext>")
-        return Outcome(OutcomeKind.OK, count_files(dest), notes=tuple(notes))
+        files = count_files(dest)
+        return Outcome(OutcomeKind.OK, files, notes=tuple(notes) + out.save())
 
 
 def _names(ctx, oodle) -> tuple[Names | None, list[str]]:

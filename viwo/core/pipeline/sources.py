@@ -17,7 +17,8 @@ def sources_for(run, chosen, moved: dict[Path, str], runs) -> list[Source]:
     for folder, origin in moved.items():
         direct = origin.startswith("game:") and "!" not in origin  # one container deep
         kind, container = ("member", origin[5:]) if direct else ("derived", "")
-        sources.append(Source(folder, True, origin, kind=kind, container=container))
+        names = ws.renamed(folder)
+        sources.append(Source(folder, True, origin, kind=kind, container=container, renamed=names))
     staging = run.work / "staging"
     return sources + [
         Source(

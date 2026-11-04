@@ -30,7 +30,7 @@ def export_one(run, plugin_id: str, game: Path | None = None) -> PluginRun:
     ctx.staging.mkdir(parents=True, exist_ok=True)
     run.log(f"Exporting {plugin.manifest.name} assets ({slot_id})", "export")
     outcome, used = run_with_failover(
-        run.rt.bindings[slot_id], run.rt.backends, lambda backend: backend.export(ctx)
+        run.rt.bindings[slot_id], run.rt.backends, lambda b: b.export(ctx), cancel=run.cancel
     )
     error = "" if outcome.ok else f"{slot_id}: {outcome.kind.value}: {outcome.error}"
     warnings = [error] if error else _said(outcome, slot_id, used)

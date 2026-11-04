@@ -25,6 +25,7 @@ from .carving import carve_all
 from .checks import _verify, verified
 from .collect import collect
 from .export import export_one, rewrap
+from .filters import prune, widened
 from .guard import change_warning, refuse_writes_inside, snapshot
 from .probe import FolderProbe, detect_all
 from .select import select_plugins
@@ -102,11 +103,22 @@ def _select(run: Run) -> tuple[str, ...]:
     rt = run.rt
     run.probe = FolderProbe(run.game)
     run.detections = detect_all(rt, run.probe)
+    if run.probe.truncated:  # never silent: detection saw only the first part of the folder
+        run.log(
+            "The folder has more entries than detection reads; evidence past them is not seen",
+            "detect",
+            "warn",
+        )
     priorities = {pid: p.manifest.priority for pid, p in rt.plugins.items()}
     chosen = select_plugins(run.request, list(run.detections.values()), priorities)
     run.log(f"Selected plugin(s): {', '.join(chosen)}", "detect")
     run.chosen = tuple(chosen)
     return chosen
+
+
+def _stop_if_cancelled(run: Run) -> None:
+    if run.cancel.cancelled:
+        raise ViwoError("cancelled", "extraction cancelled")
 
 
 def _stages(run: Run, workspace: Path) -> ExtractionResult:
@@ -117,14 +129,15 @@ def _stages(run: Run, workspace: Path) -> ExtractionResult:
     skip = {d.lower() for pid in chosen for d in rt.plugins[pid].skip_dirs()}
     game_files = files_under(run.game, "game", skip)
     run.log(f"Scanning {len(game_files)} game file(s) for containers", "unpack")
-    unpacked = unpack_all(rt, game_files, run.work / "unpack", run.ctx)
-    runs = [export_one(run, pid) for pid in chosen]
+    unpacked = unpack_all(rt, game_files, run.work / "unpack", run.ctx, run.cancel)
+    _stop_if_cancelled(run)
+    runs = [export_one(run, pid) for pid in chosen if not run.cancel.cancelled]
+    _stop_if_cancelled(run)
     runs += rewrap(run, chosen, unpacked)
     carved, unpacked = _carve(run, runs, game_files, unpacked)
     sources = sources_for(run, chosen, {**unpacked.origins, **carved.origins}, runs)
     collected = _collect(run, workspace, sources, skip)
-    if run.cancel.cancelled:
-        raise ViwoError("cancelled", "extraction cancelled")
+    _stop_if_cancelled(run)
     warnings = _verify(unpacked, collected) + [w for r in runs for w in r.warnings]
     changed = change_warning(before, snapshot(run.game), "extraction")
     if changed:  # ViWo never writes there; a running game (saves, logs) or an antivirus may
@@ -152,12 +165,14 @@ def _stages(run: Run, workspace: Path) -> ExtractionResult:
 def _collect(run: Run, workspace: Path, sources, skip: set[str]):
     run.log(f"Collecting from {len(sources)} source folder(s) into the workspace", "collect")
     say = lambda message: run.log(message, "collect")  # noqa: E731
-    collected = collect(sources, workspace, run.request.selected_exts, skip, run.cancel, say)
+    selected = run.request.selected_exts
+    collected = collect(sources, workspace, widened(run, selected), skip, run.cancel, say)
     groups = len(collected.by_ext)
     run.log(f"Collected {collected.collected} file(s) into {groups} group(s)", "collect")
     from ..decode import decode_all
 
     decode_all(run, workspace, collected)  # viewable copies of game media join the report
+    collected.warnings += prune(run, workspace, collected, selected)
     run.log("Verifying: game folder, archives, plugin checks", "verify")
     return collected
 
@@ -169,7 +184,7 @@ def _carve(run: Run, runs, game_files, unpacked):
     carved = carve_all(run, claimed(run, runs), items)
     nested = [i for d, o in carved.origins.items() for i in files_under(d, o, set())]
     if nested:
-        more = unpack_all(run.rt, nested, run.work / "unpack-carved", run.ctx)
+        more = unpack_all(run.rt, nested, run.work / "unpack-carved", run.ctx, run.cancel)
         unpacked.origins.update(more.origins)
         unpacked.found, unpacked.extracted = (
             unpacked.found + more.found,

@@ -195,14 +195,31 @@ def survey_game(
     return report
 
 
+PROGRAMS = (".exe", ".x86_64", ".x86")
+
+
+def _has_program(folder: Path, depth: int = 3) -> bool:
+    """An executable within `depth` folders (a game's own program, as in bin/x64/)."""
+    for dirpath, dirnames, filenames in ws.walk(folder):
+        if len(Path(dirpath).relative_to(folder).parts) >= depth:
+            dirnames[:] = []
+        if any(name.lower().endswith(PROGRAMS) for name in filenames):
+            return True
+    return False
+
+
 def games_in(root: Path, rt) -> list[Path]:
-    """A folder holding only folders is a library (each subfolder a game, like Steam's
-    common/); a folder with files of its own is one game."""
+    """A folder with files of its own is one game. A folder holding only folders is a library
+    (each subfolder a game, like Steam's common/) when two or more of them hold a program, or
+    none does (data-only collections); one program in one subfolder is one game whose files
+    sit in folders (Cyberpunk: bin/, archive/, r6/)."""
     entries = [p for p in root.iterdir() if not p.name.startswith(".")]
     subs = sorted(p for p in entries if p.is_dir())
     if not any(p.is_file() for p in root.rglob("*")):
         return []  # nothing on disk: neither a game nor a library
-    return subs if subs and all(p.is_dir() for p in entries) else [root]
+    if not subs or not all(p.is_dir() for p in entries):
+        return [root]
+    return [root] if sum(_has_program(p) for p in subs) == 1 else subs
 
 
 def survey(rt, root: Path, deep=False, progress=None, cancel=None, sink=None) -> list[dict]:

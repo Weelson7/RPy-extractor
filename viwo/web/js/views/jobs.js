@@ -3,11 +3,11 @@ import { api } from "../api.js";
 import { h, fill, btn, panel, badge, viewHead, empty, errorBox, toast, toastErr, logLine, fmtNum, emit, goBtn } from "../ui.js";
 
 const STATE_KIND = { running: "live", queued: "warn", succeeded: "ok", failed: "err", cancelled: "mute" };
-/** Job kind -> [name shown to people, view that runs it]. */
-export const KIND = { extract: ["EXTRACTION", "#extract", "01"], survey: ["SURVEY", "#survey", "07"], merge: ["MERGER BUILD", "#merger", "06"],
-  repack: ["PATCHED COPY", "#repack", "09"], preflight: ["STARTUP CHECK", "#system", "05"], install: ["TOOL INSTALL", "#system", "05"],
-  capture: ["CAPTURE", "#capture", "10"], indexes: ["INDEXES UPDATE", "#system", "05"], cleanup: ["CLEANUP", "#cleanup", "08"],
-  analyze: ["ANALYSIS", "#analysis", "12"], patch: ["PATCH SET", "#patches", "14"], mod: ["MOD PACKAGE", "#patches", "14"], dump: ["MEMORY DUMP", "#runtime", "13"], trace: ["API TRACE", "#runtime", "13"], agent: ["RUNTIME AGENT", "#runtime", "13"], record: ["AUDIO RECORDING", "#runtime", "13"], profile: ["CPU PROFILE", "#runtime", "13"] };
+/** Job kind -> [name shown to people, view that runs it]; its tab code comes from the registry. */
+export const KIND = { extract: ["EXTRACTION", "#extract"], survey: ["SURVEY", "#survey"], merge: ["MERGER BUILD", "#merger"],
+  repack: ["PATCHED COPY", "#repack"], preflight: ["STARTUP CHECK", "#system"], install: ["TOOL INSTALL", "#system"],
+  capture: ["CAPTURE", "#capture"], indexes: ["INDEXES UPDATE", "#system"], cleanup: ["CLEANUP", "#cleanup"],
+  analyze: ["ANALYSIS", "#analysis"], patch: ["PATCH SET", "#patches"], mod: ["MOD PACKAGE", "#patches"], dump: ["MEMORY DUMP", "#runtime"], trace: ["API TRACE", "#runtime"], agent: ["RUNTIME AGENT", "#runtime"], record: ["AUDIO RECORDING", "#runtime"], profile: ["CPU PROFILE", "#runtime"] };
 const kindName = (k) => KIND[k]?.[0] || String(k).toUpperCase();
 const when = (j) => `${new Date(j.started * 1000).toLocaleTimeString()} · ${Number(j.elapsed || 0).toFixed(1)} s`;
 const human = (k) => k.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase();
@@ -91,7 +91,7 @@ async function refreshDetail() {
     el.cancel.hidden = !live;
     fill(el.head,
       h("div", { class: "job-h" }, h("b", {}, kindName(job.kind)), stateBadge(job.state), h("span", { class: "mono dim small" }, when(job)),
-        goBtn(KIND[job.kind]?.[1] || `#${job.kind}`, `OPEN ${KIND[job.kind] ? `${KIND[job.kind][2]} ${KIND[job.kind][0]}` : kindName(job.kind)} →`, "sm ghost")),
+        goBtn(KIND[job.kind]?.[1] || `#${job.kind}`, `OPEN ${KIND[job.kind] ? tab(KIND[job.kind][1].slice(1)) : kindName(job.kind)} →`, "sm ghost")),
       h("p", { class: "mono dim small" }, `job id ${job.id}`),
       job.error ? errorBox(job.error, `${kindName(job.kind)} ${String(job.state).toUpperCase()}`) : null,
       facts(job.result));
@@ -125,7 +125,7 @@ function hide() {
   clearInterval(S.timer);
 }
 
-import { registerView, code } from "../registry.js";
+import { registerView, code, tab } from "../registry.js";
 
 const VIEW = { mount, show, hide };
 registerView({ id: "jobs", arm: "global", order: 20, title: "JOBS", subtitle: "runs and their logs", ...VIEW });

@@ -110,7 +110,7 @@ class GodotPlugin(EnginePlugin):
 
     def analysis_targets(self, probe: GameProbe):
         """Compiled GDScript (`.gdc`), one target for all of them (doc 6.1)."""
-        files = tuple(probe.with_suffix(".gdc")[:500])
+        files = tuple(probe.with_suffix(".gdc"))  # every script: GDRE runs them in batches
         if not files:
             return ()
         exes = sorted(probe.with_suffix(".exe", ".x86_64"), key=lambda p: -p.stat().st_size)

@@ -10,6 +10,8 @@ import re
 import struct
 from pathlib import Path
 
+from viwo.contracts import workspace as ws
+
 # 8 x "mov dword ptr [reg+disp], imm32" with displacements 4 apart: an inlined 32-byte key.
 MOVS = (  # (pattern, instruction length, displacement offset, displacement format)
     (re.compile(rb"(?:\xc7[\x40-\x43\x45-\x47][\x00-\xff]{5}){8}", re.S), 7, 2, "<b"),
@@ -51,7 +53,7 @@ def _from_movs(m) -> list[bytes]:
 
 def candidates(game_root: Path) -> list[bytes]:
     """Distinct plausible keys from executables under the game folder (cached per file state)."""
-    exes = [p for p in sorted(game_root.rglob("*")) if p.is_file() and _is_binary(p)]
+    exes = [p for p in ws.files(game_root) if _is_binary(p)]
     state = tuple((str(p), p.stat().st_size, p.stat().st_mtime_ns) for p in exes)
     if state not in _CACHE:
         keys: list[bytes] = []

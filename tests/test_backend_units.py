@@ -141,8 +141,11 @@ class ArchiveBackendTests(unittest.TestCase):
                 OutcomeKind.FAILED,
             )
             done = ZipBackend().extract(root / "z.zip", root / "zo", None)
-            self.assertEqual(done.files, 1)
-            self.assertIn("2 unsafe member name(s) skipped", done.notes[0])  # said, never silent
+            self.assertEqual(done.files, 2)  # "C:/abs.txt" kept inside as C_/abs.txt, recorded
+            self.assertEqual((root / "zo" / "C_" / "abs.txt").read_text(), "x")
+            self.assertIn("1 member name(s) Windows cannot write altered", done.notes[0])
+            self.assertIn("1 entr(ies) whose name leads out", done.notes[1])  # said, never silent
+            self.assertFalse((root / "evil.txt").exists())
 
 
 class RpgMvTests(unittest.TestCase):

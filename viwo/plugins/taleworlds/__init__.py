@@ -13,10 +13,11 @@ from __future__ import annotations
 import struct
 from pathlib import Path
 
+from viwo.contracts import workspace as ws
 from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest
 from viwo.contracts.slots import SlotDefinition, Unarchiver
 from viwo.contracts.types import DependencySpec, DetectionResult, Outcome, OutcomeKind
-from viwo.contracts.workspace import count_files, safe_member
+from viwo.contracts.workspace import count_files
 
 from .textures import CUBE_TAG, TEXTURE, dds, shape
 
@@ -98,26 +99,23 @@ class TpacBuiltin(Unarchiver):
         return True, ""  # lz4 only unlocks compressed segments; raw ones come out without it
 
     def extract(self, archive: Path, dest: Path, ctx) -> Outcome:
-        counts = {"lz4": 0, "raw texture": 0, "unsafe": 0, "cut": 0}
+        counts, names = {"lz4": 0, "raw texture": 0, "cut": 0}, ws.Names(dest)
         try:
             with open(archive, "rb") as fh:
                 for name, segments, kind, meta in list(entries(fh)):
-                    rel = safe_member(name)
                     if ctx.cancel.cancelled:
                         break
-                    if rel is None:
-                        counts["unsafe"] += 1
-                        continue
-                    _item(fh, dest.joinpath(*rel.parts), segments, (kind, meta), counts)
+                    target = names.target(name)
+                    if target is not None:
+                        _item(fh, target, segments, (kind, meta), counts)
         except (OSError, ValueError, IndexError, struct.error) as exc:  # IndexError: cut short
             return Outcome(OutcomeKind.FAILED, error=f"bad TPAC: {exc}")
         notes = [f"{counts['lz4']} LZ4 segment(s) need the 'lz4' Python package"]
         notes.append(f"{counts['raw texture']} texture(s) of an unknown shape kept as raw .bin")
-        notes.append(f"{counts['unsafe']} entr(ies) with an unsafe name skipped")
         notes.append(f"{counts['cut']} segment(s) past the end of the package (cut short)")
-        return Outcome(
-            OutcomeKind.OK, count_files(dest), notes=tuple(n for n in notes if n[0] != "0")
-        )
+        files = count_files(dest)
+        notes = tuple(n for n in notes if n[0] != "0") + names.save()
+        return Outcome(OutcomeKind.OK, files, notes=notes)
 
 
 def _segment(fh, segment, counts: dict) -> bytes | None:

@@ -11,9 +11,17 @@ from .probe import _read
 
 
 def identify(path: Path, slots: Iterable[SlotDefinition]) -> Match | None:
+    """Custom identifiers, then the longest suffix, then magic bytes, then the fallback
+    identifiers (a QuickBMS script never takes a format a reader already claims)."""
     candidates = [s for s in slots if s.family == "unarchive"]
     head = _read(path, SNIFF_BYTES, False)
-    for slot in candidates:
+    first = _identified(path, head, [s for s in candidates if not s.fallback])
+    found = first or _by_name_or_magic(path, head, candidates)
+    return found or _identified(path, head, [s for s in candidates if s.fallback])
+
+
+def _identified(path: Path, head: bytes, slots) -> Match | None:
+    for slot in slots:
         if slot.identify is not None:
             try:  # an identifier may reopen the file: a lock or an antivirus hold surfaces here
                 found = slot.identify(path, head, _read(path, SNIFF_BYTES, True))
@@ -21,6 +29,10 @@ def identify(path: Path, slots: Iterable[SlotDefinition]) -> Match | None:
                 continue
             if found is not None:
                 return found
+    return None
+
+
+def _by_name_or_magic(path: Path, head: bytes, candidates) -> Match | None:
     name = path.name.lower()
     best, best_len = None, 0
     for slot in candidates:

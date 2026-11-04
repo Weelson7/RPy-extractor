@@ -245,18 +245,19 @@ class FirstRunAnswerTests(unittest.TestCase):
                 b"MZ" + bytes(0x3A) + struct.pack("<I", 0x40) + b"PE\0\0" + struct.pack("<H", 0x14C)
             )
             game.write_bytes(pe + bytes(400))
-            tool = root / "x64dbg" / "release" / "x64" / "x64dbg.exe"
+            tool = root / "third_party" / "x64dbg" / "release" / "x64" / "x64dbg.exe"
             tool.parent.mkdir(parents=True)
             tool.write_bytes(b"MZ")
             located = SimpleNamespace(argv_prefix=(str(tool),), path=str(tool))
             ctx = SimpleNamespace(
-                os=SimpleNamespace(tools=SimpleNamespace(locate=lambda s: located))
+                os=SimpleNamespace(tools=SimpleNamespace(locate=lambda s: located)),
+                log=lambda *a, **k: None,
             )
             target = AnalysisTarget("g", "native_binary", (game,), "user")
             missing = X64dbgGui().prepare(target, ctx)  # this x64dbg came without x32dbg
             self.assertEqual(missing.kind, OutcomeKind.UNAVAILABLE)
             self.assertIn("32-bit", missing.error)
-            x32 = root / "x64dbg" / "release" / "x32" / "x32dbg.exe"
+            x32 = root / "third_party" / "x64dbg" / "release" / "x32" / "x32dbg.exe"
             x32.parent.mkdir()
             x32.write_bytes(b"MZ")
             spec = X64dbgGui().prepare(target, ctx)

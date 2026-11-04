@@ -265,6 +265,17 @@ def _warn(run, collected, text: str) -> None:
     collected.warnings.append(text)
 
 
+def _todo(run, workspace: Path, collected, wanted) -> list[str]:
+    """Workspace files to decode: each once, however many archives held a copy; empty ones
+    are said once and left (CLEANUP lists them as empty files)."""
+    rels = [p["path"] for p in collected.provenance if Path(p["path"]).suffix.lower() in wanted]
+    todo = list(dict.fromkeys(rels))
+    empty = {r for r in todo if (workspace / r).is_file() and not (workspace / r).stat().st_size}
+    if empty:
+        run.log(f"{len(empty)} empty file(s) not decoded, e.g. {sorted(empty)[0]}", "decode")
+    return [r for r in todo if r not in empty]
+
+
 def decode_all(run, workspace: Path, collected) -> None:
     """Decode collected files in place; the new files join the `collected` report, and the
     files no backend could decode become one warning per slot there."""
@@ -272,14 +283,7 @@ def decode_all(run, workspace: Path, collected) -> None:
     if not option_bool(ctx.options, "decode", True):
         return
     wanted = _wanted(run, ctx.options)
-    todo = [p["path"] for p in collected.provenance if Path(p["path"]).suffix.lower() in wanted]
-    empty = [
-        rel for rel in todo if (workspace / rel).is_file() and not (workspace / rel).stat().st_size
-    ]
-    if empty:  # nothing in them to decode: said once, CLEANUP lists them as empty files
-        run.log(f"{len(empty)} empty file(s) not decoded, e.g. {empty[0]}", "decode")
-        skip = set(empty)
-        todo = [rel for rel in todo if rel not in skip]
+    todo = _todo(run, workspace, collected, wanted)
     if not todo:
         return
     run.log(f"Decoding {len(todo)} file(s) into WAV / PNG / MP4 / glTF / JSON / RPY", "decode")
@@ -306,3 +310,5 @@ def decode_all(run, workspace: Path, collected) -> None:
         decoded = collect(sources, workspace, None, set(), run.cancel)
         collected.by_ext.update(decoded.by_ext)
         collected.provenance += decoded.provenance
+        collected.unreadable += decoded.unreadable  # never silent: the OS refused them
+        collected.warnings += decoded.warnings

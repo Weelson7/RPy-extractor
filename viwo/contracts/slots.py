@@ -48,6 +48,7 @@ class SlotDefinition:
     suffixes: tuple[str, ...] = ()  # lowercase, dotted, multi-part allowed
     magic: tuple[bytes, ...] = ()  # accepted head signatures (any)
     identify: Identifier | None = None  # custom identification (e.g. exe trailers)
+    fallback: bool = False  # identify only what no suffix or signature of another slot claims
 
 
 class Backend(ABC):

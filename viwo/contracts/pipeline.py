@@ -9,7 +9,7 @@ from typing import Any, Mapping
 from .types import DetectionResult
 from .workspace import METADATA_DIR
 
-CONTRACT_VERSION = "1.1"  # mirrored in viwo/__init__.py (contracts import nothing from the app)
+CONTRACT_VERSION = "1.2"  # mirrored in viwo/__init__.py (contracts import nothing from the app)
 
 GENERIC_PLUGIN_ID = "generic"
 

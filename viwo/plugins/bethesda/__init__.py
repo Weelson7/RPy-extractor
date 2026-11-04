@@ -7,10 +7,10 @@ import struct
 import zlib
 from pathlib import Path
 
+from viwo.contracts import workspace as ws
 from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest
 from viwo.contracts.slots import SlotDefinition, Unarchiver
 from viwo.contracts.types import DependencySpec, DetectionResult, Outcome, OutcomeKind
-from viwo.contracts.workspace import safe_member
 
 from .archives import ba2_files, bsa_data, bsa_entries
 
@@ -23,11 +23,10 @@ LZ4 = DependencySpec(
 )
 
 
-def _write(dest: Path, name: str, data: bytes) -> int:
-    rel = safe_member(name)
-    if rel is None:
+def _write(names: ws.Names, name: str, data: bytes) -> int:
+    target = names.target(name)
+    if target is None:
         return 0
-    target = dest.joinpath(*rel.parts)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_bytes(data)
     return 1
@@ -49,9 +48,11 @@ class BsaBuiltin(Unarchiver):
         return True, ""  # lz4 only unlocks version-105 entries; everything else works without it
 
     def extract(self, archive: Path, dest: Path, ctx) -> Outcome:
-        def read(blob) -> tuple[int, int, int]:
+        names = ws.Names(dest)
+
+        def read(blob) -> tuple[int, int]:
             version, flags, entries = bsa_entries(blob)
-            written, skipped, unsafe = 0, 0, 0
+            written, skipped = 0, 0
             for entry in entries:
                 if ctx.cancel.cancelled:
                     break
@@ -59,17 +60,15 @@ class BsaBuiltin(Unarchiver):
                 if data is None:
                     skipped += 1
                     continue
-                done = _write(dest, entry[0], data)
-                written, unsafe = written + done, unsafe + (not done)
-            return written, skipped, unsafe
+                written += _write(names, entry[0], data)
+            return written, skipped
 
         try:
-            written, skipped, unsafe = _mapped(archive, read)
+            written, skipped = _mapped(archive, read)
         except (OSError, ValueError, OverflowError, struct.error, zlib.error, IndexError) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"bad BSA: {exc}")
         notes = (f"{skipped} LZ4 entries need the 'lz4' Python package",) if skipped else ()
-        notes += (f"{unsafe} entr(ies) with an unsafe name skipped",) if unsafe else ()
-        return Outcome(OutcomeKind.OK, written, notes=notes)
+        return Outcome(OutcomeKind.OK, written, notes=notes + names.save())
 
 
 class Ba2Builtin(Unarchiver):
@@ -77,21 +76,21 @@ class Ba2Builtin(Unarchiver):
     parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
     def extract(self, archive: Path, dest: Path, ctx) -> Outcome:
-        def read(blob) -> tuple[int, int]:
-            written = unsafe = 0
+        names = ws.Names(dest)
+
+        def read(blob) -> int:
+            written = 0
             for name, data in ba2_files(blob):
                 if ctx.cancel.cancelled:
                     break
-                done = _write(dest, name, data)
-                written, unsafe = written + done, unsafe + (not done)
-            return written, unsafe
+                written += _write(names, name, data)
+            return written
 
         try:
-            written, unsafe = _mapped(archive, read)
-            notes = (f"{unsafe} entr(ies) with an unsafe name skipped",) if unsafe else ()
-            return Outcome(OutcomeKind.OK, written, notes=notes)
+            written = _mapped(archive, read)
         except (OSError, ValueError, OverflowError, struct.error, zlib.error, IndexError) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"bad BA2: {exc}")
+        return Outcome(OutcomeKind.OK, written, notes=names.save())
 
 
 SLOTS = (

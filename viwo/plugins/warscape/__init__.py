@@ -11,10 +11,11 @@ from __future__ import annotations
 import struct
 from pathlib import Path
 
+from viwo.contracts import workspace as ws
 from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest
 from viwo.contracts.slots import SlotDefinition, Unarchiver
 from viwo.contracts.types import DetectionResult, Outcome, OutcomeKind
-from viwo.contracts.workspace import count_files, safe_member
+from viwo.contracts.workspace import count_files
 
 from .db import GAMES, DbBuiltin
 from .db import SLOT as DB_SLOT
@@ -62,21 +63,28 @@ class PackBuiltin(Unarchiver):
     parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
     def extract(self, archive: Path, dest: Path, ctx) -> Outcome:
+        names, cut = ws.Names(dest), 0
         try:
             with open(archive, "rb") as fh:
                 for name, offset, size in entries(fh):
-                    rel = safe_member(name)
-                    if rel is None or ctx.cancel.cancelled:
+                    if ctx.cancel.cancelled:
+                        break
+                    target = names.target(name)
+                    if target is None:
                         continue
-                    target = dest.joinpath(*rel.parts)
                     target.parent.mkdir(parents=True, exist_ok=True)
                     fh.seek(offset)
                     with open(target, "wb") as out:
                         for left in range(size, 0, -(1 << 20)):
-                            out.write(fh.read(min(left, 1 << 20)))
+                            out.write(block := fh.read(min(left, 1 << 20)))
+                            if len(block) < min(left, 1 << 20):
+                                cut += 1  # the pack ends inside this member
+                                break
         except (OSError, ValueError, struct.error) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"bad pack: {exc}")
-        return Outcome(OutcomeKind.OK, count_files(dest))
+        files = count_files(dest)
+        notes = (f"{cut} member(s) cut short (the pack ends early)",) if cut else ()
+        return Outcome(OutcomeKind.OK, files, notes=names.save() + notes)
 
 
 PLUGIN = "WarscapePlugin"  # discovered by viwo.core.wiring.registry

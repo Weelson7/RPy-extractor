@@ -16,8 +16,12 @@ export async function turnOn(feature) {
 export function featureOff(title, why, feature, after = () => {}) {
   const on = btn("TURN ON", (e) => busy(e.currentTarget, async () => {
     try {
-      await turnOn(feature);
-      toast(`${title.replace(/ IS OFF$/, "")} is on.`, "ok", "Written to startup.ini; SETTINGS can turn it off again.");
+      const res = await turnOn(feature);
+      const tools = res.installing || [];
+      toast(`${title.replace(/ IS OFF$/, "")} is on.`, "ok", tools.length
+        ? `Installing what it needs in the background (${tools.join(", ")}): follow it in JOBS.`
+        : "Written to startup.ini; SETTINGS can turn it off again.");
+      if (tools.length) emit("jobs");
       await after();
     } catch (err) { toastErr(err, "Not turned on: "); }
   }), "sm primary");

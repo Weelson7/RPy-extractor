@@ -1,5 +1,5 @@
 // RENDER: transition / end / overlay / output settings, build as a "merge" job, results.
-import { code } from "../registry.js";
+import { code, tab } from "../registry.js";
 import { api } from "../api.js";
 import { h, fill, btn, panel, badge, errorBox, toast, toastErr, busy, emit, logLine, openBtn } from "../ui.js";
 import { jobProgress } from "../progress.js";
@@ -45,7 +45,7 @@ export function refreshBar() {
   const fade = O.transitionType === "fade";
   const est = (s.clips - s.videos) * O.diapoDelay - (fade ? Math.max(0, s.clips - s.timelines) * O.fadeCrossTime : 0) + s.timelines * (O.endLastImageTime || 0);
   el.sum.textContent = s.timelines ? `${s.timelines} VIDEO(S) · ${s.clips} CLIPS · ≈${Math.max(0, est).toFixed(1)} s${s.videos ? ` + ${s.videos} video clip(s)` : ""} · ${fade ? "CROSSFADE" : "CUT"}` : "no group ticked";
-  el.why.textContent = !st?.encoder ? "install ffmpeg (05 system)" : running ? "rendering…" : !s.timelines ? "tick a group"
+  el.why.textContent = !st?.encoder ? `install ffmpeg (${tab("system")})` : running ? "rendering…" : !s.timelines ? "tick a group"
     : fade && O.fadeCrossTime >= O.diapoDelay ? "crossfade ≥ image hold" : "";
   el.build.disabled = Boolean(el.why.textContent);
 }

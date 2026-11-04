@@ -132,12 +132,16 @@ class ExtractionContext:
             if now - last[0] < every or not line.strip():
                 return
             last[0] = now
-            text = line.strip()[:200]
-            if mask:
-                text = text.replace(mask, "<secret>").replace(mask.upper(), "<secret>")
-            self.log(text, "info", stage)
+            self.log(masked(line.strip(), mask)[:200], "info", stage)  # masked, then cut
 
         return relay
+
+
+def masked(text: str, secret: str) -> str:
+    """text with every spelling of secret (as given, upper, lower) replaced by <secret>."""
+    for spelling in {secret, secret.upper(), secret.lower()} if secret else ():
+        text = text.replace(spelling, "<secret>")
+    return text
 
 
 class EnginePlugin(ABC):

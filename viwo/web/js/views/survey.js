@@ -1,7 +1,7 @@
 // SURVEY: read-only coverage check of one game or a whole library — what ViWo can pull, and what stays locked.
 import { api } from "../api.js";
 import { h, fill, btn, panel, badge, viewHead, empty, errorBox, toast, toastErr, pref, logLine, fmtBytes, fmtNum, emit, bus, stat, browseBtn } from "../ui.js";
-import { setGame } from "../game.js";
+import { setGame, followGame } from "../game.js";
 import { jobProgress } from "../progress.js";
 import { gameCard, categoryKey, dataBytes, coveredBytes, pct, covKind } from "./survey-card.js";
 
@@ -10,7 +10,8 @@ const el = {};
 
 function mount(root) {
   el.path = h("input", { class: "input mono grow", id: "survey-path", placeholder: "/path/to/game — or a folder of games",
-    value: pref("surveyPath") || pref("gamePath") || "", spellcheck: "false", onkeydown: (e) => e.key === "Enter" && run(), oninput: bar });
+    value: pref("gamePath") || pref("surveyPath") || "", spellcheck: "false", onkeydown: (e) => e.key === "Enter" && run(), oninput: bar });
+  followGame(el.path, bar); // the top bar's game; a library folder typed here stays until another game is picked
   el.deep = h("button", { type: "button", class: "pick tgl", "aria-describedby": "survey-deep-note", onclick: () => setDeep(!S.deep) }, "DEEP");
   el.prog = jobProgress("survey", { logClass: "mini", onStatus: (text) => { if (S.running && text) el.sum.textContent = text; } });
   el.progPanel = panel(`${code("survey")}.B`, "SURVEY RUN", null, el.prog.el);

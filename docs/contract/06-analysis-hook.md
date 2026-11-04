@@ -93,9 +93,12 @@ to the dynamic arm (doc 11.2).
 - The project lives beside the workspace in `<workspace>.ghidra/<key>/` (Ghidra refuses project
   paths containing a dot folder); the GUI handoff opens it by starting the JVM directly, so the
   window is a tracked child.
-- Ghidra is pinned `on_demand`: installed by `viwo install ghidra` or SYSTEM, never by the
-  startup preflight. First-run prompts (user agreement, tips) are pre-answered without
-  overwriting a user's own choice.
+- Ghidra is pinned `on_demand`: installed by `viwo install ghidra`, SYSTEM, or by itself when
+  the `analysis` feature is turned on (the main backends' missing tools install as one
+  background job, `core/preflight.py` `feature_tools`), never by the startup preflight.
+  First-run prompts (user agreement, tips) are pre-answered without overwriting a user's own
+  choice; the x64dbg and Cheat Engine handoffs pre-answer theirs only in ViWo's own copy under
+  `third_party/`, and say so when the tool is the user's own install.
 - Timeout: `viwo analyze --timeout` (default 4 h); cancel kills the tree.
 
 ## 6.5 Rules

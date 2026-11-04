@@ -8,9 +8,10 @@ import zipfile
 import zlib
 from pathlib import Path
 
+from viwo.contracts import workspace as ws
 from viwo.contracts.slots import Unarchiver
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
-from viwo.contracts.workspace import count_files, safe_member
+from viwo.contracts.workspace import count_files
 
 SEVENZIP = DependencySpec(
     "sevenzip",
@@ -30,21 +31,23 @@ PY7ZR = DependencySpec(
 DAMAGED = (OSError, ValueError, EOFError, zlib.error)
 
 
-def _done(dest: Path, skipped: int = 0) -> Outcome:
-    notes = (f"{skipped} unsafe member name(s) skipped",) if skipped else ()
-    return Outcome(OutcomeKind.OK, count_files(dest), notes=notes)
+def _done(dest: Path, names: ws.Names | None = None, links: int = 0) -> Outcome:
+    files = count_files(dest)
+    notes = (f"{links} link or device member(s) skipped",) if links else ()
+    return Outcome(OutcomeKind.OK, files, notes=(names.save() if names else ()) + notes)
 
 
-def safe_tar_members(tf: tarfile.TarFile, dest: Path) -> list[tarfile.TarInfo]:
-    """Regular files and dirs that stay inside dest (no links, devices, traversal)."""
-    root = dest.resolve()
-    keep = []
-    for member in tf.getmembers():
-        target = (root / member.name).resolve()
-        inside = target == root or root in target.parents
-        if inside and (member.isfile() or member.isdir()) and safe_member(member.name):
-            keep.append(member)
-    return keep
+def _cancelled(ctx) -> bool:
+    """A verify read-back may run without a cancel token."""
+    return bool(getattr(getattr(ctx, "cancel", None), "cancelled", False))
+
+
+def _copy_member(names: ws.Names, name: str, src) -> None:
+    target = names.target(name)
+    if target is not None:
+        target.parent.mkdir(parents=True, exist_ok=True)
+        with src, open(target, "wb") as out:
+            shutil.copyfileobj(src, out)
 
 
 class ZipBackend(Unarchiver):
@@ -52,41 +55,39 @@ class ZipBackend(Unarchiver):
     parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
     def extract(self, archive, dest, ctx) -> Outcome:
-        skipped = 0
+        names = ws.Names(dest)
         try:
             with zipfile.ZipFile(archive) as zf:
-                for info in zf.infolist():  # names that could not be stored safely are skipped
-                    rel = safe_member(info.filename)
-                    if rel is None:
-                        skipped += not info.is_dir()
-                    elif not info.is_dir():
-                        target = dest.joinpath(*rel.parts)
-                        target.parent.mkdir(parents=True, exist_ok=True)
-                        with zf.open(info) as src, open(target, "wb") as out:
-                            shutil.copyfileobj(src, out)
+                for info in zf.infolist():
+                    if _cancelled(ctx):
+                        break
+                    if not info.is_dir():
+                        _copy_member(names, info.filename, zf.open(info))
         except (zipfile.BadZipFile, *DAMAGED, RuntimeError, NotImplementedError) as exc:
             return Outcome(OutcomeKind.FAILED, error=str(exc)[:300])
-        return _done(dest, skipped)
+        return _done(dest, names)
 
 
 class TarBackend(Unarchiver):
+    """Regular files only: links and devices are never recreated (counted)."""
+
     backend_id, license = "py-tarfile", "PSF-2.0"
     parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
     def extract(self, archive, dest, ctx) -> Outcome:
+        names, links = ws.Names(dest), 0
         try:
             with tarfile.open(archive, "r:*") as tf:
-                members = safe_tar_members(tf, dest)
-                skipped = sum(1 for m in tf.getmembers() if m.isfile()) - sum(
-                    1 for m in members if m.isfile()
-                )
-                if hasattr(tarfile, "data_filter"):
-                    tf.extractall(dest, members=members, filter="data")
-                else:
-                    tf.extractall(dest, members=members)
+                for member in tf:
+                    if _cancelled(ctx):
+                        break
+                    if member.isfile():
+                        _copy_member(names, member.name, tf.extractfile(member))
+                    else:
+                        links += not member.isdir()
         except (tarfile.TarError, *DAMAGED) as exc:
             return Outcome(OutcomeKind.FAILED, error=str(exc)[:300])
-        return _done(dest, skipped)
+        return _done(dest, names, links)
 
 
 class _CliBackend(Unarchiver):

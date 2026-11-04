@@ -52,6 +52,8 @@ def pack(game: Path, copy: Path, out: Path, name: str = "", needs: dict | None =
     to another game version), and `requires` / `after` (names of other mods) for load order."""
     if not (copy / MARKER).is_dir():
         raise ViwoError("invalid_request", f"{copy} is not a ViWo patched copy")
+    if out.resolve().is_relative_to(game.resolve()):
+        raise ViwoError("refused", f"the mod ({out}) is inside the game folder")
     files = changes(game, copy)
     if not files:
         raise ViwoError("failed", "the patched copy does not differ from the game")

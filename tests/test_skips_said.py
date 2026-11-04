@@ -1,6 +1,8 @@
-"""L3: the guards the third audit added. Every built-in unpacker counts what it skips by reason
-(an unsafe name, a part file that is missing, an archive cut short) and says it as a note, and
-the run lists every note among its failures; nothing lands outside the destination. A zero
+"""L3: the guards the third audit added. Every built-in unpacker keeps a member whose name
+Windows cannot write under an altered name, records the original (provenance gives it, so the
+round trip writes the member back under it) and says so; it counts what it skips by reason (a
+name that leads out, a part file that is missing, an archive cut short), the run lists every
+note among its warnings, and nothing lands outside the destination. A zero
 declared size never means "inflate without a limit". A crafted SLP row or Doom column that
 runs on past its size is refused, a legit one still decodes. An MV System.json key that does
 not open the images is replaced by the one the PNG signature gives, and said. A junction in a
@@ -9,6 +11,7 @@ game folder is never walked into. Two Lua chunks of one stem both get a decompil
 from __future__ import annotations
 
 import io
+import json
 import os
 import pickle
 import random
@@ -57,7 +60,7 @@ def _outside(root: Path) -> set[Path]:
 
 
 class UnsafeNamesTests(unittest.TestCase):
-    def test_every_unpacker_counts_the_names_it_will_not_write(self) -> None:
+    def test_every_unpacker_keeps_an_unwritable_name_altered_and_records_it(self) -> None:
         from viwo.plugins.bethesda import Ba2Builtin, BsaBuiltin
         from viwo.plugins.electron import AsarBuiltin
         from viwo.plugins.renpy.rpa import RpaSafe
@@ -91,10 +94,16 @@ class UnsafeNamesTests(unittest.TestCase):
                 dest.mkdir()
                 out = backend.extract(archive, dest, CTX)
                 self.assertEqual(out.kind, OutcomeKind.OK, (kind, out.error))
-                unsafe = _said(out.notes, "unsafe name")
-                self.assertEqual(unsafe, bad, (kind, out.notes))
-                if kind != "tpac":  # TPAC counts the files it wrote, one per segment
-                    self.assertEqual(out.files, len(files) - bad, kind)
+                self.assertEqual(_said(out.notes, "altered"), bad, (kind, out.notes))
+                record = ws.renamed(dest)
+                self.assertEqual(len(record), bad, kind)
+                originals = {orig: dest / alt for alt, orig in record.items()}
+                if kind == "tpac":  # one .<n>.bin per segment: the record names the item
+                    continue
+                self.assertEqual(out.files, len(files), kind)  # every member out, none lost
+                for name, data in files.items():
+                    name = f"textures/ui/{name.split('/')[-1]}" if kind == "bsa" else name
+                    self.assertEqual(originals.get(name, dest / name).read_bytes(), data, name)
                 self.assertEqual(_outside(root), set())
 
 
@@ -151,7 +160,7 @@ class CutShortTests(unittest.TestCase):
             out = RpaSafe().extract(root / "x.rpa", root / "o", CTX)
             self.assertEqual(out.files, 1)
             self.assertEqual(_said(out.notes, "shorter than the index"), 1, out.notes)
-            self.assertEqual(_said(out.notes, "unsafe name"), 1, out.notes)
+            self.assertEqual(_said(out.notes, "leads out of the folder"), 1, out.notes)
             self.assertFalse((root / "up.txt").exists())
 
     def test_a_stored_xp3_segment_past_the_end_fails_and_zero_is_no_bomb(self) -> None:
@@ -178,7 +187,7 @@ class CutShortTests(unittest.TestCase):
 
 
 class RunSaysNotesTests(unittest.TestCase):
-    def test_the_run_lists_every_unpacker_note(self) -> None:
+    def test_the_run_lists_every_unpacker_note_and_provenance_keeps_names(self) -> None:
         from viwo.core.pipeline.runner import extract
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -192,9 +201,12 @@ class RunSaysNotesTests(unittest.TestCase):
                 runtime(root), ExtractionRequest(str(game), str(root / "ws")), "j",
                 lambda e: None, CancelToken(),
             )  # fmt: skip
-            said = [f for f in result.warnings if "unsafe name" in f]
+            said = [f for f in result.warnings if "altered" in f]
             self.assertEqual(len(said), 1, result.warnings)
             self.assertIn("app.asar", said[0])
+            records = (root / "ws" / ws.PROVENANCE_FILE).read_text().splitlines()
+            members = {json.loads(r)["member"] for r in records}
+            self.assertIn("con.txt", members)  # the archive's own name, for the round trip
             self.assertEqual(tree_hashes(game), before)
 
 
@@ -323,6 +335,15 @@ class JunctionTests(unittest.TestCase):
             from viwo.core.pipeline.guard import snapshot
 
             self.assertEqual(set(snapshot(root / "game")), {"Data/a.pak"})
+            from viwo.core.pipeline.unpack import files_under
+            from viwo.core.roundtrip import _copy_tree
+
+            found = [p.name for p, _ in files_under(root / "game", "game", set())]
+            self.assertEqual(found, ["a.pak"])  # UNPACK sees the game only
+            left = _copy_tree(root / "game", root / "copy", lambda e: None)
+            self.assertEqual(left, ["loop (a linked folder, not entered)"])  # said
+            self.assertFalse((root / "copy" / "loop").exists())
+            self.assertTrue((root / "copy" / "Data" / "a.pak").is_file())
 
 
 if __name__ == "__main__":

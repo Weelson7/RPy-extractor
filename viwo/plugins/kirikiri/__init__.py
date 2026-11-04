@@ -10,10 +10,10 @@ import struct
 import zlib
 from pathlib import Path
 
+from viwo.contracts import workspace as ws
 from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest
 from viwo.contracts.slots import SlotDefinition, Unarchiver
 from viwo.contracts.types import DetectionResult, Outcome, OutcomeKind
-from viwo.contracts.workspace import safe_member
 
 MAGIC = b"XP3\r\n \n\x1a\x8b\x67\x01"
 ENCRYPTED = 0x80000000
@@ -91,20 +91,18 @@ class Xp3Builtin(Unarchiver):
     parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
     def extract(self, archive: Path, dest: Path, ctx) -> Outcome:
-        written, locked, unsafe = 0, 0, 0
+        written, locked, names = 0, 0, ws.Names(dest)
         try:
             with open(archive, "rb") as fh:
                 for name, encrypted, segments in list(entries(_index(fh))):
-                    rel = safe_member(name)
                     if ctx.cancel.cancelled:
                         break
-                    if rel is None:
-                        unsafe += 1
-                        continue
                     if encrypted:
                         locked += 1
                         continue
-                    target = dest.joinpath(*rel.parts)
+                    target = names.target(name)
+                    if target is None:
+                        continue
                     target.parent.mkdir(parents=True, exist_ok=True)
                     with open(target, "wb") as out:  # segment by segment, never all in memory
                         for segment in segments:
@@ -117,8 +115,7 @@ class Xp3Builtin(Unarchiver):
                 OutcomeKind.NEEDS_KEY, error=f"{locked} entries use a game-specific cipher"
             )
         notes = (f"{locked} encrypted entries skipped (game-specific cipher)",) if locked else ()
-        notes += (f"{unsafe} entr(ies) with an unsafe name skipped",) if unsafe else ()
-        return Outcome(OutcomeKind.OK, written, notes=notes)
+        return Outcome(OutcomeKind.OK, written, notes=notes + names.save())
 
 
 SLOT = SlotDefinition(

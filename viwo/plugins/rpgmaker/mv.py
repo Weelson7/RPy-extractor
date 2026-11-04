@@ -27,7 +27,7 @@ PNG_HEAD = bytes.fromhex("89504e470d0a1a0a0000000d49484452")
 
 
 def system_key(game: Path) -> bytes | None:
-    for system in sorted(game.rglob("System.json")):
+    for system in ws.files(game, "System.json"):
         try:
             key = json.loads(system.read_text(encoding="utf-8-sig")).get("encryptionKey") or ""
             return bytes.fromhex(key) if len(key) == 32 else None
@@ -52,7 +52,7 @@ def png_key(images: list[Path]) -> bytes | None:
 
 def game_images(game: Path) -> list[Path]:
     """The game's encrypted images: what any key is checked on (an audio file says nothing)."""
-    return [p for p in sorted(game.rglob("*")) if SUFFIXES.get(p.suffix.lower()) == ".png"][:20]
+    return [p for p in ws.files(game) if SUFFIXES.get(p.suffix.lower()) == ".png"][:20]
 
 
 def opens(key: bytes, images: list[Path]) -> bool:
@@ -91,7 +91,7 @@ class RpgMvExporter(Exporter):
     parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
     def export(self, ctx) -> Outcome:
-        files = [p for p in sorted(ctx.game_root.rglob("*")) if p.suffix.lower() in SUFFIXES]
+        files = [p for p in ws.files(ctx.game_root) if p.suffix.lower() in SUFFIXES]
         if not files:
             return Outcome(OutcomeKind.OK, 0)
         images = [p for p in files if SUFFIXES[p.suffix.lower()] == ".png"]

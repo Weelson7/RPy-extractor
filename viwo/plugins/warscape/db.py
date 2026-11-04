@@ -151,7 +151,7 @@ def _export_packs(ctx, tables: dict) -> tuple[int, list[str]]:
     from . import entries  # the pack index reader lives with the plugin
 
     written, unread = 0, []
-    for pack in sorted(ctx.game_root.rglob("*.pack")):
+    for pack in ws.files(ctx.game_root, "*.pack"):
         try:
             with open(pack, "rb") as fh:
                 for name, offset, size in entries(fh):

@@ -110,8 +110,9 @@ def _reminders(rt, items: list[PlanItem]) -> list[str]:
 
 
 def _copy_tree(game: Path, target: Path, say) -> list[str]:
-    """Every file of the game as a real file (a link is followed, never recreated, so nothing
-    in the copy leads back into the game); returns the files the OS refused to read."""
+    """Every file of the game as a real file (a file link is followed, never recreated, so
+    nothing in the copy leads back into the game; a linked folder or junction is not entered:
+    it may lead anywhere, or back to an ancestor); returns what was not copied and why."""
     ticker = Ticker(say, "Copied game files:")
     skipped: list[str] = []
 
@@ -124,12 +125,20 @@ def _copy_tree(game: Path, target: Path, say) -> list[str]:
                 os.remove(dst)
         ticker.tick()
 
-    shutil.copytree(game, target, symlinks=False, dirs_exist_ok=True, copy_function=copy)
+    def links(folder, names):
+        found = [n for n in names if os.path.isdir(os.path.join(folder, n))]
+        found = [n for n in found if ws.link_like(os.path.join(folder, n))]
+        skipped.extend(f"{n} (a linked folder, not entered)" for n in found)
+        return found
+
+    shutil.copytree(
+        game, target, symlinks=False, dirs_exist_ok=True, copy_function=copy, ignore=links
+    )
     return skipped
 
 
 def not_copied(left: list[str]) -> str:
-    return f"{len(left)} file(s) not copied (antivirus or lock): {', '.join(left[:5])}"
+    return f"{len(left)} item(s) not copied: {', '.join(left[:5])}"
 
 
 def prepare_copy(rt, game: Path, target: Path, sink=None, stage="copy", reuse=False) -> list[str]:
@@ -254,6 +263,7 @@ def repack(
         return report
     if target is None:
         raise ViwoError("invalid_request", "no target folder for the patched copy")
+    refuse_writes_inside(game, workspace=target, temp_folder=rt.temp_root)  # before the lock
     with workspace_lock(target):  # two builds into one target cannot interleave
         return _build(rt, game, target, items, report, (sink, cancel or CancelToken()))
 

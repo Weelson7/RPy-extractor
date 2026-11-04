@@ -91,6 +91,7 @@ class QuickBmsPlugin(EnginePlugin):
                 "quickbms",
                 "quickbms-cli",
                 identify=self.table.identify,
+                fallback=True,  # a reader that knows the format wins over a script
             ),
         )
 

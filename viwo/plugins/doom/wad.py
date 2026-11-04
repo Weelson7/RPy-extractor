@@ -7,6 +7,7 @@ import struct
 from dataclasses import dataclass
 from pathlib import Path
 
+from viwo.contracts import workspace as ws
 from viwo.contracts.slots import Unarchiver
 from viwo.contracts.types import Outcome, OutcomeKind
 from viwo.contracts.workspace import next_free
@@ -63,7 +64,7 @@ def read(path: Path, lump: Lump) -> bytes:
 
 def palette(path: Path, game_root: Path) -> bytes:
     """PLAYPAL from this WAD, else from an IWAD in the game folder (PWADs rarely ship one)."""
-    for candidate in [path, *sorted(game_root.rglob("*.[wW][aA][dD]"))]:
+    for candidate in [path, *ws.files(game_root, "*.wad")]:
         try:
             kind, entries = directory(candidate)
         except (OSError, ValueError):

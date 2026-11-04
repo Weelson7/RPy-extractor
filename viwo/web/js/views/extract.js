@@ -1,10 +1,10 @@
 // EXTRACT: target, detection, mode, plugin options, filter, run + live feed.
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, meter, viewHead, toast, toastErr, pref, logLine, emit, modal, errorBox, pct, fmtNum, bus, browseBtn } from "../ui.js";
+import { h, fill, btn, panel, badge, meter, viewHead, toast, toastErr, pref, logLine, emit, errorBox, pct, fmtNum, bus, browseBtn } from "../ui.js";
 import { setGame, followGame } from "../game.js";
 import { slotText } from "./system.js";
 import { jobProgress, withSkeleton } from "../progress.js";
-import { renderResult, renderFailure, renderIdle } from "./extract-result.js";
+import { renderResult, renderFailure, renderIdle, askDecision } from "./extract-result.js";
 import { openWorkspaceDialog } from "../workspace-dialog.js";
 
 const PRESETS = { IMAGES: ".png .jpg .jpeg .webp .gif .bmp .dds", AUDIO: ".ogg .mp3 .wav .opus .flac .m4a .wem .fsb",
@@ -29,7 +29,7 @@ function mount(root) {
   el.run = btn("RUN EXTRACTION", () => run(), "primary lg");
   el.target = h("code", { class: "mono path" }, "—");
   el.cancel = btn("CANCEL JOB", cancelJob, "ghost", { hidden: true });
-  followGame(el.path);
+  followGame(el.path, forget);
   root.append(
     viewHead(code("extract"), "EXTRACT", "Pull assets from a game folder into a ViWo workspace. The game folder is opened read-only and never modified."),
     h("div", { class: "grid2" },
@@ -57,11 +57,21 @@ function detectPanel() {
   return panel(`${code("extract")}.B`, "DETECT", el.detectBtn, el.detect);
 }
 
+/** Another game: the last detection and the plugins it chose no longer apply. */
+function forget() {
+  if (S.running) return;
+  S.detect = null; S.detectedFor = ""; S.single = ""; S.mixed.clear();
+  fill(el.detect, h("p", { class: "dim" }, "Another game: DETECT ENGINE runs again when you open EXTRACT."));
+  updateBar();
+}
+
 async function detect() {
   const path = el.path.value.trim();
   if (!path) return toast("Enter a game folder first.", "warn");
   if (el.detectBtn.disabled) return;
+  if (S.detectedFor && S.detectedFor !== path) forget();
   setGame(path);
+  S.detectedFor = path;
   el.detectBtn.disabled = true;
   try {
     S.detect = await withSkeleton(el.detect, "PROBING ENGINE SIGNATURES…", () => api.detect(path), 3);
@@ -182,7 +192,7 @@ function runPanel() {
   const presets = Object.entries(PRESETS).map(([k, v]) => btn(k, () => addExts(v), "sm ghost"));
   return panel(`${code("extract")}.D`, "FILTER + OUTPUT", null,
     h("label", { class: "lbl", for: "ext-filter" }, "EXTENSION FILTER (OPTIONAL)"),
-    h("div", { class: "row" }, el.exts, btn("CLEAR", () => { el.exts.value = ""; }, "sm ghost")),
+    h("div", { class: "row" }, el.exts, btn("CLEAR", () => { el.exts.value = ""; updateBar(); }, "sm ghost")),
     h("div", { class: "row presets" }, h("span", { class: "dim" }, "ADD"), presets),
     h("div", { class: "row policy" }, h("span", { class: "lbl" }, "EMBEDDED FILES"), el.carve, el.carveNote),
     h("div", { class: "kv target" }, h("span", { class: "lbl" }, "OUTPUT →"), el.target,
@@ -256,13 +266,6 @@ async function cancelJob() {
   try { await api.cancel(id); toast("Cancellation requested.", "warn"); } catch (err) { toastErr(err); }
 }
 
-async function askDecision(err) {
-  const res = await modal({ title: "WORKSPACE ALREADY HOLDS AN EXTRACTION", tag: "// DECISION",
-    body: [h("p", {}, err.message), h("p", { class: "dim" }, "NEW keeps it and writes to a fresh sibling folder. REPLACE swaps the extracted groups. Your game folder is untouched either way.")],
-    actions: [{ label: "CANCEL", value: "cancel", kind: "ghost" }, { label: "NEW FOLDER", value: "new" }, { label: "REPLACE", value: "replace", kind: "primary", primary: true }] });
-  return res.value === "cancel" ? null : res.value;
-}
-
 async function run(onExisting) {
   const payload = buildPayload(onExisting);
   if (!payload || S.running) return;
@@ -304,17 +307,17 @@ async function run(onExisting) {
 
 function reveal() {
   if (el.result.firstElementChild) el.result.firstElementChild.dataset.reveal = "1";
-  el.result.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  el.result.scrollIntoView({ block: "start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
 }
 
-/** SURVEY hands over a game folder: fill it in and detect straight away. */
+/** SURVEY hands over a game folder (or the top bar's game changed): detect straight away. */
 function show() {
-  if (!bus.gamePath) return;
-  el.path.value = bus.gamePath;
-  bus.gamePath = null;
-  S.detect = null;
-  updateBar();
-  detect();
+  if (bus.gamePath) {
+    el.path.value = bus.gamePath;
+    bus.gamePath = null;
+  }
+  const path = el.path.value.trim();
+  if (path && path !== S.detectedFor && !S.running) detect();
 }
 
 async function loadPlugins() {

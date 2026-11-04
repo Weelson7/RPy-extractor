@@ -3,7 +3,7 @@
 The normative description of ViWo: what each part is, what it must do, and where it lives. The
 code and these documents describe the same system; where they differ, the difference is listed
 as `partial` or `open` in [CONFORMANCE.md](CONFORMANCE.md). Contract version: `CONTRACT_VERSION =
-"1.1"` (`viwo/contracts/pipeline.py`, mirrored in `viwo/__init__.py`); optional additions bump the
+"1.2"` (`viwo/contracts/pipeline.py`, mirrored in `viwo/__init__.py`); optional additions bump the
 minor, anything else the major. The product version (`va.b.c`) is separate (`tools/version.py`).
 
 Code and tests cite sections as "doc N.M"; section numbers are stable.

@@ -9,10 +9,10 @@ import json
 import struct
 from pathlib import Path
 
+from viwo.contracts import workspace as ws
 from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest
 from viwo.contracts.slots import SlotDefinition, Unarchiver
 from viwo.contracts.types import DetectionResult, Outcome, OutcomeKind
-from viwo.contracts.workspace import safe_member
 
 MANIFEST = PluginManifest(
     "electron", "Electron / NW.js", "0.1.0", engine_type="electron", priority=5
@@ -54,29 +54,30 @@ class AsarBuiltin(Unarchiver):
                 tree = json.loads(fh.read(found[0]).decode("utf-8"))
             except (UnicodeDecodeError, ValueError) as exc:
                 return Outcome(OutcomeKind.FAILED, error=f"bad asar header: {exc}")
-            written, unsafe, cut = _write_all(fh, tree, found[1], dest, ctx)
-        notes = (f"{unsafe} entr(ies) with an unsafe name skipped",) if unsafe else ()
-        notes += (f"{cut} entr(ies) past the end of the archive (cut short)",) if cut else ()
-        return Outcome(OutcomeKind.OK, written, notes=notes)
+            names = ws.Names(dest)
+            written, cut = _write_all(fh, tree, found[1], names, ctx)
+        notes = (f"{cut} entr(ies) past the end of the archive (cut short)",) if cut else ()
+        return Outcome(OutcomeKind.OK, written, notes=names.save() + notes)
 
 
-def _write_all(fh, tree: dict, base: int, dest: Path, ctx) -> tuple[int, int, int]:
-    """(written, unsafe names, entries past the end of a cut archive)."""
-    written, unsafe, cut = 0, 0, 0
+def _write_all(fh, tree: dict, base: int, names: ws.Names, ctx) -> tuple[int, int]:
+    """(written, entries past the end of a cut archive); names counts the escapes."""
+    written, cut = 0, 0
     total = fh.seek(0, 2)
     for name, offset, size in _walk(tree):
-        rel = safe_member(name)
         if ctx.cancel.cancelled:
             break
-        if rel is None or base + offset + size > total:
-            unsafe, cut = unsafe + (rel is None), cut + (rel is not None)
+        if base + offset + size > total:
+            cut += 1
+            continue
+        target = names.target(name)
+        if target is None:
             continue
         fh.seek(base + offset)
-        target = dest.joinpath(*rel.parts)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(fh.read(size))
         written += 1
-    return written, unsafe, cut
+    return written, cut
 
 
 SLOT = SlotDefinition(

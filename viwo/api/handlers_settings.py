@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from viwo.contracts.errors import ViwoError
+from viwo.core.preflight import feature_tools, install
 from viwo.core.wiring.boot import DEFAULT_INI
 from viwo.core.wiring.registry import BUILTIN_PLUGINS, load_plugin
 from viwo.core.wiring.settings import read_settings, write_settings
@@ -50,14 +51,35 @@ def get_settings(app: App, q: dict) -> dict:
 
 def save_settings(app: App, d: dict) -> dict:
     """Write the given keys, reload the runtime, report the new state and every problem."""
-    path = ini_path(app)
+    path, before = ini_path(app), set(app.rt.config.features)
     try:
         problems = write_settings(path, d)
     except ViwoError as exc:
         return {"success": False, "error": exc.message, "code": exc.code, "hint": exc.hint}
     app.reload()
     app.log(f"[SETTINGS] {path} updated: {', '.join(sorted(k for k in d if d[k])) or 'nothing'}")
-    return {"success": True, "ini": str(path), "problems": problems, "effective": app.rt.info()}
+    turned_on = sorted(set(app.rt.config.features) - before)
+    tools = [t for f in turned_on for t in feature_tools(app.rt, f)]
+    job = _install_job(app, list(dict.fromkeys(tools))) if tools else None
+    return {"success": True, "ini": str(path), "problems": problems, "effective": app.rt.info(),
+            "installing": tools, "installJob": job}  # fmt: skip
+
+
+def _install_job(app: App, tools: list[str]) -> str:
+    """A feature just turned on: its tools install by themselves as one visible job."""
+
+    def run(jid, sink, cancel) -> dict:
+        done, failed = [], []
+        for dep in tools:
+            try:
+                done.append(install(app.rt, dep, sink, cancel)["installed"])
+            except ViwoError as exc:
+                failed.append(f"{dep}: {exc.message}")
+        app.reload()
+        return {"success": not failed, "installed": done, "failed": failed}
+
+    listener = lambda e: app.log(e.legacy_line())  # noqa: E731
+    return app.jobs.submit_with_listener(listener, "install", run, background=True).job_id
 
 
 SETTINGS_GET: dict[str, Callable[[App, dict], Any]] = {"/api/settings": get_settings}

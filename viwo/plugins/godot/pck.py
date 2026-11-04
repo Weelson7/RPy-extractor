@@ -6,6 +6,8 @@ import struct
 import tempfile
 from pathlib import Path
 
+from viwo.contracts import workspace as ws
+from viwo.contracts.plugin import masked
 from viwo.contracts.slots import Exporter, Match, Packer, Unarchiver
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 from viwo.contracts.workspace import count_files, stage_members
@@ -102,7 +104,7 @@ class _PckCli(Unarchiver):
             cancel=ctx.cancel,
             on_line=ctx.tool_output("unpack", mask=key),
         )
-        text = (result.stderr or result.stdout).strip()
+        text = masked((result.stderr or result.stdout).strip(), key)
         if not result.ok:
             kind = OutcomeKind.NEEDS_KEY if "encrypt" in text.lower() else OutcomeKind.FAILED
             return Outcome(kind, error=text[-300:] or f"exit {result.returncode}")
@@ -136,11 +138,14 @@ class GdreRecover(Exporter):
         target = _recover_target(ctx.game_root)
         if target is None:
             return Outcome(OutcomeKind.OK, 0, notes=("no PCK to recover",))
+        key = str(ctx.options.get("encryption_key", "") or "")  # the key UNPACK used
         argv = [*tool.argv_prefix, "--headless", f"--recover={target}", f"--output={ctx.staging}"]
+        argv += [f"--key={key}"] if key else []
         result = ctx.os.process.run(
-            argv, timeout=3600, cancel=ctx.cancel, on_line=ctx.tool_output("export")
+            argv, timeout=3600, cancel=ctx.cancel, on_line=ctx.tool_output("export", mask=key)
         )
-        files, why = _files(ctx.staging), (result.stderr or result.stdout)[-300:]
+        files = _files(ctx.staging)
+        why = masked((result.stderr or result.stdout), key)[-300:]
         if not result.ok and not files:
             return Outcome(OutcomeKind.FAILED, error=why)
         partial = () if result.ok else (f"GDRE stopped with an error after {files} file(s): {why}",)
@@ -148,18 +153,23 @@ class GdreRecover(Exporter):
 
 
 def _recover_target(root: Path) -> Path | None:
-    for path in sorted(root.rglob("*")):
-        if not path.is_file():
-            continue
-        if path.suffix.lower() == ".pck":
-            return path
-        with open(path, "rb") as fh:
-            fh.seek(0, 2)
-            size = fh.tell()
-            fh.seek(max(0, size - 64))
-            if embedded_chunk(path, fh.read(64)):
-                return path
-    return None
+    """The game's main pack: `<exe>.pck` beside an executable, else an executable carrying an
+    embedded PCK, else the first other PCK (an add-on or DLC pack only when nothing else)."""
+    found = ws.files(root)
+    packs = [p for p in found if p.suffix.lower() == ".pck"]
+    stems = {p.with_suffix("").as_posix().lower() for p in found if p.suffix.lower() == ".exe"}
+    stems |= {p.as_posix().lower() for p in found if not p.suffix}  # Linux executables
+    main = [p for p in packs if p.with_suffix("").as_posix().lower() in stems]
+    if main:
+        return main[0]
+    for path in found:
+        if path.suffix.lower() in (".exe", "") or path.suffix.lower().startswith(".x86"):
+            with open(path, "rb") as fh:
+                fh.seek(0, 2)
+                fh.seek(max(0, fh.tell() - 64))
+                if embedded_chunk(path, fh.read(64)):
+                    return path
+    return packs[0] if packs else None
 
 
 class GodotPckTool(_PckCli):

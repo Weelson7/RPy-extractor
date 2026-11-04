@@ -24,7 +24,7 @@ function mount(root) {
   el.sum = h("div", { class: "ab-sum mono" });
   el.why = h("span", { class: "ab-why" });
   el.cancel = btn("CANCEL", cancelJob, "ghost", { hidden: true });
-  followGame(el.game);
+  followGame(el.game, () => { if (!S.running) { S.targets = null; S.listedFor = ""; renderTargets(); bar(); } });
   S.ws = bus.ws?.path || ""; // before the note is built: the workspace may be known already
   root.append(
     viewHead(code("analysis"), "ANALYSIS", "Static analysis of the game's code: the plugins propose the binaries, Ghidra analyses a copy headless into the workspace, and CONTINUE IN GHIDRA opens the same project in the GUI. Nothing runs the game."),
@@ -53,6 +53,7 @@ async function list() {
   const path = el.game.value.trim();
   if (!path) return toast("Enter the game folder first.", "warn");
   setGame(path);
+  S.listedFor = path;
   try {
     const res = await withSkeleton(el.targets, "READING THE GAME FOLDER…", () => api.analysisTargets(path), 3);
     S.targets = res.targets || [];
@@ -144,6 +145,13 @@ async function open(t, hd, confirm = false) {
   }
 }
 
-const VIEW = { mount, show: bar };
+/** Opening ANALYSIS lists the targets of the current game when they are not listed yet. */
+function show() {
+  const path = el.game.value.trim();
+  if (path && path !== S.listedFor && !S.running) return list();
+  bar();
+}
+
+const VIEW = { mount, show };
 registerView({ id: "analysis", arm: "static", order: 70, title: "ANALYSIS", subtitle: "code, headless and in Ghidra", ...VIEW });
 export default VIEW;

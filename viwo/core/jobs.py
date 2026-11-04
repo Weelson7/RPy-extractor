@@ -55,6 +55,7 @@ class JobRunner:
     def __init__(self, listener: ProgressSink | None = None) -> None:
         self._jobs: dict[str, Job] = {}
         self._listener = listener
+        self._lock = threading.Lock()  # request threads submit and list at the same time
 
     def submit(self, kind: str, fn: JobFn, background: bool = True) -> Job:
         return self.submit_with_listener(self._listener, kind, fn, background)
@@ -63,8 +64,9 @@ class JobRunner:
         self, listener: ProgressSink | None, kind: str, fn: JobFn, background: bool = True
     ) -> Job:
         job = Job(f"{time.strftime('%Y%m%d-%H%M%S')}-{next(_IDS):04d}", kind)
-        self._forget_old()
-        self._jobs[job.job_id] = job
+        with self._lock:
+            self._forget_old()
+            self._jobs[job.job_id] = job
         if background:
             threading.Thread(target=self._run, args=(job, fn, listener), daemon=True).start()
         else:
@@ -79,7 +81,8 @@ class JobRunner:
             self._jobs.pop(job.job_id, None)
 
     def list(self) -> list[Job]:
-        return list(self._jobs.values())
+        with self._lock:
+            return list(self._jobs.values())
 
     @staticmethod
     def _sink(job: Job, listener: ProgressSink | None) -> ProgressSink:
@@ -106,9 +109,11 @@ class JobRunner:
             job.done.set()
 
     def get(self, job_id: str) -> Job:
-        if job_id not in self._jobs:
+        with self._lock:
+            job = self._jobs.get(job_id)
+        if job is None:
             raise ViwoError("not_found", f"no job {job_id}")
-        return self._jobs[job_id]
+        return job
 
     def wait(self, job_id: str, timeout: float | None = None) -> Job:
         job = self.get(job_id)

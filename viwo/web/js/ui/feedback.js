@@ -21,12 +21,18 @@ export const ERRORS = {
 const errInfo = (err) => ERRORS[err?.code] || ["Something went wrong", "Try again. The activity console at the bottom has details."];
 
 /** Error block: what happened (server message + hint), in plain words, and what to do next. */
+/** A CLI hint ("`viwo install ghidra`") said the GUI way: the tool installs from SYSTEM. */
+const guiHint = (hint) => {
+  const tool = /`viwo install ([\w.-]+)`/.exec(hint);
+  return tool ? [hint.replace(tool[0], `INSTALL ${tool[1]}`), " ", h("a", { href: "#system" }, "in SYSTEM →")] : hint;
+};
+
 export function errorBox(err, title = "", next = "") {
   const [label, todo, link] = errInfo(err);
   return h("div", { class: "alert", "data-kind": "err", role: "alert" },
     h("b", {}, title && title !== label.toUpperCase() ? `${title} // ${label.toUpperCase()}` : label.toUpperCase()),
     h("p", {}, err.message || String(err)),
-    err.hint ? h("p", { class: "hint" }, "HINT: ", err.hint) : null,
+    err.hint ? h("p", { class: "hint" }, "HINT: ", guiHint(err.hint)) : null,
     h("p", { class: "next" }, h("b", {}, "NEXT"), next || todo, link ? [" ", h("a", { href: link[0] }, `Open ${link[1]} →`)] : null),
     err.code ? h("small", { class: "mono dim" }, `code: ${err.code}`) : null);
 }

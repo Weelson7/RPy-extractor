@@ -11,7 +11,7 @@ from viwo.contracts.types import DetectionResult
 
 
 class FolderProbe:
-    def __init__(self, root: Path, limit: int = 50000) -> None:
+    def __init__(self, root: Path, limit: int = 200000) -> None:
         self._root = root
         # (lowercased relative posix path, is_dir, real relative path): matching is
         # case-insensitive, the paths handed back keep their case (Linux is case-sensitive)

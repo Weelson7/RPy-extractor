@@ -80,7 +80,7 @@ declarative (Kaitai) plugins; the indexes repository split.
 | 2.2 exceptions recorded against the plugin | implemented | `core/pipeline/export.py`, `core/pipeline/failover.py` |
 | 2.3 shared probe, case-preserved paths, cache on size and mtime | implemented | `core/pipeline/probe.py` `FolderProbe` |
 | 2.4 detection result and scale | implemented | `contracts/types.py` `DetectionResult` |
-| 2.5 recursive unpack, depth 10, slot lookup, member safety | implemented | `core/pipeline/unpack.py`, `core/pipeline/identify.py`, `contracts/workspace.py` |
+| 2.5 recursive unpack, depth 10, slot lookup (fallback identifiers last), cancel, member safety, altered names recorded | implemented | `core/pipeline/unpack.py`, `core/pipeline/identify.py`, `contracts/workspace.py` (`Names`, `files`); `tests/test_skips_said.py`, `tests/test_review_fixes.py` |
 | 2.6 dependency spec, per-OS executables | implemented | `contracts/types.py` `DependencySpec` |
 | 2.7 seventeen built-in plugins | implemented | `plugins/*/` |
 | 2.8 built-in scan, drop-ins, entry points, opt-in, override | implemented | `core/wiring/registry.py`, `tests/test_registry.py` |
@@ -110,7 +110,7 @@ declarative (Kaitai) plugins; the indexes repository split.
 | 4.1 legacy and envelope route families, status codes | implemented | `api/handlers*.py`, `api/routes.py` |
 | 4.1 route table | implemented | every route the web client calls is served (`api/handlers.py`; `tests/test_api_routes.py` checks `web/js/api.js` against the tables) |
 | 4.1 detect dry run, plugins list | implemented | `api/routes.py` `_detect`, `_plugins` |
-| 4.1 token, JSON only, size limit, Host check, binding, containment | implemented | `api/server.py`; `tests/test_server.py` |
+| 4.1 token, JSON only, size limit, Host check, binding, containment, preview cookie for LAN peers | implemented | `api/server.py`; `tests/test_server.py`, `tests/test_review_fixes.py` |
 | 4.2 dependency item | implemented | `core/wiring/boot.py` `dependency_report` |
 | 4.3 layout, marker, ownership, re-extraction policy | implemented | `contracts/workspace.py`, `core/workspace.py` |
 | 4.3 trash areas and migration, collision names | implemented | `core/curation/trash.py`, `core/curation/sorting.py` |

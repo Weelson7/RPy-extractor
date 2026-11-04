@@ -115,6 +115,9 @@ def capture(rt, req: CaptureRequest, sink=None, cancel=None) -> dict:
     known = _prepare(rt, req)
     before = snapshot(req.game)  # the game runs in its own folder: what it writes there is said
     gathered, used, job, same = _run(rt, req, known, sink, cancel)
+    if gathered.unreadable:  # the OS refused them (an antivirus, a lock): said, never dropped
+        warnings = [*warnings, f"{len(gathered.unreadable)} captured file(s) not collected: "
+                    f"{', '.join(gathered.unreadable[:5])}"]  # fmt: skip
     if changed := change_warning(before, snapshot(req.game), "the capture (the game wrote there)"):
         warnings = [*warnings, changed]
         tell(sink, changed, "report", "warn")

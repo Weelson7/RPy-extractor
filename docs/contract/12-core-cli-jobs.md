@@ -69,7 +69,7 @@ Commands are grouped by arm; `viwo -h` lists them, `viwo <arm>` lists one arm, a
 
 | Arm | Command | What it does |
 |-----|---------|--------------|
-| static | `survey FOLDER [--deep]` | read-only coverage report for a game or a library |
+| static | `survey FOLDER [--deep]` | read-only coverage report for a game or a library (a folder holding only folders, two or more of which hold a program of their own, or none does; one program in one subfolder is one game, as `bin/x64/`) |
 | static | `detect GAME` | every plugin's detection |
 | static | `extract GAME --workspace W [--plugin ID \| --mixed A,B] [--policy selected\|detected\|all] [--exts .png,.ogg] [--on-existing new\|replace\|cancel] [--option plugin.key=value] [--carve off\|unknown\|all]` | extraction run |
 | static | `replay RECORD --workspace W [--on-existing ...] [--option ...]` | re-run a run record (secrets asked again) |

@@ -4,6 +4,41 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.15.6 (2026-11-04)
+A backend quality review and a UX/UI review (independent, every finding verified):
+- Member names Windows cannot write (`< > " | ? * :`, control characters, device names, a
+  trailing dot or space) are no longer lost: every in-process unpacker (zip, tar, RPA, VPK, XP3,
+  BSA, BA2, RGSSAD, ASAR, TPAC, PFH, RDAR) writes them under an altered name and records the
+  original beside the files; provenance gives the original, so a repack writes the member back
+  under it. One such name used to fail a whole archive.
+- Fix: junctions were still followed by the UNPACK walk, the patched copy and plugin scans
+  (Unreal keys and assets, RPG Maker MV, Total War DB, Godot, Doom, Bink, Unity): one walker
+  (`contracts.workspace.files`) never enters a linked folder; the copy names the ones it skips.
+- Fix: repack took its lock inside the game folder before refusing it; a mod zip could be
+  written into the game folder. Both are refused first.
+- Fix: a LAN peer could stream workspace files through `/preview/` without the token; it now
+  needs the token's cookie. Attended capture (0 seconds) became a 30 s auto capture.
+- Fix: a key cut across the 200-character output limit could show its first half; masking runs
+  first. Godot's errors are masked; GDRE recovery gets the key and the game's main pack.
+- Fix: QuickBMS scripts claimed formats a built-in reader knows; they are now a fallback.
+- Fix: cancel was not honoured during UNPACK and EXPORT and a killed main started the spare.
+- Fix: a file repeated across archives was decoded once per copy; decode and capture dropped the
+  files the OS refused in their second collect; the probe's entry bound and the 500-script cap
+  of Ren'Py and Godot analysis cut silently (bound raised and said; caps removed).
+- Fix: the x64dbg and Cheat Engine handoffs edited the user's own installs; they pre-answer
+  prompts only in ViWo's copy now. The job table is guarded by a lock.
+- UX: EXTRACT's "replace" dialog defaults to NEW FOLDER and says REPLACE deletes edits too;
+  the extension filter applies to what ends up in the workspace (IMAGES keeps the textures a
+  decoder makes) and says what it left out; RESULT is brought into view after a run.
+- UX: SURVEY no longer splits one game whose files sit in folders (Cyberpunk) into several;
+  SORT keeps its progress across TRASH and remembers KEEP per workspace; SETTINGS keeps pending
+  changes when you come back; EXTRACT, ANALYSIS and SURVEY follow the top bar's game.
+- UX: tab codes in JOBS and MERGER come from the live numbering; the arm homes start with
+  PICK A GAME FOLDER when none is set, drop roadmap codes and say when a step opens in another
+  arm; PATCHES asks for the copy folder before APPLY and labels the mod fields per action;
+  turning on ANALYSIS or CAPTURE installs what they need in the background (JOBS), and a CLI
+  install hint points to SYSTEM.
+
 ## 1.15.5 (2026-11-04)
 Third audit (hostile input, completeness, the walk; an independent review, every finding verified):
 - Fix: unpackers skipped entries silently. VPK, XP3, BSA, BA2, RGSSAD, ASAR, TPAC and RPA now

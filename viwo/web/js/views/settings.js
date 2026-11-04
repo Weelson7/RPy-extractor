@@ -114,6 +114,13 @@ async function apply() {
 
 import { registerView, code } from "../registry.js";
 
-const VIEW = { mount, show: load };
+/** Coming back to SETTINGS keeps pending changes (REVERT drops them); a clean form reloads. */
+function show() {
+  const c = changes();
+  if (c && Object.keys(c).length) return bar();
+  return load();
+}
+
+const VIEW = { mount, show };
 registerView({ id: "settings", arm: "global", order: 30, title: "SETTINGS", subtitle: "plugins, features, tools", ...VIEW });
 export default VIEW;

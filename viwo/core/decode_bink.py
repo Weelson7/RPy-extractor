@@ -8,6 +8,7 @@ import sys
 from functools import lru_cache
 from pathlib import Path
 
+from viwo.contracts import workspace as ws
 from viwo.contracts.slots import Decoder
 from viwo.contracts.types import Outcome, OutcomeKind
 
@@ -20,7 +21,7 @@ BINK_HELPER = Path(__file__).resolve().parents[1] / "data" / "bink" / "decode_bi
 def bink_dll(game_root: Path) -> Path | None:
     """The game's own Bink 2 DLL (Cyberpunk 2077 and many others ship one), found once."""
     for name in ("bink2w64.dll", "bink2w32.dll"):
-        hit = next(iter(sorted(game_root.rglob(name))), None)
+        hit = next(iter(ws.files(game_root, name)), None)
         if hit is not None:
             return hit
     return None

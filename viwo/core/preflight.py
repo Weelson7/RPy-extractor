@@ -72,6 +72,22 @@ def install(rt, dep_id: str, sink=None, cancel=None) -> dict:
     return {"installed": dep_id, "where": done}
 
 
+FEATURE_FAMILIES = {"analysis": ("analysis",), "capture": ("capture", "runtime")}
+
+
+def feature_tools(rt, feature: str) -> list[str]:
+    """The missing, installable tools the main backends of a feature's slots need: what turning
+    the feature on installs by itself (minimal prompts). Spares and handoffs stay on demand."""
+    families = FEATURE_FAMILIES.get(feature, ())
+    wanted = []
+    for sid, slot in sorted(rt.slots.items()):
+        backend = rt.backends.get(slot.default_main) if slot.family in families else None
+        for spec in backend.dependencies() if backend is not None else ():
+            if rt.os.tools.locate(spec) is None and thirdparty.installable(spec.dep_id, spec.kind):
+                wanted.append(spec.dep_id)
+    return list(dict.fromkeys(wanted))
+
+
 def _install_missing(rt, todo: list[dict], sink, cancel) -> tuple[list[str], list[str]]:
     installed, failed = [], []
     for index, item in enumerate(todo, 1):

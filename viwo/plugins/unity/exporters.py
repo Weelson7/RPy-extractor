@@ -40,7 +40,7 @@ def unity_containers(root: Path) -> list[Path]:
     """Every file Unity can load from disk: known names, or a Unity signature anywhere in
     the first 4 KB (bundles with a custom header, WebGL data, Addressables bundles)."""
     found = []
-    for path in sorted(root.rglob("*")) if root.is_dir() else ():
+    for path in ws.files(root) if root.is_dir() else ():
         if not path.is_file():
             continue
         if CONTAINER_NAME.match(path.name):

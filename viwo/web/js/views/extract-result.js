@@ -1,7 +1,7 @@
 // RESULT: counts, alarms, per-backend and per-plugin tables for one /api/extract response.
 import { code } from "../registry.js";
 import { api } from "../api.js";
-import { h, fill, panel, badge, errorBox, fmtNum, stat, goBtn, openBtn, toolLink } from "../ui.js";
+import { h, fill, panel, badge, errorBox, fmtNum, stat, goBtn, openBtn, toolLink, modal } from "../ui.js";
 import { stateBadge } from "./jobs.js";
 
 const ALARM = "GAME FOLDER CHANGED";
@@ -107,4 +107,12 @@ export async function renderIdle(host) {
     if (job) last = await api.job(job.id);
   } catch { /* the summary is optional */ }
   fill(tail, last ? lastRun(last) : h("p", { class: "dim" }, "No extraction yet since ViWo started. Pick a game folder on the left to begin."));
+}
+
+/** The workspace already holds an extraction: NEW FOLDER (the default) or REPLACE. */
+export async function askDecision(err) {
+  const res = await modal({ title: "WORKSPACE ALREADY HOLDS AN EXTRACTION", tag: "// DECISION",
+    body: [h("p", {}, err.message), h("p", { class: "dim" }, "NEW FOLDER keeps it and writes to a fresh sibling folder. REPLACE permanently deletes the extracted files in this workspace, your edits and SORT decisions included (the trash and run records stay). Your game folder is untouched either way.")],
+    actions: [{ label: "CANCEL", value: "cancel", kind: "ghost" }, { label: "REPLACE", value: "replace", kind: "danger" }, { label: "NEW FOLDER", value: "new", kind: "primary", primary: true }] });
+  return res.value === "cancel" ? null : res.value;
 }

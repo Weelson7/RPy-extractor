@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import mmap
 import struct
-from pathlib import Path, PurePosixPath
+from pathlib import Path
 
+from viwo.contracts import workspace as ws
 from viwo.contracts.slots import Unarchiver
 from viwo.contracts.types import Outcome, OutcomeKind
-from viwo.contracts.workspace import safe_member
 
 MAGIC = b"RGSSAD\x00"
 MASK = 0xFFFFFFFF
@@ -70,10 +70,6 @@ def entries(blob: bytes):
     return list(_entries_v3(blob) if blob[7] == 3 else _entries_v1(blob))
 
 
-def safe_path(name: bytes) -> PurePosixPath | None:
-    return safe_member(name.decode("utf-8", "replace"))
-
-
 class RgssadBuiltin(Unarchiver):
     backend_id, owner, license = "rgssad-builtin", "rpgmaker", "MIT"
     parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
@@ -91,19 +87,19 @@ class RgssadBuiltin(Unarchiver):
 
 
 def _write_all(blob, dest: Path, ctx) -> tuple[int, list[str]]:
-    """(written, what was skipped and why: unsafe names, entries past a cut archive's end)."""
-    written, unsafe, cut = 0, 0, 0
+    """(written, what was skipped or altered and why: names, entries past a cut archive's end)."""
+    names, written, cut = ws.Names(dest), 0, 0
     for name, offset, size, key in entries(blob):
-        rel = safe_path(name)
         if ctx.cancel.cancelled:
             break
-        if rel is None or offset + size > len(blob):
-            unsafe, cut = unsafe + (rel is None), cut + (rel is not None)
+        if offset + size > len(blob):
+            cut += 1
             continue
-        target = dest.joinpath(*rel.parts)
+        target = names.target(name.decode("utf-8", "replace"))
+        if target is None:
+            continue
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(decrypt(blob[offset : offset + size], key))
         written += 1
-    notes = [f"{unsafe} entr(ies) with an unsafe name skipped"] if unsafe else []
-    notes += [f"{cut} entr(ies) past the end of the archive (cut short)"] if cut else []
-    return written, notes
+    notes = [f"{cut} entr(ies) past the end of the archive (cut short)"] if cut else []
+    return written, [*names.save(), *notes]
