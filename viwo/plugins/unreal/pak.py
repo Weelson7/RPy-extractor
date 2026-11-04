@@ -87,9 +87,6 @@ class _UnrealCli(Unarchiver):
     def dependencies(self):
         return (self.spec,)
 
-    def argv(self, archive: Path, dest: Path) -> list[str]:
-        raise NotImplementedError
-
     def extract(self, archive, dest, ctx) -> Outcome:
         tool = ctx.os.tools.locate(self.spec)
         if tool is None:

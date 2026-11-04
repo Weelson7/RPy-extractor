@@ -5,6 +5,7 @@ waits for `finished`, stops it and collects `outputs` into the workspace."""
 
 from __future__ import annotations
 
+from abc import abstractmethod
 from pathlib import Path
 
 from .slots import Backend
@@ -19,16 +20,16 @@ class RuntimeAgent(Backend):
         """ "" when this agent fits the game copy, else why not (shown to the user)."""
         return ""
 
+    @abstractmethod
     def install(self, copy: Path, exe: Path, ctx) -> list[str]:
         """Put the agent and its settings into the copy (every first-run question pre-answered:
         no console, no dialog) and remove what a previous run left (a reused copy must not look
         finished); return the extra launch arguments (windowed, small)."""
-        raise NotImplementedError
 
+    @abstractmethod
     def finished(self, copy: Path, exe: Path) -> bool:
         """True once the agent has written everything it was installed for."""
-        raise NotImplementedError
 
+    @abstractmethod
     def outputs(self, copy: Path, exe: Path) -> list[Path]:
         """The files the agent wrote, inside the copy."""
-        raise NotImplementedError

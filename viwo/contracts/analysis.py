@@ -6,6 +6,7 @@ Both use the ExtractionContext (`staging` is the output folder): one context typ
 from __future__ import annotations
 
 import re
+from abc import abstractmethod
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Mapping
@@ -69,8 +70,9 @@ class Analyzer(Backend):
     families = frozenset({"analysis"})
     kinds: tuple[str, ...] = ()
 
+    @abstractmethod
     def analyze(self, target: AnalysisTarget, ctx: ExtractionContext) -> Outcome:
-        raise NotImplementedError
+        """Write the artifacts under ctx.staging; the Outcome counts them or says why not."""
 
 
 class Handoff(Backend):
@@ -81,6 +83,6 @@ class Handoff(Backend):
     label: str = ""  # "Continue in Ghidra"
     accepts: tuple[str, ...] = ()  # target kinds
 
+    @abstractmethod
     def prepare(self, target: AnalysisTarget, ctx: ExtractionContext) -> LaunchSpec | Outcome:
         """A LaunchSpec, or an Outcome saying why the tool cannot open this target."""
-        raise NotImplementedError

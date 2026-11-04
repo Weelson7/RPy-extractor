@@ -57,9 +57,6 @@ class _CliDecoder(Decoder):
     def dependencies(self):
         return (self.spec,)
 
-    def argv(self, path: Path, dest: Path) -> list[str]:
-        raise NotImplementedError
-
     def decode(self, path: Path, dest: Path, ctx) -> Outcome:
         tool = ctx.os.tools.locate(self.spec)
         if tool is None:

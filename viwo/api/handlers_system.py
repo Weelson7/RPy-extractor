@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any, Callable
 
 from viwo import __version__
@@ -11,7 +10,7 @@ from viwo.core import diag
 from viwo.core.indexes import update_indexes
 from viwo.core.thirdparty import home_of
 
-from .app import App, safe
+from .app import App, path_param, safe
 
 
 def check_updates(app: App, q: dict) -> dict:
@@ -21,7 +20,13 @@ def check_updates(app: App, q: dict) -> dict:
 
 def make_diag(app: App, d: dict) -> dict:
     """POST /api/diag {out?}: zip logs, run records and tool status (secrets stripped)."""
-    out = Path(str(d.get("out", "")).strip()) if d.get("out") else None
+    out = path_param(d, "out")
+    if str(d.get("out") or "").strip() and out is None:
+        return {
+            "success": False,
+            "error": "out must be an absolute path",
+            "code": "invalid_request",
+        }
     try:
         path = diag.bundle(app.rt, app.workspace, out)
     except (ViwoError, OSError) as exc:

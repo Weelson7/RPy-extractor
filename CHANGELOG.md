@@ -4,6 +4,21 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.6.10 (2026-11-04)
+- Fix: a worker pin (Unicorn, angr) swaps in through `core/downloads.py` like every tool: a
+  locked worker folder (Windows: a worker still running) is never half deleted.
+- Fix: `POST /api/diag` takes an absolute `out` only (a relative one wrote into the server's
+  folder), like every request path since 1.6.6.
+- Contracts: `RuntimeAgent.install/finished/outputs`, `Analyzer.analyze` and `Handoff.prepare`
+  are abstract (a backend missing one fails when it is built, not mid-run); the base classes
+  of the CLI unpackers, decoders and Unreal unpackers lost their never-run `argv` stubs.
+- Property tests: the loopback recorder writes exactly the clipped samples it heard; a worker
+  pin swaps in whole or leaves the old one; the BepInEx agent (IL2CPP only, never a stale log,
+  what it wrote); `python -m viwo`; the system routes; both A4 workers name every unusable
+  request (unsupported PE or ELF machine, not a binary, a symbolic argument to the emulator, a
+  heap overflow, a bad dump index, an unknown export, nothing to solve) and take every
+  argument kind and address form.
+
 ## 1.6.9 (2026-11-04)
 - Fix: damaged archives are named failures in every in-process reader. The Ren'Py reader
   raised on a cut-short header or a malformed index entry and inflated its index without a

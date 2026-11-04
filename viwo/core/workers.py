@@ -12,6 +12,8 @@ from pathlib import Path
 
 from viwo.contracts.errors import ViwoError
 
+from .downloads import swap
+
 SCRIPTS = Path(__file__).resolve().parent.parent / "data" / "workers"
 MARK = ".viwo-pin"  # the pin a folder was installed from; another pin means not installed
 
@@ -60,6 +62,5 @@ def install(dep_id: str, home: Path, runner) -> str:
         shutil.rmtree(fresh, ignore_errors=True)
         raise
     (fresh / MARK).write_text(pin, encoding="utf-8")
-    shutil.rmtree(lib, ignore_errors=True)
-    fresh.rename(lib)
+    swap(fresh, lib)  # a running worker's folder is never half deleted
     return " ".join(argv(dep_id, home) or ())

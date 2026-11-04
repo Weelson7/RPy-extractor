@@ -146,6 +146,35 @@ class EmulateWorkerTests(unittest.TestCase):
         self.assertEqual(missing["status"], "error")
         self.assertIn("xor_decode", missing["reason"])  # says which exports exist
 
+    def test_every_unusable_request_is_an_error_report_naming_its_cause(self) -> None:
+        arm_pe = bytearray(pe64())
+        arm_pe[0x44:0x46] = (0x01C4).to_bytes(2, "little")  # COFF machine: ARM
+        arm_elf = bytearray(elf64(XOR_SYSV))
+        arm_elf[18:20] = (0xB7).to_bytes(2, "little")  # e_machine: AArch64
+        with tempfile.TemporaryDirectory() as tmp:
+            key = Path(tmp) / "data.bin"
+            key.write_bytes(b"abcd")
+            cases = (
+                (bytes(arm_pe), {"start": "rva:0x1000"}, "unsupported PE machine"),
+                (bytes(arm_elf), {"start": "0x400080"}, "unsupported ELF machine"),
+                (b"plain text, no binary", {"start": "0x0"}, "not a PE or ELF"),
+                (pe64(), {"start": "export:xor_decode", "args": "sym:4"}, "analysis.symbolic"),
+                (pe64(), {"start": "export:xor_decode", "args": "zeros:0x40000000"}, "heap holds"),
+                (
+                    pe64(),
+                    {"start": "export:xor_decode", "args": "7", "dump": "arg5:4"},
+                    "dump arg5",
+                ),
+            )
+            for binary, options, why in cases:
+                report = self.emulate(binary, options)
+                self.assertEqual(report["status"], "error", (why, report))
+                self.assertIn(why, report["reason"])
+            ran = self.emulate(
+                pe64(), {"start": "export:xor_decode", "args": f"file:{key},4,1", "dump": "arg0:4"}
+            )
+        self.assertEqual(ran["dumped"]["arg0.bin"], bytes(b ^ 1 for b in b"abcd"))  # a file buffer
+
 
 ANGR = ROOT / "third_party" / "angr"
 
@@ -187,6 +216,23 @@ class SymbolicWorkerTests(unittest.TestCase):
         self.assertEqual(
             blocked["status"], "not_found"
         )  # the spin routine: no path from check reaches it, and the report says so
+
+    def test_every_argument_kind_runs_and_every_bad_request_is_the_report(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            blob = Path(tmp) / "key.bin"
+            blob.write_bytes(b"VIWO")
+            mixed = f"sym:4,7,hex:00ff,zeros:8,file:{blob}"
+            ran = self.solve({"start": "export:xor_decode", "args": mixed, "find": "rva:0x1097"})
+        self.assertIn(ran["status"], ("found", "not_found"), ran)  # an export address works
+        plain = self.solve({"start": f"{BASE + 0x1080:#x}", "args": "sym:4", "find": "rva:0x1097"})
+        self.assertEqual(plain["status"], "found", plain)  # a plain address works too
+        for options, why in (
+            ({"start": "export:nope", "args": "sym:4", "find": "rva:0x1097"}, "no export 'nope'"),
+            ({"start": "rva:0x1080", "args": "7", "find": "rva:0x1097"}, "at least one sym"),
+        ):
+            report = self.solve(options)
+            self.assertEqual(report["status"], "error", report)
+            self.assertIn(why, report["reason"])  # never silent: the failure is the report
 
 
 @unittest.skipUnless(workers._installed(LIB, workers.entries()["unicorn"]["pin"]), "needs unicorn")
