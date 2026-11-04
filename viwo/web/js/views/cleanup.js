@@ -267,5 +267,5 @@ function renderDone() {
 import { registerView } from "../registry.js";
 
 const VIEW = { mount, show };
-registerView({ id: "cleanup", order: 80, title: "CLEANUP", subtitle: "junk, dupes, misnamed", ...VIEW });
+registerView({ id: "cleanup", arm: "static", order: 50, num: "08", title: "CLEANUP", subtitle: "junk, dupes, misnamed", ...VIEW });
 export default VIEW;

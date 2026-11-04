@@ -34,7 +34,7 @@ def capture(rt, args) -> Envelope:
 
     note = (
         None
-        if args.json or getattr(args, "quiet", False)
+        if getattr(args, "quiet", False)
         else (lambda e: print(e.legacy_line(), file=sys.stderr))
     )
     if not args.game.is_dir():

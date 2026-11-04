@@ -96,8 +96,9 @@ def install_hook() -> None:
 def run_checks() -> None:
     for argv in CHECKS:
         print("+", " ".join(argv[1:]), flush=True)
-        if subprocess.run(argv, cwd=ROOT).returncode:
-            sys.exit("version: checks failed, nothing committed")
+        code = subprocess.run(argv, cwd=ROOT).returncode
+        if code:  # say which check, so the cause is in the last line of the output
+            sys.exit(f"version: `{' '.join(argv[1:])}` failed (exit {code}), nothing committed")
 
 
 def commit(args: argparse.Namespace) -> None:

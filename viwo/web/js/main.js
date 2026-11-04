@@ -1,8 +1,11 @@
-// App shell: theme, registry-driven rail and router, top-bar status chips, workspace path, activity console dock.
+// App shell: theme, the global strip (SYSTEM, JOBS, SETTINGS, game, workspace), the three arms
+// (STATIC, DYNAMIC, PATCHING) with a registry-driven rail per arm, router, status chips, dock.
 import { api, hasToken } from "./api.js";
 import * as ui from "./ui.js";
-import { h, $, fill, pref, logLine, bus, emit, toastErr } from "./ui.js";
-import { views, view, loadPluginModules, addonPanels } from "./registry.js";
+import { h, $, fill, pref, logLine, bus, emit, toastErr, seg } from "./ui.js";
+import { ARMS, views, view, armViews, loadPluginModules, addonPanels } from "./registry.js";
+import { currentGame, pickGame } from "./game.js";
+import "./views/home.js";
 import { setTheme } from "./theme.js";
 import "./views/extract.js";
 import "./views/workspace.js";
@@ -16,24 +19,40 @@ import "./views/repack.js";
 import "./views/capture.js";
 import "./views/analysis.js";
 import "./views/settings.js";
+import "./views/runtime.js";
+import "./views/patches.js";
 import { openWorkspaceDialog } from "./workspace-dialog.js";
 import { landingWanted, runLanding } from "./landing.js";
 import { KIND } from "./views/jobs.js";
 
 const scroll = {};
-const state = { chips: "", current: "", distro: null, dockOpen: pref("dock") === "1", logCount: -1, lastLog: "" };
+const state = { arm: "", chips: "", current: "", distro: null, dockOpen: pref("dock") === "1", logCount: -1, lastLog: "" };
 
-/** Build the rail entries and one section per registered view (core and add-ons alike). */
+const link = (v, i) => h("a", { href: `#${v.id}`, "data-view": v.id, title: `${v.title} — ${v.subtitle}` },
+  h("b", {}, v.num || String(i + 1).padStart(2, "0")), h("span", {}, v.title, h("small", {}, v.subtitle)));
+
+/** The arm switch, the global strip and one section per registered view (core and add-ons). */
 function buildShell() {
-  const list = views();
-  fill($("#mods"), list.map((v, i) => h("li", {}, h("a", { href: `#${v.id}`, "data-view": v.id, title: `${v.title} — ${v.subtitle}` },
-    h("b", {}, String(v.order / 10 || i + 1).padStart(2, "0")), h("span", {}, v.title, h("small", {}, v.subtitle))))));
-  fill($("#main"), list.map((v) => h("section", { class: "view", id: `view-${v.id}`, hidden: true })));
+  state.armSeg = seg(ARMS.map((a) => [a.id, a.title]), "", (id) => { location.hash = `#${id}`; }, { "aria-label": "Arms" });
+  fill($("#arms"), state.armSeg);
+  fill($("#strip"), armViews("global").map((v) => h("a", { class: "chip", href: `#${v.id}`, "data-view": v.id, title: v.subtitle },
+    h("i", {}), h("b", {}, v.title))));
+  fill($("#main"), views().map((v) => h("section", { class: "view", id: `view-${v.id}`, hidden: true })));
+}
+
+/** The rail lists one arm's views; a global view keeps the arm the user was in. */
+function showArm(arm) {
+  if (arm === state.arm) return;
+  state.arm = arm;
+  state.armSeg.set(arm);
+  fill($("#mods"), armViews(arm).map((v, i) => h("li", {}, link(v, i))));
 }
 
 function route() {
   const want = location.hash.slice(1);
-  const id = view(want) ? want : views()[0].id;
+  const id = view(want) ? want : ARMS[0].id;
+  const arm = view(id).arm;
+  showArm(arm === "global" ? state.arm || ARMS[0].id : arm);
   if (state.current === id) return;
   if (state.current) {
     scroll[state.current] = $("#main").scrollTop;
@@ -50,7 +69,7 @@ function route() {
   el.hidden = false;
   $("#main").scrollTop = scroll[id] || 0;
   view(id).show?.();
-  document.querySelectorAll("#mods a").forEach((a) => {
+  document.querySelectorAll("#mods a, #strip a").forEach((a) => {
     if (a.dataset.view === id) a.setAttribute("aria-current", "page");
     else a.removeAttribute("aria-current");
   });
@@ -88,6 +107,12 @@ async function pollStatus() {
     fill($("#status-chips"), Object.assign(chip("SERVER", err.code === "offline" ? "OFFLINE" : "ERROR", "err"),
       { title: "ViWo's server does not answer. Start it again (viwo serve, or Start.py), then reload." }));
   }
+}
+
+function refreshGame() {
+  const path = currentGame();
+  $("#game-sel").textContent = path ? `‎${path}‎` : "—";
+  $("#game-sel").title = path;
 }
 
 async function refreshWorkspacePath() {
@@ -135,6 +160,9 @@ async function boot() {
   buildShell();
   $("#dock-toggle").addEventListener("click", () => setDock(!state.dockOpen));
   $("#ws-btn").addEventListener("click", openWorkspaceDialog);
+  $("#game-btn").addEventListener("click", pickGame);
+  bus.addEventListener("game", refreshGame);
+  refreshGame();
   $("#dock-clear").addEventListener("click", () => api.clearLogs().then(() => { state.logCount = -1; pollLogs(); }, toastErr));
   window.addEventListener("hashchange", route);
   bus.addEventListener("workspace", refreshWorkspacePath);

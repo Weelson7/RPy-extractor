@@ -55,6 +55,12 @@ SlotBinding     (result of startup resolution)
 
 **Prototype scope:** only `failover` is implemented. `supplement` and `main_only` are kept in the contract for later. Outcome kinds are collapsed to **ok · unavailable · failed · needs_key** (cancellation is handled by the job, not by outcomes); the finer kinds below come back when the sanitizer and capture need them.
 
+**Never silent (owner's rule, 1.5.0):** when the spare runs, the outcome carries `fallback`
+("<main> <kind>: <error>; used <spare>"); when both fail, the error names both. Every stage turns
+it into a warn event (CLI stderr, also with `--json`; the GUI's job log) and, where the stage
+keeps warnings, into the result. An export that is ok but wrote nothing, or that returned notes,
+says so too.
+
 Every backend outcome carries an error kind:
 
 | Kind | Retry with spare? |

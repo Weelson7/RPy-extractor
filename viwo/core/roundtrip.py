@@ -21,7 +21,7 @@ from viwo.contracts.types import CancelToken, ProgressEvent
 from .context import core_context
 from .pipeline.collect import sha256
 from .pipeline.failover import run_with_failover
-from .pipeline.guard import changes, refuse_writes_inside, snapshot
+from .pipeline.guard import change_warning, refuse_writes_inside, snapshot
 from .pipeline.identify import identify
 from .pipeline.ticker import Ticker
 from .records import record_context
@@ -216,7 +216,7 @@ def _apply(rt, item: PlanItem, target: Path, ctx) -> dict:
         **result,
         "output": out.relative_to(target).as_posix(),
         "failed": bad,
-        "notes": [*outcome.notes, *notes],
+        "notes": [*outcome.notes, *notes, *([outcome.fallback] if outcome.fallback else [])],
     }
 
 
@@ -272,9 +272,9 @@ def _build(rt, game: Path, target: Path, items: list[PlanItem], report: dict, co
     finally:
         shutil.rmtree(work, ignore_errors=True)
     report["verified"] = all(not r["failed"] for r in report["results"])
-    touched = changes(before, snapshot(game))
-    if touched:
-        report["warnings"].append(f"GAME FOLDER CHANGED during repack: {', '.join(touched[:10])}")
+    changed = change_warning(before, snapshot(game), "repack")
+    if changed:
+        report["warnings"].append(changed)
     write_atomic(target / MARKER / "report.json", json.dumps(report, indent=2))
     say(
         ProgressEvent(

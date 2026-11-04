@@ -2,6 +2,7 @@
 // warnings (information, never a block), confirm once, run as a job, see what came out.
 import { api } from "../api.js";
 import { h, fill, btn, panel, badge, viewHead, toast, toastErr, pref, busy, bus, emit, browseBtn, errorBox, logLine, assure } from "../ui.js";
+import { setGame, followGame } from "../game.js";
 import { jobProgress, withSkeleton } from "../progress.js";
 import { beforeYouStart, renderResult, renderFailure } from "./capture-result.js";
 
@@ -26,6 +27,7 @@ function mount(root) {
   el.why = h("span", { class: "ab-why" });
   el.run = btn("LAUNCH + CAPTURE", run, "primary lg");
   el.cancel = btn("CANCEL", cancelJob, "ghost", { hidden: true });
+  followGame(el.game);
   root.append(
     viewHead("10", "CAPTURE", "Run the game under RenderDoc: after the delay one frame is captured and the game is stopped, nothing to press (set 0 to take captures yourself with F12 and quit when done). Every texture and shader of every capture lands in the workspace, and ViWo says which ones static extraction had missed."),
     assure([["ANY GAME", "anti-cheat and online titles only produce warnings; you decide, you are responsible"],
@@ -43,7 +45,7 @@ function mount(root) {
 }
 
 function targetPanel() {
-  const browseGame = browseBtn(el.game, (path) => { pref("gamePath", path); check(); });
+  const browseGame = browseBtn(el.game, (path) => { setGame(path); check(); });
   const browseExe = browseBtn(el.exe, (path) => { pref("capExe", path); bar(); }, (p) => api.browseFile(p || el.game.value.trim()).then((r) => r.path));
   return panel("10.A", "TARGET", badge("READ-ONLY SOURCE", "ok"),
     h("label", { class: "lbl", for: "cap-game" }, "GAME FOLDER"),
@@ -58,7 +60,7 @@ function targetPanel() {
 async function check() {
   const path = el.game.value.trim();
   if (!path) return toast("Enter the game folder first.", "warn");
-  pref("gamePath", path);
+  setGame(path);
   try {
     S.info = await withSkeleton(el.before, "READING THE GAME FOLDER…", () => api.captureWarnings(path), 3);
     S.infoFor = path;
@@ -139,5 +141,5 @@ async function run() {
 import { registerView } from "../registry.js";
 
 const VIEW = { mount, show: bar };
-registerView({ id: "capture", order: 100, title: "CAPTURE", subtitle: "frames from a running game", ...VIEW });
+registerView({ id: "capture", arm: "dynamic", order: 10, num: "10", title: "CAPTURE", subtitle: "frames from a running game", ...VIEW });
 export default VIEW;

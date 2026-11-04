@@ -87,6 +87,8 @@ def _unpack_one(runtime, match, dest: Path, make_ctx, report: UnpackReport, orig
         ctx.log(f"FAILED {match.path.name}: {outcome.error}", "warn", "unpack")
         shutil.rmtree(dest, ignore_errors=True)
         return False
+    if outcome.fallback:
+        ctx.log(f"{match.path.name}: {outcome.fallback}", "warn", "unpack")
     report.extracted += 1
     report.files += outcome.files
     report.by_backend[used] += 1

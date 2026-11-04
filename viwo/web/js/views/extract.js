@@ -1,6 +1,7 @@
 // 01 EXTRACT: target, detection, mode, plugin options, filter, run + live feed.
 import { api } from "../api.js";
 import { h, fill, btn, panel, badge, meter, viewHead, toast, toastErr, pref, logLine, emit, modal, errorBox, pct, fmtNum, bus, browseBtn } from "../ui.js";
+import { setGame, followGame } from "../game.js";
 import { slotText } from "./system.js";
 import { jobProgress, withSkeleton } from "../progress.js";
 import { renderResult, renderFailure, renderIdle } from "./extract-result.js";
@@ -28,6 +29,7 @@ function mount(root) {
   el.run = btn("RUN EXTRACTION", () => run(), "primary lg");
   el.target = h("code", { class: "mono path" }, "—");
   el.cancel = btn("CANCEL JOB", cancelJob, "ghost", { hidden: true });
+  followGame(el.path);
   root.append(
     viewHead("01", "EXTRACT", "Pull assets from a game folder into a ViWo workspace. The game folder is opened read-only and never modified."),
     h("div", { class: "grid2" },
@@ -42,7 +44,7 @@ function mount(root) {
 }
 
 function targetPanel() {
-  const browse = browseBtn(el.path, (path) => { pref("gamePath", path); detect(); });
+  const browse = browseBtn(el.path, (path) => { setGame(path); detect(); });
   return panel("01.A", "TARGET GAME FOLDER", badge("READ-ONLY SOURCE", "ok"),
     h("label", { class: "lbl", for: "game-path" }, "GAME FOLDER PATH"),
     h("div", { class: "row" }, el.path, browse),
@@ -59,7 +61,7 @@ async function detect() {
   const path = el.path.value.trim();
   if (!path) return toast("Enter a game folder first.", "warn");
   if (el.detectBtn.disabled) return;
-  pref("gamePath", path);
+  setGame(path);
   el.detectBtn.disabled = true;
   try {
     S.detect = await withSkeleton(el.detect, "PROBING ENGINE SIGNATURES…", () => api.detect(path), 3);
@@ -327,5 +329,5 @@ async function loadPlugins() {
 import { registerView } from "../registry.js";
 
 const VIEW = { mount, show };
-registerView({ id: "extract", order: 10, title: "EXTRACT", subtitle: "pull assets from a game", ...VIEW });
+registerView({ id: "extract", arm: "static", order: 20, num: "01", title: "EXTRACT", subtitle: "pull assets from a game", ...VIEW });
 export default VIEW;

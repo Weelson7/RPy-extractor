@@ -122,7 +122,7 @@ def analyze_command(rt, args) -> Envelope:
     req = AnalysisRequest(args.game, args.workspace, args.target, options, args.slot)
     if args.open is not None:
         opened = open_in(rt, req, args.open)
-        if not args.json:
+        if not getattr(args, "quiet", False):
             print(
                 f"[ANALYZE] {opened['label']} running (pid {opened['pid']}); close it to return",
                 file=sys.stderr,

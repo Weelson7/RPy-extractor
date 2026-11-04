@@ -99,4 +99,7 @@ export const api = {
   surveys: () => v1("GET", "/api/surveys"),
   surveyReport: (id) => v1("GET", `/api/survey-report?id=${encodeURIComponent(id)}`),
   uiModules: () => v1("GET", "/api/ui-modules"),
+  runtime: (kind, body) => v1("POST", `/api/runtime/${kind}`, body),
+  patch: (body) => v1("POST", "/api/patch", body),
+  mod: (body) => v1("POST", "/api/mod", body),
 };

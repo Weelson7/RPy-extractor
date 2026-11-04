@@ -115,5 +115,5 @@ async function apply() {
 import { registerView } from "../registry.js";
 
 const VIEW = { mount, show: load };
-registerView({ id: "settings", order: 110, title: "SETTINGS", subtitle: "plugins, features, tools", ...VIEW });
+registerView({ id: "settings", arm: "global", order: 30, num: "11", title: "SETTINGS", subtitle: "plugins, features, tools", ...VIEW });
 export default VIEW;

@@ -22,13 +22,18 @@
         </svg>
         <span class="word">VIWO</span><span class="sub">// VIDYA WORMHOLE</span>
       </div>
+      <nav class="chips strip" id="strip" aria-label="Global"></nav>
       <div class="chips" id="status-chips" aria-live="polite" aria-label="Status"></div>
+      <button type="button" class="ws-path" id="game-btn" title="The game every arm works on (read-only). Click to pick another.">
+        <span class="lbl">GAME</span><span class="mono" id="game-sel">—</span><span class="ws-edit">PICK</span>
+      </button>
       <button type="button" class="ws-path" id="ws-btn" title="The folder ViWo extracts into and works on. Click to switch.">
         <span class="lbl">WORKSPACE</span><span class="mono" id="ws-path">—</span><span class="ws-edit">SWITCH</span>
       </button>
     </header>
 
     <nav class="rail" aria-label="Modules">
+      <div class="arms" id="arms"></div>
       <ol class="mods" id="mods"></ol>
       <div class="rail-foot">
         <p class="ver mono" id="ver">LOCAL-FIRST // 127.0.0.1</p>

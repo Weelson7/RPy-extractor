@@ -2,6 +2,7 @@
 // target into the workspace's .analysis/, and "continue in <tool>" handoffs (doc 6, 8.3a).
 import { api } from "../api.js";
 import { h, fill, btn, panel, badge, viewHead, toast, toastErr, pref, busy, bus, emit, browseBtn, errorBox, logLine, assure, table, alert, kv } from "../ui.js";
+import { setGame, followGame } from "../game.js";
 import { jobProgress, withSkeleton } from "../progress.js";
 import { registerView } from "../registry.js";
 
@@ -20,6 +21,7 @@ function mount(root) {
   el.sum = h("div", { class: "ab-sum mono" });
   el.why = h("span", { class: "ab-why" });
   el.cancel = btn("CANCEL", cancelJob, "ghost", { hidden: true });
+  followGame(el.game);
   root.append(
     viewHead("12", "ANALYSIS", "Static analysis of the game's code: the plugins propose the binaries, Ghidra analyses a copy headless into the workspace, and CONTINUE IN GHIDRA opens the same project in the GUI. Nothing runs the game."),
     assure([["READ-ONLY", "the binary is copied first; the game folder is never handed to a tool"],
@@ -29,7 +31,7 @@ function mount(root) {
       h("div", { class: "col" },
         panel("12.A", "GAME", badge("READ-ONLY SOURCE", "ok"),
           h("label", { class: "lbl", for: "an-game" }, "GAME FOLDER"),
-          h("div", { class: "row" }, el.game, browseBtn(el.game, (p) => { pref("gamePath", p); list(); }), btn("LIST TARGETS", (e) => busy(e.currentTarget, list), "primary")),
+          h("div", { class: "row" }, el.game, browseBtn(el.game, (p) => { setGame(p); list(); }), btn("LIST TARGETS", (e) => busy(e.currentTarget, list), "primary")),
           h("p", { class: "note" }, "Results go to the active workspace: ", (el.wsNote = h("code", { class: "mono" }, S.ws || "—")), ".")),
         panel("12.B", "TARGETS", null, el.targets)),
       h("div", { class: "col" }, el.progPanel, el.result)),
@@ -43,7 +45,7 @@ function mount(root) {
 async function list() {
   const path = el.game.value.trim();
   if (!path) return toast("Enter the game folder first.", "warn");
-  pref("gamePath", path);
+  setGame(path);
   try {
     const res = await withSkeleton(el.targets, "READING THE GAME FOLDER…", () => api.analysisTargets(path), 3);
     S.targets = res.targets || [];
@@ -110,5 +112,5 @@ async function open(t, hd) {
 }
 
 const VIEW = { mount, show: bar };
-registerView({ id: "analysis", order: 120, title: "ANALYSIS", subtitle: "code, headless and in Ghidra", ...VIEW });
+registerView({ id: "analysis", arm: "static", order: 70, num: "12", title: "ANALYSIS", subtitle: "code, headless and in Ghidra", ...VIEW });
 export default VIEW;

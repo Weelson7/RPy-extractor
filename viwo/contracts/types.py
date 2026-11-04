@@ -131,6 +131,7 @@ class Outcome:
     files: int = 0
     error: str = ""
     notes: tuple[str, ...] = field(default=())
+    fallback: str = ""  # set by the failover: why the main backend was not the one used
 
     @property
     def ok(self) -> bool:

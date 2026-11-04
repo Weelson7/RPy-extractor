@@ -44,8 +44,11 @@ def unity_containers(root: Path) -> list[Path]:
         if CONTAINER_NAME.match(path.name):
             found.append(path)
             continue
-        with open(path, "rb") as fh:
-            head = fh.read(4096)
+        try:
+            with open(path, "rb") as fh:
+                head = fh.read(4096)
+        except OSError:  # held by an antivirus or locked: the copy step already reported it
+            continue
         if any(sig in head for sig in SIGNATURES):
             found.append(path)
     return found
@@ -149,9 +152,14 @@ def _export_object(ctx, obj, fallback: str, record: dict) -> int:
     return 0
 
 
+EXPORTED = frozenset(("Texture2D", "Sprite", "AudioClip", "TextAsset", "Mesh"))
+
+
 def _export_env(ctx, env, label: str, record: dict) -> tuple[int, list[str]]:
     exported, notes = 0, []
     for obj in env.objects:
+        if obj.type.name not in EXPORTED:  # parsing the rest is wasted (and fails on IL2CPP)
+            continue
         try:
             record["where"] = container_of(obj, record["files"], ctx.game_root)
             exported += _export_object(ctx, obj, f"{label}_{obj.path_id}", record)

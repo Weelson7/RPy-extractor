@@ -109,11 +109,21 @@ class UiSmokeTests(unittest.TestCase):
         r = self.report
         self.assertTrue(r["checks"]["landingSeen"] and r["checks"]["landingDone"], r["checks"])
         self.assertEqual(r["console"], [], json.dumps(r["console"], indent=1)[:3000])
-        self.assertGreaterEqual(len(r["checks"]["views"]), 11)
+        self.assertGreaterEqual(len(r["checks"]["views"]), 17)
         for view, info in r["views"].items():
             self.assertTrue(info.get("visible"), f"{view}: {info}")
             self.assertFalse(info.get("overflow"), f"{view} overflows horizontally")
             self.assertEqual(info.get("nullText"), [], f"{view} renders a literal null/undefined")
+
+    def test_three_arms_and_the_global_strip(self) -> None:
+        a = self.report["checks"]["arms"]
+        self.assertEqual(a["strip"], ["system", "jobs", "settings"])
+        self.assertEqual(a["static"][:3], ["static", "survey", "extract"])
+        self.assertEqual(a["dynamic"], ["dynamic", "capture", "runtime"])
+        self.assertEqual(a["afterGlobal"], a["dynamic"])  # a strip view keeps the arm
+        self.assertEqual(
+            (a["patching"], a["patchingHash"]), (["patching", "repack", "patches"], "#patching")
+        )
 
     def test_toast_sits_at_the_bottom_right(self) -> None:
         t = self.report["checks"]["toast"]

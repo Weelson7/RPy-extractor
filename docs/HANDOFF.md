@@ -344,6 +344,26 @@ so `progress.js` stops parsing message text, let `list_window` return the type c
   command to remove, see the morning notes): the `Cheat Engine 7.7` uninstall entry, the `.CT`
   file association and `third_party/.cheatengine-7.7-installer-leftover`.
 
+## 1.5.0 (three arms in the UI and the CLI; never silent, 2026-11-04)
+- Owner's rule: the tool always says what is happening, CLI or GUI. Root cause found on the
+  games pass: Defender held `Custom.dll`, the Unity container sniff raised on it, UnityPy failed,
+  the failover switched to AssetStudio silently, AssetStudio reported "ok, 0 files". Fixed at the
+  layer, not the plugin: `Outcome.fallback` (set by the failover, named in every stage's warn
+  events and the results), an export that wrote nothing or left notes says so, progress lines stay
+  on stderr with `--json`, the version tool names the check that failed, a vanished game file is
+  named as removed (antivirus), the Unity sniff skips unreadable files. Schedule I: 12/12 flags.
+- UI: views declare an `arm`; the rail shows one arm (STATIC, DYNAMIC, PATCHING) opening on its
+  home (`views/home.js`: the end-to-end path, steps SHIPPED or ROADMAP); the top bar holds the
+  global strip (SYSTEM, JOBS, SETTINGS), the shared GAME selector (`game.js`) and the WORKSPACE.
+  New views: 13 RUNTIME (agent, dump, trace, record) and 14 PATCHES + MODS (T1 check/apply, T2
+  check/pack/apply). Themes unchanged (pure stylesheets).
+- CLI: `viwo -h` groups commands by arm, `viwo <arm>` lists one, `viwo <arm> <cmd>` runs it, flat
+  verbs unchanged (`viwo/cli_arms.py`).
+- Tests are property checks (owner, 2026-11-04): every command in exactly one arm, an arm word
+  never changes a run, removed files named exactly, a warning whenever there is something to say.
+- Process: a games pass must run against a committed version, never a tree being edited (a
+  pass run imported a half-edited module: the transient SyntaxError in the Schedule I report).
+
 ## Morning deliverable (owner, 2026-11-04)
 A PDF presentation of the project status, the sqc suite and the CTF flags (`sqc/ctf.json`,
 `sqc/17-ctf.md`: five basic objectives per game plus one per GB), with no known limitation or

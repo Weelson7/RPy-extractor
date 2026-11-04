@@ -246,6 +246,8 @@ def decode_all(run, workspace: Path, provenance: list[dict]):
         outcome, used = run_with_failover(
             binding, rt.backends, lambda b: b.decode(workspace / rel, dest, ctx)
         )
+        if outcome.fallback:
+            run.log(f"{rel}: {outcome.fallback}", "decode", "warn")
         if outcome.ok:
             return Source(dest, True, f"decode:{used}:{rel}")
         shutil.rmtree(dest, ignore_errors=True)

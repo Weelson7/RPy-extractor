@@ -171,5 +171,5 @@ function conflictList(spec, index, focusAt = -1) {
 import { registerView } from "../registry.js";
 
 const VIEW = { mount, show: load };
-registerView({ id: "merger", order: 60, title: "MERGER", subtitle: "frames → video", ...VIEW });
+registerView({ id: "merger", arm: "static", order: 60, num: "06", title: "MERGER", subtitle: "frames → video", ...VIEW });
 export default VIEW;

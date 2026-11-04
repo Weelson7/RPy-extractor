@@ -151,5 +151,5 @@ async function build() {
 import { registerView } from "../registry.js";
 
 const VIEW = { mount, show };
-registerView({ id: "repack", order: 90, title: "PATCHED COPY", subtitle: "your edits → the game", ...VIEW });
+registerView({ id: "repack", arm: "patching", order: 10, num: "09", title: "PATCHED COPY", subtitle: "your edits → the game", ...VIEW });
 export default VIEW;

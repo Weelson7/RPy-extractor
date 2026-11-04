@@ -41,3 +41,16 @@ def snapshot(game: Path) -> Snapshot:
 def changes(before: Snapshot, after: Snapshot) -> list[str]:
     keys = set(before) | set(after)
     return sorted(k for k in keys if before.get(k) != after.get(k))
+
+
+def change_warning(before: Snapshot, after: Snapshot, during: str) -> str:
+    """ "GAME FOLDER CHANGED during <x>: ..." naming what vanished (an antivirus quarantine
+    removes files; ViWo never writes there), or "" when nothing changed."""
+    touched = changes(before, after)
+    if not touched:
+        return ""
+    gone = [t for t in touched if t in before and t not in after]
+    text = f"GAME FOLDER CHANGED during {during}: {', '.join(touched[:10])}"
+    if gone:
+        text += f" ({len(gone)} removed by someone else, e.g. an antivirus: {', '.join(gone[:5])})"
+    return text

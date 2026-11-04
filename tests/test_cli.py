@@ -144,6 +144,47 @@ class SlotsFormatTests(unittest.TestCase):
         self.assertIn("0.2.3", text)
 
 
+class ArmTests(unittest.TestCase):
+    """The CLI by arm, as properties: one arm per command, an arm word never changes a run."""
+
+    def test_every_command_belongs_to_exactly_one_arm(self) -> None:
+        from viwo.cli_arms import ARMS
+
+        parser = cli._parser()
+        owners = {n: [a for a, (_, names) in ARMS.items() if n in names] for n in parser.viwo_helps}
+        self.assertEqual({n: len(a) for n, a in owners.items() if len(a) != 1}, {})
+        listed = parser.format_help().splitlines()
+        for name in parser.viwo_helps:  # listed once, under its arm's header
+            rows = [i for i, line in enumerate(listed) if line.startswith(f"  {name} ")]
+            self.assertEqual(len(rows), 1, name)
+            header = next(line for line in reversed(listed[: rows[0]]) if line.endswith("):"))
+            self.assertTrue(header.startswith(owners[name][0]), (name, header))
+
+    def test_arm_alone_lists_exactly_its_commands(self) -> None:
+        from viwo.cli_arms import ARMS
+
+        for arm, (_, names) in ARMS.items():
+            code, out, _ = run([arm])
+            shown = {line.split()[0] for line in out.splitlines() if line.startswith("  ")}
+            self.assertEqual((code, shown), (0, set(names)), arm)
+
+    def test_an_arm_word_never_changes_the_run(self) -> None:
+        from viwo.cli_arms import ARMS, split_arm
+
+        with tempfile.TemporaryDirectory() as tmp:
+            self.assertEqual(
+                run(["--json", "detect", tmp])[1], run(["static", "--json", "detect", tmp])[1]
+            )
+        globals_ = [[], ["--json"], ["--ini", "x.ini"], ["--features", "a,b", "--quiet"]]
+        for arm, (_, names) in ARMS.items():
+            for pre in globals_:
+                for name in names[:2]:
+                    plain = [*pre, name, "arg"]
+                    self.assertEqual(split_arm([*pre, arm, name, "arg"]), (arm, plain))
+                    self.assertEqual(split_arm(plain), ("", plain))
+        self.assertEqual(split_arm(["--ini", "static", "info"])[0], "")  # a value, not an arm
+
+
 HELLO = Path(__file__).resolve().parent.parent / "examples" / "plugins" / "hello"
 PLUGIN_SRC = """
 from viwo.contracts.plugin import CliCommand, EnginePlugin, PluginManifest

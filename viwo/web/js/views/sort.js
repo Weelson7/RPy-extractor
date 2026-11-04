@@ -263,5 +263,5 @@ function onKey(e) {
 import { registerView } from "../registry.js";
 
 const VIEW = { mount, show: () => load(S.loaded) };
-registerView({ id: "sort", order: 30, title: "SORT", subtitle: "keep or trash, one by one", ...VIEW });
+registerView({ id: "sort", arm: "static", order: 40, num: "03", title: "SORT", subtitle: "keep or trash, one by one", ...VIEW });
 export default VIEW;

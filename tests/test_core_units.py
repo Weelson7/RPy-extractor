@@ -16,6 +16,7 @@ from viwo.contracts import (
     Match,
     MixedPolicy,
     OnExisting,
+    Outcome,
     OutcomeKind,
     SlotDefinition,
     ViwoError,
@@ -85,6 +86,45 @@ class BinderAndFailoverTests(unittest.TestCase):
             with self.subTest(kind=kind):
                 self.assertEqual((used, backends["spare-b"].calls), (used_expected, spare_calls))
                 self.assertEqual(outcome.ok, kind is not OutcomeKind.NEEDS_KEY)
+                said = outcome.fallback  # a spare in use always says why
+                self.assertEqual(
+                    (said.startswith(f"main-b {kind.value}"), said.endswith("used spare-b")),
+                    (spare_calls == 1, spare_calls == 1),
+                )
+
+
+class SayingTests(unittest.TestCase):
+    """Never silent, as properties over random cases: what changed or failed is always named."""
+
+    def test_change_warning_names_exactly_the_removed_files(self) -> None:
+        from viwo.core.pipeline.guard import change_warning
+
+        rng = random.Random(7)
+        for _ in range(200):
+            before = {f"f{i}.bin": (i, i) for i in range(rng.randint(0, 6))}
+            after = {k: v for k, v in before.items() if rng.random() > 0.3}
+            after.update({k: (99, 99) for k in after if rng.random() < 0.3})
+            text = change_warning(before, after, "extraction")
+            gone = sorted(set(before) - set(after))
+            changed = gone + [k for k in after if after[k] != before[k]]
+            self.assertEqual(bool(text), bool(changed))
+            removed = text.split("antivirus: ")[1].rstrip(")").split(", ") if gone else []
+            self.assertEqual(removed, gone[:5])
+            self.assertTrue(all(k in text for k in sorted(changed)[:10]))
+
+    def test_export_says_everything_worth_saying(self) -> None:
+        from viwo.core.pipeline.export import _said
+
+        rng = random.Random(3)
+        for _ in range(100):
+            files, notes = rng.choice((0, 4)), tuple(f"note{i}" for i in range(rng.randint(0, 3)))
+            fallback = rng.choice(("", "main failed: CAUSE; used spare"))
+            lines = _said(Outcome(OutcomeKind.OK, files, notes=notes, fallback=fallback), "s", "b")
+            self.assertEqual(len(lines), bool(fallback) + (files == 0) + bool(notes))
+            self.assertEqual(any("CAUSE" in line for line in lines), bool(fallback))
+            self.assertEqual(
+                any(str(len(notes)) in line and "note0" in line for line in lines), bool(notes)
+            )
 
 
 class SelectionTests(unittest.TestCase):

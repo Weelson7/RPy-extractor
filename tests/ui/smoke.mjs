@@ -56,11 +56,21 @@ await send("Emulation.setDeviceMetricsOverride", { width: 1440, height: 900, dev
 step = "landing";
 await send("Page.navigate", { url: `${APP}/` });
 report.checks.landingSeen = await waitFor("Boolean(document.querySelector('.landing'))", 5000, 100);
-report.checks.landingDone = await waitFor("!document.querySelector('.landing') && Boolean(document.querySelector('#view-extract:not([hidden])'))", 90000);
+report.checks.landingDone = await waitFor("!document.querySelector('.landing') && Boolean(document.querySelector('#view-static:not([hidden])'))", 90000);
 await shot("00-landing-done");
 
-const VIEWS = await evaluate("[...document.querySelectorAll('#mods a')].map((a) => a.dataset.view)");
+const VIEWS = await evaluate("[...document.querySelectorAll('#main > section.view')].map((s) => s.id.slice(5))");
 report.checks.views = VIEWS;
+// the arms: the rail lists one arm's views, a global view (strip) keeps the arm
+const railNow = () => evaluate("[...document.querySelectorAll('#mods a')].map((a) => a.dataset.view)");
+report.checks.arms = { static: await railNow(), strip: await evaluate("[...document.querySelectorAll('#strip a')].map((a) => a.dataset.view)") };
+await evaluate("location.hash = '#capture'"); await sleep(300);
+report.checks.arms.dynamic = await railNow();
+await evaluate("location.hash = '#jobs'"); await sleep(300);
+report.checks.arms.afterGlobal = await railNow();
+await evaluate("document.querySelector('#arms button[data-value=\"patching\"]').click()"); await sleep(300);
+report.checks.arms.patching = await railNow();
+report.checks.arms.patchingHash = await evaluate("location.hash");
 for (const v of VIEWS) {
   step = `view:${v}`;
   await evaluate(`location.hash = '#${v}'`);

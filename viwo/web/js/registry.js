@@ -4,11 +4,18 @@ const VIEWS = new Map();
 const PANELS = new Map();
 const byOrder = (a, b) => a.order - b.order || a.id.localeCompare(b.id);
 
-/** Register a view: {id, order, title, subtitle, mount(root), show?(), hide?()}. */
+/** The three arms; each view belongs to one (or to "global": the strip above everything). */
+export const ARMS = [
+  { id: "static", title: "STATIC", subtitle: "the game is not running" },
+  { id: "dynamic", title: "DYNAMIC", subtitle: "the game is running" },
+  { id: "patching", title: "PATCHING", subtitle: "you change its content" },
+];
+
+/** Register a view: {id, arm, order, title, subtitle, mount(root), show?(), hide?()}. */
 export function registerView(view, { override = false } = {}) {
   if (!view?.id || typeof view.mount !== "function") throw new Error("registerView: id and mount are required");
   if (VIEWS.has(view.id) && !override) throw new Error(`view "${view.id}" exists; pass {override: true} to replace it`);
-  VIEWS.set(view.id, { order: 1000, title: view.id.toUpperCase(), subtitle: "", ...view });
+  VIEWS.set(view.id, { order: 1000, title: view.id.toUpperCase(), subtitle: "", arm: "static", ...view });
   return view;
 }
 
@@ -24,6 +31,7 @@ export function registerPanel(viewId, panel, { override = false } = {}) {
 
 export const views = () => [...VIEWS.values()].sort(byOrder);
 export const view = (id) => VIEWS.get(id) || null;
+export const armViews = (arm) => views().filter((v) => v.arm === arm);
 export const panels = (viewId) => [...(PANELS.get(viewId)?.values() || [])].sort(byOrder);
 
 /** Render the add-on panels of a view (each render error is isolated and reported). */

@@ -185,5 +185,5 @@ function startup(d) {
 import { registerView } from "../registry.js";
 
 const VIEW = { mount, show: load };
-registerView({ id: "system", order: 50, title: "SYSTEM", subtitle: "tools and formats", ...VIEW });
+registerView({ id: "system", arm: "global", order: 10, num: "05", title: "SYSTEM", subtitle: "tools and formats", ...VIEW });
 export default VIEW;

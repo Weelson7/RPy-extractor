@@ -7,7 +7,7 @@ import json
 import sys
 from pathlib import Path
 
-from viwo import cli_args, cli_format
+from viwo import cli_args, cli_arms, cli_format
 from viwo.cli_check import slots_check, unpack_forced
 from viwo.cli_extra import (
     add_plugin_commands,
@@ -83,6 +83,7 @@ def _parser(rt=None) -> argparse.ArgumentParser:
     sv.add_argument("--no-browser", action="store_true", help="do not open the browser")
     if rt is not None:
         add_plugin_commands(sub, common, rt)
+    cli_arms.group_commands(ap, sub)
     return ap
 
 
@@ -104,7 +105,7 @@ def _query(rt, args) -> Envelope:
 
 
 def _verbose_header(rt, args) -> None:
-    if args.verbose and not args.json:
+    if args.verbose:
         print(f"[CLI] ini: {rt.config.source}", file=sys.stderr)
         for slot_id, b in sorted(rt.bindings.items()):
             print(f"[CLI] {slot_id}: {b.main or '-'} / {b.spare or '-'}", file=sys.stderr)
@@ -142,9 +143,13 @@ def _run(args, rt=None) -> Envelope:
 
 
 def main(argv: list[str] | None = None) -> int:
-    argv = list(sys.argv[1:] if argv is None else argv)
+    arm, argv = cli_arms.split_arm(list(sys.argv[1:] if argv is None else argv))
     rt = boot_for_cli(argv) if argv else None  # add-ons need the runtime; bare `viwo` stays fast
-    args = _parser(rt).parse_args(argv)
+    parser = _parser(rt)
+    if arm and cli_arms.first_word(argv) < 0:  # `viwo static`: that arm's commands
+        print(cli_arms.listing(parser.viwo_helps, (arm,)))
+        return 0
+    args = parser.parse_args(argv)
     if args.command is None:
         print(cli_format.WELCOME)
         return 0

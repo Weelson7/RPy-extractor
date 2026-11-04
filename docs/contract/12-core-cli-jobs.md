@@ -74,7 +74,10 @@ viwo merge ...                    media merger, same options as the UI
 viwo analyze <target> ...         (feature flag)
 viwo capture ...                  (doc 11, feature flag)
 viwo serve [--host --port]        starts the HTTP API + web UI (what Start.py does today)
-global: --ini PATH --os K --profile P --json --quiet --verbose
+global: --ini PATH --os K --profile P --features a,b --json --quiet --verbose
+arms:   viwo static | dynamic | patching | system   lists that arm's commands;
+        viwo <arm> <command> ... is viwo <command> ...; viwo -h groups every command by arm
+--json prints the envelope on stdout; progress lines stay on stderr (only --quiet removes them)
 exit codes: 0 ok, 1 job failed, 2 bad config/usage, 3 unsupported OS layer, 4 preflight, 130 cancelled
 ```
 

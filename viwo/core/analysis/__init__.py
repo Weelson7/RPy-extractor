@@ -186,6 +186,8 @@ def analyze(rt, req: AnalysisRequest, sink=None, cancel: CancelToken | None = No
             outcome.kind.value if outcome.kind.value != "ok" else "failed",
             outcome.error or f"{slot} failed",
         )
+    if outcome.fallback:
+        ctx.log(outcome.fallback, "warn", "analyze")
     artifacts = sorted(p.name for p in out.iterdir() if p.is_file())  # where the run wrote
     report = {
         "target": target.to_dict(),
@@ -193,6 +195,7 @@ def analyze(rt, req: AnalysisRequest, sink=None, cancel: CancelToken | None = No
         "outputDir": str(out),
         "artifacts": artifacts,
         "notes": list(outcome.notes),
+        "fallback": outcome.fallback,
         "finished": time.strftime("%Y-%m-%dT%H:%M:%S"),
         "context": record_context(rt),
     }

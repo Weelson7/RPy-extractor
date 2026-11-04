@@ -1,6 +1,7 @@
 // 07 SURVEY: read-only coverage check of one game or a whole library — what ViWo can pull, and what stays locked.
 import { api } from "../api.js";
 import { h, fill, btn, panel, badge, viewHead, empty, errorBox, toast, toastErr, pref, logLine, fmtBytes, fmtNum, emit, bus, stat, browseBtn } from "../ui.js";
+import { setGame } from "../game.js";
 import { jobProgress } from "../progress.js";
 import { gameCard, categoryKey, dataBytes, coveredBytes, pct, covKind } from "./survey-card.js";
 
@@ -133,7 +134,7 @@ function render() {
     stat("UNDER 50%", fmtNum(locked), "games that need work"),
     S.reportId ? stat("REPORT", S.reportId, "stored in viwo-data/surveys") : null));
   const onExtract = (path) => {
-    pref("gamePath", path);
+    setGame(path);
     bus.gamePath = path;
     location.hash = "#extract";
   };
@@ -145,5 +146,5 @@ function render() {
 import { registerView } from "../registry.js";
 
 const VIEW = { mount };
-registerView({ id: "survey", order: 70, title: "SURVEY", subtitle: "what can ViWo pull?", ...VIEW });
+registerView({ id: "survey", arm: "static", order: 10, num: "07", title: "SURVEY", subtitle: "what can ViWo pull?", ...VIEW });
 export default VIEW;

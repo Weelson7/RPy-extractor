@@ -33,15 +33,28 @@ def export_one(run, plugin_id: str, game: Path | None = None) -> PluginRun:
         run.rt.bindings[slot_id], run.rt.backends, lambda backend: backend.export(ctx)
     )
     error = "" if outcome.ok else f"{slot_id}: {outcome.kind.value}: {outcome.error}"
+    warnings = [error] if error else _said(outcome, slot_id, used)
+    for line in warnings:
+        run.log(line, "export", "warn")
     return PluginRun(
         plugin_id,
         detection,
         outcome.files,
         used if outcome.ok else "",
-        warnings=(error,) if error else (),
+        warnings=tuple(warnings),
         error=error,
         exported_by_kind=kinds(ctx.staging),
     )
+
+
+def _said(outcome, slot_id: str, used: str) -> list[str]:
+    """What a successful export must not keep quiet: a fallback, nothing exported, notes."""
+    lines = [f"{slot_id}: {outcome.fallback}"] if outcome.fallback else []
+    if not outcome.files:
+        lines.append(f"{slot_id}: {used} exported nothing")
+    if outcome.notes:
+        lines.append(f"{slot_id}: {used}: {len(outcome.notes)} note(s), first: {outcome.notes[0]}")
+    return lines
 
 
 WRAPPERS = {".asar", ".nw"}  # outer wrappers (Electron / NW.js): detection runs once more inside

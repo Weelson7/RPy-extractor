@@ -113,6 +113,8 @@ def _run(rt, req: CaptureRequest, known: set[str], sink, cancel) -> tuple:
             )
         if not outcome.ok:
             raise ViwoError("failed", outcome.error or "capture failed")
+        if outcome.fallback:
+            say(outcome.fallback)
         job = time.strftime("%Y%m%d-%H%M%S")
         same = [f for f in ctx.staging.rglob("*") if f.is_file() and sha256(f) in known]
         for f in same:  # already found by static extraction: not stored twice

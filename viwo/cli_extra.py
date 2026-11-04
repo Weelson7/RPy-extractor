@@ -134,7 +134,7 @@ def _survey(rt, args) -> Envelope:
 
     if not args.folder.is_dir():
         raise ViwoError("not_found", f"folder not found: {args.folder}")
-    quiet = args.json or getattr(args, "quiet", False)
+    quiet = getattr(args, "quiet", False)
     note = None if quiet else (lambda g, i, n: print(f"[SURVEY] {i}/{n} {g}", file=sys.stderr))
     return Envelope.success({"games": survey(rt, args.folder, args.deep, note)})
 
@@ -178,8 +178,9 @@ def workspace_command(rt, args) -> Envelope:
 
 
 def event_printer(args):
-    """Progress lines on stderr; silent with --json or --quiet (doc 12.4)."""
-    if args.json or getattr(args, "quiet", False):
+    """Progress lines on stderr, also with --json (the envelope is on stdout); --quiet only
+    silences them (doc 12.4)."""
+    if getattr(args, "quiet", False):
         return None
     return lambda e: print(e.legacy_line(), file=sys.stderr)
 

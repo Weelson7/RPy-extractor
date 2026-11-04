@@ -65,6 +65,8 @@ def carve_all(run, claimed: frozenset[str], items: list[tuple[Path, str]]) -> Ca
         outcome, used = run_with_failover(
             binding, rt.backends, lambda backend: backend.carve(path, dest, ctx)
         )
+        if outcome.fallback:
+            run.log(f"{path.name}: {outcome.fallback}", "carve", "warn")
         if not outcome.ok:
             report.failures.append(f"carve {origin}: {outcome.kind.value}: {outcome.error}")
         elif outcome.files:

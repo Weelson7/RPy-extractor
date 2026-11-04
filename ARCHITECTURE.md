@@ -50,11 +50,15 @@ viwo/
                through the game's own Oodle DLL), taleworlds (Bannerlord TPAC), quickbms
   api/         local web server (token, JSON-only, Host check), JSON handlers (tools, capture,
                settings, system), job routes
-  web/         the web UI (plain HTML/CSS/ES modules, no build step): landing + 12 views
+  web/         the web UI (plain HTML/CSS/ES modules, no build step): landing, a global strip
+               (SYSTEM, JOBS, SETTINGS, game, workspace) and three arms (STATIC, DYNAMIC,
+               PATCHING), each opening on a home view with its end-to-end path
   data/        tools.json (pinned tools), capture_policy.json (warnings, never refusals),
                ghidra/ViwoExport.java (the headless export script)
-  cli.py       viwo info | slots | detect | extract | replay | unpack | survey | sanitize |
-               repack | capture | analyze | install | indexes | diag | config | serve
+  cli.py       commands grouped by arm (cli_arms.py): static (survey, detect, extract, replay,
+               unpack, sanitize, analyze, diff), dynamic (capture, dump, trace, agent, record),
+               patching (repack, patch, mod), system (serve, info, slots, install, config,
+               indexes, diag); `viwo <arm>` lists one, `viwo <arm> <command>` = `viwo <command>`
 ```
 
 Dependency direction: every layer may use the layers listed above it in this tree (contracts

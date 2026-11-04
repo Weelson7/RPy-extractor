@@ -15,7 +15,9 @@ DevTools protocol, driven by `tests/ui/smoke.mjs`).
 | `ui/feedback.js` | `errorBox` (+ the `ERRORS` table), `toast`, `toastErr`, `modal`, `confirmBox`, `promptBox`, `browseBtn`, `openBtn` |
 | `ui/log.js` | `logLine`, `logView`, `lineLevel` |
 | `ui.js` | the same surface, re-exported (views import `../ui.js`) |
-| `registry.js` | views and panels as contributions (below) |
+| `registry.js` | views and panels as contributions (below); `ARMS`, `armViews(arm)` |
+| `game.js` | the shared game selector: `currentGame`, `setGame`, `pickGame`, `gameField`, `followGame` |
+| `views/home.js` | the three arm homes: each arm's end-to-end path, every step SHIPPED or ROADMAP |
 | `theme.js` | `THEMES`, `setTheme`, `currentTheme` |
 | `progress.js` | `jobProgress(kind)`: the live job block (rail, counters, ticker, log) per job kind |
 | `views/*.js` | one module per view; each registers itself |
@@ -53,16 +55,27 @@ To add a component: put it in `ui/components.js` (or a new `ui/<area>.js` re-exp
 `ui/index.js`), give it a class name and data attributes for its states, add its structure to
 `base.css` and its skin to every theme.
 
+## Arms and the global strip
+
+Every view declares an `arm`: `static` (the game is not running: survey, extract, workspace, sort,
+cleanup, merger, analysis), `dynamic` (it runs: capture, runtime), `patching` (you change its
+content: patched copy, patches + mods) or `global`. The rail shows one arm at a time, opening on
+that arm's home (`#static`, `#dynamic`, `#patching`); the arm switch sits above it. The global
+views (SYSTEM, JOBS, SETTINGS) sit in the strip of the top bar with the shared GAME selector and
+the WORKSPACE; opening one keeps the arm you were in. The game selector is one browser
+preference (`gamePath`): views read it, write it through `setGame` and follow the `game` event.
+
 ## Add-ons: views and panels as contributions (`registry.js`)
 
 ```js
 import { registerView, registerPanel } from "./registry.js";
-registerView({ id: "mygame", order: 75, title: "MY GAME", subtitle: "what it does", mount(root) {...}, show() {...}, hide() {...} });
+registerView({ id: "mygame", arm: "static", order: 75, title: "MY GAME", subtitle: "what it does", mount(root) {...}, show() {...}, hide() {...} });
 registerPanel("system", { id: "mygame-status", order: 10, render: (ctx) => panel("05.X", "MY GAME", null, ...) });
 ```
 
-- `main.js` builds the rail and one `<section id="view-<id>">` per registered view, sorted by
-  `order` (core views use 10..110). A view that registers an existing id must pass
+- `main.js` builds one `<section id="view-<id>">` per registered view and the rail of the
+  current arm, sorted by `order` within the arm (`num` is the number shown; it defaults to the
+  position). A view without `arm` joins `static`. A view that registers an existing id must pass
   `{ override: true }`; the same holds for panels.
 - Views that accept panels call `addonPanels(viewId, ctx)` at mount and append the result.
 - Plugin UI modules: the server lists them at `GET /api/ui-modules` as `{modules: [{plugin,

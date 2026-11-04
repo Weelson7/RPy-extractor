@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import Callable
 
 from viwo.contracts.slots import Backend, SlotBinding
@@ -19,12 +20,14 @@ def run_with_failover(
         reasons = "; ".join(binding.reasons) or "no backend available"
         return Outcome(OutcomeKind.UNAVAILABLE, error=reasons), ""
     last = Outcome(OutcomeKind.FAILED, error="not attempted")
-    used = ""
+    used, failed = "", ""
     for backend_id in (binding.main, binding.spare):
         if not backend_id:
             continue
-        if reset is not None and used:
-            reset()
+        if used:
+            failed = f"{used} {last.kind.value}: {last.error or 'no reason given'}"
+            if reset is not None:
+                reset()
         used = backend_id
         try:
             last = call(backends[backend_id])
@@ -32,4 +35,7 @@ def run_with_failover(
             last = Outcome(OutcomeKind.FAILED, error=f"{type(exc).__name__}: {exc}"[:300])
         if last.ok or not last.retryable:
             break
+    if failed:  # never silent: the main backend's failure travels with the outcome
+        error = f"{last.error} (after {failed})" if not last.ok else last.error
+        last = replace(last, error=error, fallback=f"{failed}; used {used}")
     return last, used

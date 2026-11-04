@@ -191,7 +191,8 @@ WELCOME = """ViWo // Vidya Wormhole - game reverse engineering, local only.
   viwo config check startup.ini      strict configuration check
   viwo diag                          bundle logs and run records for a bug report
 
-Run `viwo -h` for every command and the exit codes, `viwo <command> -h` for its options.
+Three arms: `viwo static`, `viwo dynamic`, `viwo patching` (and `viwo system`) list their
+commands; `viwo -h` lists them all with the exit codes, `viwo <command> -h` its options.
 
 A community tool for everyone who wants to look inside a game. No boundaries in the code; a
 disclaimer instead: ViWo and the tools it ships could be misused, nobody here condones or

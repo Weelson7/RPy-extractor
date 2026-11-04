@@ -23,7 +23,7 @@ from .carving import carve_all
 from .checks import _verify, verified
 from .collect import collect
 from .export import export_one, rewrap
-from .guard import changes, refuse_writes_inside, snapshot
+from .guard import change_warning, refuse_writes_inside, snapshot
 from .probe import FolderProbe, detect_all
 from .select import select_plugins
 from .sources import claimed, sources_for
@@ -134,9 +134,9 @@ def _stages(run: Run, workspace: Path) -> ExtractionResult:
     if run.cancel.cancelled:
         raise ViwoError("cancelled", "extraction cancelled")
     warnings = _verify(unpacked, collected) + [w for r in runs for w in r.warnings]
-    touched = changes(before, snapshot(run.game))
-    if touched:  # ViWo never writes there; a running game may (saves, logs)
-        warnings.append(f"GAME FOLDER CHANGED during extraction: {', '.join(touched[:10])}")
+    changed = change_warning(before, snapshot(run.game), "extraction")
+    if changed:  # ViWo never writes there; a running game (saves, logs) or an antivirus may
+        warnings.append(changed)
     runs = verified(run, runs, collected.collected)
     warnings += [w[8:] for r in runs for w in r.warnings if w.startswith("verify: ")]
     result = ExtractionResult(
