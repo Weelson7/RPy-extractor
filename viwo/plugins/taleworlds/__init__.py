@@ -106,7 +106,7 @@ class TpacBuiltin(Unarchiver):
                     if rel is None or ctx.cancel.cancelled:
                         continue
                     _item(fh, dest.joinpath(*rel.parts), segments, (kind, meta), counts)
-        except (OSError, ValueError, struct.error) as exc:
+        except (OSError, ValueError, IndexError, struct.error) as exc:  # IndexError: cut short
             return Outcome(OutcomeKind.FAILED, error=f"bad TPAC: {exc}")
         notes = [f"{counts['lz4']} LZ4 segment(s) need the 'lz4' Python package"]
         notes.append(f"{counts['raw texture']} texture(s) of an unknown shape kept as raw .bin")

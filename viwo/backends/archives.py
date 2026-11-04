@@ -5,6 +5,7 @@ from __future__ import annotations
 import shutil
 import tarfile
 import zipfile
+import zlib
 from pathlib import Path
 
 from viwo.contracts.slots import Unarchiver
@@ -22,6 +23,11 @@ UNRAR = DependencySpec("unrar", "unrar", executables=("unrar",), hint="install u
 PY7ZR = DependencySpec(
     "py7zr", "py7zr", kind="python", import_name="py7zr", hint="pip install py7zr"
 )
+
+
+# what the stdlib readers raise on damaged bytes besides their own error: a bad name
+# (UnicodeDecodeError is a ValueError), a stream cut short (EOFError), bad deflate data
+DAMAGED = (OSError, ValueError, EOFError, zlib.error)
 
 
 def _done(dest: Path, skipped: int = 0) -> Outcome:
@@ -58,7 +64,7 @@ class ZipBackend(Unarchiver):
                         target.parent.mkdir(parents=True, exist_ok=True)
                         with zf.open(info) as src, open(target, "wb") as out:
                             shutil.copyfileobj(src, out)
-        except (zipfile.BadZipFile, OSError, RuntimeError, NotImplementedError) as exc:
+        except (zipfile.BadZipFile, *DAMAGED, RuntimeError, NotImplementedError) as exc:
             return Outcome(OutcomeKind.FAILED, error=str(exc)[:300])
         return _done(dest, skipped)
 
@@ -78,7 +84,7 @@ class TarBackend(Unarchiver):
                     tf.extractall(dest, members=members, filter="data")
                 else:
                     tf.extractall(dest, members=members)
-        except (tarfile.TarError, OSError) as exc:
+        except (tarfile.TarError, *DAMAGED) as exc:
             return Outcome(OutcomeKind.FAILED, error=str(exc)[:300])
         return _done(dest, skipped)
 

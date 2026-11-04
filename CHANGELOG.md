@@ -4,6 +4,15 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.6.9 (2026-11-04)
+- Fix: damaged archives are named failures in every in-process reader. The Ren'Py reader
+  raised on a cut-short header or a malformed index entry and inflated its index without a
+  bound (a decompression bomb: now at most 256 MiB); the zip and tar readers raised on a damaged
+  member name, a cut-short gzip stream or bad deflate data; TPAC raised when cut short.
+- Hostile input: valid archives of ten formats, randomly damaged (bytes, runs, cuts), through
+  their readers, as a property (`tests/test_untrusted_input.py`).
+- `viwo` LoC budget 14100 -> 14200 for the 1.6.x hardening (reason in `loc_caps.ini`).
+
 ## 1.6.8 (2026-11-04)
 - Fix: a damaged 64-bit offset in an RDAR index (Cyberpunk 2077) or a BA2/BSA (Bethesda) is a
   named "bad RDAR/BA2/BSA" failure; it reached `seek()` or an mmap slice and surfaced as a

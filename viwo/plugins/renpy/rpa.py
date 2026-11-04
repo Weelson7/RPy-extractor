@@ -55,21 +55,31 @@ def read_index(fh) -> dict[str, list[tuple[int, int, bytes]]]:
     parts = fh.readline(80).split()  # "RPA-3.0 <offset> <key>": bounded, any file may come here
     if not parts or parts[0] not in (b"RPA-2.0", b"RPA-3.0"):
         raise ValueError(f"unsupported RPA header {parts[0][:16] if parts else b''}")
+    if len(parts) < (3 if parts[0] == b"RPA-3.0" else 2):
+        raise ValueError("RPA header cut short")
     offset = int(parts[1], 16)
     key = int(parts[2], 16) if parts[0] == b"RPA-3.0" else 0
     fh.seek(offset)
-    raw = _SafeUnpickler(io.BytesIO(zlib.decompress(fh.read())), encoding="bytes").load()
+    inflate = zlib.decompressobj()
+    packed = inflate.decompress(fh.read(), INDEX_LIMIT)  # bounded: a bomb stops here
+    if inflate.unconsumed_tail:
+        raise ValueError("RPA index inflates past 256 MiB")
+    raw = _SafeUnpickler(io.BytesIO(packed), encoding="bytes").load()
     if not isinstance(raw, dict):
         raise ValueError("RPA index is not a mapping")
-    index: dict[str, list[tuple[int, int, bytes]]] = {}
-    for name, chunks in raw.items():
-        entries = []
-        for chunk in chunks:
-            start = chunk[2] if len(chunk) > 2 else b""
-            prefix = start.encode("latin-1") if isinstance(start, str) else bytes(start)
-            entries.append((int(chunk[0]) ^ key, int(chunk[1]) ^ key, prefix))
-        index[_text(name)] = entries
-    return index
+    try:
+        return {_text(name): [_chunk(c, key) for c in chunks] for name, chunks in raw.items()}
+    except (TypeError, IndexError, AttributeError) as exc:
+        raise ValueError(f"RPA index entry malformed ({exc})") from exc
+
+
+INDEX_LIMIT = 256 << 20
+
+
+def _chunk(chunk, key: int) -> tuple[int, int, bytes]:
+    start = chunk[2] if len(chunk) > 2 else b""
+    prefix = start.encode("latin-1") if isinstance(start, str) else bytes(start)
+    return int(chunk[0]) ^ key, int(chunk[1]) ^ key, prefix
 
 
 def _target(dest: Path, name: str) -> Path | None:
@@ -87,7 +97,14 @@ class RpaSafe(Unarchiver):
             with open(archive, "rb") as fh:
                 index = read_index(fh)
                 written = sum(self._write(fh, dest, name, chunks) for name, chunks in index.items())
-        except (ValueError, OSError, zlib.error, pickle.UnpicklingError, EOFError) as exc:
+        except (
+            ValueError,
+            OSError,
+            OverflowError,
+            zlib.error,
+            pickle.UnpicklingError,
+            EOFError,
+        ) as exc:
             return Outcome(OutcomeKind.FAILED, error=str(exc)[:300])
         return Outcome(OutcomeKind.OK, written)
 

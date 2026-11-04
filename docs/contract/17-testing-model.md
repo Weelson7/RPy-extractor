@@ -42,13 +42,13 @@ tools (about 10 minutes on Windows including the browser smoke).
 | RPA index with a `__reduce__` payload | no code runs; reported, the spare runs only as a subprocess | `test_renpy.py::test_malicious_index_never_runs` |
 | `.rpyc` | never unpickled in process (unrpyc in a subprocess) | `test_renpy.py` |
 | nesting depth bomb | stops at depth 10, reported | `test_pipeline.py` |
-| decompression bomb | bounded per stream and per file (`viwo/core/carve/streams.py`), BSA inflation bounded | `test_carve.py` |
+| decompression bomb | bounded per stream and per file (`viwo/core/carve/streams.py`), BSA inflation bounded, an RPA index inflates to at most 256 MiB | `test_carve.py`, `test_untrusted_input.py` |
 | a plugin hook writing outside its staging | the conformance kit's sandbox check fails | `test_conformance_kit.py` |
 | PREPARE on a folder without the marker | refused, nothing deleted | `test_game_integrity.py` |
 | any extraction | game-folder hashes unchanged | plugin tests, `test_game_integrity.py` |
 | a game file unreadable (antivirus) or removed mid-run | named in a warning, the run completes | `test_pipeline.py` |
 | missing token, foreign Host, non-JSON body, oversized body, cross-origin `text/plain` POST | 403 / 415 / 413, no side effect | `test_server.py` |
-| random bytes behind a format's magic, to every in-process reader; corrupt RDAR archives | an Outcome (a named failure or what could be read), never an exception; nothing written outside the destination | `test_untrusted_input.py`, `test_redengine.py` |
+| random bytes behind a format's magic, and valid archives randomly damaged, to every in-process reader | an Outcome (a named failure or what could be read), never an exception; nothing written outside the destination | `test_untrusted_input.py`, `test_redengine.py` |
 | an empty or relative path in an API request | refused (`not_found` / `invalid_request`); the server's own folder is never read or written | `test_api_routes.py` |
 | `/preview/` and `/api/*` traversal | 404 or an error | `test_server.py` |
 | a journal left by a crashed capture session | restored before the next capture; a damaged line is skipped with a warning | `test_capture.py` |
