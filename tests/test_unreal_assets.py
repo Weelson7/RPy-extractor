@@ -264,6 +264,10 @@ class FixTests(unittest.TestCase):
                 ),
                 cancel=None,
             )
+            argv = VgmstreamCli().argv(Path("C:/game/what?.bank"), dest)
+            self.assertEqual(
+                Path(argv[argv.index("-o") + 1]).name, "what__?s.wav"
+            )  # the stem, not ?f
             out = VgmstreamCli().decode(src, dest, ctx)
             self.assertEqual((out.kind, out.files), (OutcomeKind.OK, 1))
             self.assertEqual(len(seen), 2)

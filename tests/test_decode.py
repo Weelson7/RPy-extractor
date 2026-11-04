@@ -20,8 +20,8 @@ args = sys.argv[1:]
 src = Path(args[-1] if "{tool}" == "vgm" else args[args.index("-i") + 1])
 if b"BROKEN" in src.read_bytes():
     sys.exit("cannot decode")
-if "{tool}" == "vgm":
-    out = Path(args[args.index("-o") + 1].replace("?f", src.name).replace("?s", "1"))
+if "{tool}" == "vgm":  # vgmstream expands ?f to the whole input path
+    out = Path(args[args.index("-o") + 1].replace("?f", str(src)).replace("?s", "1"))
 else:
     out = Path(args[-1])
 out.write_bytes(b"decoded:" + src.read_bytes())
@@ -68,13 +68,13 @@ class DecodeTests(unittest.TestCase):
             warned = [e for e in events if e.level == "warn" and e.message == warning]
             self.assertEqual(len(warned), 1)
             ws = root / "ws"
-            self.assertEqual((ws / "wav" / "music.wem_1.wav").read_bytes(), b"decoded:RIFF-wem")
+            self.assertEqual((ws / "wav" / "music_1.wav").read_bytes(), b"decoded:RIFF-wem")
             self.assertEqual((ws / "png" / "logo.dds.png").read_bytes(), b"decoded:DDS-tex")
             self.assertTrue((ws / "wem" / "music.wem").is_file())  # originals stay
             self.assertEqual(result.copied_by_ext.get("wav"), 1)  # bad.wem: no output, no crash
             lines = (ws / ".extraction_metadata" / "provenance.jsonl").read_text().splitlines()
             origins = {json.loads(line)["origin"] for line in lines}
-            self.assertIn("decode:vgmstream-cli:wem/music.wem:music.wem_1.wav", origins)
+            self.assertIn("decode:vgmstream-cli:wem/music.wem:music_1.wav", origins)
             off = ExtractionRequest(
                 str(game), str(root / "ws2"), plugin_options={"core": {"decode": "off"}}
             )
@@ -151,6 +151,42 @@ class DecoderBackendTests(unittest.TestCase):
             self.assertEqual((out.kind, out.error), (OutcomeKind.FAILED, "Invalid data"))
             gone = FfprobeProbe().probe(root / "a.ogg", _ctx(None, located=False))
             self.assertEqual(gone.kind, OutcomeKind.UNAVAILABLE)
+
+
+class DecodeStageTests(unittest.TestCase):
+    def test_an_empty_file_is_said_once_and_never_decoded(self) -> None:
+        from types import SimpleNamespace
+        from unittest import mock
+
+        from viwo.core import decode
+
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = Path(tmp)
+            (ws / "wem").mkdir()
+            (ws / "wem" / "empty.wem").write_bytes(b"")
+            logs = []
+            run = SimpleNamespace(
+                ctx=lambda owner: SimpleNamespace(options={}), log=lambda m, *a: logs.append(m)
+            )
+            collected = SimpleNamespace(provenance=[{"path": "wem/empty.wem"}], warnings=[])
+            never = AssertionError("an empty file was decoded")
+            with (
+                mock.patch.object(decode, "_wanted", return_value={".wem": "decode.audio"}),
+                mock.patch.object(decode, "_decode_files", side_effect=never),
+            ):
+                decode.decode_all(run, ws, collected)
+            self.assertEqual(logs, ["1 empty file(s) not decoded, e.g. wem/empty.wem"])
+            self.assertEqual(collected.warnings, [])
+
+    def test_the_failure_text_is_the_tools_telling_line(self) -> None:
+        from viwo.contracts.types import Outcome, OutcomeKind
+        from viwo.core.decode import _why
+
+        telling = "[in#0] Error opening input: Invalid data found when processing input"
+        said = telling + "\nC:/very/long/path/x.dds."
+        self.assertEqual(_why(Outcome(OutcomeKind.FAILED, error=said)), telling)
+        self.assertEqual(_why(Outcome(OutcomeKind.FAILED, error="just this")), "just this")
+        self.assertEqual(_why(Outcome(OutcomeKind.UNAVAILABLE)), "unavailable")
 
 
 if __name__ == "__main__":

@@ -11,16 +11,15 @@ from __future__ import annotations
 
 import os
 import shutil
-import sys
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
-from functools import lru_cache
 from pathlib import Path
 
 from viwo.contracts.plugin import option_bool
 from viwo.contracts.slots import Decoder, Prober, SlotDefinition
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 
+from .decode_bink import BINK_HELPER, BinkGame, bink_dll  # noqa: F401  (decode's names)
 from .merger.ffmpeg import FFMPEG, FFPROBE
 from .pipeline.collect import Source, collect
 from .pipeline.failover import run_with_failover
@@ -38,6 +37,7 @@ AUDIO += (
     ".sab",
     ".msf",
     ".binka",
+    ".bank",  # FMOD Studio banks (FSB5 inside)
 )
 SLOTS = (
     SlotDefinition(
@@ -85,13 +85,15 @@ class _CliDecoder(Decoder):
 
 
 class VgmstreamCli(_CliDecoder):
-    """Every subsong of a bank (`-S 0`); a file that declares no subsongs (Bink Audio .binka,
-    many single streams) writes nothing that way and exits 0, so it is decoded as one stream."""
+    """Every subsong of a bank (`-S 0`) as `<name>_<n>.wav`: the name is written out, because
+    vgmstream's `?f` is the whole input path. A file that declares no subsongs (Bink Audio
+    .binka, many single streams) writes nothing that way and exits 0: decoded as one stream."""
 
     backend_id, license, spec = "vgmstream-cli", "ISC", VGMSTREAM
 
     def argv(self, path, dest):
-        return ["-i", "-S", "0", "-o", str(dest / "?f_?s.wav"), str(path)]
+        stem = path.stem.replace("?", "_")  # `?` starts a vgmstream wildcard
+        return ["-i", "-S", "0", "-o", str(dest / f"{stem}_?s.wav"), str(path)]
 
     def decode(self, path: Path, dest: Path, ctx) -> Outcome:
         outcome = super().decode(path, dest, ctx)
@@ -122,40 +124,6 @@ class FfmpegImage(FfmpegDecode):
 
 class FfmpegVideo(FfmpegDecode):
     backend_id, suffix = "ffmpeg-video", ".mp4"
-
-
-BINK_HELPER = Path(__file__).resolve().parents[1] / "data" / "bink" / "decode_bink.py"
-
-
-@lru_cache(maxsize=16)
-def bink_dll(game_root: Path) -> Path | None:
-    """The game's own Bink 2 DLL (Cyberpunk 2077 and many others ship one), found once."""
-    for name in ("bink2w64.dll", "bink2w32.dll"):
-        hit = next(iter(sorted(game_root.rglob(name))), None)
-        if hit is not None:
-            return hit
-    return None
-
-
-class BinkGame(Decoder):
-    """decode.bink2: ffmpeg has no Bink 2 decoder, the game has one. A helper process decodes
-    every frame with the game's DLL and pipes it into ffmpeg (MP4); ViWo authors no decoder."""
-
-    backend_id, license, isolation = "bink-game", "the game's own Bink DLL", "subprocess"
-    requires = (FFMPEG,)
-
-    def decode(self, path: Path, dest: Path, ctx) -> Outcome:
-        tool, dll = ctx.os.tools.locate(FFMPEG), bink_dll(ctx.game_root)
-        if tool is None or dll is None:
-            why = FFMPEG.hint if tool is None else "no Bink 2 DLL (bink2w64.dll) in the game"
-            return Outcome(OutcomeKind.UNAVAILABLE, error=why)
-        out = dest / f"{path.name}.mp4"
-        argv = [sys.executable, "-I", str(BINK_HELPER), str(dll), str(path), str(out)]
-        result = ctx.os.process.run([*argv, *tool.argv_prefix], timeout=3600, cancel=ctx.cancel)
-        said = (result.stdout or "").strip().splitlines()[-1:] or [result.stderr[-300:]]
-        if not result.ok or not out.is_file():
-            return Outcome(OutcomeKind.FAILED, error=said[0])
-        return Outcome(OutcomeKind.OK, 1, notes=(f"{path.name}: {said[0]}; video only",))
 
 
 class FfprobeProbe(Prober):
@@ -249,7 +217,7 @@ def _decode_one(run, ctx, workspace: Path, rel: str, slot: str) -> tuple[Source 
     if outcome.ok:
         return Source(dest, True, f"decode:{used}:{rel}"), ""
     shutil.rmtree(dest, ignore_errors=True)
-    return None, f"{rel}: {(outcome.error or outcome.kind.value).strip()[-200:]}"
+    return None, f"{rel}: {_why(outcome)}"
 
 
 def _decode_batch(run, ctx, workspace: Path, rels: list[str], slot: str):
@@ -267,7 +235,16 @@ def _decode_batch(run, ctx, workspace: Path, rels: list[str], slot: str):
     if outcome.ok:
         return Source(dest, True, f"decode:{used}:{slot}"), outcome.error
     shutil.rmtree(dest, ignore_errors=True)
-    return None, f"{len(rels)} file(s): {(outcome.error or outcome.kind.value).strip()[-200:]}"
+    return None, f"{len(rels)} file(s): {_why(outcome)}"
+
+
+def _why(outcome) -> str:
+    """The tool's telling line ("Invalid data found..."), not the tail of a path it echoed."""
+    lines = [ln.strip() for ln in (outcome.error or outcome.kind.value).splitlines() if ln.strip()]
+    telling = [
+        ln for ln in lines if any(w in ln.lower() for w in ("error", "invalid", "fail", "cannot"))
+    ]
+    return ((telling or lines or [outcome.kind.value])[-1])[-200:]
 
 
 def _decode_files(run, ctx, workspace: Path, jobs: list, ticker) -> tuple[list, dict]:
@@ -296,6 +273,12 @@ def decode_all(run, workspace: Path, collected) -> None:
         return
     wanted = _wanted(run, ctx.options)
     todo = [p["path"] for p in collected.provenance if Path(p["path"]).suffix.lower() in wanted]
+    empty = [
+        rel for rel in todo if (workspace / rel).is_file() and not (workspace / rel).stat().st_size
+    ]
+    if empty:  # nothing in them to decode: said once, CLEANUP lists them as empty files
+        run.log(f"{len(empty)} empty file(s) not decoded, e.g. {empty[0]}", "decode")
+        todo = [rel for rel in todo if rel not in set(empty)]
     if not todo:
         return
     run.log(f"Decoding {len(todo)} file(s) into WAV / PNG / MP4 / glTF / JSON / RPY", "decode")

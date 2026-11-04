@@ -49,7 +49,7 @@ libraries (Oodle, Bink), as for Kraken today; a pinned community tool run as a s
 | Bethesda | BSA/BA2 members, BA2 textures to DDS | NIF to glTF, ESP/ESM/ESL records to JSON, FUZ/XWM audio to WAV |
 | Age of Empires (genie) | DRS members, SLP to PNG | SMX (Definitive Edition) to PNG |
 | Total War (warscape) | PFH4/PFH5 members; `.loc` localisation to JSON (`decode.loc`); DB tables to JSON with the game's RPFM schema (`export.warscape`, 14 games) | RigidModel to glTF; DB tables with binary fields (`models_*`); the game's schema installed by itself on first use |
-| Bannerlord (taleworlds) | TPAC members, textures to DDS | meshes and skeletons to glTF, sounds |
+| Bannerlord (taleworlds) | TPAC members, textures to DDS; FMOD sound banks to WAV (vgmstream) | meshes and skeletons to glTF |
 | Doom, Electron, Overwatch (DataTool) | everything their formats hold | - |
 | GameMaker, the engines of doc 13.7 | loose files and carving only | engine plugins |
 

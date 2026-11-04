@@ -4,6 +4,20 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.15.1 (2026-11-04)
+- Fix: vgmstream (`decode.audio`) wrote nothing: its `?f` output wildcard is the whole input
+  path, so `<dest>/?f_?s.wav` named a file inside a folder that does not exist, and the audio
+  fell to ffmpeg (which cannot read Wwise, FMOD or Bink Audio) or failed. The output name is now
+  the file's own stem (`<name>_<n>.wav`). FMOD Studio banks (`.bank`) join the audio decoded:
+  verified on a Bannerlord bank, 344 streams to WAV in 4 s.
+- Fix: a request the server refused before reading its body (403, 413, 415) could reach the
+  client as a connection reset instead of the answer (Windows resets over unread data, about one
+  run in eight): the server now answers with `Connection: close` and takes in what was sent.
+- The decode stage skips empty files with one line (CLEANUP lists them; Rome II ships three
+  empty `.dds`), and a decoder's failure is said by the tool's telling line ("Invalid data
+  found...") instead of the end of a path it echoed. The Bink 2 decoder moved to
+  `core/decode_bink.py`.
+
 ## 1.15.0 (2026-11-04)
 - Completeness contract (doc 16.0c) on Total War, valid for every Warscape game: `.loc`
   localisation tables decode to JSON in ViWo's own code (`decode.loc`), and DB tables to JSON

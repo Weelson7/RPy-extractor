@@ -102,8 +102,20 @@ class Handler(BaseHTTPRequestHandler):
         self.wfile.write(body)
 
     def _reject(self, status: int, message: str) -> None:
+        """Refused before the body is read: answer, then take in what the client already sent
+        (at most 1 MiB, 0.2 s), so closing is a clean close and not a reset that can reach the
+        client before the answer does (Windows sends RST over unread data)."""
         self.app.log(f"[SECURITY] {self.command} {self.path} rejected: {message}")
+        self.close_connection = True
         self.send_json({"success": False, "error": message}, status)
+        self.wfile.flush()
+        self.connection.settimeout(0.2)
+        try:
+            for _ in range(16):
+                if not self.rfile.read1(1 << 16):
+                    break
+        except OSError:  # the timeout: nothing more is coming
+            pass
 
     def _api(self, table: dict, routed, path: str, arg) -> None:
         try:
