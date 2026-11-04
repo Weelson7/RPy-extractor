@@ -175,7 +175,9 @@ def asset_preview(app: App, q: dict) -> dict:
 
 
 def open_folder(app: App, d: dict) -> dict:
-    path = Path(str(d.get("path", ""))).expanduser()
+    path = path_param(d, "path")
+    if path is None:
+        return failure(ViwoError("not_found", "give the folder as an absolute path"))
     ok, error = app.rt.os.shell.open_folder(path)
     if ok:
         return {"success": True, "path": str(path)}
@@ -199,8 +201,8 @@ def merger_state(app: App, q: dict) -> dict:
 
 
 def _workdir(app: App, d: dict) -> Path:
-    raw = str(d.get("workingDir", "")).strip()
-    return Path(raw).expanduser().resolve() if raw and Path(raw).is_dir() else app.workspace
+    raw = path_param(d, "workingDir")  # absolute only: never the server's own folder
+    return raw.resolve() if raw is not None and raw.is_dir() else app.workspace
 
 
 def merger_list(app: App, d: dict) -> dict:

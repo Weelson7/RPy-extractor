@@ -4,6 +4,15 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.6.11 (2026-11-04)
+- Fix: `POST /api/open-folder` and the merger's `workingDir` take absolute paths only (a
+  relative merger folder that existed beside the server was used as the merger's source).
+- Property tests for the workspace routes over random workspaces: group trash, restore, delete
+  and keep-selected never lose or invent a file and give the bytes back on restore; the asset
+  window pages through every file once; save-remaining moves every remaining asset out byte
+  for byte; the patch and mod routes do what the core does; the preflight and install jobs
+  rebind what they installed.
+
 ## 1.6.10 (2026-11-04)
 - Fix: a worker pin (Unicorn, angr) swaps in through `core/downloads.py` like every tool: a
   locked worker folder (Windows: a worker still running) is never half deleted.
