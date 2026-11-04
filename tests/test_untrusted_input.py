@@ -119,5 +119,41 @@ class MutationTests(unittest.TestCase):
                     self.assertTrue(outcome.ok or outcome.error, backend_id)
 
 
+class DecoderInputTests(unittest.TestCase):
+    def test_damaged_sprites_and_palettes_are_named_failures(self) -> None:
+        """The SLP decoder (in process) on randomly damaged sprites and palettes: a picture or
+        a named failure, never an exception."""
+        from tests.test_slp import encode
+        from viwo.plugins.genie.slp import PALETTE, SlpDecoder
+
+        rng = random.Random(7)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pal = root / PALETTE
+            pal.parent.mkdir(parents=True)
+            good_pal = "JASC-PAL\n0100\n256\n" + "\n".join(f"{i} {i} {i}" for i in range(256))
+            folder = root / "slp"
+            folder.mkdir()
+            for i in range(150):
+                sprite, _ = encode(rng, [(rng.randint(1, 12), rng.randint(1, 12))])
+                bad = bytearray(sprite)
+                for _ in range(rng.randint(0, 5)):
+                    bad[rng.randrange(len(bad))] = rng.randrange(256)
+                if rng.random() < 0.2:
+                    bad = bad[: rng.randrange(1, len(bad))]
+                pal.write_text(good_pal if rng.random() < 0.85 else "not a palette at all")
+                path = folder / f"s{i}.slp"
+                path.write_bytes(bytes(bad))
+                out = root / "out" / str(i)
+                out.mkdir(parents=True)
+                try:
+                    outcome = SlpDecoder().decode(path, out, None)
+                except Exception as exc:  # noqa: BLE001
+                    self.fail(f"slp-builtin raised {type(exc).__name__}: {exc}")
+                self.assertTrue(outcome.ok or outcome.error)
+            pal.unlink()
+            self.assertIn("no palette", SlpDecoder().decode(path, out, None).error)
+
+
 if __name__ == "__main__":
     unittest.main()

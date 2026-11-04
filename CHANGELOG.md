@@ -4,6 +4,15 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.6.22 (2026-11-04)
+- Property tests: duplicate cleaning never trashes the last copy of any content (random
+  workspaces full of duplicates keep every content after plan and apply); damaged SLP sprites
+  and palettes are named failures of the in-process decoder; plugin sanitizer rules count only
+  under their own plugin id; QuickBMS names a missing scripts folder, tool or script and a run
+  that wrote nothing; survey reports are found by id inside their folder only, damaged ones
+  skipped; a backend that raises is a named failure and its spare runs; the carve stage says its
+  failures, fallbacks and big files, and stops on cancel.
+
 ## 1.6.21 (2026-11-04)
 - Property tests: a sanitizer plan acts only on the files it saw (a file changed since the scan
   refuses the plan, a bad id or a missing plan is named, a finding that cannot be carried out is
