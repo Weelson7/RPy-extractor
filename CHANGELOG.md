@@ -4,6 +4,18 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.6.5 (2026-11-04)
+- Fix: the RenderDoc helpers (`rd_trigger.py`, `rd_harvest.py`) moved to `viwo/data/renderdoc/`:
+  next to ViWo's own `core/capture/renderdoc.py`, `import renderdoc` found ViWo's module in any
+  Python where RenderDoc's module is not built in (the documented `[tools] rdpython` path).
+- Fix: a GDRE recovery that stops with an error after writing files is said as a note (it was
+  an unexplained OK).
+- Property tests: the RenderDoc helpers run as real processes against a fake `renderdoc` module
+  (one PNG per texture, one disassembly per shader object of draws and dispatches, the newest
+  target, every exit code); the RenderDoc backend's endings; Godot recover and pack over random
+  folders and edit sets, PCK trailers and PE headers fuzzed; the Linux OS layer on any host
+  against a fake `/proc` (memory dump layout, process list, module spans, perf).
+
 ## 1.6.4 (2026-11-04)
 - The completeness contract (owner): ViWo gets everything out of every game, decoded, with the
   three arms on every engine (doc 16.0c, with the per-engine table of what is decoded today and

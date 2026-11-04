@@ -9,11 +9,13 @@ import subprocess
 import tempfile
 from pathlib import Path
 
+PROC = Path("/proc")  # the procfs root (tests point it at a fake tree)
+
 
 def modules_of(pid: int) -> list[tuple[int, int, str]]:
     """(load base, span, path) per mapped file."""
     spans: dict[str, list[int]] = {}
-    for line in Path(f"/proc/{pid}/maps").read_text().splitlines():
+    for line in (PROC / str(pid) / "maps").read_text().splitlines():
         parts = line.split(maxsplit=5)
         if len(parts) == 6 and parts[5].startswith("/"):
             start, end = (int(x, 16) for x in parts[0].split("-"))

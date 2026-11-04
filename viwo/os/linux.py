@@ -14,6 +14,8 @@ from viwo.contracts.os import FileSystemPolicy
 
 from ._shared import HostOS, Locator, SubprocessRunner, TkShell, open_with
 
+PROC = Path("/proc")  # the procfs root (tests point it at a fake tree)
+
 
 def _kill_group(proc: subprocess.Popen) -> None:
     try:
@@ -50,7 +52,7 @@ def _processes() -> list[tuple[int, str]]:
     """(pid, lowercased command name) from /proc/<pid>/comm; a process that exits while the
     list is read is left out."""
     found = []
-    for comm in Path("/proc").glob("[0-9]*/comm"):
+    for comm in PROC.glob("[0-9]*/comm"):
         try:
             name = comm.read_text(encoding="utf-8", errors="replace").strip().lower()
         except OSError:
@@ -78,8 +80,8 @@ def _proc_dump(pid: int, out: Path) -> Path:
     each one starts in the dump (ptrace rules apply: same user, or a permissive ptrace_scope)."""
     regions, dump = [], out / f"{pid}.mem"
     with (
-        open(f"/proc/{pid}/maps", encoding="utf-8") as maps,
-        open(f"/proc/{pid}/mem", "rb") as mem,
+        open(PROC / str(pid) / "maps", encoding="utf-8") as maps,
+        open(PROC / str(pid) / "mem", "rb") as mem,
         open(dump, "wb") as fh,
     ):
         for line in maps:

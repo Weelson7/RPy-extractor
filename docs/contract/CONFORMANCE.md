@@ -211,7 +211,7 @@ declarative (Kaitai) plugins; the indexes repository split.
 | 11.1 confirmation once per game | implemented | `core/capture/policy.py` `remember`, `confirmed_games` |
 | 11.1 warnings: markers, services, online titles, sensitive plugins, network | implemented | `core/capture/policy.py` `warnings_for`, `data/capture_policy.json` |
 | 11.1 debugger and memory handoffs as dynamic actions | implemented | `core/analysis` `_dynamic`: the `capture` switch, one confirmation per game (`--confirm`, the UI's confirm box), the warnings; x64dbg runs a patched copy |
-| 11.2 D1 unattended capture, shader disassembly | implemented | `core/capture/renderdoc.py`, `core/capture/rd_trigger.py`, `core/capture/rd_harvest.py` |
+| 11.2 D1 unattended capture, shader disassembly | implemented | `core/capture/renderdoc.py`, `data/renderdoc/rd_trigger.py`, `data/renderdoc/rd_harvest.py` (`tests/test_rd_scripts.py`) |
 | 11.2 D2 UE4SS and BepInEx agents | implemented | `plugins/unreal/agent.py`, `plugins/unity/agent.py`, `core/capture/agents.py` |
 | 11.2 D2 audio loopback | implemented | `core/capture/audio.py` |
 | 11.2 D3 memory dump | implemented | `core/capture/runtime.py` `dump`, `os/*` `dump_process` |

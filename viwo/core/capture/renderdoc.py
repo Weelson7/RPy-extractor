@@ -23,8 +23,9 @@ RD_PYTHON = DependencySpec(
     env_var="VIWO_RDPYTHON",
     hint="set [tools] rdpython = the Python that can import RenderDoc's renderdoc module",
 )
-HELPER = Path(__file__).with_name("rd_harvest.py")
-TRIGGER = Path(__file__).with_name("rd_trigger.py")
+# outside the package: next to this module, `import renderdoc` would find ViWo's own module
+SCRIPTS = Path(__file__).resolve().parent.parent.parent / "data" / "renderdoc"
+HELPER, TRIGGER = SCRIPTS / "rd_harvest.py", SCRIPTS / "rd_trigger.py"
 
 
 OFFLINE_ENV = {"VIWO_OFFLINE": "1"}  # doc 11.6: the hint runtime agents read; RenderDoc itself

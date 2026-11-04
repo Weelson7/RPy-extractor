@@ -83,14 +83,13 @@ def _files(dest: Path) -> int:
 
 
 class _PckCli(Unarchiver):
+    """A PCK command-line tool; each subclass gives its `argv(archive, dest, key)`."""
+
     spec: DependencySpec
     owner = "godot"
 
     def dependencies(self):
         return (self.spec,)
-
-    def argv(self, archive: Path, dest: Path, key: str) -> list[str]:
-        raise NotImplementedError
 
     def extract(self, archive, dest, ctx) -> Outcome:
         tool = ctx.os.tools.locate(self.spec)
@@ -141,10 +140,11 @@ class GdreRecover(Exporter):
         result = ctx.os.process.run(
             argv, timeout=3600, cancel=ctx.cancel, on_line=ctx.tool_output("export")
         )
-        files = _files(ctx.staging)
+        files, why = _files(ctx.staging), (result.stderr or result.stdout)[-300:]
         if not result.ok and not files:
-            return Outcome(OutcomeKind.FAILED, error=(result.stderr or result.stdout)[-300:])
-        return Outcome(OutcomeKind.OK, files)
+            return Outcome(OutcomeKind.FAILED, error=why)
+        partial = () if result.ok else (f"GDRE stopped with an error after {files} file(s): {why}",)
+        return Outcome(OutcomeKind.OK, files, notes=partial)
 
 
 def _recover_target(root: Path) -> Path | None:

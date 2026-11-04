@@ -138,5 +138,172 @@ class GodotPipelineTests(unittest.TestCase):
         self.assertEqual(dict(keyed.by_backend), {"gdre-tools": 1})
 
 
+def _ctx(root: Path, run, located=True):
+    from types import SimpleNamespace
+
+    tool = SimpleNamespace(argv_prefix=("tool",), path="tool")
+    host = SimpleNamespace(
+        tools=SimpleNamespace(locate=lambda spec: tool if located else None),
+        process=SimpleNamespace(run=run),
+    )
+    return SimpleNamespace(
+        os=host,
+        cancel=None,
+        game_root=root / "game",
+        staging=root / "staging",
+        scratch=root / "scratch",
+        options={},
+        tool_output=lambda *a, **k: None,
+    )
+
+
+def _result(ok: bool, text: str = ""):
+    from types import SimpleNamespace
+
+    return SimpleNamespace(ok=ok, stderr=text, stdout="", returncode=0 if ok else 1)
+
+
+class ParserPropertyTests(unittest.TestCase):
+    def test_trailers_and_pe_headers_never_lie_or_raise(self) -> None:
+        import random
+
+        from viwo.plugins.godot.pck import embedded_chunk, pe_sections
+
+        rng = random.Random(1)
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "Game.exe"
+            for _ in range(300):
+                body = bytearray(rng.randbytes(rng.randint(0, 200)))
+                if rng.random() < 0.5:  # a trailer, honest or not
+                    claimed = rng.choice([len(body), 0, len(body) + 50, rng.randrange(300)])
+                    body += struct.pack("<Q", claimed) + b"GDPC"
+                if rng.random() < 0.3 and len(body) > 16:
+                    body[:4] = b"GDPC"
+                path.write_bytes(bytes(body))
+                chunk = embedded_chunk(path, bytes(body[-64:]))
+                if chunk:
+                    offset, size = chunk
+                    self.assertEqual(offset + size + 12, len(body))
+                    self.assertEqual(bytes(body[offset : offset + 4]), b"GDPC")
+            names = tuple(rng.choice(["text", "pck", "data", "rsrc"]) for _ in range(5))
+            head = fake_pe(names)
+            self.assertEqual(tuple(pe_sections(head)), names)
+            for cut in range(0, len(head), 7):  # a truncated header gives a prefix, never junk
+                got = tuple(pe_sections(head[:cut]))
+                self.assertEqual(got, names[: len(got)])
+            for _ in range(200):
+                noise = bytearray(head)
+                for _ in range(rng.randint(1, 6)):
+                    noise[rng.randrange(len(noise))] = rng.randrange(256)
+                pe_sections(bytes(noise))  # never raises
+
+    def test_cli_unpackers_name_a_missing_tool_and_an_empty_result(self) -> None:
+        from viwo.contracts.types import OutcomeKind
+        from viwo.plugins.godot.pck import GodotPckTool
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            out = GodotPckTool().extract(root / "a.pck", root / "d", _ctx(root, None, False))
+            self.assertEqual(out.kind, OutcomeKind.UNAVAILABLE)
+            (root / "d").mkdir()
+            out = GodotPckTool().extract(
+                root / "a.pck", root / "d", _ctx(root, lambda a, **k: _result(True))
+            )
+            self.assertEqual(out.kind, OutcomeKind.FAILED)
+            self.assertIn("wrote no file", out.error)
+
+
+class RecoverAndPackTests(unittest.TestCase):
+    """export.godot and pack.pck over random game folders and edit sets (fake process layer)."""
+
+    def test_recover_finds_the_first_pck_and_says_a_partial_run(self) -> None:
+        import random
+
+        from viwo.contracts.types import OutcomeKind
+        from viwo.plugins.godot.pck import GdreRecover
+
+        rng = random.Random(4)
+        for i in range(12):
+            with tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                game = root / "game"
+                (game / "sub").mkdir(parents=True)
+                (game / "readme.txt").write_text("x")
+                layout = rng.choice(["none", "pck", "embedded", "both"])
+                if layout in ("pck", "both"):
+                    (game / "sub" / "data.pck").write_bytes(make_pck())
+                if layout in ("embedded", "both"):
+                    embed(game / "Game.exe", make_pck())
+                wrote, ok = rng.randint(0, 3), rng.random() < 0.6
+                seen = []
+
+                def run(argv, wrote=wrote, ok=ok, **kw):
+                    seen.append(argv)
+                    for n in range(wrote):
+                        (root / "staging" / f"res/f{n}.tres").parent.mkdir(
+                            parents=True, exist_ok=True
+                        )
+                        (root / "staging" / f"res/f{n}.tres").write_text("t")
+                    (root / "staging").mkdir(exist_ok=True)
+                    (root / "staging" / "gdre_export.log").write_text("tool noise")
+                    return _result(ok, "gdre: broken resource")
+
+                out = GdreRecover().export(_ctx(root, run))
+                if layout == "none":
+                    self.assertEqual(
+                        (out.kind, out.notes), (OutcomeKind.OK, ("no PCK to recover",))
+                    )
+                    self.assertEqual(seen, [])
+                    continue
+                first = "Game.exe" if layout == "embedded" else "data.pck"
+                if layout == "both":  # sorted walk: Game.exe sorts before sub/
+                    first = "Game.exe"
+                self.assertTrue(seen[0][2].endswith(first), seen[0])
+                if not ok and not wrote:
+                    self.assertEqual(out.kind, OutcomeKind.FAILED)
+                    self.assertIn("broken resource", out.error)
+                    continue
+                self.assertEqual((out.kind, out.files), (OutcomeKind.OK, wrote))  # logs not counted
+                self.assertEqual(bool(out.notes), not ok)  # a partial recovery is said
+        out = GdreRecover().export(_ctx(Path(tmp), None, located=False))
+        self.assertEqual(out.kind, OutcomeKind.UNAVAILABLE)
+
+    def test_pack_hands_the_tool_exactly_the_safe_members(self) -> None:
+        import random
+
+        from viwo.contracts.types import OutcomeKind
+        from viwo.plugins.godot.pck import GodotPckPacker
+
+        rng = random.Random(9)
+        for _ in range(8):
+            with tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                src = root / "src.bin"
+                src.write_bytes(b"edited")
+                names = [f"res/{rng.choice(['a', 'b'])}/f{i}.png" for i in range(rng.randint(1, 5))]
+                names += rng.sample(["../evil.png", "/abs.png", "C:/x.png"], rng.randint(0, 2))
+                members = {n: src for n in names}
+                seen, ok = [], rng.random() < 0.7
+                out = GodotPckPacker().pack(
+                    root / "game.pck",
+                    members,
+                    _ctx(root, lambda argv, **kw: seen.append(argv) or _result(ok, "pck locked")),
+                )
+                argv = seen[0]
+                prefix = Path(argv[argv.index("--remove-prefix") + 1])
+                staged = [
+                    Path(a).relative_to(prefix).as_posix()
+                    for a in argv[argv.index("--remove-prefix") + 2 :]
+                ]
+                safe = sorted({n for n in names if n.startswith("res/")})
+                self.assertEqual(sorted(staged), safe)  # unsafe names never reach the tool
+                if ok:
+                    self.assertEqual((out.kind, out.files), (OutcomeKind.OK, len(safe)))
+                else:
+                    self.assertEqual((out.kind, out.error), (OutcomeKind.FAILED, "pck locked"))
+            out = GodotPckPacker().pack(root / "g.pck", {}, _ctx(root, None, located=False))
+            self.assertEqual(out.kind, OutcomeKind.UNAVAILABLE)
+
+
 if __name__ == "__main__":
     unittest.main()
