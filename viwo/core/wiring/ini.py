@@ -91,7 +91,11 @@ def _read_tables(cfg: configparser.ConfigParser, out: StartupConfig, base: Path)
             parts = [p if p != "none" else "" for p in _split(value)] + ["", ""]
             out.slots[slot.lower()] = (parts[0], parts[1])
     if cfg.has_section("tools"):
-        out.tools = {k.lower(): str((base / v).resolve()) for k, v in cfg["tools"].items()}
+        out.tools = {  # an empty (or "auto") path means automatic, not the ini's own folder
+            k.lower(): str((base / v.strip()).resolve())
+            for k, v in cfg["tools"].items()
+            if v.strip() and v.strip().lower() != "auto"
+        }
 
 
 def _read_options(cfg: configparser.ConfigParser, out: StartupConfig) -> None:

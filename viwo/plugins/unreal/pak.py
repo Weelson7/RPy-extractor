@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import os
+import shutil
 import struct
 import tempfile
 from dataclasses import dataclass
@@ -87,6 +89,10 @@ class _UnrealCli(Unarchiver):
     def dependencies(self):
         return (self.spec,)
 
+    def input_for(self, archive: Path, ctx) -> Path:
+        """What the tool reads for this archive (the archive itself unless a backend says)."""
+        return archive
+
     def extract(self, archive, dest, ctx) -> Outcome:
         tool = ctx.os.tools.locate(self.spec)
         if tool is None:
@@ -99,7 +105,7 @@ class _UnrealCli(Unarchiver):
         # records store <secret>) and every text the tool prints back is masked below.
         prefix = ["--aes-key", f"0x{key}"] if key else []
         result = ctx.os.process.run(
-            [*tool.argv_prefix, *prefix, *self.argv(archive, dest)],
+            [*tool.argv_prefix, *prefix, *self.argv(self.input_for(archive, ctx), dest)],
             timeout=6 * 3600,
             cancel=ctx.cancel,
             on_line=ctx.tool_output("unpack", mask=key),
@@ -131,6 +137,23 @@ class RetocLegacy(_UnrealCli):
 
     def argv(self, archive, dest):
         return ["to-legacy", str(archive), str(dest)]
+
+    def input_for(self, archive: Path, ctx) -> Path:
+        """A game container needs the script objects of `global.utoc` beside it, and retoc reads
+        those only from a folder: one folder with global and this container (hard links, a copy
+        where the volume refuses), so every container converts once and stays its own."""
+        glob_toc = archive.with_name("global.utoc")
+        if archive.name.lower() == "global.utoc" or not glob_toc.is_file():
+            return archive
+        ctx.scratch.mkdir(parents=True, exist_ok=True)
+        folder = Path(tempfile.mkdtemp(prefix="retoc-", dir=ctx.scratch))
+        for src in (glob_toc, glob_toc.with_suffix(".ucas"), archive, archive.with_suffix(".ucas")):
+            if src.is_file():
+                try:
+                    os.link(src, folder / src.name)
+                except OSError:  # another volume, or links refused: copy
+                    shutil.copy2(src, folder / src.name)
+        return folder
 
 
 class RetocUnpack(_UnrealCli):

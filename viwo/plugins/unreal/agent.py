@@ -7,6 +7,7 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
+from viwo.contracts.errors import ViwoError
 from viwo.contracts.runtime import RuntimeAgent
 from viwo.contracts.types import DependencySpec
 
@@ -61,7 +62,11 @@ class Ue4ssAgent(RuntimeAgent):
         win64 = shipping(copy, exe).parent
         for stale in (DONE, *OUTPUTS):  # a reused copy: only this run's files may count
             (win64 / stale).unlink(missing_ok=True)
-        source = Path(ctx.os.tools.locate(UE4SS).path).parent
+        source = Path(ctx.os.tools.locate(UE4SS).path).parent.resolve()
+        if win64.resolve().is_relative_to(source):  # a copy into itself never ends
+            raise ViwoError(
+                "invalid_request", f"UE4SS is located in {source}, which holds the copy"
+            )
         shutil.copytree(source, win64, dirs_exist_ok=True)
         _settings(win64 / "UE4SS-settings.ini")
         mods = win64 / "Mods"

@@ -4,6 +4,30 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.14.0 (2026-11-04)
+- Completeness contract (doc 16.0c) on Unreal, valid for every UE4/UE5 game: the new
+  `export.unreal` slot runs UnrealAssetScout (pinned `uas` 0.5.0, MIT, CUE4Parse inside,
+  self-contained Windows build): textures to PNG, models and animations (UEFormat), sounds and
+  every package as JSON. The engine version is read from the game's own binaries (the
+  `++UE5+Release-5.x` build string; option `engine` overrides); cooked UE5 assets need the
+  game's mappings, taken from the `.usmap` the RUNTIME agent (UE4SS) wrote into the workspace
+  (option `usmap`); without them the packages that need them are counted and the way to get
+  them is named. Verified on a UE5.1 game: the agent's mappings, then 695 PNG, 122 models,
+  3 animations, 23 sounds, 513 packages as JSON. Open: models to glTF; a Linux exporter.
+- Bink Audio (`.binka`, Unreal) decodes to WAV through vgmstream. Fix: vgmstream's
+  all-subsongs pass writes nothing for a file without subsongs and exits 0; such a file is now
+  decoded as one stream (before, it fell to ffmpeg, which fails on Bink Audio).
+- Fix: retoc converted one IoStore container at a time without `global.utoc`, so every package
+  failed and the raw Zen packages came out instead (815 of 815 on the test game); a container
+  now converts in a folder beside `global.utoc` (hard links, a copy across volumes): 815/815.
+- Fix: an empty (or `auto`) tool path in `[tools]` pointed at the ini's own folder; it means
+  automatic, as SETTINGS says. With it, the UE4SS agent copied a whole folder into itself.
+  The agent now refuses a UE4SS folder that holds the copy.
+- Fix: a workspace the dynamic arm had written to (`.runtime/` only) was refused as "not
+  created by ViWo", then treated as "already holds an extraction". The dynamic arm claims a new
+  or ViWo-only folder (never one with the user's files), and the other arms' dot-folders are no
+  extraction to replace. Exporters get the run's workspace (`ExtractionContext.workspace`).
+
 ## 1.13.0 (2026-11-04)
 - Completeness contract (doc 16.0c) on Unity, valid for every Unity game: besides textures,
   audio, text and meshes, the export now writes video clips in their own format, fonts

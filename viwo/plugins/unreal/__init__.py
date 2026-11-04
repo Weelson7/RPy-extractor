@@ -1,7 +1,7 @@
 """Unreal Engine plugin (M7): .pak via repak, IoStore (.utoc/.ucas) via retoc; AES per D18.
 
-Unpacking only: assets come out as .uasset/.uexp/.ubulk (the carver then pulls standard
-media embedded in them). Decoding Unreal assets is a later milestone.
+Members come out as .uasset/.uexp/.ubulk; `export.unreal` (UnrealAssetScout) decodes them into
+PNG textures, models, animations, sounds and JSON, with the mappings the RUNTIME agent writes.
 """
 
 from __future__ import annotations
@@ -12,6 +12,8 @@ from viwo.contracts.slots import SlotDefinition
 from viwo.contracts.types import DetectionResult
 
 from .agent import Ue4ssAgent
+from .assets import SLOT as EXPORT_SLOT
+from .assets import UasExport
 from .pak import (
     PAK_MAGIC,
     UTOC_MAGIC,
@@ -35,6 +37,12 @@ MANIFEST = PluginManifest(
             "No key given: look for it in the game's own executables (verified on the pak index)",
             "bool",
             True,
+        ),
+        PluginOption(
+            "usmap", "Mappings (.usmap) for cooked assets; empty: the RUNTIME agent's", "path"
+        ),
+        PluginOption(
+            "engine", "Engine version for asset export (e.g. GAME_UE5_3); empty: detected", "string"
         ),
     ),
 )
@@ -86,11 +94,15 @@ class UnrealPlugin(EnginePlugin):
         return (
             *SLOTS,
             PACK_SLOT,
+            EXPORT_SLOT,
             SlotDefinition("runtime.unreal", "runtime", "unreal", "ue4ss-agent"),
         )
 
     def backends(self):
-        return (RepakCli(), RetocLegacy(), RetocUnpack(), RepakPatch(), Ue4ssAgent())
+        return (RepakCli(), RetocLegacy(), RetocUnpack(), RepakPatch(), Ue4ssAgent(), UasExport())
+
+    def export_slot(self) -> str:
+        return "export.unreal"
 
     def pack_slot(self, unarchive_slot: str) -> str:
         return "pack.upak" if unarchive_slot == "unarchive.upak" else ""

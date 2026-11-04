@@ -130,7 +130,10 @@ Rules:
 
 **Export:** `export.unity` (`unitypy`, spare `assetstudiomod-cli`, D7), `export.godot`
 (`gdre-recover`, opt-in option `recover`), `export.rpgmaker` (`rpgmv-builtin`),
-`export.overwatch` (`datatool`, declares `network = "download"`).
+`export.overwatch` (`datatool`, declares `network = "download"`), `export.unreal` (`uas-export`:
+UnrealAssetScout as its own process, every mode over every Paks folder with the engine version
+read from the game's binaries, the AES key per D18 and the `.usmap` the RUNTIME agent wrote into
+the workspace; packages that need mappings are counted and the way to get them named).
 
 **Carve and decode:** `carve.signatures` (`signature-carver`); `decode.audio` (`vgmstream-cli`,
 spare `ffmpeg-decode`; Wwise, FMOD, CRI, XACT and console audio to WAV); `decode.image`

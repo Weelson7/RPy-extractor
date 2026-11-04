@@ -64,8 +64,12 @@ def claim(folder: Path) -> Path:
 
 
 def _has_content(folder: Path) -> bool:
+    """Asset groups or run records; the other arms' dot-folders (.runtime, .analysis) are no
+    extraction, and an extraction never touches them."""
     for entry in folder.iterdir():
-        if entry.name == ws.MARKER:
+        if entry.name == ws.MARKER or (
+            ws.is_reserved(entry.name) and entry.name != ws.METADATA_DIR
+        ):
             continue
         if entry.name == ws.METADATA_DIR and all(c.name == "lock" for c in entry.iterdir()):
             continue  # only our own lock file: not an extraction

@@ -13,6 +13,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from viwo.contracts import workspace as ws
 from viwo.contracts.errors import ViwoError
 from viwo.contracts.slots import Backend
 from viwo.contracts.types import DependencySpec
@@ -67,9 +68,17 @@ def _enabled(rt) -> None:
 
 
 def runtime_dir(workspace: Path, *parts: str) -> Path:
-    """`<workspace>/.runtime/<parts>`, made: where every dynamic run writes its files."""
-    out = workspace.resolve().joinpath(".runtime", *parts)
+    """`<workspace>/.runtime/<parts>`, made: where every dynamic run writes its files. A new (or
+    ViWo-only) folder becomes a ViWo workspace, so an extraction can follow into it; a folder
+    with the user's own files is never claimed."""
+    root = workspace.resolve()
+    fresh = not root.is_dir() or all(ws.is_reserved(p.name) for p in root.iterdir())
+    out = root.joinpath(".runtime", *parts)
     out.mkdir(parents=True, exist_ok=True)
+    if fresh and not ws.has_marker(root):
+        from ..workspace import claim
+
+        claim(root)
     return out
 
 

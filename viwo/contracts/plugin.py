@@ -116,6 +116,7 @@ class ExtractionContext:
     cancel: CancelToken = field(default_factory=CancelToken)
     source: str = "core"
     probe: GameProbe | None = None  # the shared folder index (doc 2.3); None in tool contexts
+    workspace: Path | None = None  # the run's workspace: what other arms left there (read-only)
 
     def log(self, message: str, level: str = "info", stage: str = "") -> None:
         if self.progress:

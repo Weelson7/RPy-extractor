@@ -71,7 +71,7 @@ GameProbe (FolderProbe)     built once per request, shared by all plugins; bound
 
 ExtractionContext           per request and per plugin
   request_id, game_root, staging, scratch, os, detection, selected_exts, options,
-  progress, cancel, source, probe
+  progress, cancel, source, probe, workspace (the run's workspace: what other arms left there)
   log(message, level, stage);  tool_output(stage, every, mask) -> on_line relay (masks a secret)
 ```
 
@@ -123,7 +123,7 @@ Detection markers live in each plugin's `detect()`; slot defaults in doc 8.4.
 | renpy | `unarchive.rpa` (safe reader, unrpa spare), `decode.rpyc`, `analysis.python`, `pack.rpa`; source root `game/` | `decompile` (bool) |
 | unity | `export.unity` (UnityPy, AssetStudioModCLI spare), `unarchive.unitypackage`, `pack.unity`, `runtime.unity` (BepInEx); IL2CPP and managed targets | `include_cache`, `meshes`, `objects` (bool; `objects`: videos, fonts, shaders and every other object as JSON) |
 | godot | `unarchive.pck` (embedded PCK carving), `export.godot`, `pack.pck`, `analysis.gdscript` | `encryption_key` (secret), `recover` (bool) |
-| unreal | `unarchive.upak` (repak, QuickBMS spare), `unarchive.utoc` (retoc), `pack.upak` (`_P.pak`), `runtime.unreal` (UE4SS); AES per D18 | `aes_key` (secret), `find_key` (bool) |
+| unreal | `unarchive.upak` (repak, QuickBMS spare), `unarchive.utoc` (retoc), `pack.upak` (`_P.pak`), `runtime.unreal` (UE4SS), `export.unreal` (UnrealAssetScout: textures, models, animations, sounds, JSON; mappings from the agent); AES per D18 | `aes_key` (secret), `find_key` (bool), `usmap` (path), `engine` (string) |
 | doom | `unarchive.wad` (PNG, WAV, MIDI, maps) | `raw_lumps` (bool) |
 | rpgmaker | `unarchive.rgssad`, `export.rpgmaker` (MV/MZ decryption), `pack.rpgmaker` | - |
 | kirikiri | `unarchive.xp3` (unencrypted entries; per-title ciphers reported) | - |

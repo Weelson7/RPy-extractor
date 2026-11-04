@@ -27,7 +27,18 @@ from .pipeline.failover import run_with_failover
 from .pipeline.ticker import Ticker
 
 AUDIO = (".wem", ".fsb", ".bnk", ".xwm", ".xma", ".at3", ".at9", ".adx", ".hca", ".vag", ".awb")
-AUDIO += (".acb", ".bfstm", ".bcstm", ".brstm", ".bfwav", ".lopus", ".xwb", ".sab", ".msf")
+AUDIO += (
+    ".acb",
+    ".bfstm",
+    ".bcstm",
+    ".brstm",
+    ".bfwav",
+    ".lopus",
+    ".xwb",
+    ".sab",
+    ".msf",
+    ".binka",
+)
 SLOTS = (
     SlotDefinition(
         "decode.audio", "decode", "core", "vgmstream-cli", "ffmpeg-decode", suffixes=AUDIO
@@ -74,10 +85,21 @@ class _CliDecoder(Decoder):
 
 
 class VgmstreamCli(_CliDecoder):
+    """Every subsong of a bank (`-S 0`); a file that declares no subsongs (Bink Audio .binka,
+    many single streams) writes nothing that way and exits 0, so it is decoded as one stream."""
+
     backend_id, license, spec = "vgmstream-cli", "ISC", VGMSTREAM
 
     def argv(self, path, dest):
         return ["-i", "-S", "0", "-o", str(dest / "?f_?s.wav"), str(path)]
+
+    def decode(self, path: Path, dest: Path, ctx) -> Outcome:
+        outcome = super().decode(path, dest, ctx)
+        if outcome.ok or _count(dest) or (tool := ctx.os.tools.locate(self.spec)) is None:
+            return outcome
+        single = ["-i", "-o", str(dest / f"{path.stem}.wav"), str(path)]
+        result = ctx.os.process.run([*tool.argv_prefix, *single], timeout=1800, cancel=ctx.cancel)
+        return Outcome(OutcomeKind.OK, _count(dest)) if result.ok and _count(dest) else outcome
 
 
 class FfmpegDecode(_CliDecoder):

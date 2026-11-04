@@ -27,6 +27,12 @@
    "_note": "redscript's console, the 0.5 line (the 1.0 previews dropped the decompiler): decompiles Cyberpunk 2077's r6/cache/final.redscripts; one Windows executable; sha256 from GitHub's release digests",
    "windows": {"url": "https://github.com/jac3km4/redscript/releases/download/v0.5.32/redscript-cli.exe", "sha256": "c8665c40199fb784a78b980db3a304a7f0b14a9494b3b59a125ff5618bf13f6c", "size": 1859584, "kind": "raw", "save_as": "redscript-cli.exe", "find": "redscript-cli.exe"}
   },
+  "uas": {
+   "version": "0.5.0",
+   "license": "MIT",
+   "_note": "UnrealAssetScout (CUE4Parse inside): Unreal pak/IoStore assets to PNG, UEFormat models and animations, sounds and JSON for any UE4/UE5 game; self-contained Windows build (no .NET needed); sha256 from GitHub's release digests",
+   "windows": {"url": "https://github.com/AndrewSav/UnrealAssetScout/releases/download/v0.5.0/UnrealAssetScout-v0.5.0-self-contained.zip", "sha256": "6af6e1ca983833b88fb767a1d5b89dd8037167a467cf58bbbb0113f9ca69443d", "size": 46681235, "kind": "zip", "find": "uas.exe"}
+  },
   "wolvenkit": {
    "version": "9.1.0",
    "license": "GPL-3.0",

@@ -62,6 +62,7 @@ class Run:
         options = self.request.plugin_options.get(owner, {})
         probe = self.probe if game is None else None
         extra = {"selected_exts": self.request.selected_exts, "probe": probe, **found}
+        extra["workspace"] = Path(self.request.workspace) if self.request.workspace else None
         return for_owner(base, self.rt, owner, options, **extra)
 
 
