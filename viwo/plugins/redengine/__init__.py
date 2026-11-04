@@ -13,11 +13,18 @@ from __future__ import annotations
 import struct
 from pathlib import Path
 
-from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest, PluginOption
+from viwo.contracts.plugin import (
+    EnginePlugin,
+    GameProbe,
+    PluginManifest,
+    PluginOption,
+    VerifyReport,
+)
 from viwo.contracts.slots import SlotDefinition, Unarchiver
 from viwo.contracts.types import DetectionResult, Outcome, OutcomeKind
 from viwo.contracts.workspace import count_files
 
+from . import conflicts
 from .export import SLOT as CR2W_SLOT
 from .export import WolvenKitExport
 from .names import CP77_HASHES, Names
@@ -117,6 +124,20 @@ class RedenginePlugin(EnginePlugin):
             SCRIPTS_SLOT,
             PACK_SLOT,
         )
+
+    def verify_report(self, ctx, inventory, export, collected) -> VerifyReport:
+        """The plain verdict plus the installed mods' conflicts (names when the list loads)."""
+        plain = super().verify_report(ctx, inventory, export, collected)
+        game = Path(ctx.game_root)
+        if not conflicts.archives(game)[1]:
+            return plain
+        names, _ = _names(ctx, Oodle.beside(game / "game", ctx.os))
+        try:
+            lines = conflicts.report(game, lambda h: (names and names.get(h)) or f"{h:016x}")
+        finally:
+            if names:
+                names.close()
+        return VerifyReport(plain.ok, plain.warnings + tuple(lines), plain.expected, plain.found)
 
     def pack_slot(self, unarchive_slot: str) -> str:
         return "pack.archive" if unarchive_slot == "unarchive.archive" else ""

@@ -4,6 +4,14 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.11.0 (2026-11-04)
+- Completeness contract (doc 16.0c): every Cyberpunk 2077 extraction reports the installed mods'
+  conflicts from the archive indexes alone: how many members of the game's archives the mods
+  replace, how many members a later mod loses to an earlier one (first by name in
+  `archive/pc/mod`, then REDmod's `mods/*/archives`; named from the path list when it loads),
+  and any archive that cannot be read. Verified on a real install: 15 mod archives replace 63
+  members, in 1.5 s.
+
 ## 1.10.0 (2026-11-04)
 - Completeness contract (doc 16.0c), patching arm on Cyberpunk 2077: `repack` packs edited
   members into an override archive, `archive/pc/mod/!viwo_<archive>.archive` in the patched copy,
