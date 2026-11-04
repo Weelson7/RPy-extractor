@@ -227,6 +227,42 @@ def _decode_one(run, ctx, workspace: Path, rel: str, slot: str) -> tuple[Source 
     return None, f"{rel}: {(outcome.error or outcome.kind.value).strip()[-200:]}"
 
 
+def _decode_batch(run, ctx, workspace: Path, rels: list[str], slot: str):
+    """A backend that takes a whole batch in one run (WolvenKit): (source or None, why some or
+    all of the batch did not decode, "" when all did)."""
+    dest = Path(tempfile.mkdtemp(prefix="dec-", dir=run.work))
+    paths = [workspace / rel for rel in rels]
+    outcome, used = run_with_failover(
+        run.rt.bindings[slot], run.rt.backends, lambda b: b.decode_many(paths, dest, ctx)
+    )
+    for note in outcome.notes:
+        run.log(note, "decode")
+    if outcome.fallback:
+        run.log(f"{slot}: {outcome.fallback}", "decode", "warn")
+    if outcome.ok:
+        return Source(dest, True, f"decode:{used}:{slot}"), outcome.error
+    shutil.rmtree(dest, ignore_errors=True)
+    return None, f"{len(rels)} file(s): {(outcome.error or outcome.kind.value).strip()[-200:]}"
+
+
+def _decode_files(run, ctx, workspace: Path, jobs: list, ticker) -> tuple[list, dict]:
+    sources, failed = [], {}
+    with ThreadPoolExecutor(max_workers=min(8, os.cpu_count() or 2)) as pool:
+        done = pool.map(lambda job: _decode_one(run, ctx, workspace, *job), jobs)
+        for (_, slot), (source, error) in zip(jobs, done):  # in order; a tick per file
+            ticker.tick()
+            if source is not None:
+                sources.append(source)
+            elif error:
+                failed.setdefault(slot, []).append(error)
+    return sources, failed
+
+
+def _warn(run, collected, text: str) -> None:
+    run.log(text, "decode", "warn")
+    collected.warnings.append(text)
+
+
 def decode_all(run, workspace: Path, collected) -> None:
     """Decode collected files in place; the new files join the `collected` report, and the
     files no backend could decode become one warning per slot there."""
@@ -237,22 +273,26 @@ def decode_all(run, workspace: Path, collected) -> None:
     todo = [p["path"] for p in collected.provenance if Path(p["path"]).suffix.lower() in wanted]
     if not todo:
         return
-    run.log(f"Decoding {len(todo)} file(s) into WAV / PNG / MP4 / RPY", "decode")
-    slots = [wanted[Path(rel).suffix.lower()] for rel in todo]
+    run.log(f"Decoding {len(todo)} file(s) into WAV / PNG / MP4 / glTF / JSON / RPY", "decode")
+    jobs = [(rel, wanted[Path(rel).suffix.lower()]) for rel in todo]
+    batched = {
+        s for _, s in jobs if hasattr(run.rt.backends.get(run.rt.bindings[s].main), "decode_many")
+    }
     ticker = Ticker(lambda m: run.log(m, "decode"), "Decoded files:", len(todo))
-    sources, failed = [], {}
-    with ThreadPoolExecutor(max_workers=min(8, os.cpu_count() or 2)) as pool:
-        done = pool.map(lambda job: _decode_one(run, ctx, workspace, *job), zip(todo, slots))
-        for slot, (source, error) in zip(slots, done):  # in order; a tick per finished file
-            ticker.tick()
-            if source is not None:
-                sources.append(source)
-            elif error:
-                failed.setdefault(slot, []).append(error)
+    sources, failed = _decode_files(
+        run, ctx, workspace, [j for j in jobs if j[1] not in batched], ticker
+    )
+    for slot in sorted(batched):
+        source, error = _decode_batch(run, ctx, workspace, [r for r, s in jobs if s == slot], slot)
+        sources += [source] if source is not None else []
+        if error:
+            _warn(run, collected, f"{slot}: {error}")
     for slot, errors in failed.items():
-        text = f"{len(errors)} file(s) could not be decoded by {slot}: e.g. {errors[0]}"
-        run.log(text, "decode", "warn")
-        collected.warnings.append(text)
+        _warn(
+            run,
+            collected,
+            f"{len(errors)} file(s) could not be decoded by {slot}: e.g. {errors[0]}",
+        )
     if sources:
         decoded = collect(sources, workspace, None, set(), run.cancel)
         collected.by_ext.update(decoded.by_ext)

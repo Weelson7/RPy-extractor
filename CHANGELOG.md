@@ -4,6 +4,19 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.8.0 (2026-11-04)
+- Completeness contract (doc 16.0c): Cyberpunk 2077 resources are decoded. The new
+  `decode.cr2w` slot (`wolvenkit-export`) runs WolvenKit's console (pinned `wolvenkit` 9.1.0,
+  GPL-3.0, its own process on the pinned .NET runtime) once per batch of 150 extracted files:
+  textures to PNG, meshes, morph targets, cubemaps and animations to glTF, and every CR2W
+  resource to JSON (embedded buffers included). The settings ViWo needs (PNG, meshes without
+  materials, which need an uncooked depot) are written into WolvenKit's own `appsettings.json`
+  off screen. Every file WolvenKit could not convert is counted in one warning that names the
+  first. Verified on four real mod archives: 345 resources, 51 PNG, 52 glTF, 336 JSON; 15
+  animations WolvenKit itself cannot read are reported.
+- Decode stage: a backend that takes a whole batch (`decode_many`) gets every file of its slot in
+  one call; a partial batch is a warning in the run.
+
 ## 1.7.1 (2026-11-04)
 - Fix: a Cyberpunk 2077 member comes out as the game's own file: the main segment inflated, then
   its buffer segments exactly as stored (the CR2W buffer table gives their on-disk sizes and the

@@ -136,7 +136,11 @@ Rules:
 spare `ffmpeg-decode`; Wwise, FMOD, CRI, XACT and console audio to WAV); `decode.image`
 (`ffmpeg-image`, DDS to PNG); `decode.video` (`ffmpeg-video`, Bink to MP4, opt-in); `decode.bink2` (`bink-game`: Bink 2 to MP4
 through the game's own `bink2w64.dll` in a helper process, frames piped into ffmpeg, opt-in with
-video); `decode.rpyc`
+video); `decode.cr2w` (`wolvenkit-export`, redengine: WolvenKit's console, GPL-3.0 as its own
+process, one run per batch of 150 files: `export` turns textures into PNG and meshes, morph
+targets, cubemaps and animations into glTF, `convert serialize` turns every CR2W resource into
+JSON; ViWo writes the export settings it needs into WolvenKit's `appsettings.json` off screen and
+every file WolvenKit could not convert is counted in one warning); `decode.rpyc`
 (`unrpyc-cli`, renpy, option `decompile`); `decode.slp` (`slp-builtin`, genie).
 
 **Media:** `media.probe` (`ffprobe-probe`, spare `pillow-probe`), `media.encode` (`ffmpeg`).

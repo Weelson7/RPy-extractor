@@ -18,6 +18,8 @@ from viwo.contracts.slots import SlotDefinition, Unarchiver
 from viwo.contracts.types import DetectionResult, Outcome, OutcomeKind
 from viwo.contracts.workspace import count_files
 
+from .export import SLOT as CR2W_SLOT
+from .export import WolvenKitExport
 from .names import CP77_HASHES, Names
 from .rdar import Archive, Oodle
 
@@ -102,7 +104,8 @@ class RedenginePlugin(EnginePlugin):
                 suffixes=(".archive",),
                 magic=(MAGIC,),
             ),
+            CR2W_SLOT,
         )
 
     def backends(self):
-        return (RdarBuiltin(),)
+        return (RdarBuiltin(), WolvenKitExport())

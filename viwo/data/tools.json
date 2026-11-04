@@ -21,6 +21,13 @@
    "_note": "Cyberpunk 2077 archive path list (WolvenKit usedhashes.kark at commit 95074158, 2026-10-22); Kraken-compressed: inflated with the game's own Oodle, so Windows only",
    "windows": {"url": "https://raw.githubusercontent.com/WolvenKit/WolvenKit/95074158ed971aea39fc8abc50c2574381f4aad2/WolvenKit.Common/Resources/usedhashes.kark", "sha256": "e1f2bf54f5d24660a4a8ecff5694b39d2ca9db4a4a8ca3c3a8900dc71477a9e2", "size": 2756503, "kind": "raw", "save_as": "usedhashes.kark", "find": "usedhashes.kark"}
   },
+  "wolvenkit": {
+   "version": "9.1.0",
+   "license": "GPL-3.0",
+   "_note": "WolvenKit's console for Cyberpunk 2077 CR2W (textures to PNG, meshes to glTF, every resource to JSON); GPL-3.0: run only as its own process; framework-dependent net10 build run with the ViWo-owned .NET runtime; sha256 from GitHub's release digests",
+   "windows": {"url": "https://github.com/WolvenKit/WolvenKit/releases/download/9.1.0/WolvenKit.Console-9.1.0.zip", "sha256": "7caf49cdf0f478b484b1a5a27e5aef261b879fabea7e72e33ca60eff3b834f4f", "size": 45266516, "kind": "zip", "find": "WolvenKit.CLI.dll", "argv": ["{dotnet}", "{path}"], "needs": ["dotnet"]},
+   "linux": {"url": "https://github.com/WolvenKit/WolvenKit/releases/download/9.1.0/WolvenKit.ConsoleLinux-9.1.0.zip", "sha256": "5b3fbdfc7b0236939250ea9987a7ba0bb423c1e37d70c3ba91364c00057bf23b", "size": 35997056, "kind": "zip", "find": "WolvenKit.CLI.dll", "argv": ["{dotnet}", "{path}"], "needs": ["dotnet"]}
+  },
   "repak": {
    "version": "0.2.3",
    "license": "MIT OR Apache-2.0",
