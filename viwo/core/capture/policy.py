@@ -87,7 +87,7 @@ def confirmed_games(rt) -> set[str]:
 
 
 def remember(rt, game: Path) -> None:
-    """The confirmation holds once per game (doc 11.1): recorded next to the capture journals."""
+    """The confirmation holds once per game (doc 11.1): recorded beside the temp folder."""
     path = _confirmations(rt)
     path.parent.mkdir(parents=True, exist_ok=True)
     games = sorted(confirmed_games(rt) | {str(game.resolve())})
@@ -97,10 +97,9 @@ def remember(rt, game: Path) -> None:
 def check(rt, game: Path, confirmed: bool, sensitive: list[str]) -> list[str]:
     """Raise only when capture is switched off or not yet confirmed for this game; otherwise
     return the warnings. A confirmation given once is remembered for that game folder."""
-    if "capture" not in rt.config.features:
-        raise ViwoError(
-            "refused", "runtime capture is off", hint="add capture to [startup] features in the ini"
-        )
+    from ..context import require
+
+    require(rt, "capture", "runtime capture")
     warnings = warnings_for(game, sensitive, rt)
     if confirmed:
         remember(rt, game)

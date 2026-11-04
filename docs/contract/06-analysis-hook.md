@@ -1,146 +1,116 @@
-# 6. Static analysis domain (code and data)
+# 6. Static analysis arm
 
-**Status (normative; rung A1 shipped in 1.3).** `analysis.native` (Ghidra headless, main) and the
-`handoff.native` "Continue in Ghidra" handoff exist (`viwo/core/analysis/`,
-`viwo/contracts/analysis.py`), with `EnginePlugin.analysis_targets(probe)`, the `analysis`
-feature value (off by default), `viwo analyze`, `GET /api/analysis/targets`,
-`POST /api/analysis/run` (job kind `analyze`), `POST /api/analysis/open` and the 12 ANALYSIS
-view. The other slots of 6.2 are the normative shape of rungs A2-A4 (doc 16.2b). There is no
-`Stage.ANALYZE`: analysis is its own job kind, never a stage of an extraction. The analyzer and
-the handoff take the `ExtractionContext` (`staging` = the output folder): one context type per
-arm rather than a second record (doc 6.1 `AnalysisContext` is implemented by it). Decompilers that only turn one file into a readable one (unrpyc for
-Ren'Py `.rpyc`) ship as DECODE slots (`decode.rpyc`, doc 8) and run inside extraction; the analysis
-domain is for whole-binary and whole-program work (Ghidra, IL2CPP, signature matching, version
-diffing) that is never part of an extraction.
+Analysis of a game's code and bytecode: what the plugins propose, which analyzer runs, where the
+output lands (`viwo/contracts/analysis.py`, `viwo/core/analysis/`). Every analyzer reads a
+**copy** of its input and never launches, attaches to or writes into the game. Analysis is its
+own job kind (`analyze`), never a stage of an extraction. A decompiler that turns one file into
+one readable file inside an extraction is a DECODE slot instead (`decode.rpyc`, doc 8).
 
-This is one of the three arms of the orchestrator (doc README): **static** (extraction + this
-domain), **dynamic/runtime** (doc 11), **authoring** (doc 18). Everything here is a **static job**:
-it reads a copy of a binary or asset and never launches, attaches to, or writes into the game. So
-it carries the same low-risk profile as extraction, runs read-only, and needs no runtime opt-in.
+Switch: `analysis` in `[startup] features` (off by default; a capability switch because the
+tools are large, not a gate). Off, a run is refused with the hint to enable it; listing targets
+works either way. Entry points: `viwo analyze`, `viwo diff`, `GET /api/analysis/targets`,
+`POST /api/analysis/run|open|diff`, 12 ANALYSIS.
 
-## 6.0 Philosophy here
-
-ViWo refuses nothing because of what a binary is or what the user intends (README "Philosophy",
-D22). The analysis arm adds no gate. The one project-level rule is unchanged: **ViWo authors no
-first-party borderline code.** It wires and pins community tools and runs them as the orchestrator
-runs every other backend. Where a capability is borderline (recognising a protector, reconstructing
-the imports of a dump the user took of their own process), ViWo supplies the orchestration and pins
-a third-party tool under the disclaimer; the responsibility is the user's.
-
-## 6.1 Split: what vs how
+## 6.1 Targets and analyzers
 
 ```text
-AnalysisTarget  (WHAT; from engine plugins via analysis_targets(probe), or user-supplied)
-  key            stable, filesystem-safe id
-  kind           native_binary | dotnet_assembly | il2cpp | python_bytecode | gdscript_bytecode
-                 | lua_bytecode | squirrel_bytecode | script_vm | memory_image | save_blob
-  paths          primary file first, companions after (e.g. GameAssembly.dll + global-metadata.dat)
-  owner, label, hints { arch, engine_version, base_address, middleware?, ... }
+AnalysisTarget  (WHAT; from EnginePlugin.analysis_targets(probe))
+  key     stable, filesystem-safe (target_key(path))
+  kind    native_binary | dotnet_assembly | il2cpp | python_bytecode | gdscript_bytecode
+          | script_vm | memory_image
+  paths   primary file first, companions after
+  owner   plugin id or "user";  label;  hints { engine_version, ... }
 
-CodeAnalyzer    (HOW; a backend in an analysis.* slot, doc 8)
-  analyzer_id    "ghidra-headless", "ilspycmd", "il2cppdumper", "die", "bindiff", "unicorn", ...
-  kinds          target kinds it accepts
-  dependencies() -> [DependencySpec]
-  analyze(target, ctx) -> AnalysisOutcome { ok, output_dir, artifacts[], error, duration_s }
-
-AnalysisContext  output_dir, scratch, OS layer, progress, cancel, timeout_s, options, prior_db?
+Analyzer (HOW; a backend in an analysis.* slot)
+  kinds                 the target kinds it accepts
+  analyze(target, ctx) -> Outcome      ctx: ExtractionContext, staging = the output folder
 ```
 
-`prior_db` lets an analyzer load an earlier project (annotations, types) so a re-run or a diff
-builds on it rather than starting cold.
-
-Which plugin proposes which targets:
+The kind picks the slot: `analysis.<first word of the kind>` (`native_binary` ->
+`analysis.native`). A target also lists `extras`: the other bound analyzers that accept its
+kind (`viwo analyze --slot analysis.protector`, one button per extra in 12 ANALYSIS).
 
 | Plugin | Targets |
 |--------|---------|
-| unity | `GameAssembly.dll` + `global-metadata.dat` (il2cpp), `Managed/Assembly-CSharp.dll` (dotnet) |
-| unreal | `<Game>-Win64-Shipping.exe` (native), `*.usmap` companions when present |
-| godot | game executable (native), `*.gdc` (gdscript_bytecode) |
-| renpy | `*.rpyc`, `*.pyc` (python_bytecode) |
-| generic | top-level executables (native), loose `*.luac` / script-VM blobs, user-supplied memory images |
+| generic | executables up to two folders down (`native_binary`); Lua bytecode chunks (`\x1bLua`, `script_vm`) |
+| unity | `GameAssembly.dll` + `global-metadata.dat` + the player exe (`il2cpp`); `Assembly-CSharp.dll` (`dotnet_assembly`) |
+| unreal | `*-Shipping.exe` with any `.usmap` (`native_binary`) |
+| godot | every `.gdc` (`gdscript_bytecode`), engine version from the executable |
+| renpy | every `.rpyc` (`python_bytecode`) |
 
-## 6.2 Slot families in this domain (doc 8)
+The output folder of one run is itself a game folder for `--list`: Cpp2IL's stub
+`Assembly-CSharp.dll` becomes a `dotnet_assembly` target, so IL2CPP games get C# stubs in two runs.
 
-All belong to the `analysis` family; the sub-name says the job. Every backend declares `license`
-(GPL/AGPL ⇒ `isolation: subprocess`), `network` (default `none`, offline) and
+## 6.2 Analysis slots
+
+Every backend declares `license` (GPL/AGPL => `isolation = "subprocess"`), `network` and
 `parses_untrusted_in_process`.
 
-| Slot | What it produces | Main | Spare | temp.md |
-|------|------------------|------|-------|---------|
-| `analysis.native` | project with CFG, decompiled pseudo-C, xrefs, recovered types, strings, consts | `ghidra-headless` (Apache-2.0, JDK 25 for 12.2) | — | §1, §2, §3 |
-| `analysis.dotnet` | decompiled C# / IL, type tree | `ilspycmd` (MIT, .NET) | dnSpyEx (GUI, manual) | §5 |
-| `analysis.il2cpp` | symbol scripts + type headers fed into `analysis.native` | `cpp2il` (MIT) | `il2cppdumper` (≤ Unity 2022.2) | §5 |
-| `analysis.python` | `.rpyc`/`.pyc` to source | `unrpyc` v2 (MIT) | `rpycdec` (isolated env) | §13 |
-| `analysis.gdscript` | `.gdc` to GDScript | `gdre-tools --decompile` (MIT) | — | §13 |
-| `analysis.script` | Lua/Squirrel/AngelScript bytecode to source; generic VM opcode tables | `unluac` (MIT) | community decompiler per VM | §13 |
-| `analysis.signatures` | library/middleware/compiler names onto functions (FLIRT/FID style); middleware fingerprints (PhysX, Havok, Wwise, FMOD, Bink, Oodle, zlib, LZ4, Lua) | Ghidra FID | community signature sets | §4 |
-| `analysis.diff` | name/type port between two builds; stable signatures for update resilience | `bindiff` (Apache-2.0) | `diaphora` (AGPL, subprocess) | §16 |
-| `analysis.protector` | packer/protector identification so the user knows what they are looking at | `die` (Detect It Easy, MIT) | — | §14 |
-| `analysis.emulate` | run one isolated routine (decoder, checksum, hash) outside the game: result.json (status returned/limit/import/fault, return value) + the dumped buffers | `unicorn-emulate` (Unicorn 2.1.4, GPL: a worker process) | — | §15 |
-| `analysis.symbolic` | solve the inputs that make one routine reach an address: result.json + the solved buffers | `angr-symbolic` (angr 9.2.223, BSD; a worker process: its engine is Unicorn) | — | §15 |
+| Slot | Owner | Backend (tool) | Output |
+|------|-------|----------------|--------|
+| `analysis.native` | core | `ghidra-headless` (Ghidra 12.2 on Temurin JDK 25) | `functions.csv` (address, name, size, mnemonic fingerprint), `decompiled.c`, `strings.txt`, `symbols.tsv`; Ghidra's FID signatures run inside the analysis |
+| `analysis.dotnet` | core | `ilspycmd` (ilspycmd 11.2 on the pinned .NET) | a C# project |
+| `analysis.il2cpp` | core | `cpp2il` (Cpp2IL 2022.1 pre-release 21, Windows) | stub assemblies (`dummydll`) |
+| `analysis.script` | core | `unluac` (on the pinned JDK) | Lua source |
+| `analysis.python` | renpy | `unrpyc-analyze` (unrpyc 2.0.4) | `.rpy` source |
+| `analysis.gdscript` | godot | `gdre-decompile` (GDRE Tools; bytecode revision from the option, the executable or the `.gdc` header) | GDScript source |
+| `analysis.protector` | core | `die` (Detect It Easy 3.21 `diec`; accepts native, dotnet, il2cpp) | `identify.json`, `identify.txt`; packers and protectors named in the notes |
+| `analysis.emulate` | core | `unicorn-emulate` (Unicorn 2.1.4, worker) | `result.json` (status returned/limit/import/fault, return value) and dumped buffers |
+| `analysis.symbolic` | core | `angr-symbolic` (angr 9.2.223, worker, on demand) | `result.json` and solved buffers |
 
-**Worker tools (A4).** Unicorn and angr are pip pins ViWo never imports (`tools.json` `workers`):
-installed into `third_party/<id>/`, run as `python -I viwo/data/workers/<script> --lib <folder>
-<spec.json> <out>`. Options come as `viwo analyze ... --slot analysis.emulate --set start=... --set
-args=...` (or the API's `options`): `start` (0x<va> | rva:0x<rva> | export:<name>), `args`
-(int | hex:<bytes> | file:<path> | zeros:<n> | sym:<n>), `dump` (argN:<size>), `max_insns`;
-`find` and `avoid` for symbolic runs. The image is mapped at its preferred base, calls into imports
-stop the run and name the import (an isolated routine has no OS). angr 10's native claripy crashes
-in its solver on Windows, hence the 9.2 pin.
+Every run also writes `record.json` beside its output: target, backend used, artifacts, notes,
+fallback, finish time and the run-record context (effective ini, bindings, tool versions).
 
-`dnSpyEx`, `x64dbg` and other GUI-first tools are not headless backends. Instead each target offers
-an **interactive handoff** (doc 8.3a): a "continue in Ghidra", "open in dnSpyEx" action that imports
-the project (or builds a launch spec) and opens the tool as a tracked child subprocess. The headless
-`analysis.native` run and the Ghidra-GUI handoff share one prepared project, so batch analysis and
-hand work are the same artifact.
+**Worker tools (A4).** Unicorn and angr are pip pins ViWo never imports (`tools.json` `workers`,
+`viwo/core/workers.py`): installed into a fresh `third_party/<id>/` and swapped in, run as
+`python -I viwo/data/workers/<script>`. Options (`viwo analyze --slot analysis.emulate --set
+KEY=VALUE`, or the API's `options`): `start` (`0x<va>` | `rva:0x<rva>` | `export:<name>`), `args`
+(`<int>` | `hex:<bytes>` | `file:<path>` | `zeros:<n>` | `sym:<n>`), `dump` (`argN:<size>`),
+`max_insns` (default 1,000,000); `find` and `avoid` for symbolic runs. The image is mapped at its
+preferred base; a call into an import stops the run and names the import. A worker that crashes
+still reports a result.
 
-## 6.3 Capabilities carried by `analysis.native` (Ghidra)
+**Version diff (A3).** `viwo diff OLD NEW` / `POST /api/analysis/diff` compares two
+`.analysis/ghidra-headless/<key>/` folders of one binary from two game versions: unique names
+pair first, then unique mnemonic fingerprints (unnamed and overloaded functions, across
+relocation); each pair is `same` or `changed`, the rest `added` or `removed`. Output
+`diff.json` and `diff.txt` in `.analysis/diff/<old>--<new>/` (the CLI derives it from NEW's
+folder unless `--out` is given; the API uses the active workspace).
+BinDiff has no pinnable release; the diff is ViWo's own.
 
-The native analyzer is a driven Ghidra project, so its capabilities are Ghidra's, surfaced through
-ViWo's job and artifact model rather than reimplemented:
+## 6.3 Handoffs from a target (doc 8.3a)
 
-- function boundaries, control-flow and call-graph recovery; switch/jump-table and tail-call
-  handling; SIMD/AVX decoding (temp.md §2);
-- struct/union/enum/class editors, auto-struct from access patterns, C++ RTTI (MSVC and Itanium),
-  vtable and virtual-call resolution, multiple/virtual inheritance, STL container recognition,
-  type propagation through the decompiler (temp.md §3);
-- header import (C/C++ headers into the type DB) and **header export** out to a mod SDK (temp.md §3,
-  §17);
-- string search with encodings (ASCII, UTF-16, game-specific) and constant/magic-number search
-  (CRC tables, crypto constants) (temp.md §2).
+A target offers every bound handoff that accepts its kind, the kind's own first:
+`handoff.native` (Continue in Ghidra: opens the project of the headless run), `handoff.debug`
+(Continue in x64dbg), `handoff.memory` (Continue in Cheat Engine). `viwo analyze --open
+[HANDOFF]`, `POST /api/analysis/open`. The debugger and memory handoffs run the game and belong
+to the dynamic arm (doc 11.2).
 
-Annotations (renames, comments, bookmarks, types) live in the project DB under `.analysis/` and are
-versioned with the workspace; sharing them is the knowledge-management story (temp.md §18): a Ghidra
-Server or a committed project file, plus the per-game indexes (`indexes/`) that already carry
-community data. Export artifacts: C/C++ headers, JSON symbol/offset maps, and a generated mod SDK
-(temp.md §17), which the authoring arm (doc 18) consumes.
+## 6.4 Ghidra specifics
 
-## 6.4 Ghidra specifics (for the backend)
-
-- **Invocation:** `analyzeHeadless <projectDir> <projectName> -import <bin> -postScript <ExportScript> <out> -scriptPath <dir> -deleteProject`.
-- **OS differences:** on Windows `analyzeHeadless.bat` through `cmd /c` (the ToolLocation's `argv_prefix`); on Linux a shell script. Install dir from `GHIDRA_INSTALL_DIR` or ini `[tools]`.
-- **Dependencies:** Ghidra (`executable`) and a JDK (`runtime`); the JDK version follows the pinned Ghidra release (Ghidra 12.2 needs JDK 25, doc 13.4).
-- **Runtime:** analysis takes minutes to hours; always a background job with `timeout_s`, tree-kill cancellation (doc 1.1), and the Ghidra project folder under `scratch` deleted when the job ends.
-- **IL2CPP chain:** `analysis.il2cpp` (Cpp2IL or Il2CppDumper) produces symbol scripts, passed as an extra input to `analysis.native` (Ghidra). Modeled as one job with two steps.
-- **Diff chain:** `analysis.diff` takes two native projects (old annotated, new raw) and writes a port report plus stable signatures that the authoring arm turns into update-resilient addresses.
+- Invocation: `analyzeHeadless <projectDir> <name> -import <copy> -postScript ViwoExport.java
+  <out> -scriptPath viwo/data/ghidra`; Windows batch files run through `cmd /c call`.
+- The project lives beside the workspace in `<workspace>.ghidra/<key>/` (Ghidra refuses project
+  paths containing a dot folder); the GUI handoff opens it by starting the JVM directly, so the
+  window is a tracked child.
+- Ghidra is pinned `on_demand`: installed by `viwo install ghidra` or 05 SYSTEM, never by the
+  startup preflight. First-run prompts (user agreement, tips) are pre-answered without
+  overwriting a user's own choice.
+- Timeout: `viwo analyze --timeout` (default 4 h); cancel kills the tree.
 
 ## 6.5 Rules
 
-- Analysis is **never** part of an extraction request. It is its own job type (`Stage.ANALYZE`),
-  behind the `analysis` feature flag, **off by default** in every distro (a capability switch, not a
-  moral gate: it keeps a heavy, slow, large-dependency arm out of the default install).
-- Output goes only to `<workspace>/.analysis/<analyzer_id>/<target_key>/`, never into the
-  per-extension asset layout.
-- The first time analysis is enabled, the UI shows the one-time disclaimer notice (README "Legal and
-  disclaimer"): the user is responsible for having the right to analyse the binaries. This is
-  information and one opt-in, never a refusal.
-- Input is a copy; the game folder and the original binary are never written. `memory_image` targets
-  are files the user supplies (a dump they took of their own process); ViWo does not produce them in
-  this arm (that is a dynamic job, doc 11).
+- Output goes only to `<workspace>/.analysis/<backend id>/<target key>/`, emptied before a rerun,
+  never into the extension groups.
+- The input is a copy: the game folder and the original binary are never written.
+- `memory_image` targets are files the user supplies; no plugin proposes one and no analyzer
+  accepts the kind yet.
+- The UI states once that the user is responsible for having the right to analyse the binaries
+  (information, never a refusal).
 
-## 6.6 API (additive, later)
+## 6.6 API
 
-`GET /api/analysis/targets` → proposed targets with matching analyzers ·
-`POST /api/analysis/run {targetKey, analyzerId, options}` → job id ·
-`GET /api/analysis/jobs` → status, progress, artifacts · cancellation through
-`POST /api/jobs/<id>/cancel` (doc 12.5).
+`GET /api/analysis/targets?gamePath` -> `{targets (with extras and handoffs), enabled, problems}` ·
+`POST /api/analysis/run {gamePath, targetKey, slot?, options?}` -> job of kind `analyze` under the
+workspace lock · `POST /api/analysis/open {gamePath, targetKey, handoff?}` · `POST
+/api/analysis/diff {old, new}` (synchronous). Cancellation through `POST /api/jobs/<id>/cancel`.

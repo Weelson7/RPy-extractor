@@ -123,6 +123,20 @@ def keep_selected(app: App, d: dict) -> dict:
     return app.locked(run, folder)
 
 
+def gated(feature: str, fn: Callable[[App, dict], dict]) -> Callable[[App, dict], dict]:
+    """A route behind a [startup] features switch: refused, with the way to switch it on."""
+    from viwo.core.context import require
+
+    def handler(app: App, d: dict) -> dict:
+        try:
+            require(app.rt, feature, feature)
+        except ViwoError as exc:
+            return failure(exc)
+        return fn(app, d)
+
+    return handler
+
+
 def _sorting(op, *keys: str) -> Callable[[App, dict], dict]:
     def handler(app: App, d: dict) -> dict:
         args, folder = [str(d.get(k, "")) for k in keys], app.workspace
@@ -254,17 +268,17 @@ POST: dict[str, Callable[[App, dict], Any]] = {
     "/api/trash": _group("move_to_trash", trash.trash_group),
     "/api/restore": _group("restore_from_trash", trash.restore_group),
     "/api/delete": _group("delete_from_trash", trash.delete_group),
-    "/api/clear-trash": clear_trash,
-    "/api/keep-selected": keep_selected,
-    "/api/sort-keep": _sorting(sorting.keep, "path"),
-    "/api/sort-trash": _sorting(sorting.trash_item, "path"),
-    "/api/sort-undo": _sorting(sorting.undo),
-    "/api/sort-rename": _sorting(sorting.rename, "path", "newName"),
-    "/api/save-remaining-assets": save_remaining,
+    "/api/clear-trash": gated("sorting", clear_trash),
+    "/api/keep-selected": gated("sorting", keep_selected),
+    "/api/sort-keep": gated("sorting", _sorting(sorting.keep, "path")),
+    "/api/sort-trash": gated("sorting", _sorting(sorting.trash_item, "path")),
+    "/api/sort-undo": gated("sorting", _sorting(sorting.undo)),
+    "/api/sort-rename": gated("sorting", _sorting(sorting.rename, "path", "newName")),
+    "/api/save-remaining-assets": gated("sorting", save_remaining),
     "/api/open-folder": open_folder,
     "/api/logs/clear": lambda app, d: (app.clear_logs(), {"success": True})[1],
-    "/api/media-merger/list": merger_list,
-    "/api/media-merger/build": merger_build,
+    "/api/media-merger/list": gated("merger", merger_list),
+    "/api/media-merger/build": gated("merger", merger_build),
     "/api/media-merger/browse-overlay": merger_overlay,
 }
 

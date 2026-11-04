@@ -291,20 +291,30 @@ for f in [Path(v) for k, v in pairs if k == "--decompile"]:
             FAKE_GUI.format(python=sys.executable),
         )
         ce = script(self.root / "ce", "cheatengine-x86_64", FAKE_GUI.format(python=sys.executable))
-        ini = "[startup]\nfeatures = extraction, analysis\n[plugins]\nunity = on\n"
-        rt = runtime(
-            _folder(self.root / "d3"), ini + f"[tools]\nx64dbg = {x64}\ncheatengine = {ce}\n"
-        )
+        tools = f"[tools]\nx64dbg = {x64}\ncheatengine = {ce}\n[plugins]\nunity = on\n"
+        off = runtime(_folder(self.root / "d3off"), "[startup]\nfeatures = analysis\n" + tools)
+        for handoff in ("x64dbg-gui", "cheatengine-gui"):  # they run the game: the dynamic opt-in
+            with self.assertRaises(ViwoError) as err:
+                open_in(off, AnalysisRequest(self.unity, self.ws, "g-exe"), handoff)
+            self.assertEqual(err.exception.code, "refused")
+        rt = runtime(_folder(self.root / "d3"), "[startup]\nfeatures = analysis, capture\n" + tools)
         labels = [h["label"] for h in handoffs_for(rt, "native_binary")]
-        self.assertEqual(
-            labels, ["Continue in x64dbg", "Continue in Cheat Engine"]
-        )  # no Ghidra here
+        self.assertEqual(labels, ["Continue in x64dbg", "Continue in Cheat Engine"])  # no Ghidra
         from viwo.os._shared import CHILDREN
 
+        with self.assertRaises(ViwoError) as err:  # not confirmed for this game yet
+            open_in(rt, AnalysisRequest(self.unity, self.ws, "g-exe"), "x64dbg-gui")
+        self.assertEqual(err.exception.code, "needs_decision")
+        launched, real = [], rt.os.process.launch
+        rt.os.process.launch = lambda argv, *a, **k: launched.append(argv) or real(argv, *a, **k)
         for handoff in ("x64dbg-gui", "cheatengine-gui"):
-            opened = open_in(rt, AnalysisRequest(self.unity, self.ws, "g-exe"), handoff)
+            req = AnalysisRequest(self.unity, self.ws, "g-exe", {"confirm": True})
+            opened = open_in(rt, req, handoff)
             tracked = next(c for c in CHILDREN if c.pid == opened["pid"])
             tracked.kill()
+        debugged = Path(launched[0][-1])
+        self.assertNotIn(self.unity.resolve(), debugged.resolve().parents)  # never the game
+        self.assertTrue((self.ws.parent / f"{self.ws.name}.debug-copy") in debugged.parents)
         table = self.ws / ".analysis" / "cheatengine-gui" / "g-exe" / "G.CT"
         self.assertIn('local name = "G.exe"', table.read_text(encoding="utf-8"))
         with self.assertRaises(ViwoError):

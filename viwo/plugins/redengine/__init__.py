@@ -39,7 +39,7 @@ class RdarBuiltin(Unarchiver):
         return True, ""  # the path list only names members; without it they keep their hash
 
     def extract(self, archive: Path, dest: Path, ctx) -> Outcome:
-        oodle = Oodle.beside(archive)
+        oodle = Oodle.beside(archive, ctx.os)
         names, notes = _names(ctx, oodle)
         skipped = unnamed = 0
         try:

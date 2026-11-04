@@ -1,7 +1,7 @@
 # Per-game indexes (`indexes/`)
 
-Owner's decision (1.0): ViWo's knowledge of individual games is **data, not code**, and it is
-**community driven**. The `indexes/` folder holds one entry per game and game version:
+ViWo's knowledge of individual games is **data, not code**, and it is **community driven**
+(owner's decision). The `indexes/` folder holds one entry per game and game version:
 how to recognize it, which engine plugin opens it, which pinned tools and QuickBMS scripts it
 needs, what to know before extracting. ViWo stays small; coverage grows by adding entries.
 
@@ -9,8 +9,8 @@ needs, what to know before extracting. ViWo stays small; coverage grows by addin
 
 - Layout: `indexes/games/<slug>/<game-version>/index.json`, `indexes/scripts/`,
   `indexes/tools/validate.py`, `indexes/README.md`, `indexes/SCHEMA.md`. The folder is laid out
-  exactly as the root of the future `vidya_wormhole_indexes` repository, so it can be split out
-  without moving anything.
+  exactly as the root of the `vidya_wormhole_indexes` repository it will be split into (open
+  work), so nothing moves when it is.
 - Code: `viwo/core/indexes.py` (`list_games`, `load_index`, `validate`,
   `install_game`). `install_game` installs the entry's tools through the preflight installer
   (`viwo.core.preflight.install`, pinned and checksummed into `third_party/`) and its scripts into
@@ -23,12 +23,14 @@ needs, what to know before extracting. ViWo stays small; coverage grows by addin
 - Validation: `python indexes/tools/validate.py` (stdlib only, usable in the indexes repository's
   own CI) and `tests/test_indexes.py` in ViWo (shipped entries must validate).
 
-Entries (1.4.3): the six starters (`freedoom`, `renpy-generic`, `godot-generic`, `unreal-generic`,
-`skyrim-se`, `overwatch`) plus one per title ViWo was verified on (the eleven free titles and the
-owner's library: `aoe2-hd`, `total-war-rome-2`, `cyberpunk-2077`, `bannerlord`, `team-fortress-2`,
-`approximately-up`, `schedule-i`, `returning-to-mia`) and `unity-generic` / `rpgmaker-mv-generic`;
-all `game_version = any`, no scripts yet (none could be verified from a trusted HTTPS
-source with a checksum tonight; `notes` says so where relevant).
+Entries: 24, all `game_version = any`. Generic: `renpy-generic`, `godot-generic`,
+`unreal-generic`, `unity-generic`, `rpgmaker-mv-generic`. Titles: `freedoom`, `skyrim-se`,
+`overwatch`, the free titles ViWo was verified on (`ddlc`, `ultrakill-prelude`,
+`baldis-basics-cr`, `burning-snow`, `voids-cave`, `the-basement`, `ubu`) and the owner's library
+(`aoe2-hd`, `total-war-rome-2`, `cyberpunk-2077`, `bannerlord`, `team-fortress-2`,
+`approximately-up`, `schedule-i`, `returning-to-mia`, `among-us`). No entry carries a QuickBMS
+script yet: none has been pinned from a trusted HTTPS source with a checksum (`notes` says so
+where relevant).
 
 ## Splitting it into the `vidya_wormhole_indexes` repository (owner)
 
@@ -44,16 +46,16 @@ python tools/version.py commit -m "indexes/ becomes the vidya_wormhole_indexes s
 # 4. a fresh clone needs: git submodule update --init
 ```
 
-The portable build copies `indexes/` next to `viwo.exe` (pack it in `packaging/build_portable.py`
-once the submodule exists; until then the folder is part of the checkout).
+The portable build ships `indexes/` next to `viwo.exe` (`packaging/build_portable.py`); after
+the split it packs the submodule checkout the same way.
 
 ## Releases and versioning of the indexes
 
 - `schema` is bumped only for incompatible changes to `index.json`.
 - Tags follow ViWo's major version: a `v1.x` line of tags works with every ViWo `1.y.z`; a new ViWo
   major opens a new line; older lines keep receiving data fixes.
-- ViWo pins the submodule commit it ships with (the release notes name it). `viwo install --game`
-  never updates the index itself; `git submodule update --remote indexes` does.
+- `viwo install --game` never updates the index itself. Once the folder is a submodule, ViWo
+  pins the commit it ships with and `git submodule update --remote indexes` updates it.
 - `viwo indexes update` (and 05 SYSTEM > UPDATE INDEXES) fetches the newest release of the
   matching tag line over HTTPS with a checksum, for installs without git (see below).
 

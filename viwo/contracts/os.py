@@ -149,6 +149,11 @@ class OS(ABC):
         """Process ids whose image name is `image` (case-insensitive)."""
         return []
 
+    def load_native(self, path: Path):
+        """A game's own native library (its decompressor) loaded into ViWo, or None where this
+        OS layer cannot load it (a Windows DLL on Linux)."""
+        return None
+
     def sample_threads(self, pid: int, seconds: float, cancel=None) -> tuple[list, list]:
         """profile.sample: ((thread id, pc) samples, (base, size, path) modules) of a process."""
         raise OSError(95, "this OS layer cannot sample a process")

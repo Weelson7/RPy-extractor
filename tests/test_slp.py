@@ -1,7 +1,7 @@
 """L3: Genie SLP sprites to PNG. A small encoder writes random sprites with every command the
 decoder reads (colour lists short and long, skips, fills, player colours, shadows, outlines,
 empty rows); decoding gives back exactly the pixels encoded. Verified on the real thing too:
-AoE II HD's graphics.drs decodes (see docs/HANDOFF.md 1.5.2)."""
+AoE II HD's graphics.drs decodes (CHANGELOG.md 1.6.0)."""
 
 from __future__ import annotations
 

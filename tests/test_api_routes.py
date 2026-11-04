@@ -44,6 +44,31 @@ class RouteTests(unittest.TestCase):
         body, status = handle_post("/api/detect", {"gamePath": "/nope/missing"})
         self.assertEqual((status, body["error"]["code"]), (400, "invalid_request"))
 
+    def test_every_route_the_web_client_calls_exists(self) -> None:
+        """api.js against the server's tables: a route the UI calls but the server lacks is a
+        404 nobody sees (it happened to /api/patch and /api/mod)."""
+        import re
+
+        from viwo.api.handlers import GET as GET_ROUTES
+        from viwo.api.handlers import POST
+
+        api_js = (Path(__file__).resolve().parent.parent / "viwo/web/js/api.js").read_text()
+        known = (
+            set(GET_ROUTES)
+            | set(POST)
+            | {"/api/distro", "/api/plugins", "/api/jobs", "/api/detect"}
+        )
+        literal = set(re.findall(r'"(/api/[^"?]+)"', api_js))
+        templated = {t.split("${")[0].split("?")[0] for t in re.findall(r"`(/api/[^`]+)`", api_js)}
+        self.assertEqual(sorted(literal - known), [])
+        for prefix in templated:
+            self.assertTrue(
+                prefix in known
+                or any(k.startswith(prefix) for k in known)
+                or prefix == "/api/jobs/",
+                prefix,
+            )
+
     def test_generic_job_submit_runs_the_kind_handler(self) -> None:
         """Doc 12.5: POST /api/jobs {kind, params} lands on the same handler as the route."""
         from viwo.api.handlers import POST

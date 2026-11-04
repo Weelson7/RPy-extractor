@@ -1,134 +1,109 @@
-# 9. Startup wiring from an `.ini` file
+# 9. Startup wiring from an ini file
 
-What the app loads at startup (OS layer, profile, plugins, which backend is main
-or spare in each slot, tool paths, lifecycle hooks) is declared in an
-**`.ini` file**. A distro *is* an ini file. Parsing uses Python's stdlib
-`configparser`, so no new dependency is needed.
-
-Since the v1 app was removed, the ini also holds the server settings in a `[server]`
-section (host, port, workspace/merged/logs/temp folders; doc 4.5).
-
-> **Prototype scope (after review):** one flat `startup.ini` with `[startup]`, `[plugins]`, `[slots]`, `[tools]`. Deferred until after the prototype: `base =` layering, the 12 shipped distro files, CLI `--slot/--plugin` overrides and lifecycle `[hooks]`. OS and profile stay selectable with `--os/--profile`. The full model below is the target.
+What ViWo loads at startup (OS layer, plugins, which backend is main or spare in each slot, tool
+paths, server settings) is declared in one ini file (`viwo/core/wiring/ini.py`,
+`viwo/core/wiring/boot.py`). A distro is an ini file. Parsing uses the stdlib `configparser`.
 
 ## 9.1 Files and precedence
 
 ```
-RPy-extractor/
-  startup.ini                the active startup file (user-editable)
-  distros/
-    linux-renpy.ini   windows-renpy.ini
-    linux-unity.ini   windows-unity.ini
-    linux-unreal.ini  windows-unreal.ini
-    linux-godot.ini   windows-godot.ini
-    linux-custom.ini  windows-custom.ini
-    linux-mixed.ini   windows-mixed.ini
+startup.ini                  the active file (default; `viwo --ini PATH` picks another)
+distros/<os>-<profile>.ini   twelve generated files (`viwo config generate`)
 ```
 
-Precedence, lowest to highest (proposed):
+Precedence, lowest to highest:
 
-1. built-in defaults (slot defaults from doc 8.4, plugin defaults)
-2. the `base =` file named in `[startup]` (for example `distros/windows-unity.ini`)
-3. `startup.ini`, or the file given with `viwo --ini <path>` (`Start.py` passes its flags to `viwo serve`)
-4. command-line flags: `--os`, `--profile`, `--plugin <id>=on|off`, `--slot <slot>=<main>[,<spare>]`
+1. built-in defaults (slot defaults of doc 8.4, plugin defaults);
+2. the one `base =` file named in `[startup]` (a single level; chains and loops are errors);
+3. the ini itself;
+4. global CLI flags: `--os`, `--profile` (that distro's plugin set over the ini's), `--features
+   a,b`.
 
-Only one level of `base =` is allowed, to avoid include chains. The
-**effective** configuration, with the source of every value (default, base,
-ini or cli), is logged at boot and returned by `GET /api/distro`.
+The effective configuration, with the source of every value (`default`, `base`, `ini`, `cli`),
+is returned by `viwo --json info` and `GET /api/distro`. `viwo --verbose <command>` also prints it.
 
 ## 9.2 Format
 
 ```ini
-; startup.ini: startup wiring for ViWo
-; Encoding UTF-8 (a BOM is tolerated). Comments start with ; or #.
+; UTF-8 (a BOM is tolerated). Comments start with ; or #, also inline.
 ; Booleans: on/off, true/false, yes/no, 1/0. Keys are case-insensitive.
 
 [startup]
-contract         = 1.0
+contract         = 1.1           ; optional; the major must match this ViWo
 base             = distros/windows-mixed.ini
-OS layer           = auto          ; auto | linux | windows
+os               = auto          ; auto | linux | windows
 profile          = mixed         ; renpy | unity | unreal | godot | custom | mixed
-features         = extraction, sorting, merger, sanitizer   ; + analysis
-auto_install     = off           ; v1 did unpinned installs at boot (F19); off is the new default
-strict_preflight = off           ; on = refuse to start if an enabled plugin lacks a REQUIRED dep
+features         = extraction, sorting, merger   ; + capture, analysis (opt-in)
+auto_install     = on            ; install missing pinned tools into third_party/ at startup
+strict_preflight = off           ; on: `viwo serve` exits 4 when a plugin slot has no backend
+av_exclusions    = on            ; workspace, source and temp skip the antivirus during a job
 
 [plugins]
-generic     = on                 ; always forced on
-renpy       = on
-unity       = on
-unreal      = off
-godot       = on
-custom_dirs = ./plugins          ; comma-separated
-custom.mygame = on               ; custom plugins are opt-in by id
+generic     = on                 ; always on
+overwatch   = off                ; built-ins are on unless switched off
+custom_dirs = user_plugins       ; comma-separated, relative to the ini
+hello       = on                 ; drop-ins are opt-in (also custom.<id> = on)
 
 [slots]
 ; <slot_id> = <main> [, <spare>]      "none" leaves a position empty
 unarchive.7z   = sevenzip-cli, py7zr
-unarchive.rar  = unrar-cli, sevenzip-cli
-unarchive.rpa  = rpa-safe, unrpa
 export.unity   = unitypy, assetstudiomod-cli
-media.encode   = ffmpeg
-
-[slot_policy]
-default        = failover        ; failover | main_only | supplement
-; export.unity = supplement   ; post-prototype (D7)
 
 [tools]
-; explicit tool locations (ToolLocator step 1, doc 1.2), keyed by DEPENDENCY id
-; (one tool can serve several backends, e.g. sevenzip serves four slots)
-sevenzip        = C:\Program Files\7-Zip\7z.exe
-ghidra          = /opt/ghidra_12.2/support/analyzeHeadless
+; <dependency id> = path to the executable (relative to the ini); wins over third_party/
+sevenzip = C:/Program Files/7-Zip/7z.exe
 
-[options.unreal]
-engine_version = UE5.3           ; plugin options; secrets are NOT allowed here
+[options.quickbms]
+scripts = C:/tools/quickbms/scripts   ; plugin options; secrets are refused here
 
-[hooks]
-; lifecycle hooks: module:function, resolved inside custom_dirs only
-after_plugins =
-before_server =
+[server]
+host      = 127.0.0.1
+port      = 8081
+workspace = viwo-data/workspace
+merged    = viwo-data/merged
+logs      = viwo-data/logs
+temp      = viwo-data/tmp
 ```
 
-## 9.3 Boot sequence (proposed)
+`profile` in the ini is informational; `--profile` applies a profile's plugin set.
 
-| # | Step | Reads | Failure behavior |
-|---|------|-------|------------------|
-| 1 | `viwo` (or `Start.py` → `viwo serve`) parses `--ini/--os/--profile/...` | argv | usage error → exit 2 |
-| 2 | Load ini layers (9.1), validate, build `StartupConfig` | ini files | syntax error → exit 2 with file:line |
-| 3 | Read `[server]`, set up logging | `[server]` | defaults under `viwo-data/` |
-| 4 | Select OS layer (`auto` = host), check `is_supported_host()` | `[startup] OS layer` | unsupported → exit 3 |
-| 5 | Hook `after_os` | `[hooks]` | hook error → warning |
-| 6 | Register enabled built-in plugins; discover, validate and register custom plugins | `[plugins]` | bad plugin → disabled, shown in `/api/plugins` |
-| 7 | Hook `after_plugins` | | warning |
-| 8 | Bind slots: defaults + `[slots]` + `[slot_policy]` + `[tools]`; resolve with `os.tools`; optionally auto-install; promote spares | | unbound slot → warning |
-| 9 | Preflight report (dependency statuses, bindings) | | `strict_preflight=on` and a REQUIRED dep missing → exit 4 |
-| 10 | Hook `before_server` | | warning |
-| 11 | Start the HTTP server (`viwo serve`) | `[server]` | port in use → exit with a clear error |
-| 12 | Hook `on_shutdown` on Ctrl+C or exit | | ignored |
+## 9.3 Boot sequence
 
-Exit codes: 0 ok, 2 bad configuration, 3 unsupported OS layer, 4 strict
-preflight failed. In v1, a missing unrpa always exits with 1.
+| # | Step | Failure behaviour |
+|---|------|-------------------|
+| 1 | `viwo` (or `Start.py` -> `viwo serve`) parses the global flags | usage error: exit 2 |
+| 2 | load the ini and its base, validate, apply `--profile` / `--features` | bad file or contract major: exit 2 with the reason |
+| 3 | locate `third_party/` next to the ini and activate its Python packages | - |
+| 4 | select the OS layer (`auto` = host), check `is_supported_host()` | unsupported: exit 3 |
+| 5 | register enabled built-ins, drop-ins and entry-point plugins; run `configure()` | a bad plugin is disabled and listed in the problems |
+| 6 | bind slots: defaults + `[slots]`, tools from `[tools]` and `third_party/`, promotion | an unbound slot is a problem, not an error |
+| 7 | `viwo serve`: run the preflight (checks; installs when `auto_install = on`), rebind | `strict_preflight = on` and a plugin slot unbound: exit 4 |
+| 8 | start the HTTP server | port in use: a clear error |
 
-## 9.4 Validation rules
+The web UI's landing screen runs the same preflight as a job (kind `preflight`).
 
-- Unknown sections or keys → **warning**, then ignored. This keeps older ini files working.
-- Unknown plugin id, slot id or backend id → **error for that entry only**. The default is used instead, and the problem is listed in `/api/distro.problems`.
-- A backend bound to a slot whose family it doesn't serve → the same as above.
-- `contract` with a different major version → exit 2.
-- Values that look like secrets (keys named `*key*`, `*secret*`, `*password*`) in `[options.*]` → refused with a warning. Secrets travel only with requests (doc 4.5).
-- Paths are resolved relative to the ini file's own folder.
+## 9.4 Validation
 
-## 9.5 Lifecycle hooks
+- Unknown sections or keys in `[startup]` / `[server]`: a problem, then ignored.
+- An unknown plugin id, slot id or backend id, or a backend that does not serve the slot's
+  family: a problem for that entry only; the default is used (`/api/distro` lists it).
+- `contract` with another major: exit 2.
+- A key in `[options.*]` containing `key`, `secret`, `password` or `token`: refused with a problem.
+- Paths are relative to the ini's folder.
+- `viwo config check FILE...` applies the rules strictly (file names of distros, known sections,
+  plugins, slots and backends, no secrets) and exits 2 on any problem; a test keeps the generated
+  distros in sync with the registry.
 
-```text
-hook(ctx: StartupContext) -> None
-StartupContext (read-only views): config, OS layer, plugins, bindings, log(message)
-hook points: after_os, after_plugins, before_server, on_shutdown
-```
+## 9.5 Not implemented
 
-- Hooks are resolved only from modules inside `custom_dirs`. That's the same trust boundary as custom plugins (doc 2.8).
-- Hooks can read the startup state and log messages. They **cannot** change the bindings. Wiring changes go through the ini, so the effective config stays the one that was logged.
-- A hook that raises an error is logged as a warning, and startup continues.
+`[slot_policy]` (policies other than failover), `[hooks]` lifecycle hooks, and the CLI flags
+`--plugin <id>=on|off` / `--slot <slot>=<main>[,<spare>]` are open (CONFORMANCE).
 
 ## 9.6 Relationship to the UI
 
-- `GET /api/distro` returns the effective ini (with the source of every value), the bindings (main, spare, promoted, unbound) and any problems.
-- 11 SETTINGS edits the wiring (1.0): it writes `startup.ini` and applies the change by reloading the runtime (`App.reload()`: plugins, slots and tools are re-bound; a running job finishes on the bindings it started with). No restart. **History:** contract 1.0 said "after a restart"; the owner chose apply-by-reload.
+- `GET /api/distro`: the effective ini with sources, the bindings (main, spare, promoted,
+  unbound) and the problems.
+- 11 SETTINGS edits features, startup switches, plugins, tool paths, options and slots, writes
+  `startup.ini` key by key (`viwo/core/wiring/settings.py`) and applies the change by reloading
+  the runtime (`App.reload()`); a running job finishes on the bindings it started with. No
+  restart.

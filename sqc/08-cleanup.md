@@ -34,7 +34,7 @@ Steps:
 
 Expected: 1: the plan with one line per finding (`rule`, path, message, action), `planId`, and
 the note that nothing was changed. 2: `applied 5` (all safe actions, duplicate included),
-`undo token: <token>`; the journal is under `.extraction_metadata\sanitizer\`. 3: `restored 5`;
+`undo token: <token>`; the journal is under `<ws>\.sanitizer\`. 3: `restored 5`;
 files back. 4: envelope with `data.findings` (list) and `data.planId`.
 
 ## SQC-CLEAN-03 (P1) Applying a stale plan is refused

@@ -1,102 +1,123 @@
-# 12. Headless core, CLI and jobs (draft)
+# 12. Headless core, jobs and CLI
 
-Decision taken: the framework is a **headless core**, driven by a **CLI**
-and by the **web UI**, which becomes one client among others. This doc
-sketches what that implies. All names are provisional.
+ViWo is a headless core with two clients: the CLI (`viwo`) and the web UI over HTTP. Every
+capability is reachable from the CLI; the server is one front end.
 
-## 12.1 What changes compared to v1
+## 12.1 Shape
 
-| v1 | Proposal |
-|----|----------|
-| Everything starts from `extract.py`, the HTTP server | `core` boots from the ini (doc 9) without any server. The server is just one front end |
-| Extraction runs inside the HTTP request thread, so the request can stay open for minutes | Long work runs as a **job**. Clients submit a job, then follow its events and read its result |
-| Progress = strings appended to an in-memory session, polled by the UI | Each job has an **event stream** (ProgressEvent, doc 4.4). The v1 `/api/logs` polling becomes an adapter over the latest events |
-| Nothing can be scripted or tested without the UI | Every capability is reachable from the CLI, which also provides `--json` output |
+- The core boots from the ini without a server (`viwo/core/wiring/boot.py` -> `Runtime`).
+- Long work runs as a **job** with an event stream and a result; clients submit, follow events
+  and read the result.
+- Every CLI command has `--json` output (the envelope, 12.3b).
 
 ## 12.2 Core facade
 
 ```text
-boot(ini_path, overrides) -> Runtime        # doc 9 boot sequence, steps 2-10
+boot(ini_path, os_id, temp_root, profile, features) -> Runtime
 Runtime
-  info() -> DistroInfo                       # effective ini, OS layer, plugins, slots, problems
-  detect(game_path) -> [DetectionResult] + selection per mode
-  submit(spec: JobSpec) -> JobHandle
-  jobs.get(id) / jobs.list() / jobs.cancel(id)
-  workspace(path?) -> Workspace              # curation services (sorting, groups, trash)
-  shutdown()
+  config, os, plugins, slots, backends, bindings, temp_root, problems, disabled
+  info() -> {os, osName, ini, contract, iniContract, features, sources, plugins, slots, problems, ...}
+  dependency_report() -> [dependency item]          doc 4.2
 ```
 
-## 12.3 Jobs
+Features (extraction, analysis, capture, repack, patch sets, mods, sanitizer, merger, survey,
+installer) are module functions taking the runtime (`extract` in `core/pipeline/runner.py`,
+`analyze` in `core/analysis/__init__.py`, `capture` in `core/capture/__init__.py`, `repack` in
+`core/roundtrip.py`, ...); the API and the CLI call the same functions.
+
+## 12.3 Jobs (`viwo/core/jobs.py`)
 
 ```text
-JobSpec   { kind, params, ini_digest }        # serializable JSON, can be replayed
-kind      extract | unpack | sanitize.plan | sanitize.apply | merge | analyze | capture
-JobHandle { id, kind, state, created, started, finished }
+Job       { id, kind, state, events[], result, error, created, started, finished }
 state     queued -> running -> succeeded | failed | cancelled
-events    ordered ProgressEvent stream, replayable from offset N
-result    kind-specific (ExtractionResult, SanitizePlan, ...)
+summary   { id, kind, state, events (count), error, created, started, finished, elapsed }
+kinds     extract survey repack patch mod preflight install capture dump trace agent record
+          analyze cleanup merge indexes
 ```
 
-- **Run record:** each finished job writes `JobSpec`, the effective ini, the slot bindings, each tool's version or commit, and the result to `.extraction_metadata/runs/<job_id>.json`. With the same record and the same tools, a run should give the same output (principle 7).
-- **Concurrency (decided for the prototype):** one **lock per workspace**. Writing jobs (extract, merge, sanitize apply, capture) hold it for their whole run. Synchronous curation calls take it with a short timeout and return 409 `busy` otherwise. Read-only work (detect, sanitize plan, analysis) doesn't take it.
-- **Cancellation** uses the CancelToken (doc 1.1 kills the process tree).
+- Jobs run in worker threads; the server keeps the last 200 finished jobs in memory (run
+  records stay on disk). The CLI runs the same code in the foreground (`JobRunner`).
+- **Run record:** a finished extraction writes the request (secrets as `<secret>`), the effective
+  ini, the slot bindings, each tool's version and the result to
+  `.extraction_metadata/runs/<job id>.json` (`viwo/core/records.py`). `viwo replay RECORD` re-runs
+  it; with the same tools it gives the same workspace.
+- **Concurrency:** one lock per workspace (doc 4.3). Writing jobs (extract, merge, cleanup apply,
+  repack, patch, mod, capture, analyze) hold it for their run; a short curation call takes it
+  with a timeout and answers `busy` (409) otherwise.
+- **Cancellation:** the job's `CancelToken`; the OS layer kills the tool's process tree.
 
-## 12.3b One result envelope
+## 12.3b Result envelope
 
-Used by the new HTTP routes, `viwo --json` and job results. v1 routes keep
-their own shapes (doc 4.1).
+Used by the envelope routes, `viwo --json` and job errors (`viwo/contracts/errors.py`).
 
 ```text
-Envelope { ok: bool, data: <kind-specific> | null, error: Error | null, warnings: [Warning] }
-Error    { code, message, owner, hint }        # owner: "core" | plugin id | backend id
-code     invalid_request | not_found | busy | unavailable | needs_key | failed | cancelled | refused | internal
+Envelope { ok, data, error, warnings[] }
+Error    { code, message, owner, hint }        owner: "core" | plugin id | backend id
+code     invalid_request | not_found | busy | unavailable | needs_key | needs_decision
+         | failed | cancelled | refused | offline | internal
 ```
 
-- Backend outcomes map onto codes: `unavailable`, `failed`, `needs_key`.
-- Policy refusals (capture, workspace ownership) use `refused`.
-- Programming errors use `internal`, and their trace goes to the log, never into the response.
-- At the HTTP layer, expected failures are 200 with `ok:false` (as in v1); `busy` is 409, `invalid_request` 400, `refused` 403, `internal` 500.
+- Backend outcomes map onto `unavailable`, `failed`, `needs_key`.
+- `refused` is for engineering refusals (workspace ownership, a path outside its root, a switch
+  that is off); `needs_decision` asks for a choice (re-extraction, capture confirmation).
+- `internal` is a programming error: the trace goes to the log, never into the response.
 
-## 12.4 CLI sketch
+## 12.4 CLI (`viwo/cli.py`, `cli_args.py`, `cli_arms.py`, `cli_check.py`, `cli_extra.py`, `cli_dynamic.py`, `cli_patch.py`, `cli_format.py`)
 
-The command name is `viwo` (product: Vidya Wormhole). The old name "RPy Extractor"
-undersold a multi-engine framework; renamed to ViWo (D15).
+Commands are grouped by arm; `viwo -h` lists them, `viwo <arm>` lists one arm, and
+`viwo <arm> <command> ...` is the same as `viwo <command> ...`.
 
-```
-viwo info                         distro, OS layer, plugins, slot bindings, dependency status
-viwo detect <game>                detections + chosen plugin(s) per mode
-viwo extract <game> [--plugin ID | --mixed ID,ID | --policy selected|detected|all]
-                    [--exts .png,.ogg] [--workspace DIR] [--option plugin.key=value]
-viwo unpack <archive> [--slot unarchive.7z] [--backend main|spare|ID]
-viwo slots [--check]              bindings; --check runs each backend's self-test
-viwo sanitize plan|apply|undo ...
-viwo merge ...                    media merger, same options as the UI
-viwo analyze <target> ...         (feature flag)
-viwo capture ...                  (doc 11, feature flag)
-viwo serve [--host --port]        starts the HTTP API + web UI (what Start.py does today)
-global: --ini PATH --os K --profile P --features a,b --json --quiet --verbose
-arms:   viwo static | dynamic | patching | system   lists that arm's commands;
-        viwo <arm> <command> ... is viwo <command> ...; viwo -h groups every command by arm
---json prints the envelope on stdout; progress lines stay on stderr (only --quiet removes them)
-exit codes: 0 ok, 1 job failed, 2 bad config/usage, 3 unsupported OS layer, 4 preflight, 130 cancelled
-```
+| Arm | Command | What it does |
+|-----|---------|--------------|
+| static | `survey FOLDER [--deep]` | read-only coverage report for a game or a library |
+| static | `detect GAME` | every plugin's detection |
+| static | `extract GAME --workspace W [--plugin ID \| --mixed A,B] [--policy selected\|detected\|all] [--exts .png,.ogg] [--on-existing new\|replace\|cancel] [--option plugin.key=value] [--carve off\|unknown\|all]` | extraction run |
+| static | `replay RECORD --workspace W [--on-existing ...] [--option ...]` | re-run a run record (secrets asked again) |
+| static | `unpack ARCHIVE --out DIR [--slot SLOT] [--backend main\|spare\|ID] [--option ...]` | one archive (nested too; `--slot` forces one slot, no nesting) |
+| static | `sanitize WORKSPACE [--apply] [--undo TOKEN]` | cleanup plan, apply, undo (doc 5) |
+| static | `analyze GAME [--list] [--workspace W --target KEY] [--slot SLOT] [--set KEY=VALUE] [--open [HANDOFF]] [--timeout S]` | static analysis (doc 6) |
+| static | `diff OLD NEW [--out DIR]` | function-level diff of two analyses |
+| dynamic | `capture GAME --exe EXE --workspace W [--confirm] [--auto SECONDS]` | RenderDoc capture (doc 11) |
+| dynamic | `dump (--pid PID \| --name NAME) --workspace W` | memory dump |
+| dynamic | `trace (--pid \| --name) --workspace W [--functions GLOBS] [--seconds S]` | frida-trace |
+| dynamic | `agent GAME --exe EXE --workspace W [--copy DIR] [--timeout S]` | the engine's runtime agent |
+| dynamic | `record --workspace W [--seconds S]` | system sound to WAV |
+| patching | `repack WORKSPACE [--out DIR] [--plan]` | patched copy with the edited files (doc 18) |
+| patching | `patch GAME PATCHSET [--out DIR] [--plan]` | apply a patch set to a patched copy |
+| patching | `mod pack\|check\|apply GAME MOD... [--copy DIR] [--name N] [--requires A,B] [--after A,B]` | mod packages |
+| system | `serve [--host H] [--port P] [--no-browser]` | web UI (also `python Start.py`) |
+| system | `info`, `slots [--check]` | configuration, bindings, dependency status, backend self-tests |
+| system | `install [ID... \| --all \| --game SLUG [--game-version V]]` | pinned tools (doc 10) |
+| system | `config generate [DIR]`, `config check FILE...` | distros |
+| system | `indexes update` | latest per-game indexes release |
+| system | `diag [--out ZIP]` | logs, run records and tool status for a bug report, secrets stripped |
 
-`Start.py` keeps working, as `viwo serve` with the default ini.
+Global flags: `--ini PATH`, `--os auto|linux|windows`, `--profile P`, `--features a,b`,
+`--json` (envelope on stdout; progress stays on stderr), `--quiet` (no progress lines),
+`--verbose` (also the effective ini and bindings). Bare `viwo` prints a short guide with the
+philosophy paragraph. Plugins add commands (`cli_commands()`; drop-ins only with `"cli": true`).
+
+Exit codes: 0 ok; 1 failed or not found; 2 bad request, bad config or a decision needed; 3
+refused (containment, switch off, unsupported OS layer); 4 strict preflight failed; 130
+cancelled (Ctrl+C). Errors print `viwo: <code>: <message>` and a hint; every envelope warning is
+printed in text mode.
 
 ## 12.5 HTTP as a client of the core
 
-- v1 routes (doc 4.1) become thin adapters. `/api/extract` submits a job and **waits** for it (as v1 does), so the existing UI is unchanged.
-- New: `POST /api/jobs` (submit), `GET /api/jobs/<id>`, `GET /api/jobs/<id>/events?from=N` (polling; Server-Sent Events later), `POST /api/jobs/<id>/cancel`.
-- Curation actions (sorting, trash, rename) are small and synchronous, and they stay as direct calls, not jobs.
+- `/api/extract` submits an `extract` job and waits for it (the UI's request stays open).
+- `POST /api/jobs {kind, params}` runs the same handler as the kind's own route for every kind of
+  12.3 except `merge` and `indexes` (`viwo/api/handlers_jobs.py`); unknown kinds answer
+  `invalid_request` with the list.
+- `GET /api/jobs`, `GET /api/jobs/<id>`, `GET /api/jobs/<id>/events?from=N` (polling),
+  `POST /api/jobs/<id>/cancel` (the only cancellation route).
+- Curation actions (sorting, trash, rename) are synchronous calls under the workspace lock.
 
-## 12.5b Packaging (prototype)
+## 12.6 Packaging
 
-- Python **3.11+** (doc 17.5); a `pyproject.toml` with a `viwo` console entry point. Runtime dependencies are pinned in a lock file. `pytest` is a dev-only dependency.
-- External tools are found by the OS layer (PATH, `[tools]`) and pinned through a **tool lock file** (name, version, download URL, checksum) used by CI. Sparse-submodule vendoring follows at M11 (doc 10).
-- No installer or packaged desktop app in the prototype.
-
-## 12.6 Open questions
-
-1. Should a job run in a worker thread or a separate process? A process isolates crashes in third-party Python libraries (UnityPy, native decoders) but makes cancellation and event streaming harder. My suggestion: threads for the prototype, with process isolation as an option per backend later.
-2. Should run records be visible in the UI (history, "re-run with the same settings")?
-3. Is a CLI name change acceptable now, or later?
+- Python 3.11+ (`requires-python`), `pyproject.toml` with the `viwo` console script; optional
+  extras `unity`, `sevenzip`, `renpy`, `lz4`, `patch` (capstone), `runtime` (frida-tools,
+  soundcard), `dev` (ruff). Without them the same packages install as hash-locked pins into
+  `third_party/python` (doc 10).
+- Release artifacts (built by `.github/workflows/release.yml` on a `vN.0.0` tag or by hand):
+  wheel, sdist and the portable Windows bundle `ViWo-<version>-windows-x64.zip`
+  (`packaging/build_portable.py`: `viwo.exe`, no Python needed; tools install next to it).

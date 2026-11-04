@@ -1,126 +1,134 @@
-# 0. Glossary and semantic model (draft, read this first)
+# 0. Glossary and metrics
 
-The other documents only work if every word in them means one thing. While
-reading v1, I found many words that carry two or three meanings, plus some
-metrics whose names don't match what they count. If we build interfaces on
-those concepts as they are, we lock the confusion in. This doc proposes one
-meaning per term. **Every term below is open for discussion**; the ones I'm
-least sure about are marked ❓.
+Every term has one meaning. Code, UI and docs use these words.
 
-## 0.1 The overloaded words in v1
+## 0.1 Words that are not used alone
 
-| Word in v1 | Meanings found in the code | Proposal |
-|------------|---------------------------|----------|
-| **engine** | (a) the game engine (Unity, Ren'Py…); (b) in your last message, a processing unit of the pipeline | (a) → **game engine**; (b) → **backend** (0.2). The word "engine" is never used alone. ❓ |
-| **extractor / extraction type** | `RenPyExtractor`, `extractionType`, `extractorType`: code that knows a game engine | → **engine plugin** |
-| **extract** | (a) the whole Step 1 request; (b) unpacking one archive (`extract_single_archive`); (c) decoding engine assets (UnityPy) | (a) **extraction run**; (b) **unpack**; (c) **export** |
-| **phase / slice / step** | core `[PHASE 0-3]`, Unity `SLICE 1-6`, UI `step1-3` | pipeline → **stage**; UI accordion → **step** (UI only) |
-| **detect** | (a) engine detection; (b) `detect_extensions` / `/api/detected-extensions` (listing extensions) | (a) **detect**; (b) **scan** (extensions) |
-| **keep** | (a) Step 3 "keep selected" = trash every *other* extension folder; (b) sorting "keep" = a no-op that only records history for undo | (a) **retain groups**; (b) **mark kept** ❓ |
-| **trash** | (a) whole extension folder → `.trash/<ext>_N`; (b) single file from sorting → `.trash/<rel path>`; (c) merger inputs → `.trash/media-merger/`. One folder, **three** layouts that collide (F18) | **group trash**, **item trash**, **merger trash**: `.trash/groups/`, `.trash/items/`, `.trash/merger/` (doc 4.3) |
-| **v1** | the old application **and** "contract v1.0" | **v1** = the old app only; the contract version is written "contract 1.0" |
-| **manifest** | an extraction report, `PluginManifest`, the "distro manifest", `third_party/manifest.ini` (now `vendor.ini`) | **report** (files in `.extraction_metadata/`); **plugin manifest**; the distro is the **startup ini**; the vendoring file is the **tool lock / vendor list** |
-| **assets dir** | `assets_dir()`, `output_dir`, `assetPath`, `workingDir` (merger), `step2Path` (UI), `outputDir` (config, but only its *name* is used) | → **workspace** |
-| **session** | `SESSIONS` / `PersistentSessions` holds in-memory UI state, logs and undo history. Nothing is actually saved, despite the name | → **UI session** (memory only). Anything that has to survive a restart gets its own explicit store |
-| **generic** | (a) the fallback plugin id; (b) "no engine detected" | (a) plugin id `generic`; (b) detection outcome **undetected** |
-| **discovered** | Unity "discovered assets" are actually *containers* (one record per container file) | → **inventory** (expected items) vs **containers** (files scanned) |
-| **copied** | `copiedFiles` / `copiedByExt` count files that were **moved** | v1 key names stay (compatibility); the meaning is documented as "moved into the workspace" |
+| Word | Use instead |
+|------|-------------|
+| engine | **game engine** (Unity, Ren'Py) or **backend** (a processing unit behind a slot) |
+| extract | **extraction run** (the whole request), **unpack** (one archive), **export** (engine-native decoding) |
+| phase / slice / step | **stage** (pipeline); **step** only in UI paths |
+| detect | **detect** (engine detection); listing extensions is **scan** |
+| keep | **retain groups** (trash every unselected group); **mark kept** (sorting, recorded for undo) |
+| trash | **group trash**, **item trash**, **merger trash** (`.trash/groups/`, `.trash/items/`, `.trash/merger/`) |
+| assets dir | **workspace** |
+| manifest | **plugin manifest** (`PluginManifest`); reports in `.extraction_metadata/` are **reports** |
+| v1 | the removed RPy Extractor application only; the contract version is written "contract 1.1" |
 
-## 0.2 Proposed terms
+## 0.2 Terms
 
 ### Structure
 
-- **OS (layer):** the adapter for the host operating system (Linux or Windows): process running, tool location, filesystem rules, desktop shell. It is the only place for OS-specific behavior. Python package `viwo.os` (absolute imports keep the stdlib `os` module unaffected).
-- **Engine plugin:** code that knows one game engine. It detects the engine, declares slots and backends, and can export, verify, and propose sanitizer rules and analysis targets.
-- **Profile:** a named set of engine plugins plus features (renpy, unity, unreal, godot, custom, mixed).
-- **Distro:** one OS layer plus one profile, declared in an `.ini` file (doc 9).
-- **Core:** the services that don't depend on any game engine or OS: the pipeline runner, workspace, sorting, merger, sanitizer runner, registries and logging.
+- **OS layer:** the adapter for the host OS (`viwo.os`, `LinuxOS`, `WindowsOS`): processes, tool
+  location, filesystem rules, desktop shell, per-user homes, scan exclusions, process listing and
+  memory dumps. The only place for OS-specific code (exceptions: contract README principle 3).
+- **Engine plugin:** code that knows one game engine: detects it, declares slots and backends,
+  and may propose analysis targets, sanitizer rules, a runtime agent, CLI commands and a UI module.
+- **Profile:** a named set of plugins (`renpy`, `unity`, `unreal`, `godot`, `custom`, `mixed`).
+- **Distro:** one OS layer plus one profile, written as an ini file (doc 9).
+- **Core:** the engine- and OS-independent services: pipeline, wiring, jobs, workspace, curation,
+  merger, sanitizer, analysis, capture, round trip, patch sets, mods, installer, indexes.
+- **Arm:** one of the three groups of work: **static** (the game is not running), **dynamic**
+  (it runs), **patching** (its content changes, in a copy). Every CLI command and UI view belongs
+  to one arm or to **system**/**global**.
 
 ### Processing
 
-- **Extraction run:** one request from a game folder to a filled workspace. It runs as a **job**.
-- **Job:** a long-running unit of work (extract, merge, sanitize, analyze, capture) with a state, an event stream and a result (doc 12).
-- **Run record:** the JSON file a finished job leaves in `.extraction_metadata/runs/`, with enough detail to replay it.
-- **Feature:** a switch in the startup ini that turns a whole capability on or off (extraction, sorting, merger, sanitizer, analysis, capture).
-- **Stage:** one step of the run (prepare, probe, detect, …). The order is fixed (doc 3).
-- **Interface:** the contract one kind of work must satisfy (Unarchiver, Exporter, MediaProbe, …).
-- **Slot:** a named job inside a stage, with one interface. For example, `unarchive.7z` means "unpack .7z files with the Unarchiver interface".
-- **Backend:** an implementation that fills a slot (`sevenzip-cli`, `py7zr`). This is what your message called a pipeline "engine".
-- **Main / spare:** the roles a backend can have in a slot. Main is tried first; spare is the fallback (doc 8).
-- **Tool:** the third-party program or library a backend wraps (7-Zip, UnityPy). One tool can back several slots; for example, 7-Zip serves zip, tar, rar and 7z.
-- **Dependency:** a backend's declared need for a tool or runtime (for example Java).
-- **Vendored tool:** a tool that lives in the repository as a sparse submodule (doc 10).
+- **Extraction run:** one request from a game folder to a filled workspace; it runs as a job.
+- **Job:** a long-running unit of work with a kind, a state, an event stream and a result (doc 12).
+- **Run record:** the JSON a finished extraction (`<job id>.json`) or capture
+  (`capture-<stamp>.json`) leaves in `.extraction_metadata/runs/`, with the request, the effective
+  ini, bindings and tool versions. A repack writes its report into the patched copy instead
+  (`.viwo-patched/report.json`).
+- **Feature:** a switch in `[startup] features` (`extraction`, `sorting`, `merger`, `capture`,
+  `analysis`).
+- **Stage:** one step of an extraction run, in a fixed order (doc 3.1).
+- **Interface:** the contract one kind of work satisfies (`Unarchiver`, `Exporter`, `Analyzer`...).
+- **Slot:** a named job with one interface, e.g. `unarchive.7z`; it has a main and an optional
+  spare backend.
+- **Backend:** an implementation that fills a slot (`sevenzip-cli`, `py7zr`). A backend may also
+  serve no slot and only declare a dependency (`frida-trace`, `soundcard-loopback`).
+- **Main / spare:** a slot's first choice and its fallback (doc 8.2). **Promoted:** the spare acts
+  as main because the main is unavailable.
+- **Fallback:** the record that the spare ran and why (`Outcome.fallback`).
+- **Tool:** the third-party program or package a backend wraps (7-Zip, UnityPy).
+- **Dependency:** a backend's declared need for a tool (`DependencySpec`).
+- **Pinned tool:** a tool with a version, HTTPS URL, size and sha256 in `viwo/data/tools.json`,
+  installed into `third_party/<id>/` (doc 10). **Worker tool:** a pinned pip package ViWo never
+  imports and runs as its own process (`analysis.emulate`, `analysis.symbolic`).
+- **Handoff:** "Continue in &lt;tool&gt;": ViWo prepares a target and opens a GUI tool as a tracked
+  child (doc 8.3a).
+- **Runtime agent:** a pinned tool that runs inside a patched copy of the game (UE4SS, BepInEx).
 
 ### Data
 
-- **Game folder:** the folder the user points at. It is **never modified** by extraction: COLLECT copies from it. v1 moves files out of it (H1). The only exception is runtime agents, which work through a journaled overlay or a copy (doc 11.4).
-- **Workspace marker:** `.viwo-workspace`. Only folders that have one may be cleared by the framework (doc 4.3).
-- **Staging:** a private temporary folder for each plugin. Unpack and export results go here first.
-- **Scratch:** temporary files that are never collected into the workspace.
-- **Workspace:** the organized output folder that the user curates.
+- **Game folder:** the folder the user points at. It is never written (doc 7).
+- **Workspace marker:** `.viwo-workspace`; only folders that carry it may be cleared (doc 4.3).
+- **Staging:** a private temporary folder per plugin; unpack and export write there first.
+- **Scratch:** temporary files that are never collected.
+- **Workspace:** the organized output folder the user curates.
 - **Asset:** a file in the workspace, outside the reserved dot-folders.
-- **Group:** the folder for one extension (`png/`, `noext/`). v1 calls this an "ext folder".
-- **Container:** a file that holds other data (an archive, a Unity bundle, a `.pak`).
-- **Inventory:** what a plugin expects to find (expected items), as opposed to what was actually **collected**.
-- **Manifest:** a machine-readable report in `.extraction_metadata/`.
+- **Group:** the folder for one extension (`png/`, `noext/`).
+- **Container:** a file that holds other data (archive, Unity bundle, `.pak`).
+- **Inventory:** what a plugin expects to produce, as opposed to what was collected.
 
-### Round trip (doc 18)
+### Patching (doc 18)
 
-- **Provenance map:** for each workspace file, its container chain, member path, producing backend and original hash.
-- **Edit set:** workspace files changed (hash differs from provenance) or explicitly added.
-- **Mod strategy:** how an engine takes changes back: **override** (loose files, patch containers) or **rebuild** (a new container).
-- **Patched copy:** a modified copy of the game folder; the original is never written to.
-- **Pack:** the slot family that writes overrides or rebuilds containers.
+- **Provenance map:** per workspace file, its container chain, member path, producing backend and
+  original hash (`.extraction_metadata/provenance.jsonl`).
+- **Edit set:** workspace files whose hash differs from the provenance hash, plus files added
+  with a target path.
+- **Mod strategy:** **override** (loose files or patch containers) or **rebuild** (a new
+  container).
+- **Patched copy:** a copy of the game folder marked by a `.viwo-patched/` folder; repack, patch
+  sets, mods and runtime agents write only there.
+- **Patch set:** a JSON list of byte patches (`*.patch.json`) addressed by offset, RVA or AOB
+  pattern. **Mod:** a zip of a patched copy's changed files with `viwo-mod.json`.
 
 ### Curation
 
 - **Sorting:** going through assets one at a time (mark kept, item trash, rename, undo).
-- **Retain groups:** the Step 3 bulk action, which moves every unselected group to trash.
-- **Sanitizer terms:** a **rule** inspects and maybe fixes one thing; a **recipe** is an ordered list of rules; a **finding** is one problem a rule found; a **plan** is the findings plus proposed actions; **apply** executes the accepted actions; the **journal** records an apply for undo.
-- **Merger terms:** a **candidate** is a set of files that share a name pattern; an **index** is the number in a file name; a **conflict** is two media types with the same index; the **timeline** is the ordered build input.
+- **Retain groups:** the bulk action that trashes every unselected group.
+- **Sanitizer:** **rule** (inspects one thing), **recipe** (ordered rules), **finding** (one
+  problem), **plan** (findings with proposed actions), **apply**, **journal** (for undo).
+- **Merger:** **candidate** (files sharing a name pattern), **index** (the number in a name),
+  **conflict** (two media types at one index), **timeline** (the ordered build input).
 
-### Analysis
+### Analysis (doc 6)
 
-- **Analysis target:** a binary or bytecode worth decompiling, proposed by a plugin.
-- **Analyzer:** a backend in an `analysis.*` slot (Ghidra, ILSpy, …).
+- **Analysis target:** a binary or bytecode worth analysing, proposed by a plugin.
+- **Analyzer:** a backend in an `analysis.*` slot.
 
 ## 0.3 How the terms relate
 
 ```
-Distro ──= OS + Profile ──▶ Profile enables Engine plugins
-Engine plugin ──declares──▶ Slots ──bound to──▶ main Backend [+ spare Backend]
-Backend ──wraps──▶ Tool ──located by──▶ OS (or vendored submodule)
-Extraction run ──= ordered Stages ──each uses──▶ Interfaces via Slots
-Stages: game folder ─unpack/export─▶ Staging ─collect─▶ Workspace (Groups of Assets)
-Workspace ──curated by──▶ Sorting · Retain groups · Sanitizer · Merger
+Distro = OS layer + Profile -> Profile enables Engine plugins
+Engine plugin --declares--> Slots --bound to--> main Backend [+ spare Backend]
+Backend --wraps--> Tool --located by--> OS layer (ini [tools], third_party/, env, PATH, known dirs)
+Extraction run = ordered Stages, each using Interfaces through Slots
+game folder --unpack/export--> Staging --collect--> Workspace (Groups of Assets)
+Workspace --curated by--> Sorting, Retain groups, Sanitizer, Merger
+Workspace + provenance --repack--> Patched copy <-- Patch sets, Mods, Runtime agents
 ```
 
-## 0.4 Metrics: what they actually count
+## 0.4 Metrics: what each count means
 
-Interfaces will pass these numbers around, so their meaning has to be pinned
-down. These are v1's numbers as they behave today:
+The `/api/extract` result keeps the v1 key names; their meaning is fixed here.
 
-| v1 key | What the code actually counts | Concern |
-|--------|-------------------------------|---------|
-| `archivesFound` | archives found, including nested ones | fine |
-| `archivesExtracted` | archives unpacked successfully | fine |
-| `scannedFiles` | files walked in the source roots | it includes files that were later filtered out, which is fine but should be documented |
-| `copiedFiles` | files moved into the workspace | "copied" is the wrong word |
-| `discoveredCount` (Unity) | number of **container files** | it is compared with `extractedCount` (number of **files**), so the ratio and the "quality gate" compare two different things |
-| `extractedCount` (Unity) | core-moved files plus Unity exports | the Unity exports get deleted by PREPARE (finding F1), so the number overcounts |
-| `unresolvedByReason` (Unity) | hard-coded empty lists | carries no information |
-| `qualityGatePass` (Unity) | based on the ratio above | meaningless until inventory counts real items |
+| Key | Counts |
+|-----|--------|
+| `archivesFound` | archives identified, nested ones included |
+| `archivesExtracted` | archives unpacked successfully |
+| `scannedFiles` | files walked in the source roots, including ones later filtered out |
+| `copiedFiles` | files copied into the workspace (nothing is moved out of a game) |
+| `copiedByExt` | `copiedFiles` per extension group |
+| `movedFiles` | always 0: nothing is ever moved out of a game folder |
+| `carvedFiles` | files the signature carver wrote |
+| `inventoryItems` | items the plugins' `inventory()` listed (0 = no completeness claim) |
+| `collectedFromInventory` | inventory items found after COLLECT |
+| `plugins[].exported` | files the plugin's export wrote into staging |
+| `plugins[].inventoryCount` | the plugin's inventory size (or what it found) |
 
-**Proposal:** keep the v1 keys for UI compatibility, document their real
-meaning, and add correctly named metrics alongside them: `movedFiles`,
-`inventoryItems`, `collectedFromInventory`. Any "completeness" claim only
-holds when a plugin's inventory counts the same kind of item as collection
-does. Better data can't be produced from wrong counts, so this matters more
-than any interface.
-
-## 0.5 Questions for you
-
-1. ~~Kernel or host?~~ Decided: **OS**.
-2. "Backend / main / spare": does that match what you meant by "a main engine and a spare one"?
-3. Should the two trash mechanisms stay in one `.trash/` folder (as in v1), or be split into separate folders?
-4. Which v1 metric names can we rename in the UI now, and which must stay frozen?
+A completeness claim holds only when a plugin's inventory counts the same kind of item as
+COLLECT does; a plugin with an empty inventory makes none.

@@ -170,6 +170,8 @@ TOOL_POST: dict[str, Callable[[App, dict], Any]] = {
     "/api/preflight/install": install_dependency,
     "/api/survey": survey_library,
     "/api/repack": repack_workspace,
+    "/api/patch": apply_patch_set,
+    "/api/mod": mod_package,
     "/api/sanitizer/plan": sanitize_handler("plan"),
     "/api/sanitizer/apply": sanitize_handler("apply"),
     "/api/sanitizer/undo": sanitize_handler("undo"),

@@ -106,6 +106,9 @@ def _run(args, rt=None) -> Envelope:
         return workspace_command(rt, args)
     sink = event_printer(args)
     if args.command == "unpack":
+        from viwo.core.context import require
+
+        require(rt, "extraction", "extraction")
         opts = cli_args.options(args.option)
         if args.slot or args.backend:
             choice = (args.slot or "", args.backend or "")

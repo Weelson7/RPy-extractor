@@ -1,85 +1,78 @@
-# 10. Third-party tools as sparse submodules (proposal + open problems)
+# 10. Pinned third-party tools
 
-Your direction: every third-party tool or library lives in the repository as
-a **sparsely checked-out git submodule**. This doc describes how that could
-work and, more importantly, where it **doesn't fit cleanly yet**. Several
-points need your decision before anything here can be locked.
+Every third-party tool is pinned in `viwo/data/tools.json` and installed by ViWo into
+`third_party/` next to the active `startup.ini` (next to `viwo.exe` in the portable build), and
+nowhere else (`viwo/core/thirdparty.py`, `viwo/core/workers.py`, `viwo/core/preflight.py`). The
+OS layer only locates tools (doc 1.2). Decision D8: pinned release binaries with checksums, not
+vendored sources.
 
-> **Sequencing (draft 3):** the direction stays sparse submodules, but it comes at **M11**. Until then a **tool lock file** (name, version, download URL, checksum) pins the tools for CI, which gets reproducibility without the vendoring problems below.
+## 10.1 The pin file
 
-## 10.1 What it gives us
-
-- **Pinned versions:** every tool is fixed to a known commit. Output that differs because of tool versions becomes reproducible.
-- **Provenance:** we know exactly which code we run, and licenses sit next to the code.
-- **Fewer install surprises:** less depends on `pip install` at startup, or winget/choco (v1 `startup.py`).
-- **The OS layer can find tools in a known place:** the ToolLocator (doc 1.2) gets a "vendored" step.
-
-## 10.2 Proposed layout
-
-```
-third_party/
-  vendor.ini                # one section per tool: repo, pinned commit, sparse paths, license, build
-  unitypy/                  # submodule (sparse)
-  unrpa/
-  py7zr/
-  ...
-  _build/<OS layer>/<tool>/   # build outputs for compiled tools (gitignored)
+```text
+tools.json
+  tools.<id>      version, license, on_demand?, hidden?, and per OS (windows | linux):
+                  url (HTTPS), size, sha256, kind zip|tar|gz|raw|msi|sfx, find (the file to run),
+                  argv ({path}, {dotnet}, {java}), needs [ids installed first],
+                  from (another entry's folder), mkdir [folders made after install]
+  python.<id>     a pip requirement ("UnityPy==1.25.4"); hash lock per platform and CPython in
+                  viwo/data/locks/<id>-<os>-<3.x>.txt
+  workers.<id>    pip requirements ViWo never imports, a worker script, version, license, on_demand?
 ```
 
-```ini
-; third_party/vendor.ini (sketch)
-[unitypy]
-repo     = https://github.com/K0lb3/UnityPy
-commit   = <sha>
-sparse   = UnityPy/
-license  = MIT              ; to verify
-kind     = python           ; python | native | dotnet | java | rust
-build    = none
+`sfx` self-extractors are opened by the pinned 7-Zip; `msi` is unpacked with `msiexec /a` (the one
+recorded `subprocess` call outside the OS layer). `hidden` entries (the .NET runtime) are not a
+dependency of their own. `on_demand` entries (Ghidra, angr) are installed only when asked by name.
 
-[ghidra]
-repo     = https://github.com/NationalSecurityAgency/ghidra
-commit   = <sha>
-sparse   = <to define>
-license  = Apache-2.0       ; to verify
-kind     = java
-build    = gradle (heavy)   ; see 10.4
-```
+## 10.2 Install
 
-Notes on mechanics:
+- `viwo install ID...`, `viwo install --all` (everything missing that can be installed),
+  `viwo install --game SLUG [--game-version V]` (what an index entry needs, doc 13 and
+  `docs/indexes.md`), 05 SYSTEM (INSTALL, INSTALL ALL MISSING), and the startup preflight when
+  `auto_install = on` (the default; never `on_demand` entries).
+- Download over HTTPS with `User-Agent: ViWo/<version>`, retried when a slow link ends early,
+  checked against the pinned size and sha256 before use; a mismatch is refused (`refused:
+  checksum mismatch`) and nothing lands.
+- Unpack into a temporary folder under `third_party/` with the same member checks as extraction
+  (traversal, links), Unix modes applied, then swap into `third_party/<id>/`. A tool that is
+  running keeps its folder locked: `busy` with a hint. An antivirus quarantine is reported as a
+  failed install with the hint.
+- Python pins: `pip install --require-hashes --no-deps --target third_party/python -r <lock>`; no
+  lock for this platform and Python means no install, said with the reason
+  (`tools/pin_python.py` writes the locks). Not installable in the frozen bundle.
+- Worker pins: pip into a fresh `third_party/<id>/`, swapped in, so a pin change never mixes
+  versions; run as `python -I viwo/data/workers/<script> --lib third_party/<id>`.
+- `[tools]` in the ini wins over `third_party/`, which wins over `PATH`.
 
-- `.gitmodules` can record `shallow = true`, but **it cannot record sparse-checkout paths.** The sparse paths have to live in our own file (`manifest.ini` above). A sync script would then run `git submodule update --init --filter=blob:none` followed by `git -C third_party/<x> sparse-checkout set <paths>`. In other words, sparse checkout needs tooling of our own; plain git won't do it.
-- The ToolLocator search order (doc 1.2) would become: config override → env var → **vendored (`third_party/`, `_build/<OS layer>/`)** → PATH → known install dirs. Should vendored come before or after a system install? I lean towards vendored first (reproducibility), but there's a case for system first (the user's own newer tool). ❓
+## 10.3 Pinned tools
 
-## 10.3 The tools, sorted by how well they fit
+| Group | Pins |
+|-------|------|
+| archives | `sevenzip` (7-Zip), `unrar`, Python `py7zr`, `unrpa`, `lz4` |
+| engines | `repak`, `retoc`, `gdre`, `godotpcktool`, `assetstudiomod` (on the `dotnet` runtime), `unrpyc`, `quickbms`, `datatool` (Windows), `cp77-hashes` (WolvenKit path list, data), Python `unitypy` |
+| media | `ffmpeg`, `ffprobe`, `vgmstream` |
+| analysis | `ghidra` (on demand) and `jdk`, `ilspycmd`, `cpp2il` (Windows), `unluac`, `die`; workers `unicorn`, `angr` (on demand) |
+| dynamic | `renderdoccmd` and `rdpython` (qrenderdoc as the harvest Python), `ue4ss` (Windows), `bepinex` (Windows), `x64dbg` (Windows), `cheatengine` (Windows, Scoop's unpacked build), Python `frida-tools`, `soundcard` |
+| patching | `keystone` (Windows, `kstool` as a separate process), Python `capstone` |
 
-> Research update: the verified repository and license facts are in doc 13.5. Confirmed so far: `.gitmodules` can't hold sparse paths; unrar has **no official git**; 7-Zip's GitHub repository looks official but has RAR-restricted parts; FFmpeg's canonical repository is git.ffmpeg.org. GPL tools must run as subprocesses.
+Versions, licenses and checksums are in `tools.json`; `THIRD_PARTY_NOTICES.md` is generated from
+it (`python tools/notices.py`; a test keeps it current).
 
+## 10.4 Rules
 
-The repository locations and licenses below come from memory and **still
-need to be checked** one by one.
+1. HTTPS only, official releases (the project's own releases or its author's site; Cheat Engine
+   from Scoop's build with Scoop's checksum), size and sha256 from the asset that was tested.
+2. Change a version only together with its checksum; then `python tools/notices.py` and the L5
+   tests with network access.
+3. GPL/AGPL tools run only as separate processes; their backend declares
+   `isolation = "subprocess"`.
+4. Nothing asks the user anything during install or on a tool's first run: no installer, no
+   elevation, no UAC; first-run dialogs are pre-answered off screen (owner's rule).
+5. The startup preflight is a job with one event per check and install (`Checking <tool>
+   (i/N): found <version>`, `Downloading <file>, KB: x / y`); the landing screen and 05 SYSTEM
+   show it.
 
-| Fit | Tools | Why |
-|-----|-------|-----|
-| **Good:** pure Python, usable straight from source | unrpa, unrpyc, py7zr (?) | can be added to `sys.path` from the submodule |
-| **Partial:** Python with compiled dependencies | UnityPy | its texture/audio decoders are native extensions (wheels). The submodule pins UnityPy itself, but pip or prebuilt wheels are still needed for those dependencies ❓ |
-| **Source only:** needs a build toolchain for each OS layer | repak (Rust), GodotPckTool (C++), umodel (C++), Il2CppDumper / Cpp2IL / AssetRipper / ILSpy (.NET), Ghidra (Java/Gradle), ffmpeg (C) | a submodule gives us **source, not a runnable tool**. Each would need a build step for each OS layer, and some builds are heavy (Ghidra, ffmpeg) |
-| **Doesn't fit plain git** | unrar (source is shipped as a tarball from RARLAB, not git, as far as I know), 7-Zip (official git hosting to verify) | would need a mirror repository we maintain |
+## 10.5 Updates
 
-## 10.4 Open problems
-
-1. **Source vs. runnable.** For compiled tools, what does the submodule really give us? The options:
-   - (a) build from source per OS layer (correct, but slow, and needs Rust/.NET/JDK/C toolchains on every dev machine and in CI);
-   - (b) the submodule pins the version and license, and a script downloads the matching **release binary**, verified by checksum;
-   - (c) a separate binaries repository (with git LFS) as the submodule.
-   My suggestion is (b) for heavy native tools and plain source for pure-Python ones. I'd like your call. ❓
-2. **Licenses.** Shipping GPL source (AssetRipper, and possibly unrpa; to verify) inside the repository affects how the combined app can be distributed. The unrar license has its own restrictions. The project doesn't have a LICENSE file yet, so a license decision should come before vendoring. ❓
-3. **Repository size.** Ghidra and ffmpeg are very large repositories. Sparse checkout plus a blobless clone helps, but CI and first-time cloning still pay a real cost.
-4. **Updates.** Bumping a pinned commit should rerun the combination test matrix (doc 3.6) and the slot failover tests (doc 8). That gives us a reason to keep fixtures small and synthetic.
-5. **The ini overlap.** `third_party/vendor.ini` (what's vendored) and `startup.ini [tools]` (what's used) are two separate files. Is that the split you want, or should vendoring also be described in `startup.ini`? ❓
-
-## 10.5 Effect on the other documents (once decided)
-
-- doc 1.2: add the vendored step to the search order.
-- doc 2.6 / 8: `DependencySpec` gains `vendored: <manifest section>`.
-- doc 9: `[tools]` entries can point to `vendored:<name>`.
-- `auto_install` becomes a fallback for anything that isn't vendored.
+`GET /api/updates` (05 SYSTEM > CHECK FOR UPDATES; never called automatically) reports the latest
+ViWo release and the installed and latest per-game indexes. `viwo indexes update` fetches the
+newest indexes release (`docs/indexes.md`). Tool pins change only with a ViWo version.

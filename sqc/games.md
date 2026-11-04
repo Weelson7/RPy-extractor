@@ -9,7 +9,7 @@ your personal use on your machine. Distributing what comes out is a separate mat
 "Legal and disclaimer"). Online or anti-cheat titles produce warnings in ViWo, never refusals.
 
 Verified on 2026-11-03 from the store pages themselves (price, platform, engine). Sizes are
-the store's download sizes. "none verified" means no free title could be confirmed tonight.
+the store's download sizes. "none verified" means no free title could be confirmed on that date.
 
 | Engine (plugin) | Title | Where | Size | Exercises | Slug |
 |---|---|---|---|---|---|
@@ -27,17 +27,17 @@ the store's download sizes. "none verified" means no free title could be confirm
 | Electron / NW.js (`electron`) | none verified as a standalone Electron `app.asar` game; the RPG Maker MV title above ships the NW.js runtime (`package.nw` is a zip, `nw.exe` marker) | | | asar / `.nw` zip handling | (use `rpgmv-first`) |
 | Source (`source`) | Team Fortress 2 (Valve), free to play on Steam; online title: **warnings expected** | https://store.steampowered.com/app/440/ | about 15 GB | `tf/tf2_*.vpk` multi-part VPK v2 (`_dir.vpk` + numbered parts), `hl2/*.vpk` | `tf2` (point at `Team Fortress 2/`) |
 | Bethesda (`bethesda`) | none verified free. If you own one: Skyrim Special Edition (`Data/*.bsa`, LZ4 entries, needs the `lz4` pin), Fallout 4 (`Data/*.ba2`, textures rebuilt as DDS) | | | BSA 105 / BA2 | `skyrim-se`, `fallout4` |
-| Genie (`genie`) | Age of Empires II HD (owner's copy; any AoE I/II install) | | 5.5 GB | `.drs` resource archives: SLP graphics, WAV, BINA | `pass-aoe` |
+| Genie (`genie`) | Age of Empires II HD (owner's copy; any AoE I/II install) | | 5.5 GB | `.drs` resource archives: SLP graphics (decoded to PNG sheets with the game palette), WAV, BINA | `pass-aoe` |
 | Warscape (`warscape`) | Total War: Rome II (owner's copy; Empire through Warhammer share PFH4/PFH5) | | 36 GB | `data/*.pack`: db tables, textures, models, scripts, loc | `pass-total-war-rome-ii` |
-| REDengine 4 (`redengine`) | Cyberpunk 2077 (owner's copy) | | 86 GB | `archive/pc/content/*.archive` (RDAR): Kraken segments inflated with the game's own `oo2ext_7_win64.dll`; members by name hash with the CR2W type as extension | `pass-cyberpunk-2077` |
-| TaleWorlds (`taleworlds`) | Mount & Blade II: Bannerlord (owner's copy) | | 92 GB | `Modules/*/AssetPackages/*.tpac`: LZ4 segments per asset (`lz4` pin), raw ones without it | `pass-mount-blade-2-bannerlord` |
+| REDengine 4 (`redengine`) | Cyberpunk 2077 (owner's copy) | | 86 GB | `archive/pc/content/*.archive` (RDAR): Kraken segments inflated with the game's own `oo2ext_7_win64.dll`; members at their real paths from WolvenKit's path list (`viwo install cp77-hashes`), else by name hash with the CR2W type as extension | `pass-cyberpunk-2077` |
+| TaleWorlds (`taleworlds`) | Mount & Blade II: Bannerlord (owner's copy) | | 92 GB | `Modules/*/AssetPackages/*.tpac`: LZ4 segments per asset (`lz4` pin), raw ones without it; textures rebuilt as DDS | `pass-mount-blade-2-bannerlord` |
 | QuickBMS (`quickbms`) | no title of its own: it serves any archive with a `<ext>.bms` script in `third_party/quickbms/scripts` (indexes supply them per game) | | | script bridge | any |
 | Overwatch (`overwatch`, OPERATOR) | Overwatch 2 (Blizzard), free to play via Battle.net; terms-of-service-sensitive: **warnings expected**, real-game run by the operator | https://overwatch.blizzard.com | 50 GB+ | CASC data through DataTool (Windows only), explicit or auto-selected with the reminder | `overwatch` |
 
 Notes
 - Prefer the smaller titles first (Freedoom, DDLC, ULTRAKILL Prelude, Godot First, Void's Cave,
   Ancient Challenger, the MV title); together they cover every unarchive and export slot that has
-  a tool tonight except Bethesda and Overwatch.
+  a pinned tool except Bethesda and Overwatch.
 - itch.io pages were read directly for price, platform and "Made with" tags where present. The
   Godot and Kirikiri titles state the engine in the developer's own text; no engine version is
   published for them.

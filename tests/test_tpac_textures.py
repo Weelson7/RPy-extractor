@@ -2,7 +2,7 @@
 random shape (cubemaps too); the DDS that comes out names the shape the data was built with,
 carries the data unchanged, and opens in Pillow for the formats Pillow implements; a texture of
 an unknown shape stays a raw .bin and is counted in a note. Verified on the real thing too:
-Native/pack_18.tpac, 188 of 190 textures (see docs/HANDOFF.md 1.5.2)."""
+Native/pack_18.tpac, 188 of 190 textures (CHANGELOG.md 1.6.0)."""
 
 from __future__ import annotations
 

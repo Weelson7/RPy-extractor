@@ -1,147 +1,82 @@
-# 13. Landscape: existing tools, where this framework fits, what to borrow
+# 13. Landscape: the tools ViWo wraps and what it covers
 
-Research done on 2026-11-02, mostly by reading the tools' repositories
-directly (README, LICENSE, source, release pages). The GitHub API and some
-project sites were blocked from the research session, so a few items are
-marked **UNVERIFIED**. Licenses should be double-checked before vendoring
-(doc 10). Runtime capture and Blizzard CASC are covered in doc 11.
+## 13.1 Positioning
 
-## 13.1 Honest positioning
+Formats are covered by existing tools: QuickBMS, GARbro and Game Extractor for archives; UnityPy,
+AssetStudioMod and AssetRipper for Unity; CUE4Parse, FModel, repak and retoc for Unreal; GDRE
+Tools for Godot; unrpa and unrpyc for Ren'Py; unblob and binwalk for carving. What none of them
+provides is one cross-platform orchestrator that recognizes a game, routes each container to the
+right tool with a fallback, curates the output and records its provenance, then carries on into
+analysis, runtime work and patching. ViWo is that glue; it does not reimplement a parser that a
+maintained tool already has, and writes its own reader where none is safe or available
+(Ren'Py RPA, the container plugins of 13.3).
 
-What existing tools already cover well:
+## 13.2 Ideas ViWo uses
 
-| Need | Already covered by |
-|------|--------------------|
-| Many archive formats | QuickBMS (GPL-2.0, CLI, cross-platform), Game Extractor (GPL-2.0 basic, Java), GARbro (MIT, Windows/.NET, strong on visual-novel formats) |
-| Deep engine support | AssetRipper / AssetStudioMod / UnityPy (Unity); CUE4Parse / FModel / repak / retoc (Unreal); GDRE Tools (Godot); unrpa / unrpyc / rpycdec (Ren'Py) |
-| Recursive carving of unknown blobs | unblob (MIT, Python+Rust), binwalk v3 (MIT, Rust) |
-| Declarative format descriptions | Kaitai Struct (`.ksy`; runtimes MIT), ImHex patterns, 010 templates, QuickBMS scripts |
-| Media health checks and transcode flows | Tdarr (server closed-source; plugins GPL-3.0) |
+| Idea | From | In ViWo |
+|------|------|---------|
+| identify, then extract (head and tail, embedded chunks) | unblob | slot identifiers (doc 8.1), embedded Godot PCKs |
+| carving with a depth limit and bounded streams | unblob, binwalk | `carve.signatures`, `viwo/core/carve/` |
+| plugin discovery through entry points | unblob | `viwo.plugins` entry points (doc 2.8) |
+| plan, accept, apply, undo over a library | Tdarr | the sanitizer (doc 5) |
+| community scripts per format | QuickBMS | `unarchive.bms`, scripts from the per-game indexes |
 
-What none of them seems to provide:
-- one **cross-platform orchestrator** that recognizes a game and routes it to the right engine tool, with a fallback when that tool fails;
-- that **normalizes, checks, de-duplicates and curates** the output;
-- that records **one provenance report** per run.
+Open: declarative formats (Kaitai `.ksy`) as a second plugin form.
 
-The only general-purpose orchestrator found, UniExtract2, is Windows-only,
-installer-oriented, and effectively abandoned since 2020.
+## 13.3 Per-engine facts that shape the plugins
 
-**So the gap is integration and curation, not formats.** That matches your
-"orchestrate tools, write glue" answer: the framework shouldn't reimplement
-parsers that QuickBMS, GARbro or the engine-specific tools already have.
+| Engine | Fact | Consequence |
+|--------|------|-------------|
+| Ren'Py | RPA indexes and `.rpyc` files are Python pickles; unrpa and rpatool call plain `pickle.loads` | `rpa-safe` (restricted unpickler) is main, unrpa a subprocess spare (D11); `.rpyc` goes to unrpyc in its own process |
+| Unity | UnityPy exports in process; AssetStudioModCLI is a real CLI with a native Linux build; AssetRipper's headless mode is a local HTTP server (GPL) | UnityPy main, AssetStudioModCLI spare (D7); AssetRipper not wrapped |
+| Unity IL2CPP | Cpp2IL reads the Unity version from the player executable | the `il2cpp` target carries the exe |
+| Unreal | repak handles `.pak` with `--aes-key`; retoc handles IoStore (`to-legacy`, `unpack`); UnrealPak may not be redistributed (Epic EULA) | repak and retoc pinned; UnrealPak never; UE5 unversioned assets need `.usmap` mappings (UE4SS agent, doc 11) |
+| Godot | PCK magic `GDPC`, versions v1-v4, encrypted-directory flag; an embedded PCK is found by the executable trailer; GodotPckTool refuses encrypted PCKs | GDRE Tools main, GodotPckTool spare on a carved, unencrypted PCK |
+| Electron / NW.js | `app.asar` and `package.nw` (a zip) wrap other engines | wrapper re-detection (doc 3.1) |
+| Cyberpunk 2077 | RDAR members are Kraken-compressed and named by hash | inflated through the game's own Oodle DLL; names from WolvenKit's path list (`cp77-hashes`) |
+| Bannerlord | TPAC textures carry format and shape in their metadata | rebuilt as DDS |
+| Age of Empires | SLP sprites use the game palette | `decode.slp` writes PNG sheets |
 
-## 13.2 Ideas worth borrowing
-
-| # | Idea | From | Where it lands in this contract |
-|---|------|------|---------------------------------|
-| 1 | **Identification kept separate from extraction.** In unblob, a *handler* finds a chunk (by pattern, offset and size) and a separate *extractor* unpacks it, with its own dependency list | unblob | Slot matching becomes an explicit **identify** step (doc 8 revision below). It's also what makes main/spare swaps clean |
-| 2 | **Carving embedded containers** (data appended to an executable, data found by trailer or offset), with a recursion depth limit, entropy checks on unknown chunks, and a JSON report per file | unblob, binwalk | Needed for Godot PCKs embedded in executables, AGS, Love2D, NW.js. The identify step must be able to read a file's **tail**, not only its head |
-| 3 | **Declarative custom formats.** Kaitai `.ksy` files compiled to Python (the runtime is MIT, so it can ship), plus QuickBMS scripts as a second dialect | Kaitai, QuickBMS | A future answer to D5: custom plugins in Python **or** declarative (an ini + `.ksy`/`.bms` file) |
-| 4 | **Flows with typed inputs and numbered outputs**, version gating, and separate worker pools for health checks and transcodes | Tdarr | Sanitizer recipes (doc 5): typed rule outputs, `requires_version`, separate cheap and expensive worker pools |
-| 5 | **Plugin discovery through entry points** rather than hard-coded imports | unblob (pluggy) | Custom plugin loading (doc 2.8): Python entry points as an alternative to folder scanning |
-
-## 13.3 Per-engine findings and how they change the slot table
-
-Slot ids keep the convention from doc 8 (`<family>.<name>`). The research
-agents used different names; this table maps them onto that convention.
-
-### Ren'Py
-
-| Fact | Consequence |
-|------|-------------|
-| RPA indexes (all versions) and `.rpyc` files are **Python pickles**. Ren'Py's own loader unpickles them. **unrpa and rpatool call plain `pickle.loads`**, so a malicious archive can run code | `unarchive.rpa` must never unpickle in our process. Options: (a) run unrpa as a subprocess, ideally sandboxed; (b) our own reader with a restricted unpickler that allows no globals. ❓ The safety argument favors (b) as **main**, with unrpa as the spare for exotic variants; that's a small departure from "wrap only" |
-| unrpa: widest coverage of variants (RPA-1/2/3/3.2/4, ALT-1.0, ZiX), but GPL-3.0 and **dormant since 2019** | fine as a subprocess spare; pin it |
-| unrpyc v2 (MIT, active, Ren'Py 6.18–8.x) and rpycdec (MIT, active, Ren'Py 7/8, round-trip verification) both use safer unpicklers | `analysis.python`: unrpyc main, rpycdec spare. rpycdec installs fake `renpy` packages, so it should run in an isolated environment |
-
-### Unity
-
-| Slot | Main | Spare | Notes |
-|------|------|-------|-------|
-| `unarchive.unity-bundle` | UnityPy (MIT, library) | UABEA `batchexportbundle` (MIT CLI; running without a display is UNVERIFIED) | |
-| `unarchive.unity-webgl` | UnityPy (`UnityWebData`, gzip/brotli) | AssetRipper | |
-| `export.unity` | **AssetStudioModCLI** (MIT, real CLI, native Linux build, filter by type) | UnityPy script (what v1 does today) | ❓ This is a change from v1, where UnityPy is the main exporter |
-| `export.unity-project` (full project rebuild) | AssetRipper (GPL-3.0). Its "headless" mode is a **local HTTP server** (`--headless --port`) that we would have to drive with POST calls | AssetStudioModCLI (assets only) | subprocess only (GPL); some features are behind a paid tier |
-| `analysis.il2cpp` | Cpp2IL (MIT; pre-release builds only) | Il2CppDumper (MIT; supports up to Unity 2022.2) | |
-
-Correction to doc 7, F8: UABEA **does** have command-line commands
-(`batchexportbundle`, `batchimportbundle`, `applyemip`). The problem in v1 is
-that the three argument forms it tries match none of them.
-
-### Unreal
-
-| Slot | Main | Spare | Notes |
-|------|------|-------|-------|
-| `unarchive.pak` | repak (Rust, MIT/Apache; binaries for both OSes; `--aes-key`) | QuickBMS + an Unreal script | UnrealPak can't be redistributed (Epic EULA): never vendor it |
-| `unarchive.iostore` | retoc (Rust, MIT; `unpack`, `to-legacy`) | our CUE4Parse wrapper | retoc works best on UE 5.3+; older versions need override flags |
-| `export.unreal` | **a small .NET wrapper around CUE4Parse** (Apache-2.0), which we would write and maintain | umodel (MIT; dormant; **UE4 only**) | the one place "glue" means real code |
-| `export.unreal-json` (.uasset → JSON) | UAssetGUI `tojson` (MIT; Windows, so Wine on Linux) | CUE4Parse wrapper | |
-| `keys.unreal-aes` | key supplied by the user | AESDumpster (license UNVERIFIED, Windows, unreliable) | ❓ new family: **keys**. Automatic key extraction from executables is a grey zone; the user-supplied key comes first |
-| `export.unreal-locres` | UnrealLocres (stale; license UNVERIFIED) | CUE4Parse wrapper | |
-
-FModel (GPL-3.0, Windows only) is GUI-only: users can open it by hand, but
-it can't be a backend.
-
-### Godot
-
-| Fact | Consequence |
-|------|-------------|
-| PCK magic is `GDPC`, with format versions v1 (Godot 3), v2 (4.0–4.4), v3 (4.5) and v4 (4.7). It has an encrypted-directory flag. An **embedded** PCK is found through an executable section or a trailer (the last 4 bytes are `GDPC`, preceded by its size) | identify needs **tail** access; the core can carve the PCK out of the executable before unpacking |
-| GDRE Tools (MIT, active, headless CLI, Godot 2/3/4, supports keys) | main for `unarchive.pck` (`--extract`) and for project recovery (`--recover`, `.gdc` decompile, texture and audio conversion) |
-| GodotPckTool (MIT, active) refuses encrypted PCKs and only reads the magic at offset 0 | spare for `unarchive.pck`, given an unencrypted PCK the core has already carved out |
-| `.stex` (`GDST`), `.ctex` (`GST2`/`GSTL`) | identification rules for the sanitizer; conversion through GDRE |
-
-### Engines worth adding after the prototype (ranked)
-
-Ranked by popularity among indie and visual-novel games × tool maturity × low effort:
-
-1. **RPG Maker**, all versions (RPGMakerDecrypter: MIT, .NET 8 CLI, self-contained binaries).
-2. **Electron / NW.js wrapper** (`@electron/asar`, MIT; `package.nw` is a zip). This one also unlocks TyranoScript, Construct and RPG Maker MV/MZ.
-3. **GameMaker** (UndertaleModTool CLI, GPL-3.0).
-4. **TyranoScript** and **Love2D** (almost free once item 2 and plain zip carving exist).
-5. **KiriKiri** (big visual-novel catalogue, but Windows-only or dormant tools and per-game encryption).
-6. Wolf RPG, XNA/FNA, AGS, Defold, Source.
-
-This suggests one more structural point: **wrapper plugins**. A wrapper
-plugin such as Electron/NW.js unwraps the outer container, and then
-detection runs again on what's inside. **1.1:** the unpack loop does exactly that: after an
-outer wrapper (asar, `package.nw`) is unpacked, the probe is rebuilt over the unwrapped tree and
-detection reruns once (doc 14.2 #3; `viwo/core/pipeline/rewrap.py`, `tests/test_formats.py::test_engine_inside_an_asar_is_redetected`).
-
-### Coverage shipped in 1.1 (against the tables above)
-
-| Area | Shipped | Not shipped (roadmap, doc 16) |
-|------|---------|-------------------------------|
-| Ren'Py | safe RPA reader (main), unrpa (spare, GPL, subprocess), **unrpyc** pinned as `decode.rpyc` | rpycdec spare |
-| Unity | UnityPy (main), AssetStudioModCLI (spare, on the pinned .NET runtime), meshes to OBJ | UABEA, AssetRipper project rebuild, Cpp2IL / Il2CppDumper (analysis rung) |
-| Unreal | repak (`.pak`, verified AES keys per D18), retoc (IoStore), `_P.pak` round trip | CUE4Parse wrapper, UAssetGUI, locres |
-| Godot | GDRE Tools (main), GodotPckTool (spare), embedded PCK carving, PCK rebuild | — |
-| Custom engines | Doom WAD, RPG Maker (XP/VX/VX Ace, MV/MZ), KiriKiri XP3, Electron/NW.js (`.nw` as zip), Source VPK, Bethesda BSA/BA2 (**lz4** pinned), Overwatch via **DataTool** (pinned) | GameMaker, TyranoScript, Love2D, Wolf, XNA, AGS, Defold |
-| Anything else | signature carver, zlib/gzip/zstd/LZ4 stream inflation, **QuickBMS** pinned with scripts from the indexes, **RenderDoc** pinned for runtime capture | Kaitai declarative formats |
-| Code RE | — | Ghidra, ilspycmd (analysis rung, 13.4) |
-
-## 13.4 Code RE tools (doc 6 updates)
+## 13.4 Code RE and runtime tools
 
 | Tool | License | Notes |
 |------|---------|-------|
-| Ghidra 12.2 | Apache-2.0 | `analyzeHeadless`. **Needs JDK 25** for the 12.2 line, not "Java 17+" as doc 6 said. The JDK requirement should follow the pinned Ghidra version |
-| ilspycmd | MIT | installing it needs the .NET 10 SDK; native AOT builds exist for win-x64 and linux-x64 |
-| Cpp2IL / Il2CppDumper | MIT | see Unity |
-| dnSpyEx | GPL-3.0 | Windows, GUI debugger first; not a backend |
+| Ghidra 12.2 | Apache-2.0 | needs JDK 25 (Temurin pinned); `analyzeHeadless` plus a ViWo export script |
+| ilspycmd | MIT | runs on the pinned .NET runtime |
+| Cpp2IL | MIT | pre-release builds only; Windows pin |
+| Detect It Easy | MIT | `diec` |
+| Unicorn | GPL-2.0 | worker process only |
+| angr | BSD-2 (Unicorn inside) | worker process; 9.2.223 (angr 10's solver crashes on Windows) |
+| RenderDoc | MIT | D3D11/12, Vulkan, GL 3.2+; no D3D9/10 |
+| UE4SS, BepInEx | MIT, LGPL-2.1 | runtime agents in a patched copy |
+| frida-tools | wxWindows | separate process |
+| x64dbg | GPL-3.0 | separate process |
+| Cheat Engine | its own license (freeware, source available) | Scoop's unpacked build |
+| Keystone / capstone | GPL-2.0 / BSD | `kstool` as a process; capstone in process |
+| BinDiff | - | no pinnable HTTPS release with a checksum: ViWo's own diff instead (doc 6.2) |
 
-## 13.5 Vendoring facts (doc 10 updates)
+## 13.5 Licensing facts
 
-| Item | Finding |
-|------|---------|
-| `.gitmodules` and sparse paths | **Confirmed: it can't store them.** Its keys are path, url, update, branch, fetchRecurseSubmodules, ignore and shallow. Sparse rules live in `.git/modules/<name>/info/` and aren't versioned. So a bootstrap script has to reapply them from our own manifest; `third_party/vendor.ini` fits the ini direction |
-| 7-Zip | `github.com/ip7z/7zip` looks official (commits by the author), but the link from 7-zip.org couldn't be confirmed. LGPL-2.1+, **except** the RAR code, which carries the unRAR restriction |
-| unrar | **No official git repository** (RARLAB ships tarballs). Freeware license, not open source. Can't be a plain submodule |
-| FFmpeg | canonical repo `git.ffmpeg.org/ffmpeg.git` (the GitHub one is a mirror). LGPL-2.1+, or GPL with `--enable-gpl` |
-| Licenses overall | GPL tools (QuickBMS, Game Extractor, AssetRipper, FModel, UndertaleModTool, unrpa…) are fine **as subprocesses**. They must not be imported or linked into a core with a different license. **Proposed rule: a GPL backend is always a subprocess backend.** This is one more reason to settle the project license (D9) |
-| Heavy runtimes | JDK 25 (Ghidra), .NET 10 (ilspycmd, FModel, AssetStudioMod), Java 8 (Game Extractor). The OS layer's ToolLocator would need a `runtime` dependency kind (already in doc 2.6) and clear hints |
+- GPL/AGPL tools (QuickBMS, unrpa, x64dbg, Unicorn, Keystone, and any future AssetRipper or
+  FModel) run only as separate processes, never imported (D9).
+- unrar is freeware, not open source; 7-Zip is LGPL-2.1 except its RAR code.
+- `THIRD_PARTY_NOTICES.md` lists every pinned tool's license.
 
 ## 13.6 Risks
 
-- **Windows-only tools** (GARbro, UAssetGUI, Wolf tools, FModel, Noesis) need Wine on the Linux OS layer. That would be a OS layer concern (`os.process` running `.exe` through Wine) ❓. Out of scope for the prototype.
-- **Stale upstreams:** unrpa (2019), umodel (UE4 only), the original GARbro, Il2CppDumper (2022.2), UniExtract2. Prefer active forks or alternatives.
-- **Untrusted-input safety:** pickle in Ren'Py, plus the general rule that game files are untrusted. Backends that parse in-process (UnityPy, our readers) are attack surface; risky formats can be isolated in a subprocess.
-- **Legal and terms-of-service exposure** grows with each engine and with runtime capture (doc 11).
+- **Windows-only tools** (DataTool, Cpp2IL pin, UE4SS, BepInEx, x64dbg, Cheat Engine, Keystone):
+  no Linux pin; Wine is not supported.
+- **Stale upstreams:** unrpa (dormant since 2019); prefer active forks.
+- **Untrusted input:** game files are untrusted; in-process parsers declare
+  `parses_untrusted_in_process`; pickles are never unpickled freely.
+- **Antivirus false positives:** Windows Defender quarantines GodotPckTool 2.3 (ML heuristic);
+  the installer reports it with a hint; GDRE Tools covers `.pck` extraction; `pack.pck` needs the
+  folder allowed.
+- **Legal and terms-of-service exposure** grows with each engine and the dynamic arm; the
+  disclaimer and the user's responsibility cover it (README).
+
+## 13.7 Engines not covered (open)
+
+GameMaker (UndertaleModTool CLI, GPL-3.0), TyranoScript and Love2D beyond the wrapper and zip
+paths, Wolf RPG, XNA/FNA, AGS, Defold; Unreal asset export (a CUE4Parse wrapper); Unreal
+localization (`.locres`).

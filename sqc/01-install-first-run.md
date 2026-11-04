@@ -19,8 +19,8 @@ Expected:
   `viwo slots`, `viwo install --all`, then the philosophy paragraph ("A community tool for
   everyone who wants to look inside a game..."). Exit code 0.
 - Step 4 prints a JSON envelope with `"ok": true`, `data.os` = `windows` or `linux`,
-  `data.plugins` listing 13 ids (bethesda, doom, electron, generic, godot, kirikiri, overwatch,
-  quickbms, renpy, rpgmaker, source, unity, unreal).
+  `data.plugins` listing 17 ids (bethesda, doom, electron, generic, genie, godot, kirikiri,
+  overwatch, quickbms, redengine, renpy, rpgmaker, source, taleworlds, unity, unreal, warscape).
 
 Cleanup: none.
 
@@ -67,8 +67,9 @@ Expected:
   <file>, KB: x / y` lines; the bar advances inside each tool's slice and the counter shows
   `<file> · x / y KB`.
 - Each installed tool ends with `Installed <tool>`.
-- Summary line at the end: `<ready>/<total> tools ready, <k> installed.`; `ready` equals the
-  found count plus `k`.
+- Summary line at the end: `All <total> tools ready, <k> installed just now.` (or
+  `<ready>/<total> tools ready, ...` when something is still missing); `ready` equals the found
+  count plus `k`.
 - The landing stays at least 1.2 s even on a fast machine, then fades out; 01 EXTRACT is
   underneath with the top bar `FORMATS a/b READY` chip updated to the new count without a reload.
 - 04 JOBS shows one job of kind `STARTUP CHECK`, state `SUCCEEDED`.
@@ -86,17 +87,20 @@ Steps:
 
 Expected:
 - Step 1 lists exactly the ids that were missing in SQC-INST-02 and are pinned for this OS, from:
-  `assetstudiomod datatool dotnet ffmpeg ffprobe gdre godotpcktool quickbms renderdoccmd repak
-  retoc sevenzip unrar vgmstream python`. (`rdpython` has no folder: it lives in
-  `renderdoccmd\`; `datatool` is Windows only; `python\` appears only if a Python package was
-  missing.) No `.tmp` or `.<id>-xxxx` leftovers.
+  `assetstudiomod bepinex cheatengine cp77-hashes cpp2il datatool die dotnet ffmpeg ffprobe gdre
+  godotpcktool ilspycmd jdk keystone quickbms renderdoccmd repak retoc sevenzip ue4ss unicorn
+  unluac unrar unrpyc vgmstream x64dbg python`. (`rdpython` has no folder: it lives in
+  `renderdoccmd\`; `bepinex`, `cheatengine`, `cpp2il`, `datatool`, `keystone`, `ue4ss` and
+  `x64dbg` are Windows only; `ghidra` and `angr` are on demand and never installed here;
+  `python\` appears only if a Python package was missing.) No `.tmp` or `.<id>-xxxx` leftovers.
 - Step 2: `third_party\repak\...\repak.exe`, `third_party\sevenzip\...\7z.exe`,
   `third_party\unrar\UnRAR.exe`, `third_party\quickbms\quickbms.exe`,
   `third_party\renderdoccmd\RenderDoc_1.47_64\renderdoccmd.exe` and `qrenderdoc.exe`,
   `third_party\dotnet\dotnet.exe`, `third_party\datatool\DataTool.exe`.
 - Nothing was written to `C:\Program Files`, `%LOCALAPPDATA%` or the user profile by ViWo
   (compare timestamps if in doubt).
-- Step 3: every pinned dependency is `found` with a `third_party\...` path; `assetstudiomod`
+- Step 3: every pinned dependency except the on-demand `ghidra` and `angr` is `found` with a
+  `third_party\...` path; `assetstudiomod`
   shows the dll path; `rdpython` shows `...\qrenderdoc.exe`. All of `unarchive.pck`,
   `unarchive.upak`, `unarchive.utoc`, `unarchive.rar`, `unarchive.bms`, `capture.gpu`,
   `export.overwatch` (Windows) are bound.
@@ -111,7 +115,8 @@ Steps:
 Expected:
 - Step 1: no landing; the app appears directly on the last view.
 - Step 2: the landing runs again (new tab = new session storage) and now shows every tool as
-  `found`, summary `<total>/<total> tools ready, 0 installed.`, held about 1.2 s.
+  `found` (except the on-demand Ghidra and angr), summary `<ready>/<total> tools ready.` (`All
+  <total> tools ready.` when nothing is missing), held about 1.2 s.
 
 ## SQC-INST-07 (P1) Landing with reduced motion
 
@@ -133,8 +138,8 @@ Steps:
 1. New tab on the app.
 
 Expected: the check lines run; `Installing missing tools (1/1): repak`; then a warn line
-`Could not install repak: ...`; summary `<n>/<total> tools ready, 0 installed, 1 could not be
-installed (see 05 SYSTEM).` The landing hands off normally; the app works; 05 SYSTEM shows
+`Could not install repak: ...`; summary `<n>/<total> tools ready, 1 could not be installed (see
+05 SYSTEM).` The landing hands off normally; the app works; 05 SYSTEM shows
 `repak` with an INSTALL button.
 
 Cleanup: restore the network; 05 SYSTEM > INSTALL on repak.
@@ -146,7 +151,7 @@ Steps:
 2. New tab on the app.
 
 Expected: the landing lists `vgmstream ... missing` and installs nothing (no `Installing` lines);
-summary `<n>/<total> tools ready, 0 installed.` 05 SYSTEM offers INSTALL for it.
+summary `<n>/<total> tools ready.` 05 SYSTEM offers INSTALL for it.
 
 Cleanup: `auto_install = on`, INSTALL vgmstream.
 

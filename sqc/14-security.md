@@ -83,9 +83,10 @@ Expected: no key value in the logs response, the run record or the files under `
 
 Steps: `netstat -ano | findstr 8081`; from another machine on the LAN open `http://<your ip>:8081/`.
 
-Expected: `127.0.0.1:8081 LISTENING` only; the LAN request is refused at the TCP level. (Binding
-to `0.0.0.0` via `[server] host` is a deliberate user choice; the Host check then allows the
-configured host.)
+Expected: `127.0.0.1:8081 LISTENING` only; the LAN request is refused at the TCP level. With
+`viwo serve --host 0.0.0.0` a LAN request reaches the server but gets `403 Host not allowed`
+(a wildcard bind still serves this machine only); with `--host <one LAN address>` (a deliberate
+choice) LAN requests carrying that Host and the token are served.
 
 ## SQC-SEC-09 (P2) Dependency-free runtime
 

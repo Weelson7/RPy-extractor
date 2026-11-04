@@ -4,25 +4,10 @@
 
 Point ViWo at a game folder. It recognizes the engine, routes every container to the best
 available tool (with a spare when that tool is missing or fails), collects everything into one
-curated workspace, and records where every file came from. Your game is never modified. Asset
-extraction is the mature arm; the orchestrator spans three (see "What a reverse engineer can do"):
-**static** (extraction + code/data analysis), **dynamic/runtime** (capture, debugging,
-instrumentation, memory, hooking, own-traffic networking, profiling), and **authoring** (round trip,
-binary patching, mod packaging). Each arm runs headless for batch work or hands off to a GUI tool
-with a **"continue in &lt;tool&gt;"** button that opens Ghidra, x64dbg, RenderDoc or the like,
-pre-loaded, as a child process.
-
-- **Engines:** Ren'Py, Unity, Godot, Unreal, Doom engine, plain archives (zip, tar, 7z, rar), and a
-  carver that pulls standard files (images, audio, video, archives) out of anything unrecognized.
-- **Never touches the game:** files are copied, never moved; a workspace or temp folder inside the
-  game folder is refused; every run compares the game folder before and after.
-- **Main + spare tools:** each job (unpack `.rpa`, export Unity assets, unpack a Godot PCK...) has a
-  main backend and a spare; a missing tool disables only what needs it.
-- **Curation built in:** extension groups, a keyboard-driven sorting view with previews, undo,
-  and a media merger that turns frames and clips into one video.
-- **Reproducible:** every run leaves a run record and a provenance map; `viwo replay` re-runs it.
-- **Safe by default:** traversal-safe unpacking, Ren'Py archive indexes read with a pickle
-  allow-list, a per-start API token for the local web UI, secrets never written to disk.
+curated workspace and records where every file came from. From there it analyses the game's
+code, works with the running game, and writes your changes into a patched copy. Your game folder
+is never modified. Each job runs headless for batch work or hands off to a GUI tool ("Continue in
+Ghidra / x64dbg / Cheat Engine") that ViWo opens pre-loaded as a tracked child process.
 
 ## Philosophy
 
@@ -37,8 +22,7 @@ pre-loaded, as a child process.
 3. **No boundaries, no safeguards in the tool.** ViWo refuses nothing because of what a game is,
    which plugin runs, or what you intend. No blocking lists, no plugin that detection may not
    pick, no refusals for anti-cheat or online titles. Anti-cheat and online detection stay as
-   information: warnings plus one opt-in (the capture feature switch and a confirmation), never a
-   gate.
+   information: warnings plus one opt-in (a feature switch and a confirmation), never a gate.
 4. **Disclaimer instead of safeguards.** ViWo and the third-party tools and scripts it ships could
    be misused: piracy, cheating, circumventing protections. The project neither condones nor
    suggests it, is conscious of it, and places the responsibility entirely on you (see "Legal and
@@ -53,225 +37,153 @@ pre-loaded, as a child process.
 7. **Reach.** Everything on disk and at runtime comes out, through a ladder of rungs, and
    coverage grows with community indexes per game and game version.
 
-## What a reverse engineer can do with it
+## What it does: three arms
 
-Today and as it grows:
+`viwo -h` lists every command by arm; `viwo <arm>` lists one; `viwo <arm> <command>` equals
+`viwo <command>`. Add `--json` to any command for a machine-readable envelope.
 
-- **Survey and discovery:** engine, version and packaging of each game; which files each tool
-  can open; density estimates that flag encrypted or compressed blobs; reports over a library.
-- **Unpacking:** engine archives (Ren'Py, Unity, Godot, Unreal with verified keys, Doom, RPG
-  Maker, KiriKiri, Electron, Source, Bethesda, Age of Empires DRS, Total War packs, Cyberpunk 2077
-  archives, Bannerlord TPAC, Overwatch via DataTool), generic containers, nested
-  archives, and QuickBMS scripts for every format without a plugin, supplied per game by the
-  indexes.
-- **Carving and stream inflation:** standard files hidden inside unknown data; zlib and gzip
-  streams inflated and carved.
-- **Decoding:** textures to PNG, game audio to WAV, Bink video to MP4; next: meshes to glTF,
-  fonts, script decompilation, localization tables.
-- **Runtime capture:** GPU frames through RenderDoc for content that only exists at runtime,
-  then a diff against static extraction.
-- **Static code analysis (opt-in, 1.3):** the plugins name the binaries (the player executable,
-  Unreal's shipping exe, Unity's IL2CPP and managed assemblies, script bytecode); Ghidra analyses
-  a copy headless into the workspace (functions, decompiled C, strings, symbols) and CONTINUE IN
-  GHIDRA opens the same project in the GUI. Next rungs, same slot system: ilspycmd and Cpp2IL for
-  managed code, library/middleware signatures, protector identification, version diffing for
-  update-resilient offsets, emulation of isolated routines. Everything reads a copy; the game is
-  never run.
-- **Dynamic and runtime (opt-in, journaled):** GPU frame capture through RenderDoc for content that
-  only exists at runtime, engine agents (BepInEx, UE4SS) that dump live objects or feed the static
-  arm, plus debugging, instrumentation and tracing, memory inspection, runtime hooking, your-own-
-  traffic networking and profiling. Off by default behind the `runtime` flag, with warnings and one
-  confirmation; ViWo authors no anti-cheat evasion or copy-protection defeat.
-- **Continue in &lt;tool&gt;:** any target hands off to its GUI tool pre-loaded — Ghidra on an
-  imported project, x64dbg launched suspended, RenderDoc on a capture, ReClass.NET on a live struct
-  — as a child process ViWo tracks and tears down with the job.
-- **Curation:** sort, deduplicate, rename, sanitize and trash with undo; provenance per file.
-- **Modding, round trip and patching:** edit assets and repack into a verified patched copy; author
-  byte- and assembly-level binary patch sets with AOB signatures and portable patch export; package
-  mods with a loader, a stable hook API, a crash handler and an update checker.
-- **Reproducibility and automation:** run records and replay, a pinned toolchain, per-game
-  indexes the community can extend, a CLI with JSON envelopes and a local API.
-
-## Quick start (test it locally)
-
-1. Python 3.11 or newer.
-2. From the repository folder:
-
-   ```bash
-   pip install -e ".[unity,sevenzip,renpy]"
-   ```
-
-3. Start the web UI (it opens your browser; `--no-browser` to skip):
-
-   ```bash
-   viwo serve
-   ```
-
-   Data goes to `viwo-data/` next to `startup.ini` (workspace, merger output, logs, temp). Plain
-   `viwo` prints a short guide; `python Start.py` does the same as `viwo serve`.
-
-4. Tools install themselves. On the first start the landing screen runs the preflight: every
-   optional tool that is missing is downloaded from its pinned release (HTTPS, size and sha256
-   checked against `viwo/data/tools.json`) into `third_party/<tool>/` next to `startup.ini`.
-   Nothing is installed anywhere else, and nothing is asked of you. From the command line:
-
-   ```bash
-   viwo slots            # what is found, and where
-   viwo install --all    # install everything missing that has a pin
-   viwo install unrar    # one tool
-   ```
-
-   Pinned tools (version, license and checksum live in `tools.json`): 7-Zip, unrar, ffmpeg and
-   ffprobe, vgmstream, GDRE Tools, GodotPckTool, AssetStudioModCLI (on a ViWo-owned .NET runtime
-   under `third_party/dotnet`), repak, retoc, QuickBMS, DataTool (Windows), RenderDoc
-   (`renderdoccmd` and its embedded Python for harvesting), plus the Python packages UnityPy,
-   py7zr, unrpa and lz4. Precedence: a path set in `[tools]` wins over `third_party/`, which wins over PATH.
-
-Every tool is optional: a missing one disables only what needs it, and `viwo slots` / 05 SYSTEM
-say what to install. The engine tools can also be set with environment variables
-(`VIWO_REPAK`, `VIWO_GDRE`, `VIWO_VGMSTREAM`, ...).
-
-Command line:
-
-```bash
-python -m viwo.cli detect "/path/to/game"
-```
-
-```bash
-python -m viwo.cli extract "/path/to/game" --workspace ./ws
-```
-
-```bash
-python -m viwo.cli replay ./ws/.extraction_metadata/runs/<job>.json --workspace ./ws-again
-```
-
-More commands (add `--json` to any of them for machine-readable output):
+**Static: the game is not running.**
 
 | Command | What it does |
 |---------|--------------|
-| `viwo survey <library or game>` | read-only: per game, what ViWo can pull and what it cannot (`--deep` also tries the carver) |
-| `viwo sanitize <workspace>` | find empty, junk, duplicate, mislabeled or broken files; `--apply` the safe fixes, `--undo TOKEN` |
-| `viwo repack <workspace> --out DIR` | build a patched copy of the game with the files you edited (`--plan` first); verified by re-extraction |
-| `viwo capture <game> --exe EXE --workspace WS --confirm` | runtime capture with RenderDoc for what static extraction cannot reach (off by default, policy-checked) |
-| `viwo analyze <game> --list`, `--target KEY --workspace WS [--open]` | static analysis: list the binaries the plugins propose, run Ghidra headless on one into `WS/.analysis/`, or open the project in Ghidra (feature `analysis`, off by default) |
-| `viwo unpack <archive> --out DIR`, `viwo info`, `viwo slots` | single archive, configuration, tool status |
+| `viwo survey <game or library> [--deep]` | read-only: per game, the engine, which files each tool can open, dense unknown blobs |
+| `viwo detect <game>` | which engine a folder uses |
+| `viwo extract <game> --workspace <ws>` | unpack, export, carve and decode into a workspace grouped by extension, with a provenance map and a run record |
+| `viwo replay <run record> --workspace <ws>` | re-run an extraction |
+| `viwo unpack <archive> --out <dir>` | one archive, nested ones too |
+| `viwo sanitize <ws> [--apply] [--undo TOKEN]` | empty, junk, duplicate and mislabeled files; plan, apply, undo |
+| `viwo analyze <game> --list`, `--target KEY --workspace <ws> [--slot ...] [--open]` | code analysis of a copy: Ghidra (native), ilspycmd (.NET), Cpp2IL (IL2CPP), unrpyc, GDRE Tools, unluac, Detect It Easy, Unicorn and angr on isolated routines; opt-in feature `analysis` |
+| `viwo diff <old> <new>` | function-by-function diff of two Ghidra analyses (update-resilient offsets) |
 
-## How far it reaches
+Engines: Ren'Py, Unity, Godot, Unreal (pak and IoStore, AES keys from you or the game's own
+files, verified), Doom, RPG Maker, KiriKiri, Electron/NW.js, Source, Bethesda, Age of Empires,
+Total War, Cyberpunk 2077, Bannerlord, Overwatch (DataTool), QuickBMS scripts for any other
+format, plus zip, tar, 7z, rar. Anything unrecognized goes through a signature carver and
+zlib/gzip/zstd/LZ4 stream inflation; game audio, DDS, Bink, SLP and `.rpyc` are decoded into
+files anything can open.
 
-Anything stored on your disk should come out, through a ladder of fallbacks: engine plugins with
-real names, container unpackers, a carver that finds standard files (images, audio, video,
-archives) inside unknown data, zlib/gzip stream inflation, decoders that turn game audio and
-textures into WAV/PNG, QuickBMS scripts for custom formats, and runtime capture as the last rung.
-`viwo survey` shows where each of your games stands. Not shipped: code for defeating copy
-protection or brute-forcing keys; content that only exists on a server is out of reach.
+**Dynamic: the game is running.** Opt-in feature `capture`, warnings and one confirmation.
 
-## Supported engines and tools
+| Command | What it does |
+|---------|--------------|
+| `viwo capture <game> --exe <exe> --workspace <ws> --confirm [--auto SECONDS]` | GPU frames through RenderDoc: textures and shader disassembly, unattended by default |
+| `viwo agent <game> --exe <exe> --workspace <ws>` | the engine's runtime agent in a patched copy: UE4SS (Unreal mappings, object dump), BepInEx (Unity IL2CPP interop assemblies) |
+| `viwo dump --name <image> --workspace <ws>` | memory dump of a running game |
+| `viwo trace --name <image> --workspace <ws> [--functions ...]` | API calls through Frida |
+| `viwo record --workspace <ws> [--seconds S]` | the game's sound from the system output, to WAV |
 
-| Engine | Unpack / export | Main | Spare |
-|--------|-----------------|------|-------|
-| any | zip, tar | Python standard library | 7-Zip |
-| any | 7z / rar | 7-Zip / unrar | py7zr / 7-Zip |
-| Ren'Py | `.rpa` archives; `.rpyc` scripts decompiled to `.rpy` (option `decompile`) | built-in safe reader; unrpyc | unrpa |
-| Unity | assets, meshes to OBJ (option `meshes`) | UnityPy | AssetStudioModCLI |
-| Godot | `.pck`, PCK embedded in the executable | GDRE Tools | GodotPckTool |
-| Unreal | `.pak` (any version, AES per user key or found in the game executable) | repak | — |
-| Unreal 5 | IoStore `.utoc`/`.ucas` | retoc (to legacy assets) | retoc (raw packages) |
-| Doom engine | IWAD/PWAD: PNG, WAV, MIDI, maps | built-in reader | — |
-| RPG Maker | XP/VX/VX Ace archives; MV/MZ encrypted images and audio (key from System.json) | built-in | — |
-| KiriKiri | `.xp3` (unencrypted entries; per-title ciphers are reported) | built-in | — |
-| Electron / NW.js | `app.asar` (`package.nw` is a zip) | built-in | — |
-| Source engine | `.vpk` (v1/v2, multi-part) | built-in | — |
-| Bethesda | `.bsa` (103–105; LZ4 needs `lz4`), `.ba2` (files, textures rebuilt as DDS) | built-in | — |
-| anything else | files hidden inside unknown data, zlib/gzip streams | built-in carver | — |
-| any custom format | your `.bms` script per extension | QuickBMS | — |
-| decoders | Wwise / FMOD / CRI / XACT / console audio to WAV; DDS to PNG; Bink to MP4 (opt-in) | vgmstream / ffmpeg | ffmpeg |
-| media merger | video build | ffmpeg | — |
+Continue in x64dbg and Continue in Cheat Engine open from `viwo analyze --open` and 12 ANALYSIS.
 
-From a checkout, `pip install -e ".[unity,sevenzip,renpy,lz4]"` installs the `viwo` command and
-the optional Python tools; every other tool installs itself into `third_party/` (see Quick start),
-or is found on PATH, or is set in the `[tools]` section of `startup.ini`.
+**Patching: you change its content**, always in a marked patched copy.
+
+| Command | What it does |
+|---------|--------------|
+| `viwo repack <ws> --plan`, `--out <dir>` | your edited workspace files repacked into a patched copy, verified by re-extraction |
+| `viwo patch <game> <set.patch.json> --plan`, `--out <dir>` | byte patches by offset, RVA or AOB pattern, assembly through Keystone, with a byte diff and an AOB export |
+| `viwo mod pack\|check\|apply <game> <mod.zip>...` | a patched copy's changes as a mod; check it against another game version; apply several in order |
+
+## Install
+
+Python 3.11 or newer, from the repository folder:
+
+```bash
+pip install -e ".[unity,sevenzip,renpy,lz4]"
+viwo serve
+```
+
+`viwo serve` (or `python Start.py`) opens the web UI. On first start the landing screen runs the
+preflight: every missing tool is downloaded from its pinned release (HTTPS, size and sha256
+checked against `viwo/data/tools.json`) into `third_party/<tool>/` next to `startup.ini`. Nothing
+is installed anywhere else, and nothing is asked of you. Ghidra and angr install only when asked
+(`viwo install ghidra`). From the command line:
+
+```bash
+viwo slots            # slot bindings and what is found where
+viwo install --all    # everything missing that has a pin
+viwo install --game skyrim-se    # what a per-game index entry needs
+```
+
+A path in `[tools]` of `startup.ini` wins over `third_party/`, which wins over `PATH`. Every tool
+is optional: a missing one disables only what needs it, and `viwo slots` / 05 SYSTEM say what to
+install. Data goes to `viwo-data/` next to `startup.ini`. A portable Windows build
+(`viwo.exe`, no Python needed) ships with each release.
+
+## Web UI
+
+Plain HTML and ES modules served by `viwo serve` on `127.0.0.1:8081`, with a per-start token.
+The top bar holds SYSTEM (tools, install, diagnostics, updates), JOBS, SETTINGS, the shared game
+selector and the workspace. The rail shows one arm at a time, each opening on its end-to-end
+path: STATIC (07 SURVEY, 01 EXTRACT, 02 WORKSPACE, 03 SORT, 08 CLEANUP, 06 MERGER, 12 ANALYSIS),
+DYNAMIC (10 CAPTURE, 13 RUNTIME), PATCHING (09 PATCHED COPY, 14 PATCHES + MODS). Two themes
+(`wormhole`, `plain`). Details: [docs/ui.md](docs/ui.md).
 
 ## Configuration
 
-Everything lives in [`startup.ini`](startup.ini): enabled plugins, which tool is main or spare for
-each job, tool locations, and the `[server]` section (host, port, default workspace, merger output,
-logs, temp folders).
-
-Ready-made configurations ("distros") live in [`distros/`](distros/): one per OS layer and
-profile, named `<os>-<profile>.ini` (`linux|windows` x `renpy|unity|unreal|godot|custom|mixed`).
-Point `startup.ini` at one with `[startup] base = distros/windows-unity.ini`; anything in
-`startup.ini` overrides it.
+Everything lives in [`startup.ini`](startup.ini): features, plugins, which tool is main or spare
+for each slot, tool locations, plugin options and the `[server]` section. Ready-made
+configurations live in [`distros/`](distros/) (`<linux|windows>-<renpy|unity|unreal|godot|custom|mixed>.ini`);
+point `startup.ini` at one with `[startup] base = distros/windows-unity.ini`.
 
 ```bash
-viwo config generate
-```
-
-```bash
+viwo config generate                       # rewrite distros/ from the registry
 viwo config check startup.ini distros/*.ini
 ```
-
-`generate` rewrites the 12 files from the plugin and slot registry (it never overwrites a file it did
-not generate); `check` enforces the rules strictly (file names, known sections, plugins, slots and
-backends, no secrets) and exits with code 2 on any problem.
 
 ## Development
 
 ```bash
 python -m unittest discover -s tests -t .
-```
-
-```bash
 python tools/loc_count.py --report
 ```
 
-Real-tool tests run with `VIWO_L5=1`; CI runs everything on Linux and Windows. Code size is capped
-(non-blank, non-comment lines: 40 per function, 250 per file; budgets per package in
-[`loc_caps.ini`](loc_caps.ini)).
+Real-tool tests run with `VIWO_L5=1`. Code size is capped (40 lines per function, 250 per file,
+budgets per package in [`loc_caps.ini`](loc_caps.ini)). Commits go through `tools/version.py`
+(see [CONTRIBUTING.md](CONTRIBUTING.md)).
 
 ## Documentation
 
-- Architecture contract: [docs/contract/](docs/contract/README.md)
-- Prototype A status and decisions log: [docs/prototype-a/STATUS.md](docs/prototype-a/STATUS.md)
-- Prototype B status, evidence and open items: [docs/prototype-b/STATUS.md](docs/prototype-b/STATUS.md)
-- Per-game indexes (schema, contribution, updates): [docs/indexes.md](docs/indexes.md)
-- Drop-in plugins: [docs/plugins.md](docs/plugins.md); contributing: [CONTRIBUTING.md](CONTRIBUTING.md)
-- Manual check suite: [sqc/00-README.md](sqc/00-README.md); third-party licenses: [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)
-- Handoff and open work: [docs/HANDOFF.md](docs/HANDOFF.md)
+- [ARCHITECTURE.md](ARCHITECTURE.md): module map and layer rule.
+- [docs/contract/](docs/contract/README.md): the normative design; [CONFORMANCE.md](docs/contract/CONFORMANCE.md): what is implemented, partial or open.
+- [docs/HANDOFF.md](docs/HANDOFF.md): current state, how to work, open work.
+- [CHANGELOG.md](CHANGELOG.md): what changed per version.
+- [docs/plugins.md](docs/plugins.md) (drop-in plugins and add-ons), [docs/ui.md](docs/ui.md), [docs/indexes.md](docs/indexes.md).
+- [sqc/00-README.md](sqc/00-README.md): manual check suite. [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md): third-party licenses.
 
 ## Legal and disclaimer
 
 ViWo is a community tool under the MIT license. Fork it, change it, ship it; the community, not
 one author, decides what it becomes.
 
-**Use and misuse.** ViWo extracts files from games on your own machine and fits every use listed
-under Philosophy, including ones nobody here intends: piracy, cheating, circumventing protections.
-The project neither condones nor suggests such use. It is conscious that the tool could reasonably
-be used that way, and the person using it is responsible for how they use it, for what they do
-with what comes out, and for the license and terms of the games they work with. Distributing
-extracted assets is a separate matter from extracting them. The authors accept no responsibility
-for misuse.
+**Use and misuse.** ViWo extracts, analyses and patches games on your own machine and fits every
+use listed under Philosophy, including ones nobody here intends: piracy, cheating, circumventing
+protections. The project neither condones nor suggests such use. It is conscious that the tool
+could reasonably be used that way, and the person using it is responsible for how they use it,
+for what they do with what comes out, and for the license and terms of the games they work with.
+Distributing extracted assets is a separate matter from extracting them. The authors accept no
+responsibility for misuse.
 
-**Third-party tools and scripts.** ViWo downloads, pins and runs third-party tools (7-Zip, unrar,
-ffmpeg, vgmstream, GDRE Tools, GodotPckTool, AssetStudioModCLI, repak, retoc, QuickBMS, DataTool,
-RenderDoc, a .NET runtime, UnityPy, py7zr, unrpa, lz4) and community data (QuickBMS scripts and
+**Third-party tools and scripts.** ViWo downloads, pins and runs third-party tools (archive
+tools, engine unpackers and exporters, media tools, decompilers and disassemblers, debuggers and
+memory editors, capture tools, runtime agents and tracers; the full list with licenses is in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)) and community data (QuickBMS scripts and
 per-game indexes). Each keeps its own license and its own authors; ViWo's authors are not theirs.
 Some of these tools and scripts can be misused: a script that opens an encrypted format, a
-capture tool run next to a protected game, an unpacker pointed at an archive you have no right
-to. We do not condone or suggest that, and we are conscious of it. ViWo itself ships no code
-whose purpose is defeating copy protection, brute-forcing keys or evading anti-cheat; anything
-of that kind is, and stays, third-party, and the responsibility for using it is the user's.
+capture tool or a debugger run next to a protected game, an unpacker pointed at an archive you
+have no right to. We do not condone or suggest that, and we are conscious of it. ViWo itself
+ships no code whose purpose is defeating copy protection, brute-forcing keys or evading
+anti-cheat; anything of that kind is, and stays, third-party, and the responsibility for using
+it is the user's.
 
 **No boundaries in the code.** ViWo refuses nothing because of what a game is. Anti-cheat,
 online titles and terms-of-service-sensitive plugins produce warnings, you confirm once, and the
 tool runs; what follows (blocked captures, banned accounts, broken terms) is yours. What the code
 does guarantee is engineering, not policy: the game folder is copied from and never written to;
 writes from untrusted archive names are traversal-checked; secrets are never written to disk; the
-local server binds to localhost with a token; downloads are pinned, checksummed and HTTPS only,
-into `third_party/` and nowhere else.
+local server binds to this machine with a token; downloads are pinned, checksummed and HTTPS
+only, into `third_party/` and nowhere else.
 
 GPL tools only run as separate processes.
 
-Original author of ViWo: Weelson. 
+Original author of ViWo: Weelson.
 
 Special thanks: the **currently non-existent** community.
-

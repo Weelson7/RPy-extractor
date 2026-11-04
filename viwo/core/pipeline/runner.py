@@ -72,6 +72,9 @@ def extract(
     cancel: CancelToken,
     default_workspace: Path | None = None,
 ) -> ExtractionResult:
+    from ..context import require
+
+    require(rt, "extraction", "extraction")
     game = Path(request.game_path)
     if not request.game_path or not game.is_dir():
         raise ViwoError("invalid_request", f"game folder not found: {request.game_path}")

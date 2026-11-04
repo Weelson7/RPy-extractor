@@ -1,4 +1,4 @@
-"""L3: runtime capture pilot: refusal policy, crash-journal restore, fake RenderDoc run + diff."""
+"""L3: runtime capture pilot: refusal policy, fake RenderDoc run + diff."""
 
 from __future__ import annotations
 
@@ -14,10 +14,8 @@ from unittest import mock
 from tests.helpers import make_png, runtime, tree_hashes
 from viwo.contracts import CancelToken, ExtractionRequest, ViwoError
 from viwo.core.capture import CaptureRequest, capture, renderdoc
-from viwo.core.capture.journal import pending
 from viwo.core.capture.policy import check
 from viwo.core.capture.renderdoc import quiet_ui
-from viwo.core.pipeline.collect import sha256
 from viwo.core.pipeline.runner import extract
 from viwo.os import select_os
 
@@ -96,61 +94,6 @@ class PolicyTests(unittest.TestCase):
             ]
             self.assertEqual(len(warned), 3)  # online title, sensitive plugin, offline advice
             self.assertIn("online", warned[0])
-
-
-def _crashed_session(state: Path, game: Path, name: str) -> Path:
-    """What an interrupted overlay session leaves: config.ini replaced (backup kept) and
-    new/b.txt added in a new folder, both recorded in a JSON-lines journal."""
-    folder = state / name
-    (folder / "backup").mkdir(parents=True)
-    original = game / "config.ini"
-    (folder / "backup" / "0").write_bytes(original.read_bytes())
-    entries = [
-        {"rel": "config.ini", "backup": "backup/0", "original": sha256(original), "dirs": []},
-        {"rel": "new/b.txt", "backup": "", "original": "", "dirs": ["new"]},
-    ]
-    original.write_text("patched")
-    (game / "new").mkdir()
-    (game / "new" / "b.txt").write_text("B")
-    lines = [json.dumps({"game": str(game)}), *map(json.dumps, entries)]
-    (folder / "journal.json").write_text("\n".join(lines) + "\n", encoding="utf-8")
-    return folder / "journal.json"
-
-
-class JournalTests(unittest.TestCase):
-    def test_restore_after_a_crash(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            game = root / "game"
-            game.mkdir()
-            (game / "config.ini").write_text("original")
-            before = tree_hashes(game)
-            _crashed_session(root / "state", game, "s1")
-            [found] = pending(root / "state")
-            self.assertEqual(found.restore(), [])
-            self.assertEqual(tree_hashes(game), before)
-            self.assertFalse((game / "new").exists())  # folders the session created are gone
-            self.assertEqual(pending(root / "state"), [])
-
-    def test_damaged_journal_restores_what_it_can(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            game = root / "game"
-            game.mkdir()
-            (game / "config.ini").write_text("A")
-            file = _crashed_session(root / "state", game, "s2")
-            text = file.read_text(encoding="utf-8")
-            file.write_text(text[:-10], encoding="utf-8")  # truncated last line
-            warned = []
-            [found] = pending(root / "state", warned.append)
-            self.assertEqual(len(found.entries), 1)
-            self.assertTrue(warned and "damaged" in warned[0])
-            self.assertEqual(found.restore(), [])
-            self.assertEqual((game / "config.ini").read_text(), "A")  # the complete entry
-            (root / "state" / "s3").mkdir(parents=True)
-            (root / "state" / "s3" / "journal.json").write_text("garbage", encoding="utf-8")
-            self.assertEqual(pending(root / "state", warned.append), [])
-            self.assertTrue(any("unreadable" in w for w in warned))
 
 
 class CaptureRunTests(unittest.TestCase):

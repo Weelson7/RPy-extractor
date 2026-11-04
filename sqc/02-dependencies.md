@@ -21,6 +21,12 @@ Pinned tools (version / kind / how it runs), for the checks below:
 | datatool | 2.25.0.0+1151 | zip | Windows only, self-contained .NET |
 | renderdoccmd | 1.47 | zip | `renderdoccmd.exe` |
 | rdpython | 1.47 | alias of renderdoccmd | `qrenderdoc.exe --py` |
+| unrpyc | 2.0.4 | zip | `.rpyc` to `.rpy` (decode and analysis) |
+| cp77-hashes | 95074158 | data | WolvenKit's Cyberpunk path list, pinned by commit |
+| jdk | 25.0.5+8 | zip | Temurin JDK for Ghidra and unluac |
+| ghidra | 12.2 | zip, on demand | `viwo install ghidra` only, never by the preflight |
+| unicorn | 2.1.4 | worker | pip into `third_party\unicorn\`, never imported |
+| angr | 9.2.223 | worker, on demand | pip into `third_party\angr\`, never imported |
 | ilspycmd | 11.2.0.10050 | zip (NuGet nupkg) | `tools\any\win-x64\ilspycmd.exe` |
 | cpp2il | 2022.1.0-pre-release.21 | raw | `Cpp2IL.exe`, self-contained |
 | unluac | 2025-12-23 | raw | `unluac.jar`, run as `java -jar` on the pinned JDK |
@@ -65,7 +71,8 @@ Steps:
 4. `viwo install nosuchtool`
 
 Expected:
-- Step 2: stderr shows the 17 `[CORE:CHECK]` lines, then `[CORE:INSTALL] Installing repak into
+- Step 2: stderr shows one `[CORE:CHECK]` line per DEPENDENCY row of `viwo slots`, then
+  `[CORE:INSTALL] Installing repak into
   <repo>\third_party`, `Downloading repak_cli-...zip, KB: ...` lines, `Installed repak`;
   stdout `Installed: repak`; exit 0.
 - Step 3: same, the folder is replaced (no duplicate files, no `.repak-xxxx` temp folder left).
@@ -121,18 +128,17 @@ Expected:
 - Step 4: `CHECKING` run with `INSTALLED 0`; toast `<total>/<total> tools ready, 0 installed`.
 - 04 JOBS lists `TOOL INSTALL` and `STARTUP CHECK` jobs, all `SUCCEEDED`.
 
-## SQC-DEP-06 (P1) Tool on PATH or in `[tools]` wins over `third_party\`
+## SQC-DEP-06 (P1) `[tools]` wins over `third_party\`, which wins over PATH
 
 Steps:
 1. With `third_party\ffmpeg\ffmpeg.exe` installed and a system ffmpeg on PATH: `viwo slots`.
 2. Add `[tools] ffmpeg = C:\nowhere\ffmpeg.exe` to `startup.ini`; `viwo slots`.
 
 Expected:
-- Step 1: `ffmpeg found` with the PATH location? No: `third_party\` is injected as a config
-  override and wins over PATH. The location shown is `third_party\ffmpeg\ffmpeg.exe`. (The ini
-  `[tools]` entry is the only thing that beats `third_party\`.)
-- Step 2: `ffmpeg missing` (the override path does not exist and the ini wins); `media.encode`
-  unbound. Remove the line: back to `third_party\`.
+- Step 1: `ffmpeg found` at `third_party\ffmpeg\ffmpeg.exe`, not the PATH copy.
+- Step 2: the `[tools]` entry wins, but its path does not exist, so the locator falls back to
+  the next sources (environment, PATH, known folders): `ffmpeg found` on PATH (or `missing` and
+  `media.encode` unbound when no system ffmpeg exists). Remove the line: back to `third_party\`.
 
 ## SQC-DEP-07 (P1) QuickBMS scripts folder is the default for `[options.quickbms]`
 
@@ -154,8 +160,9 @@ Preconditions: Linux host.
 Steps: `viwo install --all`; `ls -l third_party/repak/*/repak third_party/dotnet/dotnet
 third_party/renderdoccmd/renderdoc_1.47/bin/renderdoccmd`; `viwo slots`.
 
-Expected: all three are `-rwxr-xr-x`; every pinned Linux tool is `found`; `datatool` is listed
-as `missing` with the hint (no Linux build) and is not offered for install.
+Expected: all three are `-rwxr-xr-x`; every pinned Linux tool is `found`; the Windows-only pins
+(`datatool`, `cpp2il`, `keystone`, `x64dbg`, `cheatengine`, `ue4ss`, `bepinex`, `cp77-hashes`)
+are listed as `missing` with their hint and are not offered for install.
 
 ## SQC-DEP-09 (P2) Frozen bundle: Python packages are not installable
 

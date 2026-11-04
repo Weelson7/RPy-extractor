@@ -89,9 +89,10 @@ def capture_command(command) -> None:
     """capture: unattended by default (--auto SECONDS: one frame, then the game stops; 0 = F12)."""
     cp = command("capture", "runtime GPU capture with RenderDoc (opt-in; see --help)")
     cp.description = (
-        "Runs the game under RenderDoc and harvests every capture you take (F12) into the "
-        "workspace. Opt-in: add `capture` to [startup] features in the ini and pass --confirm "
-        "once per game. Anti-cheat and online titles only produce warnings; you are responsible."
+        "Runs the game under RenderDoc: one frame after --auto seconds, then the game stops "
+        "(--auto 0: take captures yourself with F12, quit when done); every capture is harvested "
+        "into the workspace. Opt-in: add `capture` to [startup] features and pass --confirm once "
+        "per game. Anti-cheat and online titles only produce warnings; you are responsible."
     )
     cp.add_argument("game", type=Path, help="the game folder")
     cp.add_argument("--exe", type=Path, required=True, help="the game executable to launch")
@@ -173,7 +174,9 @@ def diff_command(command) -> None:
     df.add_argument("old", type=Path, help=".analysis/ghidra-headless/<key> of the older version")
     df.add_argument("new", type=Path, help="the same folder for the newer version")
     df.add_argument(
-        "--out", type=Path, help="where diff.json and diff.txt go (default: beside new)"
+        "--out",
+        type=Path,
+        help="where diff.json and diff.txt go (default: <new>/../../diff/<old>--<new>/)",
     )
 
 
@@ -191,6 +194,9 @@ def analysis_command(command) -> None:
     an.add_argument("--target", metavar="KEY", help="target key from --list")
     an.add_argument("--list", action="store_true", help="only list the targets")
     an.add_argument("--open", metavar="HANDOFF", nargs="?", const="", help="continue in the GUI")
+    an.add_argument(
+        "--confirm", action="store_true", help="debugger/memory handoffs: I confirm (once per game)"
+    )
     an.add_argument("--timeout", type=int, default=0, help="seconds (default 4 h)")
     an.add_argument(
         "--slot", default="", help="another analyzer for the target (see --list extras)"

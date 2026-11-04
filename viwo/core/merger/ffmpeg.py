@@ -31,7 +31,7 @@ AUDIO_FMT = "aformat=sample_rates=48000:channel_layouts=stereo,aresample=48000"
 
 
 class FfmpegBackend(Backend):
-    backend_id, license, isolation = "ffmpeg", "LGPL-2.1-or-later", "subprocess"
+    backend_id, license, isolation = "ffmpeg", "GPL-3.0-or-later", "subprocess"
     families = frozenset({"media.encode"})
 
     requires = (FFMPEG, FFPROBE)

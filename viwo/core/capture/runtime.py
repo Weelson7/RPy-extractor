@@ -60,12 +60,9 @@ def run(rt, kind: str, req: RuntimeRequest, sink=None, cancel=None) -> dict:
 
 
 def _enabled(rt) -> None:
-    if "capture" not in rt.config.features:
-        raise ViwoError(
-            "refused",
-            "the dynamic arm is off",
-            hint="add capture to [startup] features (11 SETTINGS)",
-        )
+    from ..context import require
+
+    require(rt, "capture", "the dynamic arm")
 
 
 def runtime_dir(workspace: Path, *parts: str) -> Path:

@@ -123,6 +123,7 @@ def analyze_command(rt, args) -> Envelope:
         raise ViwoError("invalid_request", "--set takes KEY=VALUE", hint="e.g. --set start=0x1400")
     options = {key: value for key, _, value in pairs}
     options.update({"timeout_s": args.timeout} if args.timeout else {})
+    options.update({"confirm": True} if getattr(args, "confirm", False) else {})
     req = AnalysisRequest(args.game, args.workspace, args.target, options, args.slot)
     if args.open is not None:
         opened = open_in(rt, req, args.open)

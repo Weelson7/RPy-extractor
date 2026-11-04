@@ -26,7 +26,6 @@ from ..scan_exclusions import excluded
 from ..steps import tell, teller
 from ..workspace import claim, write_atomic
 from .audio import LoopbackRecorder
-from .journal import pending
 from .policy import DEFAULT_AUTO, check, warnings_for
 from .renderdoc import RENDERDOCCMD, RenderDocCapture
 from .runtime import FridaTrace
@@ -66,16 +65,6 @@ class CaptureRequest:
     workspace: Path
     confirmed: bool = False
     capture_after: float = DEFAULT_AUTO  # seconds; 0 = attended (F12, quit when done)
-
-
-def _restore_pending(rt, say) -> None:
-    warn = teller(say, "restore", "warn") or (lambda m: None)
-    for journal in pending(rt.temp_root.parent / "capture", warn):
-        tell(say, f"Restoring an interrupted session in {journal.game}", "restore", "warn")
-        if journal.restore():
-            raise ViwoError(
-                "failed", f"could not restore {journal.game}; check it before capturing"
-            )
 
 
 def _prepare(rt, req: CaptureRequest) -> set[str]:
@@ -123,7 +112,6 @@ def capture(rt, req: CaptureRequest, sink=None, cancel=None) -> dict:
     if not ws.inside(req.game, req.exe) or not req.exe.is_file():  # policy covers the game only
         raise ViwoError("refused", "the executable must be a file inside the game folder")
     warnings = check(rt, req.game, req.confirmed, sensitive_plugins(rt, req.game))
-    _restore_pending(rt, sink)
     known = _prepare(rt, req)
     gathered, used, job, same = _run(rt, req, known, sink, cancel)
     new = gathered.provenance

@@ -10,7 +10,7 @@ Four kinds of contribution, from the most valuable to the most involved:
 
 ## 1. An index entry (knowledge about one game)
 
-Indexes live in `indexes/games/<slug>/<game-version>/index.json` and will move to the
+Indexes live in `indexes/games/<slug>/<game-version>/index.json`, laid out as the future
 `vidya_wormhole_indexes` repository (`docs/indexes.md`). One entry says how to recognize a game,
 which engine plugin and options it needs, which pinned tools, and which QuickBMS scripts.
 
@@ -39,23 +39,29 @@ license allows it. In an index entry:
 
 ## 3. A tool pin (a new third-party tool, or a version bump)
 
-`viwo/data/tools.json` pins every tool: `version`, `license`, and per OS the `url` (HTTPS only),
-`size`, `sha256`, `kind` (`zip`, `tar`, `gz`, `raw`, `msi`, `sfx`), `find` (the file to run),
-optional `argv` (`{path}`, `{dotnet}`), `needs`, `from`, `mkdir`. Rules:
+`viwo/data/tools.json` pins every tool: `version`, `license`, optional `on_demand` (installed only
+when asked by name), and per OS the `url` (HTTPS only), `size`, `sha256`, `kind` (`zip`, `tar`,
+`gz`, `raw`, `msi`, `sfx`), `find` (the file to run), optional `argv` (`{path}`, `{dotnet}`,
+`{java}`), `needs`, `from`, `mkdir`. Python packages go under `python` (a pip requirement) or,
+when ViWo must never import them (GPL code), under `workers` with a script in
+`viwo/data/workers/` (contract doc 10). Rules:
 
 - Compute size and sha256 from the real asset you downloaded and ran. Never pin without both.
 - Official releases only (the tool's own GitHub releases or its author's HTTPS site).
 - GPL/AGPL tools run as separate processes (`isolation = "subprocess"` on the backend).
+- Nothing may ask the user anything: no installer, no elevation; pre-answer first-run dialogs.
 - Bump `version` together with its checksum, then `python tools/notices.py` and run
-  `VIWO_L5=1 python -m unittest tests.test_thirdparty` once with network access.
+  `VIWO_L5=1 python -m unittest tests.test_thirdparty` once with network access. A Python pin
+  also needs its hash locks: `python tools/pin_python.py` (writes `viwo/data/locks/`).
 
 ## 4. Code (a plugin, a backend, a fix)
 
 - Python 3.11+, stdlib first. Start with `ARCHITECTURE.md`, then `docs/contract/`.
 - An engine plugin is one folder under `viwo/plugins/<engine>/` implementing
   `viwo/contracts/plugin.py` (`EnginePlugin` with a `PluginManifest`, `detect`, slot definitions
-  and backends). Plugins never import each other or the core. Drop-in plugins with manifests
-  are the direction (`docs/contract/02-engine-plugins.md`): no hardcoded engine lists.
+  and backends); it is found by scanning, no list to edit. Plugins never import each other or
+  the core. Out-of-tree plugins are drop-ins with a `plugin.json` (`docs/plugins.md`). After
+  adding or changing slots, run `viwo config generate`.
 - Caps are enforced (`loc_caps.ini`, `tools/loc_count.py`): function 40 lines, class 200,
   file 250, params 6, line length 100, JS file 300. Split functions rather than bending them.
 - Tests: synthetic fixtures only (nothing from a commercial game); real-tool tests behind
@@ -66,6 +72,8 @@ optional `argv` (`{path}`, `{dotnet}`), `needs`, `from`, `mkdir`. Rules:
   the checks, bumps `va.b.c` (c every commit, b per feature, a per finished roadmap), commits
   and tags. A pre-commit hook refuses anything else. Never put model names in commit messages.
 - CI runs only on `vN.0.0` tags or by hand (it costs the owner money). Test locally.
+- Update the docs with the change: they describe the current state only (`docs/contract/`,
+  `docs/contract/CONFORMANCE.md`); history goes into `CHANGELOG.md`.
 
 ## Reporting
 

@@ -1,28 +1,34 @@
 # 12 UI and UX
 
 Area code `UI`. Browser window sizes: 1920x1080, 1440x900, 1280x800, 1024x768 (use the browser's
-device toolbar or resize the window; the rail collapses to numbers under 1200 px). Views: 01
-EXTRACT, 02 WORKSPACE, 03 SORT, 04 JOBS, 05 SYSTEM, 06 MERGER, 07 SURVEY, 08 CLEANUP, 09 PATCHED
-COPY. Error codes (`viwo\web\js\ui.js` ERRORS): offline, http, invalid_request, not_found,
-busy, unavailable, needs_key, needs_decision, failed, cancelled, refused, internal.
+device toolbar or resize the window; the rail collapses to numbers under 1200 px). Views, by arm:
+STATIC (`#static` home, 07 SURVEY, 01 EXTRACT, 02 WORKSPACE, 03 SORT, 08 CLEANUP, 06 MERGER, 12
+ANALYSIS), DYNAMIC (`#dynamic` home, 10 CAPTURE, 13 RUNTIME), PATCHING (`#patching` home, 09
+PATCHED COPY, 14 PATCHES + MODS), global strip (05 SYSTEM, 04 JOBS, 11 SETTINGS). Error codes
+(`viwo\web\js\ui\feedback.js` ERRORS): offline, http, invalid_request, not_found, busy,
+unavailable, needs_key, needs_decision, failed, cancelled, refused, internal.
 
 ## SQC-UI-01 (P0) Every view at 1920 and 1440
 
-Steps: open each of the nine views (rail click, then the hash `#system` etc.) at 1920, then 1440;
-scroll to the bottom of each.
+Steps: at 1920, then 1440, open each arm with the arm switch above the rail, then every view of
+that arm from the rail; open SYSTEM, JOBS and SETTINGS from the top-bar strip; scroll to the
+bottom of each.
 
-Expected: no horizontal scrollbar; the view head (`01 EXTRACT`, subtitle), panels with their
-`NN.X` tags, and the action bar (01, 09) are visible; text does not overflow its panel; the top
-bar shows the chips `OS`, `PLUGINS`, `FORMATS n/m READY`, `JOB IDLE` and the `WORKSPACE` path;
+Expected: no horizontal scrollbar; each arm opens on its home (`END-TO-END PATH`, every step
+`SHIPPED` or `ROADMAP` with an `OPEN` link); the view head (`01 EXTRACT`, subtitle), panels with
+their `NN.X` tags and the action bars (01, 09) are visible; text does not overflow its panel;
+the top bar shows the strip (SYSTEM, JOBS, SETTINGS), the GAME selector, the `WORKSPACE` path and
+the chips `OS`, `PLUGINS`, `FORMATS n/m READY`, `JOB IDLE`; opening a global view keeps the arm;
 the rail marks the current view (`aria-current`); the document title is `<VIEW> // ViWo`.
 
 ## SQC-UI-02 (P0) Every view at 1280 and 1024
 
 Steps: as 01 at 1280 and 1024.
 
-Expected: under 1200 px the rail shows only the numbers `01..09` with the names as tooltips; two-
-column grids become one column; tables scroll inside their panel, never the page sideways; the
-action bar stays reachable; nothing overlaps the activity dock.
+Expected: under 1200 px the rail shows only the numbers of the current arm's views with the
+names as tooltips, and the `OS` and `PLUGINS` chips are hidden; two-column grids become one
+column; tables scroll inside their panel, never the page sideways; the action bar stays
+reachable; nothing overlaps the activity dock.
 
 ## SQC-UI-03 (P0) Activity console dock
 
@@ -61,12 +67,12 @@ Steps and where to trigger each:
     restart, run a survey (restore the file afterwards).
 
 Expected, per code, the box title and NEXT text exactly:
-- offline: `VIWO IS NOT REACHABLE` / `Start ViWo again (python3 Start.py), then reload this page.`
+- offline: `VIWO IS NOT REACHABLE` / `Start ViWo again (viwo serve, or Start.py), then reload this page.`
 - http: `UNEXPECTED SERVER REPLY` / `Reload the page. If it keeps happening, check the terminal ViWo runs in.`
 - invalid_request: `CHECK YOUR INPUT` / `A path or option is not valid. Correct it and try again.`
 - not_found: `NOT FOUND` / `The file or folder is gone, or the path has a typo. Check it, or refresh this view.`
-- busy: `WORKSPACE BUSY` / `Another job is using this workspace...` + `Open 04 JOBS →`
-- unavailable: `TOOL NOT INSTALLED` / `A tool this needs is missing. Install it, restart ViWo and try again.` + `Open 05 SYSTEM →`
+- busy: `WORKSPACE BUSY` / `Another job is using this workspace. Wait for it to finish, then try again.` + `Open 04 JOBS →`
+- unavailable: `TOOL NOT INSTALLED` / `A tool this needs is missing. Install it with one click in 05 SYSTEM, then try again.` + `Open 05 SYSTEM →`
 - needs_key: `ENCRYPTION KEY NEEDED` / `These files are encrypted. Enter the key under ENGINE OPTIONS, then run again.` + `Open 01 EXTRACT →`
 - needs_decision: `YOUR CHOICE IS NEEDED` / `Answer the question ViWo asked, then run again.` (01 shows the modal instead)
 - failed: `IT DID NOT WORK` / `The message above says why. The full log is in 04 JOBS.` + `Open 04 JOBS →`

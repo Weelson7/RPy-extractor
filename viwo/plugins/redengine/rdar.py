@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import ctypes
 import struct
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -142,10 +141,11 @@ def root_class(data: bytes) -> str:
 
 
 class Oodle:
-    """`OodleLZ_Decompress` from the decompressor the game ships (Windows only)."""
+    """`OodleLZ_Decompress` from the decompressor the game ships, loaded by the OS layer (which
+    answers None where a Windows DLL cannot load)."""
 
-    def __init__(self, dll_path: Path) -> None:
-        self.lib = ctypes.CDLL(str(dll_path))
+    def __init__(self, lib) -> None:
+        self.lib = lib
         fn = self.lib.OodleLZ_Decompress
         fn.restype = ctypes.c_int64
         fn.argtypes = [
@@ -167,15 +167,14 @@ class Oodle:
         self.fn = fn
 
     @classmethod
-    def beside(cls, archive: Path) -> "Oodle | None":
+    def beside(cls, archive: Path, host) -> "Oodle | None":
         """The game's own `oo2ext_*.dll`, searched upwards from the archive (`bin/x64`)."""
-        if sys.platform != "win32":
-            return None
         for parent in [archive.parent, *archive.parents]:
             hits = sorted((parent / "bin" / "x64").glob("oo2ext_*_win64.dll"))
             if hits:
                 try:
-                    return cls(hits[0])
+                    lib = host.load_native(hits[0])
+                    return cls(lib) if lib is not None else None
                 except OSError:
                     return None
         return None

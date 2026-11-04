@@ -1,8 +1,14 @@
 # ViWo (Vidya Wormhole): instructions for coding agents
 
-Local-first game reverse-engineering platform, asset-extraction oriented. Python 3.11+, stdlib
-first, plain-ES-module web UI (no build step). Start with `ARCHITECTURE.md`, then
-`docs/HANDOFF.md` (current state and open work), then `docs/contract/` when you need intent.
+Local-first game reverse-engineering orchestrator over three arms (static, dynamic, patching).
+Python 3.11+, stdlib first, plain-ES-module web UI (no build step). Start with `ARCHITECTURE.md`,
+then `docs/HANDOFF.md` (current state, how to work, open work), then `docs/contract/` (the
+normative design; `CONFORMANCE.md` says what is implemented, partial or open).
+
+## Docs (owner's rule)
+Docs are the source of truth and describe the current state only. Update them in the commit that
+changes the behaviour (contract doc, `CONFORMANCE.md` row, HANDOFF open work); history goes into
+`CHANGELOG.md` only. Keep contract section numbers stable: code cites them as "doc N.M".
 
 ## Philosophy (owner's decision, confirmed; README "Philosophy" is the reference)
 Community tool, MIT, forkable. It is for everyone who wants to look inside a game and judges
@@ -15,8 +21,12 @@ disclaimer. Engineering properties are not boundaries; any that blocks a wanted 
 becomes an option.
 
 ## Engineering rules
-- The game folder is read-only. Extraction copies; repack writes a separate, marked patched copy;
-  only runtime-capture agents may touch a game folder, and only through `core/capture/journal.py`.
+- The game folder is read-only. Extraction copies; repack, patch sets, mods and runtime agents
+  write a separate, marked patched copy (`.viwo-patched/`). Nothing writes into a game folder.
+- Never silent (owner's rule): a fallback to the spare, an empty export, a skipped or unreadable
+  file is said in the CLI and the GUI (`Outcome.fallback`, warn events).
+- Minimal prompts (owner's rule, critical): whatever a tool needs on first run or after a config
+  change happens by itself, off screen: no dialogs, no wizards, no installers, no UAC.
 - Keys come from the user or from the game's own local files and are verified before use (D18).
 - Secrets and found keys are never logged or written to disk (run records store `<secret>`).
 - GPL/AGPL tools run only as separate processes, never imported.
@@ -36,11 +46,14 @@ py -3.13 -m venv .venv; .venv\Scripts\Activate.ps1
 pip install -e ".[unity,sevenzip,renpy,dev]"
 ruff format viwo tests tools packaging; ruff check viwo tests tools packaging
 python tools/loc_count.py --report          # caps: run AFTER ruff format
-python -m unittest discover -s tests -t .    # ~110 tests, ~30 s; real-tool tests need VIWO_L5=1
+python -m unittest discover -s tests -t .    # 287 tests, ~10 min; real-tool tests need VIWO_L5=1
 viwo serve                                   # web UI, opens the browser
 viwo config check startup.ini distros/*.ini  # strict config validation
 ```
-Always run format, lint, caps and the full test suite before committing.
+Always run format, lint, caps and the full test suite before committing. After changing plugins
+or slots run `viwo config generate`; after changing a tool pin run `python tools/notices.py`.
+Real-game passes run from a worktree at a committed version (`tools/games_pass.ps1`,
+`docs/HANDOFF.md`), never from a tree being edited.
 
 ## Versioning and commits (owner's rule, enforced by a pre-commit hook)
 Version `va.b.c`: `a` product release (roadmap finished; CI runs on its tag), `b` feature
@@ -59,8 +72,9 @@ a reason in the comment next to it. Split functions rather than bending the caps
 ## CI policy (owner's rule: GitHub Actions minutes cost money)
 - CI runs only for major release tags (`vN.0.0`) or when the owner starts it by hand.
 - Never dispatch workflows yourself unless the owner asks for that specific run. Test locally.
-- `release.yml` (manual, one Windows job) builds wheel + sdist + the portable `viwo.exe` bundle
-  and publishes the GitHub release. Run it only when the owner asks to ship.
+- `release.yml` (one Windows job, on a `vN.0.0` tag push or by hand) builds wheel + sdist + the
+  portable `viwo.exe` bundle and publishes the GitHub release with `docs/release-notes.md` as
+  its body. Run it only when the owner asks to ship; a `vN.0.0` tag needs the owner's approval.
 
 ## Windows gotchas
 - Store relative paths in JSON/provenance with `.as_posix()`; compare paths with `Path`, not strings.
@@ -72,8 +86,11 @@ a reason in the comment next to it. Split functions rather than bending the caps
   handing them to Python.
 
 ## Layout cheat sheet
-- `viwo/contracts/` interfaces only · `viwo/os/` OS layer · `viwo/core/` pipeline, wiring, analysis,
-  (ini + distros), carve, decode, roundtrip, sanitizer, survey, capture, curation, merger
-- `viwo/plugins/<engine>/` one folder per engine · `viwo/api/` server · `viwo/web/` UI
+- `viwo/contracts/` interfaces only · `viwo/os/` OS layer · `viwo/backends/` core unarchivers
+- `viwo/core/` wiring (ini, registry, binder, distros), pipeline, carve, decode, curation, merger,
+  sanitizer, survey, analysis (static arm), capture (dynamic arm), roundtrip, patchsets, mods,
+  thirdparty, workers, preflight, indexes
+- `viwo/plugins/<engine>/` one folder per engine · `viwo/api/` server · `viwo/web/` UI ·
+  `viwo/cli*.py` CLI (commands grouped by arm in `cli_arms.py`)
 - `distros/` generated configs (`viwo config generate`; a test guards against drift)
 - `packaging/` frozen build (`build_portable.py`, `viwo_entry.py`)

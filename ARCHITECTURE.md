@@ -1,86 +1,94 @@
-# ViWo architecture (overview)
+# ViWo architecture
 
-The full contract is in [docs/contract/](docs/contract/README.md); this page is the map.
+The map of the code. The normative design is [docs/contract/](docs/contract/README.md); what is
+implemented, partial or open is in [CONFORMANCE.md](docs/contract/CONFORMANCE.md).
 
-ViWo is a **full game reverse-engineering orchestrator** over three arms, all built on the same
-slot/backend, OS-layer, pinned-tool and provenance plumbing:
+ViWo is a headless core with two clients (the CLI and the web UI) over three arms: **static**
+(survey, extraction, curation, code analysis), **dynamic** (capture, runtime agents, dumps,
+traces, audio, debugger and memory handoffs) and **patching** (round trip, patch sets, mods).
+Every tool sits behind a slot with a main and an optional spare backend; capability comes from
+pinned third-party tools; ViWo writes the glue.
 
-- **Static** — extraction (the mature arm: unpack, export, decode, carve) plus code and data
-  analysis (Ghidra and friends: disasm/decompile, type/symbol recovery, bytecode VMs, protector ID,
-  emulation, version diffing). Reads copies, never runs the game. Docs 3 and 6.
-- **Dynamic/runtime** — capture, debugging, instrumentation/tracing, memory, hooking, own-traffic
-  networking, profiling. Runs or attaches to the game (agents in a patched copy, doc 11.5), behind the
-  `runtime` feature flag with warnings and one opt-in. Doc 11.
-- **Authoring** — asset round trip, binary patch sets with AOB signatures, and mod-runtime
-  packaging. Writes only a separate, marked patched copy. Doc 18.
+## Layer rule
 
-Each arm offers headless backends for batch/automation and **"continue in &lt;tool&gt;" handoffs**
-(doc 8.3a) that prepare a target and open a GUI tool (Ghidra, x64dbg, RenderDoc, ReClass.NET) as a
-tracked child subprocess. ViWo writes the glue; capability is pinned third-party tools (philosophy
-point 5: no first-party borderline code). No capability is gated for what a game is (D22).
+```
+contracts  <-  os  <-  plugins, backends  <-  core  <-  api, cli*
+```
+
+A module imports only its own layer and the layers to its left (`tests/test_l0_static.py`).
+`contracts` imports nothing from the app; plugins never import `core` or each other; core reaches
+plugins, backends and the OS layer through the registries filled at boot. GPL/AGPL tools run
+only as separate processes.
+
+## Module map
 
 ```
 viwo/
-  contracts/   interfaces + value types only (stdlib, no app imports)
-  os/          OS layer: LinuxOS, WindowsOS (processes with tree-kill, tool lookup,
-               filename rules, folder/file pickers)
+  contracts/   interfaces and value types (stdlib only)
+    plugin.py      EnginePlugin, PluginManifest, ExtractionContext, GameProbe, CliCommand
+    slots.py       SlotDefinition, Backend, Unarchiver, Exporter, Carver, Decoder, Prober, Packer
+    analysis.py    AnalysisTarget, Analyzer, Handoff, LaunchSpec
+    runtime.py     RuntimeAgent
+    pipeline.py    ExtractionRequest/Result, Stage, CONTRACT_VERSION
+    types.py, errors.py, os.py, workspace.py   value types, envelope, OS interfaces, layout rules
+  os/          LinuxOS, WindowsOS (_shared.py): processes with tree kill and tracked children,
+               tool lookup, filename rules, pickers, homes, scan exclusions, process list, dumps
+  backends/    core unarchivers (zip, tar, 7-Zip, py7zr, unrar) and the zip packer
+  plugins/     one folder per engine: generic, renpy, unity, godot, unreal, doom, rpgmaker,
+               kirikiri, electron, source, bethesda, genie, warscape, redengine, taleworlds,
+               quickbms, overwatch
   core/
-    wiring/    startup.ini parsing, plugin registry, slot binder (main / spare / promoted)
-    pipeline/  probe -> detect -> select -> identify/carve -> unpack -> export -> collect
-               -> verify -> report, plus the game-folder guard
-    curation/  extension groups, sorting (keep / trash / rename / undo), three trash areas
-    merger/    media merger: candidates, timeline expansion, ffmpeg filtergraph and builds
-    carve/     signature carver (format sizers) and zlib/gzip stream inflation
-    capture/   dynamic arm: warnings policy, RenderDoc, dumps, traces, agents in a patched copy
-    analysis/  static analysis arm (A1): targets from the plugins, Ghidra headless into
-               <workspace>/.analysis/, "Continue in Ghidra" handoff as a tracked child
-    decode.py  DECODE stage: game audio -> WAV (vgmstream), DDS -> PNG, Bink -> MP4
-    roundtrip.py  edit set -> plan -> patched copy -> pack.* slots -> verify -> report
-    sanitizer.py  phase 1: zero-byte, junk, wrong extension, duplicates, health; journaled
-    survey.py  read-only coverage report per game / library
-    jobs.py    background work with events, cancellation and results
-    workspace.py  ownership marker, re-extraction policy, per-workspace lock (+ lock file)
-    thirdparty.py / preflight.py  pinned tool installer (tools.json) and the startup check
-    indexes.py  per-game indexes (indexes/): validate, match, install tools and scripts, update
-    provenance.py / diag.py  provenance rewrite on moves; diagnostics bundle
-  backends/    core unpackers: zip, tar (stdlib), 7-Zip, py7zr, unrar; zip packer
-  plugins/     generic, renpy, unity, godot, unreal (repak/retoc, verified AES keys), doom (WAD),
-               rpgmaker, kirikiri (XP3), electron (asar), source (VPK), bethesda (BSA/BA2),
-               genie (DRS), warscape (Total War packs), redengine (Cyberpunk RDAR, Kraken
-               through the game's own Oodle DLL), taleworlds (Bannerlord TPAC), quickbms
-  api/         local web server (token, JSON-only, Host check), JSON handlers (tools, capture,
-               settings, system), job routes
-  web/         the web UI (plain HTML/CSS/ES modules, no build step): landing, a global strip
-               (SYSTEM, JOBS, SETTINGS, game, workspace) and three arms (STATIC, DYNAMIC,
-               PATCHING), each opening on a home view with its end-to-end path
-  data/        tools.json (pinned tools), capture_policy.json (warnings, never refusals),
-               ghidra/ViwoExport.java (the headless export script)
-  cli.py       commands grouped by arm (cli_arms.py): static (survey, detect, extract, replay,
-               unpack, sanitize, analyze, diff), dynamic (capture, dump, trace, agent, record),
-               patching (repack, patch, mod), system (serve, info, slots, install, config,
-               indexes, diag); `viwo <arm>` lists one, `viwo <arm> <command>` = `viwo <command>`
+    wiring/      ini parsing, plugin registry (scan, drop-ins, entry points), slot binder,
+                 boot (Runtime), distros, conformance checks, settings writer
+    pipeline/    probe, detect, select, identify, unpack, export (+ wrapper re-detection),
+                 carving, collect, failover, guard (game-folder checks), runner, ticker
+    carve/       signature carver (format sizers) and compressed-stream scan
+    decode.py    DECODE: audio to WAV, DDS to PNG, Bink to MP4; media.probe backends
+    curation/    extension groups, sorting with undo, three trash areas
+    merger/      media merger: candidates, timeline, ffmpeg builds
+    sanitizer.py, sanitizer_rules.py   cleanup: plan, apply, undo
+    survey.py, surveys.py              coverage report per game or library, numbered reports
+    analysis/    static analysis: targets, Ghidra (headless + GUI), managed analyzers, Detect It
+                 Easy, emulate/symbolic workers, version diff, x64dbg and Cheat Engine handoffs
+    capture/     dynamic arm: policy (warnings, confirmation), RenderDoc capture and harvest,
+                 runtime agents, dump, trace, profile, audio loopback
+    roundtrip.py, roundtrip_edits.py   edit set, plan, patched copy, pack, verify
+    patchsets.py, patch_tools.py       T1 patch sets (offset, RVA, AOB, Keystone, capstone)
+    mods.py                            T2 mod packages
+    jobs.py, workspace.py, records.py, provenance.py, context.py, steps.py, media.py
+    thirdparty.py, workers.py, preflight.py   pinned installer, worker tools, startup check
+    scan_exclusions.py, indexes.py, diag.py   antivirus exclusions, per-game indexes, diagnostics
+  api/         server.py (token, JSON only, Host check, preview), routes.py (envelope routes),
+               handlers*.py (legacy-shaped routes per area), app.py (jobs, locks, payloads),
+               plugin_assets.py (plugin UI modules)
+  web/         index.html, css/base.css + css/themes/, js/ (api, registry, game selector,
+               progress, ui/ component library, views/ one module per view)
+  data/        tools.json (pins), locks/ (hash locks), capture_policy.json, ghidra/ViwoExport.java,
+               workers/ (emulate.py, symbolic.py)
+  cli.py       entry point; cli_args.py (arguments), cli_arms.py (arms), cli_check.py (slots
+               --check, unpack --slot, analyze, diff), cli_extra.py (survey, sanitize, repack,
+               install, config, indexes, diag), cli_dynamic.py, cli_patch.py, cli_format.py
+tools/         version.py, loc_count.py + caps_ini.py, coverage_check.py, notices.py,
+               pin_python.py, integration_games.py, games_pass.ps1, status_pdf.py
+packaging/     build_portable.py, viwo_entry.py (the frozen viwo.exe)
+indexes/       per-game indexes (future vidya_wormhole_indexes repository)
+distros/       twelve generated ini files
+examples/      plugins/hello: a drop-in with a CLI command and a UI module
+sqc/           manual check suite, real-game list, CTF flags, fixture builder
+tests/         unittest suites L0-L6 and the browser smoke (tests/ui/smoke.mjs)
 ```
 
-Dependency direction: every layer may use the layers listed above it in this tree (contracts
-first), never the reverse. Plugins never import each other or the core.
-
-Key invariants (tested):
+## Invariants (each has a test)
 
 - The game folder is read-only: COLLECT copies from it, staging is the only place files are
-  moved from, and every run compares the game folder before and after.
-- Only folders carrying the `.viwo-workspace` marker are ever cleared.
-- Each slot has a main and a spare backend; retryable failures fall through to the spare,
-  "needs key" does not.
-- GPL/AGPL tools run as separate processes; Ren'Py pickles are read with an allow-list.
-- Secrets are never written to disk (run records store `<secret>`); found AES keys are never logged.
-- Round trip writes only into a separate, marked patched copy and verifies every packed member.
-- No policy boundaries: nothing is refused because of what a game is. Anti-cheat, online titles and
-  sensitive plugins produce warnings; the user confirms once and is responsible (README: Philosophy).
-- Two job classes: **static** jobs (extraction, `analysis.*`) read copies and never run or touch the
-  game; **dynamic** jobs (`capture/runtime/debug/trace/memory/hook/net/profile`) touch the running
-  game and so go through the `runtime` feature flag and the opt-in (agents work in a patched
-  copy). A GUI handoff that runs code in the game is a dynamic action; one that opens a static
-  file is not.
-- GUI tools are launched as tracked child subprocesses inside ViWo's process tree, so tree-kill and
-  timeouts reach them (doc 8.3a, doc 1).
-- Code size caps: see `loc_caps.ini` and `tools/loc_count.py`.
+  moved from, every run compares the game folder before and after. Repack, patch sets, mods and
+  runtime agents write a separate, marked patched copy.
+- Only folders carrying `.viwo-workspace` are ever cleared.
+- Retryable failures fall through to the spare and the fallback is always said; `needs_key`
+  never falls through.
+- Ren'Py pickles are read with an allow-list; `.rpyc` is decompiled in a separate process.
+- Secrets and found keys are never written to disk or logged (run records store `<secret>`).
+- Nothing is refused because of what a game is: anti-cheat, online titles and sensitive plugins
+  produce warnings; the dynamic arm and analysis are feature switches.
+- GUI tools and launched games are tracked children, killed when ViWo exits.
+- Code size caps: `loc_caps.ini`, `tools/loc_count.py`.

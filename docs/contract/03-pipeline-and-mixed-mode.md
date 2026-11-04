@@ -1,113 +1,93 @@
-# 3. Pipeline, routing and mixed mode
+# 3. Extraction pipeline, routing and mixed mode
 
-## 3.1 Stages (normative since 1.1)
+## 3.1 Stages
 
-> **History.** Draft 3 proposed INVENTORY/CATALOG and an in-pipeline SANITIZE stage. Decision
-> (D12, 1.1): there is no INVENTORY stage; UNPACK identification plus the EXPORT stage cover it,
-> and `plugins[].inventoryCount` reports what each export saw. The sanitizer is a separate tool
-> (doc 5: `viwo sanitize`, 08 CLEANUP), never a stage of an extraction. The table below is the
-> implemented order (`contracts/pipeline.py` `Stage`).
+`viwo/core/pipeline/runner.py` runs these in order (`contracts/pipeline.py` `Stage` names them).
+Every stage sends progress events with its stage name and checks the cancel token between files.
 
-| Stage | Owner | What happens | v1 equivalent |
-|-------|-------|--------------|---------------|
-| PREPARE | core | resolve the target workspace by the **ownership rule** (doc 4.3): never clear a folder without the workspace marker; create `staging/<plugin_id>/` and `scratch/` | PHASE 0 (v1 `rmtree`s whatever the session points at: H2) |
-| PROBE | core | build one GameProbe | — (was an rglob per marker set) |
-| DETECT | core + plugins | call `detect()` on every enabled plugin, then `select_plugins()` | `detector.detect_engine` + `orchestrator` |
-| UNPACK | core + `unarchive.*` slots | identify (head + tail, carving embedded containers), then recursive unpack. After an outer *wrapper* (`.asar`, `.nw`) is unpacked, detection runs once more on its content and the strongest engine found there (confidence ≥ `mixed_threshold`, not already selected) exports from it (one pass, never nested); each file goes to the matching slot's main, then spare (doc 8) | PHASE 1 `extract_archives` |
-| CARVE | core | signature carver over unknown blobs (D21), then the archives it finds are unpacked | — |
-| EXPORT | plugins | `export()` for each selected plugin, into its own staging folder | Unity export phase |
-| COLLECT | core | **copy** from game-folder source roots and **move** only from staging, into the `<ext>/` layout, filtered by `selected_exts`, with v1 collision naming. Dedupe: same size **and** same content hash → skip (fixes F6). Also writes the **provenance map** (doc 18.2). DECODE (viewable copies through the `decode.*` slots) runs inside COLLECT | PHASE 2 (v1 *moves* out of the game folder: H1) |
-| VERIFY | core + plugins | `logic_check_summary` warnings, then `verify()` | PHASE 3 + Unity verification phase |
-| REPORT | core | write manifests to `.extraction_metadata/` and build the result | Unity manifest phase |
+| Stage | Owner | What happens |
+|-------|-------|--------------|
+| PREPARE | core | resolve the workspace by the ownership rule (doc 4.3); refuse a workspace or temp folder inside the game folder (`pipeline/guard.py`); snapshot the game folder; create staging and scratch |
+| PROBE | core | build one `FolderProbe` |
+| DETECT | core + plugins | `detect()` on every enabled plugin, then `select_plugins()` (3.3) |
+| UNPACK | core + `unarchive.*` slots | identify each file (suffix, magic, head and tail, embedded chunks), unpack recursively to depth 10; each archive goes to its slot's main, then spare (doc 8.2) |
+| EXPORT | plugins | each selected plugin's `export_slot()` into its own staging folder (`pipeline/export.py`). After a wrapper (`.asar`, `package.nw`) is unpacked, detection reruns once on its content; the strongest engine there (confidence >= `mixed_threshold`, not already selected) exports from it |
+| CARVE | core | the signature carver over files nothing else recognized (`carve = unknown`, default) or every file (`all`), skipping suffixes an exporter claims; archives found inside are unpacked |
+| COLLECT | core | **copy** from the game's source roots and **move** only from staging into the `<ext>/` layout, filtered by `selected_exts`; dedupe by size and content hash; collision names `name__N.ext`; write the provenance map. A file the OS refuses to read is skipped and named in a warning. DECODE runs inside COLLECT: `decode.*` slots write viewable copies next to the originals (`--option core.decode=off`, `core.decode_video=on` for Bink) |
+| VERIFY | core + plugins | archive and game-folder checks (a changed game folder is a warning), then each plugin's `verify_report()` |
+| REPORT | core | run record in `.extraction_metadata/runs/<job id>.json`, the result (3.5) |
 
-ANALYZE (decompilers) is **never** part of an extraction. It runs as a
-separate job (doc 6).
-
-Every stage sends progress events with `stage` set, and checks the cancel
-token between files. The v1 progress line format is kept (doc 4).
+Analysis is never a stage of an extraction (doc 6). The sanitizer is a separate tool (doc 5).
 
 ## 3.2 Request
 
 ```text
 ExtractionRequest
-  game_path
+  game_path, workspace
   selected_exts       frozenset[".png", ...] | None
   mode                auto | single | mixed
   plugins             (ids...)
   mixed_policy        selected | detected | all
-  mixed_threshold     default 0.50
-  plugin_options      { plugin_id: { key: value } }
-  on_existing         ask | new | replace | cancel   (doc 4.3)
-  carve               unknown | all | off            (D21)
+  mixed_threshold     0.5
+  plugin_options      { plugin_id: { key: value } }      CLI --option plugin.key=value
+  on_existing         ask | new | replace | cancel       doc 4.3
+  carve               unknown | all | off
 ```
 
-How the v1 payload maps onto it (v1 always sends `{gamePath, selectedExts: null}`):
+The `/api/extract` payload maps onto it (`viwo/api/app.py`): `gamePath`, `selectedExts`,
+`extractionType` (missing/`""`/`auto` = auto; a plugin id = single; `mixed` = mixed with
+`plugins`), `mixedPolicy`, `pluginOptions`, `onExisting`, `carve`.
 
-| Payload `extractionType` | Mode | Plugins |
-|--------------------------|------|---------|
-| missing, `""`, `"auto"` | auto | — |
-| `"<plugin id>"` | single | that id |
-| `"mixed"` | mixed | from the new `plugins` field; `mixedPolicy` defaults to `selected` |
+## 3.3 Plugin selection (`viwo/core/pipeline/select.py`, a pure function)
 
-## 3.3 Plugin selection (proposed)
+1. Run order: confidence (highest first), then priority (highest first), then plugin id.
+2. By mode:
+   - **auto:** the best plugin other than `generic` with confidence above 0;
+   - **single:** the requested id;
+   - **mixed / selected:** the requested ids, in run order;
+   - **mixed / detected:** every plugin with confidence >= threshold;
+   - **mixed / all:** every enabled plugin.
+3. An unknown or disabled id in single or mixed mode is refused with `invalid_request` (exit 2).
+4. If nothing was chosen: `generic` if enabled, else the best plugin. The result is never empty.
 
-Input: one DetectionResult per **enabled** plugin, plus each plugin's priority.
+## 3.4 Mixed mode
 
-1. Sort all detections by confidence (highest first), then priority (highest first), then plugin id (alphabetical). This is the run order and doesn't depend on the order plugins were registered.
-2. Choose plugins by mode:
-   - **auto**: the best plugin other than `generic`, if its confidence is above 0.
-   - **single**: the requested id; an unknown or disabled id is refused with `invalid_request` (exit 2 on the CLI) since 1.0.1, never silently replaced.
-   - **mixed / selected**: the requested ids, in run order.
-   - **mixed / detected**: every plugin with confidence ≥ threshold.
-   - **mixed / all**: every enabled plugin.
-3. If nothing was chosen: use `generic` if it's enabled, otherwise the best plugin. **The result is never empty.**
-
-The v1 behavior is kept: Unity at 0.92 beats RenPy at 0.78, and when nothing
-matches, generic runs.
-
-## 3.4 Mixed mode semantics
-
-- **Unpack:** the `unarchive.*` slots of all chosen plugins are combined. If two enabled plugins claim the same suffix, boot reports it as a configuration problem naming the winner (the longest suffix, then registration order; `wiring/conformance.py` `suffix_clashes`); the ini decides by switching one of the plugins off. Magic bytes never break the tie (decided 1.2).
-- **Export:** each plugin exports into its own `staging/<id>/`, so plugins can't overwrite each other's output.
-- **Collect:** core collects once from all source roots and all staging folders, de-duplicating source roots that overlap (using `os.fs.path_key`). Duplicate files are resolved by content: same size **and** same hash means skip; otherwise `name__N.ext` (doc 4.3, F6).
-- **Failure isolation:** if one plugin fails during export or verify, it's recorded in `plugins[i].error` (and repeated in its `warnings`) and the other plugins still run; `plugins[i].verifyPassed` is false when its `verify()` returned warnings. The run counts as successful if COLLECT completes.
-- **Result:** `extractorType: "mixed"`, `detection` comes from the first plugin in run order, and each plugin gets its own entry in `plugins[]`. There are no plugin-specific top-level keys (the v1 Unity extras were removed with the fake completeness gate, F11).
+- **Unpack:** the `unarchive.*` slots of all enabled plugins are combined. Two plugins claiming
+  one suffix is a boot problem naming the winner (longest suffix, then registration order); the
+  ini decides by switching one plugin off.
+- **Export:** each plugin exports into its own `staging/<id>/`.
+- **Collect:** once, from all source roots (overlaps removed with `os.fs.path_key`) and all
+  staging folders.
+- **Failure isolation:** a plugin failing in export or verify is recorded in `plugins[].error`
+  and its warnings; the others still run. The run succeeds when COLLECT completes.
+- **Result:** `extractorType: "mixed"`; `detection` from the first plugin in run order; one
+  `plugins[]` entry per selected plugin.
 
 ## 3.5 Result payload
 
-`result` in `/api/extract` contains every v1 key plus some new ones:
+`result` of `/api/extract`, `viwo extract --json` and the run record (`ExtractionResult.to_legacy_dict`):
 
 ```text
-v1 (kept):    success archivesFound archivesExtracted scannedFiles copiedFiles
-              copiedByExt checks{ok,warnings} logs extractorType detection{type,confidence,evidence}
-removed (F11): the v1 Unity extras (discoveredCount, qualityGatePass, completenessReport, ...)
-new:          contractVersion mode manifestsPath (= <workspace>/.extraction_metadata)
-              workspace runRecord byBackend carvedFiles
-              plugins[] { id detection exported exportedByKind exportedByTool backend
-                          inventoryCount verifyPassed warnings error }
+success archivesFound archivesExtracted scannedFiles copiedFiles copiedByExt
+checks{ok, warnings} logs extractorType detection{type, confidence, evidence}
+mode byBackend runRecord workspace carvedFiles movedFiles inventoryItems
+collectedFromInventory contractVersion manifestsPath error?
+plugins[] { id detection exported exportedByKind exportedByTool inventoryCount
+            verifyPassed backend warnings error }
 ```
 
-## 3.6 Combination testing ("testing every combination"), right-sized
+Meanings in doc 0.4. The first ten keys are the v1 set (`LEGACY_RESULT_KEYS`) and are always
+present.
 
-Draft 2 proposed 2,268 full pipeline runs. The review pointed out that plugin
-**selection is a pure function**, so every combination can be covered far
-more cheaply:
+## 3.6 Combination testing
 
-| What | How | Size |
-|------|-----|------|
-| **Selection: every combination** | exhaustive over every non-empty subset of the enabled plugins × the 3 mixed policies × synthetic detection results. Pure function, no I/O; there are also property tests (with random confidences, the rules in 3.3 always hold) | 63 subsets × 3 policies × fixtures: milliseconds |
-| **Pipeline: pairwise** | real pipeline runs (fake backends, temporary folders) for every **pair** of plugins plus each single plugin, on the mixed fixture and on each plugin's own fixture | about 21 runs per OS layer |
-| **OS layers** | every selection and pipeline test runs on the Linux and Windows CI runners (real OS layers); the OS layer itself has its own conformance tests (`tests/test_os_layer.py`). Tools are faked, the OS layer never is (the fake-OS run of draft 3 was dropped) | 2 runners |
+| What | How | Where |
+|------|-----|-------|
+| Selection, every combination | every non-empty subset of the plugins x the three policies x synthetic detections, plus property tests with random confidences | `tests/test_mixed.py` |
+| Pipeline, pairwise | real runs with fake backends for every pair of plugins and each single plugin | `tests/test_mixed.py` |
+| OS layers | the suite runs on the Linux and Windows CI runners; tools are faked, the OS layer never is | `tests/test_os_layer.py` |
 
-Invariants checked in every pipeline run:
-
-1. The selection is not empty, has no duplicates, and stays inside the subset. With `selected`/`all` it equals the subset.
-2. Run order doesn't depend on the order detections arrive in.
-3. Slot and backend ids never clash within the selection.
-4. Writes happen only under `staging/<id>/` and the workspace. **The game folder's file hashes are unchanged** (H1).
-5. `result` contains every v1 key (3.5), and `plugins[]` has one entry per selected plugin.
-6. A re-run gives an identical workspace (names, sizes, hashes).
-
-The `sample-custom` plugin in these tests is a minimal test plugin loaded
-through the custom-plugin loader. The real showcase plugin (doc 14) has its
-own tests.
+Invariants checked in pipeline runs: the selection is non-empty, has no duplicates and stays
+inside the subset; run order does not depend on arrival order; writes happen only under staging
+and the workspace and the game folder's hashes are unchanged; `result` holds every v1 key and one
+`plugins[]` entry per selected plugin; a re-run gives an identical workspace.

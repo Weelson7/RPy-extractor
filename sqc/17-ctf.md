@@ -17,11 +17,12 @@ Every flag of the eleven `sqc/games.md` titles passes (DDLC, Freedoom, ULTRAKILL
 CR, Burning Snow, Void's Cave, The Basement, RPG Maker MV, Ubu, GodotOne, MAD game).
 
 ## SQC-CTF-02 (P1) The owner's installed games
-`powershell -File tools/games_pass.ps1` copies each game under `C:\Users\<you>\Games` into
-`Test-games/pass-<slug>`, runs it, keeps the report under `viwo-data/games-pass/<slug>/` and
+From a worktree at a committed version with its own venv (`docs/HANDOFF.md`, never a tree being
+edited), `powershell -File tools/games_pass.ps1` copies each game under `C:\Users\<you>\Games`
+into `Test-games/pass-<slug>`, runs it, keeps the report under `viwo-data/games-pass/<slug>/` and
 deletes the copy. A game too large to copy whole carries a `subset` (the files copied: a few
 archives plus the executable and, for Cyberpunk, the game's own Oodle DLL); its flags describe
-that subset. Every engine in the owner's library has a plugin since 1.3.3 (Cyberpunk `.archive`,
+that subset. Every engine in the owner's library has a plugin (Cyberpunk `.archive`,
 Bannerlord `.tpac`, Rome II `.pack`, AoE II `.drs`). Their flags (owner's rule, 2026-11-03) are
 three shared baselines (the run record names the plugin, a provenance line per file, the
 executable collected) and then only objectives specific to that game: the named DRS members of

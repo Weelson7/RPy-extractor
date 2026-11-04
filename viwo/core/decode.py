@@ -80,7 +80,7 @@ class VgmstreamCli(_CliDecoder):
 
 
 class FfmpegDecode(_CliDecoder):
-    backend_id, license, spec, suffix = "ffmpeg-decode", "LGPL-2.1-or-later", FFMPEG, ".wav"
+    backend_id, license, spec, suffix = "ffmpeg-decode", "GPL-3.0-or-later", FFMPEG, ".wav"
 
     def argv(self, path, dest):
         return [
@@ -104,7 +104,7 @@ class FfmpegVideo(FfmpegDecode):
 class FfprobeProbe(Prober):
     """media.probe main: ffprobe reports the stream facts (doc 8.3)."""
 
-    backend_id, license, isolation = "ffprobe-probe", "LGPL-2.1-or-later", "subprocess"
+    backend_id, license, isolation = "ffprobe-probe", "GPL-3.0-or-later", "subprocess"
     self_check_args = ("-version",)
 
     requires = (FFPROBE,)

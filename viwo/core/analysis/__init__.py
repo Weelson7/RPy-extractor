@@ -8,7 +8,7 @@ import json
 import shutil
 import tempfile
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from viwo.contracts.analysis import ANALYSIS_DIR, AnalysisTarget
@@ -100,13 +100,10 @@ def targets_for(rt, game: Path, problems: list[str] | None = None) -> list[Analy
 
 
 def _check_enabled(rt) -> None:
-    if "analysis" not in rt.config.features:
-        raise ViwoError(
-            "refused",
-            "static analysis is off",
-            hint="add analysis to [startup] features in the ini (11 SETTINGS); first use shows "
-            "the disclaimer: you are responsible for having the right to analyse the binaries",
-        )
+    from ..context import require
+
+    more = "; you are responsible for having the right to analyse the binaries"
+    require(rt, "analysis", "static analysis", more)
 
 
 def _pick(rt, req: AnalysisRequest) -> tuple[AnalysisTarget, str]:
@@ -252,6 +249,7 @@ def open_in(rt, req: AnalysisRequest, handoff_id: str = "") -> dict:
             f"no handoff {handoff_id or ''} for {target.kind} targets".replace("  ", " "),
         )
     backend = rt.backends[choice]
+    target, warnings = _dynamic(rt, req, offered[choice]["slot"], target)
     own = offered[choice]["slot"] == slot.replace("analysis.", "handoff.")
     ctx = core_context(rt, "handoff", req.game, rt.temp_root)
     # the kind's own handoff opens the analyzer's project; the others get a folder of their own
@@ -266,4 +264,27 @@ def open_in(rt, req: AnalysisRequest, handoff_id: str = "") -> dict:
         "label": backend.label,
         "pid": child.pid,
         "target": target.key,
+        "warnings": warnings,
     }
+
+
+DYNAMIC = {"handoff.debug", "handoff.memory"}  # these run the game or attach to it
+
+
+def _dynamic(rt, req: AnalysisRequest, slot: str, target: AnalysisTarget):
+    """(target, warnings): a handoff that runs or attaches to the game is a dynamic action
+    (doc 11.1): the capture switch, one confirmation per game, the warnings; the debugger runs
+    a patched copy beside the workspace (a running game writes next to itself)."""
+    if slot not in DYNAMIC:
+        return target, []
+    from ..capture import policy, sensitive_plugins
+    from ..roundtrip import prepare_copy
+
+    confirmed = bool(req.options.get("confirm"))
+    warnings = policy.check(rt, req.game, confirmed, sensitive_plugins(rt, req.game))
+    if slot == "handoff.debug":
+        game, copy = req.game.resolve(), req.workspace.parent / f"{req.workspace.name}.debug-copy"
+        prepare_copy(rt, req.game, copy, None, "handoff", reuse=True)
+        paths = tuple(copy / Path(p).resolve().relative_to(game) for p in target.paths)
+        target = replace(target, paths=paths)
+    return target, warnings

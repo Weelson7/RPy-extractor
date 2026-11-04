@@ -7,7 +7,7 @@ const STATE_KIND = { running: "live", queued: "warn", succeeded: "ok", failed: "
 export const KIND = { extract: ["EXTRACTION", "#extract", "01"], survey: ["SURVEY", "#survey", "07"], merge: ["MERGER BUILD", "#merger", "06"],
   repack: ["PATCHED COPY", "#repack", "09"], preflight: ["STARTUP CHECK", "#system", "05"], install: ["TOOL INSTALL", "#system", "05"],
   capture: ["CAPTURE", "#capture", "10"], indexes: ["INDEXES UPDATE", "#system", "05"], cleanup: ["CLEANUP", "#cleanup", "08"],
-  analyze: ["ANALYSIS", "#analysis", "12"], patch: ["PATCH SET", "#repack", "09"], mod: ["MOD PACKAGE", "#repack", "09"], dump: ["MEMORY DUMP", "#runtime", "13"], trace: ["API TRACE", "#runtime", "13"], agent: ["RUNTIME AGENT", "#runtime", "13"], record: ["AUDIO RECORDING", "#runtime", "13"], profile: ["CPU PROFILE", "#runtime", "13"] };
+  analyze: ["ANALYSIS", "#analysis", "12"], patch: ["PATCH SET", "#patches", "14"], mod: ["MOD PACKAGE", "#patches", "14"], dump: ["MEMORY DUMP", "#runtime", "13"], trace: ["API TRACE", "#runtime", "13"], agent: ["RUNTIME AGENT", "#runtime", "13"], record: ["AUDIO RECORDING", "#runtime", "13"], profile: ["CPU PROFILE", "#runtime", "13"] };
 const kindName = (k) => KIND[k]?.[0] || String(k).toUpperCase();
 const when = (j) => `${new Date(j.started * 1000).toLocaleTimeString()} · ${Number(j.elapsed || 0).toFixed(1)} s`;
 const human = (k) => k.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase();

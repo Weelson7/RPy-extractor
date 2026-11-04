@@ -7,10 +7,19 @@ from __future__ import annotations
 from dataclasses import replace
 from pathlib import Path
 
+from viwo.contracts.errors import ViwoError
 from viwo.contracts.plugin import ExtractionContext
 from viwo.contracts.types import CancelToken, DetectionResult
 
 CORE = DetectionResult("core", 1.0, (), "core")
+
+
+def require(rt, feature: str, what: str, more: str = "") -> None:
+    """A capability switch ([startup] features): when off, the request is refused with the way
+    to switch it on (never a judgement: the switch is the user's)."""
+    if feature not in rt.config.features:
+        hint = f"add {feature} to [startup] features in the ini (11 SETTINGS){more}"
+        raise ViwoError("refused", f"{what} is off", hint=hint)
 
 
 def core_context(rt, job: str, root: Path, work: Path, sink=None, cancel=None):

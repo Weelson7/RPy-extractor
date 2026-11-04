@@ -1,7 +1,7 @@
 // 12 ANALYSIS: the binaries a game offers (proposed by the plugins), one headless analysis per
 // target into the workspace's .analysis/, and "continue in <tool>" handoffs (doc 6, 8.3a).
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, viewHead, toast, toastErr, pref, busy, bus, emit, browseBtn, errorBox, logLine, assure, table, alert, kv } from "../ui.js";
+import { h, fill, btn, panel, badge, viewHead, toast, toastErr, pref, busy, bus, emit, browseBtn, errorBox, logLine, assure, table, alert, kv, confirmBox } from "../ui.js";
 import { setGame, followGame } from "../game.js";
 import { jobProgress, withSkeleton } from "../progress.js";
 import { registerView } from "../registry.js";
@@ -36,6 +36,7 @@ function mount(root) {
           h("div", { class: "row" }, el.game, browseBtn(el.game, (p) => { setGame(p); list(); }), btn("LIST TARGETS", (e) => busy(e.currentTarget, list), "primary")),
           h("p", { class: "note" }, "Results go to the active workspace: ", (el.wsNote = h("code", { class: "mono" }, S.ws || "—")), ".")),
         panel("12.B", "TARGETS", null, el.targets),
+        diffPanel(),
         panel("12.E", "ROUTINE OPTIONS (EMULATE / SOLVE)", null,
           h("label", { class: "lbl", for: "an-opts" }, "ONE KEY=VALUE PER LINE: START, ARGS, DUMP, MAX_INSNS; FIND, AVOID FOR SOLVE"),
           el.opts, h("p", { class: "note" }, "Unicorn runs one isolated routine of the binary; angr solves the inputs that reach FIND. Both run as their own process."))),
@@ -58,6 +59,27 @@ async function list() {
   } catch (err) { S.targets = null; fill(el.targets, errorBox(err, "LISTING FAILED", err.code === "not_found" ? "Check the game folder path." : "")); bar(); return; }
   renderTargets();
   bar();
+}
+
+/** 12.F VERSION DIFF: two Ghidra exports of one binary (an older and a newer game build). */
+function diffPanel() {
+  const folder = (id, key) => h("input", { class: "input mono grow", id, placeholder: ".analysis/ghidra-headless/<key>", value: pref(key) || "",
+    spellcheck: "false", oninput: (e) => pref(key, e.target.value.trim()) });
+  el.diffOld = folder("an-diff-old", "anDiffOld");
+  el.diffNew = folder("an-diff-new", "anDiffNew");
+  el.diffOut = h("div", {});
+  return panel("12.F", "VERSION DIFF", null,
+    h("label", { class: "lbl", for: "an-diff-old" }, "OLDER BUILD (ITS GHIDRA EXPORT FOLDER)"), h("div", { class: "row" }, el.diffOld, browseBtn(el.diffOld, (p) => pref("anDiffOld", p))),
+    h("label", { class: "lbl", for: "an-diff-new" }, "NEWER BUILD"), h("div", { class: "row" }, el.diffNew, browseBtn(el.diffNew, (p) => pref("anDiffNew", p))),
+    h("div", { class: "row" }, btn("COMPARE", (e) => busy(e.currentTarget, runDiff), "")), el.diffOut);
+}
+
+async function runDiff() {
+  try {
+    const res = await api.diffAnalyses(el.diffOld.value.trim(), el.diffNew.value.trim());
+    fill(el.diffOut, Object.entries(res.summary).map(([k, v]) => kv(k.toUpperCase(), h("span", { class: "mono" }, String(v)))),
+      btn("OPEN FOLDER", () => api.openFolder(res.outputDir).catch(toastErr), "sm ghost"));
+  } catch (err) { fill(el.diffOut, errorBox(err, "DIFF FAILED", "Give two .analysis/ghidra-headless/<key> folders.")); }
 }
 
 function renderTargets() {
@@ -110,11 +132,15 @@ async function run(t, slot = "") {
   } finally { S.running = false; renderTargets(); bar(); emit("jobs"); }
 }
 
-async function open(t, hd) {
+async function open(t, hd, confirm = false) {
   try {
-    const res = await api.openHandoff({ gamePath: el.game.value.trim(), targetKey: t.key, handoff: hd.id });
-    toast(`${hd.label}: started (pid ${res.pid}). It closes with ViWo.`, "ok");
-  } catch (err) { toastErr(err, `${hd.label} failed: `); }
+    const res = await api.openHandoff({ gamePath: el.game.value.trim(), targetKey: t.key, handoff: hd.id, options: confirm ? { confirm: true } : {} });
+    toast(`${hd.label}: started (pid ${res.pid}). It closes with ViWo.`, "ok", (res.warnings || []).join(" · "));
+  } catch (err) {
+    // a debugger or memory tool runs the game: one confirmation per game, the warnings shown first
+    if (err.code === "needs_decision" && await confirmBox(`${hd.label}: RUNS THE GAME`, err.hint)) return open(t, hd, true);
+    toastErr(err, `${hd.label} failed: `);
+  }
 }
 
 const VIEW = { mount, show: bar };

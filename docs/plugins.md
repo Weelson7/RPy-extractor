@@ -97,7 +97,7 @@ folder. `tests/test_registry.py` shows the end-to-end case for the example plugi
 `viwo config check startup.ini` knows every id from the built-ins, the `custom_dirs` manifests
 and the entry points, so `[plugins] hello = on` is valid as soon as the folder exists.
 
-## Add-ons: CLI commands and UI components (1.1)
+## Add-ons: CLI commands and UI components
 
 A plugin, built-in or drop-in, can ship its own `viwo` subcommands and its own web UI pieces.
 Nothing is hardcoded: the registry collects them at boot, and ids allow overrides.

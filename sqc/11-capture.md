@@ -38,24 +38,24 @@ Expected:
   account banned`; then the same launch as 2.
 - 4: NOT refused. Warning `online/competitive title: Apex Legends (online). Intended for offline
   use of your own install`; then the launch.
-- 5: `refused: the executable must be a file inside the game folder` (engineering check: the
-  journal overlay needs the exe under the game root), exit 3.
+- 5: `refused: the executable must be a file inside the game folder` (the warnings cover the
+  game folder), exit 3.
 
-## SQC-CAP-03 (P0) Journal overlay is restored, game folder unchanged
+## SQC-CAP-03 (P0) The game folder is unchanged by a capture
 
-Steps: snapshot `C:\sqc\capture\clean`; run SQC-CAP-02 step 2; compare; check
-`viwo-data\tmp\..\capture\` for journals.
+Steps: snapshot `C:\sqc\capture\clean` (file list with sizes and hashes); run SQC-CAP-02 step 2;
+compare; list `viwo-data\capture\`.
 
-Expected: no difference in the game folder after the run; no pending journal remains; the run
-record under the workspace lists `restored: true`.
+Expected: no difference in the game folder after the run; `viwo-data\capture\` holds
+`confirmed.json` (the confirmation) and no `journal.json` (nothing writes into a game folder).
 
-## SQC-CAP-04 (P1) Crash recovery
+## SQC-CAP-04 (P1) A killed capture leaves the game folder untouched
 
-Steps: start a capture on a real game (SQC-CAP-06), kill `python.exe` while the game runs; start
-`viwo serve` or any `viwo capture` again.
+Steps: start a capture on a real game (SQC-CAP-06), kill `python.exe` while the game runs (end
+the game process too if it stays); start `viwo capture` again on the same game.
 
-Expected: the first line `Restoring an interrupted session in <game>` (warn), the overlay files are
-removed, the game folder matches its pre-capture hashes.
+Expected: the game folder matches its pre-capture hashes; the second capture starts normally
+(no `Restoring an interrupted session` line, since no journal exists).
 
 ## SQC-CAP-05 (P1) Terms-of-service-sensitive plugin: warning, not refusal
 
@@ -78,8 +78,8 @@ Steps:
 Expected: `Launching ULTRAKILL.exe under RenderDoc; one frame captured after 45 s`, then
 `Trigger helper exit 0; stopped ULTRAKILL.exe` (the game is gone from the process list), one
 `Harvested viwo_frame<N>.rdc: ok`, PNG textures in `png\` and `shader_<id>_<stage>.txt`
-disassemblies in `txt\`, all with provenance `capture`; `Captured N file(s) with renderdoc; M not
-found by static extraction`; `UI.config` now holds `Analytics_ManualCheck: true`; the game install
+disassemblies in `txt\`, all with provenance `capture:renderdoc:<stamp>`; `Captured N file(s), M
+new vs static`; `UI.config` now holds `Analytics_ManualCheck: true`; the game install
 is unchanged. `--auto 30` is the default; the attended variant (`--auto 0`, press F12, quit)
 harvests the same way.
 

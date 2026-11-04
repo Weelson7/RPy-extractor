@@ -43,8 +43,8 @@ Preconditions: `viwo install ilspycmd cpp2il` (25 MB).
    assemblies (`Assembly-CSharp.dll` among them); the note says `metadata only, no method bodies`.
 4. `viwo analyze <that cpp2il folder> --list` proposes the stub `Assembly-CSharp.dll` as a
    dotnet target: the chain IL2CPP -> stubs -> C# is two runs.
-5. A kind without a slot (`python_bytecode`, `gdscript_bytecode`) still answers `unavailable`
-   with `no analyzer slot for ... yet`; nothing is refused.
+5. With `third_party\cpp2il` removed, `--target gameassembly` answers `unavailable` with the
+   install hint (`viwo install cpp2il`); nothing is refused.
 
 ## SQC-AN-06 (P1) Lua bytecode through unluac
 Preconditions: `viwo install unluac` (runs on the pinned JDK); a folder with compiled Lua
@@ -70,6 +70,28 @@ Preconditions: `viwo install die` (25 MB).
    --output=C:\sqc\gd`, then `viwo analyze C:\sqc\gd --workspace C:\sqc\_ws\an --target gdscript`:
    backend `gdre-decompile`, `main.gd` equals the source, the note names `bytecode 4.3.0`.
 
+## SQC-AN-09 (P1) Version diff of two analyses
+1. Run SQC-AN-03 on the same binary from two game versions (for example the
+   `UnityCrashHandler64.exe` of two Unity games) into `<ws>/.analysis/ghidra-headless/<old>` and
+   `<new>`.
+2. `viwo diff <ws>\.analysis\ghidra-headless\<old> <ws>\.analysis\ghidra-headless\<new>`
+3. Expected: a summary with `same`, `changed`, `added`, `removed` counts; `diff.json` and
+   `diff.txt` under `<ws>\.analysis\diff\<old>--<new>\`; `diff.txt` lists every function that is
+   not `same`. A folder without `functions.csv` answers `not_found` with `run the analysis first`.
+
+## SQC-AN-10 (P1) Emulate and solve an isolated routine
+Preconditions: `viwo install unicorn` (and `viwo install angr` for step 3); a small PE or ELF
+with a known routine (an XOR decoder; its address from `functions.csv`).
+1. `viwo analyze <game> --workspace W --target <key> --slot analysis.emulate --set start=0x<va>
+   --set args=hex:<bytes>,<len> --set dump=arg0:<len>`
+2. Expected: `.analysis\unicorn-emulate\<key>\result.json` with `status` `returned`, the return
+   value, and the dumped buffer holding the decoded bytes; a call into an import stops the run
+   with `status` `import` and the import's name; no first-run dialog, no Python import of
+   Unicorn in the ViWo process (the worker runs as its own process).
+3. `--slot analysis.symbolic --set start=0x<va> --set args=sym:4 --set find=0x<success va>`:
+   `.analysis\angr-symbolic\<key>\result.json` with the solved 4-byte input.
+4. Without `start=`: `invalid_request: give the routine's address: start=0x...`.
+
 | ID | Result | Version | Notes |
 |----|--------|---------|-------|
 | SQC-AN-01 | | | |
@@ -80,3 +102,5 @@ Preconditions: `viwo install die` (25 MB).
 | SQC-AN-06 | | | fake-tool test only (no Lua-bytecode game in the library) |
 | SQC-AN-08 | PASS | 1.4.4 | agent, 2026-11-03: DDLC 44/44; GDRE 4.3 round trip |
 | SQC-AN-07 | PASS | 1.4.1 | agent, 2026-11-03: ULTRAKILL.exe (MSVC 2017, Unity Engine, no protector) and the Unreal shipping exe (Authenticode) |
+| SQC-AN-09 | | | |
+| SQC-AN-10 | | | |

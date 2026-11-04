@@ -17,12 +17,14 @@ steps and exact expected results, so two testers get the same verdict.
 | 09-round-trip.md | 09 PATCHED COPY: plan, build, verify, UNTOUCHED |
 | 10-merger.md | 06 MERGER |
 | 11-capture.md | runtime capture (RenderDoc), warnings and confirmation |
-| 12-ui-ux.md | all nine views at four widths, every error code, keyboard, reduced motion |
+| 12-ui-ux.md | every view of the three arms and the global strip at four widths, every error code, keyboard, reduced motion |
 | 13-cli.md | every `viwo` command, `tools/version.py` |
 | 14-security.md | token, Host, JSON-only, preview containment, pinned downloads |
 | 15-release-package.md | portable zip, wheel |
-| 16-analysis.md | 12 ANALYSIS: targets, Ghidra headless run, Continue in Ghidra, feature switch |
+| 16-analysis.md | 12 ANALYSIS: targets, Ghidra headless run, Continue in Ghidra, managed and bytecode analyzers, Detect It Easy, version diff, emulate and solve, feature switch |
 | 17-ctf.md | CTF flags per game (`ctf.json`): one plain extraction must reach the named assets |
+| 18-patching.md | patch sets (plan, apply, AOB, assembly) and mod packages |
+| 19-dynamic.md | Continue in x64dbg / Cheat Engine, memory dump, API trace, runtime agents, audio loopback |
 
 ## Real games: `games.md` and the automated integration run
 
@@ -37,6 +39,9 @@ python tools/integration_games.py --skip-extract  # detect + survey only
 
 Every game folder is hashed before and after (a change fails the run); the report lands in
 `viwo-data/integration/report.md` and `report.json`. Attach it to a bug report with `viwo diag`.
+Installed games outside the repository (the owner's library) go through `tools/games_pass.ps1`
+from a worktree at a committed version, with the CTF flags of `ctf.json` (`17-ctf.md`,
+`docs/HANDOFF.md`).
 
 ## Conventions
 
@@ -96,7 +101,7 @@ Run these first, in this order. All must PASS before anything else is worth runn
 | 9 | SQC-RT-01, SQC-RT-02 | patched copy plan and build, original UNTOUCHED |
 | 10 | SQC-MERGE-01 | one merger build |
 | 11 | SQC-CAP-01, SQC-CAP-02 | capture switch and confirmation (no refusals) |
-| 12 | SQC-UI-01, SQC-UI-05 | nine views at 1920, one error box per code |
+| 12 | SQC-UI-01, SQC-UI-05 | every view at 1920, one error box per code |
 | 13 | SQC-CLI-01, SQC-CLI-09 | `viwo extract --json`, `tools/version.py verify` |
 | 14 | SQC-SEC-01, SQC-SEC-04 | token and checksum refusal |
 | 15 | SQC-REL-01 | portable bundle starts and serves |

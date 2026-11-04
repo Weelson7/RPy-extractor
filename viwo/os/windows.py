@@ -185,10 +185,17 @@ def _sample(pid: int, seconds: float, cancel=None) -> tuple[list, list]:
     return sample_threads(pid, seconds, cancel)
 
 
+def _load_native(path: Path):
+    import ctypes
+
+    return ctypes.CDLL(str(path))
+
+
 class WindowsOS(HostOS):
     os_id = "windows"
     display_name = "Windows"
     _dump, _sample = staticmethod(_minidump), staticmethod(_sample)
+    load_native = staticmethod(_load_native)
 
     def __init__(self, tool_overrides: Mapping[str, str | Sequence[str]] | None = None) -> None:
         flags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
