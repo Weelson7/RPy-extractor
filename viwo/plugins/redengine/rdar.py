@@ -91,8 +91,10 @@ class Archive:
         return oodle.decompress(data[8:], min(raw_size, size))
 
     def write(self, entry: Entry, dest: Path, oodle: "Oodle | None", name: str = "") -> bool:
-        """The main segment at its path when the name is known (else `<hash>.<ext>`), the
-        others as `<that>.<n>.buffer`."""
+        """The game's own file at its path when the name is known (else `<hash>.<ext>`): the
+        main segment inflated, then the buffer segments exactly as stored (the CR2W buffer
+        table gives their on-disk sizes and the reader inflates them itself), the form the
+        game and the community tools read."""
         if not entry.segments:
             return True
         main = self._read(entry.segments[0], oodle)
@@ -103,12 +105,13 @@ class Archive:
         target.parent.mkdir(parents=True, exist_ok=True)
         if not rel:
             target = target.with_name(f"{target.name}.{extension(main)}")
-        target.write_bytes(main)
-        for n, segment in enumerate(entry.segments[1:], 1):
-            data = self._read(segment, oodle)
-            if data is None:
-                return False
-            target.with_name(f"{target.name}.{n}.buffer").write_bytes(data)
+        with open(target, "wb") as out:
+            out.write(main)
+            for offset, packed, size in entry.segments[1:]:
+                if offset > FAR or packed > LIMIT:
+                    raise ValueError("segment out of range")
+                self.fh.seek(offset)
+                out.write(self.fh.read(packed))
         return True
 
 

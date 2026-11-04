@@ -4,6 +4,13 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.7.1 (2026-11-04)
+- Fix: a Cyberpunk 2077 member comes out as the game's own file: the main segment inflated, then
+  its buffer segments exactly as stored (the CR2W buffer table gives their on-disk sizes and the
+  reader inflates them). The buffers were split off inflated into `<name>.<n>.buffer`, which no
+  tool can read (WolvenKit failed on every texture with a buffer; verified: 8/8 textures of
+  `basegame_1_engine.archive` now export to PNG). Buffer segments need no Oodle.
+
 ## 1.7.0 (2026-11-04)
 - Completeness contract (doc 16.0c), first gap closed: Bink 2 video (`.bk2`, Cyberpunk 2077 and
   many other games) decodes to MP4 in the new `decode.bink2` slot (`bink-game`). ffmpeg has no

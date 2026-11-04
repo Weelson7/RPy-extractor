@@ -82,10 +82,9 @@ class RedengineTests(unittest.TestCase):
             self.assertEqual(tree_hashes(game), before)
             self.assertEqual(result.runs[0].plugin_id, "redengine")
             ws = root / "ws"
-            self.assertTrue((ws / "mesh" / "0000000000001234.mesh").is_file())
-            self.assertEqual(
-                (ws / "buffer" / "0000000000001234.mesh.1.buffer").read_bytes(), b"buffer-bytes"
-            )
+            mesh = (ws / "mesh" / "0000000000001234.mesh").read_bytes()
+            self.assertEqual(mesh, cr2w("CMesh") + b"buffer-bytes")  # the game's own file
+            self.assertFalse((ws / "buffer").exists())  # no split-off buffers
             self.assertEqual((ws / "bk2" / "0000000000000099.bk2").read_bytes(), b"KB2jvideo")
             self.assertEqual(result.archives_extracted, 1)
 
@@ -168,7 +167,7 @@ class ArchivePropertyTests(unittest.TestCase):
             path.write_bytes(b"RDAR" + b"\xff" * 40)
             self.assertIn("bad RDAR", RdarBuiltin().extract(path, Path(tmp) / "bad", ctx).error)
 
-    def test_empty_entries_and_a_packed_buffer_without_oodle(self) -> None:
+    def test_empty_entries_and_buffers_kept_as_stored(self) -> None:
         import io
 
         from viwo.plugins.redengine.rdar import Entry
@@ -182,7 +181,11 @@ class ArchivePropertyTests(unittest.TestCase):
             packed = Entry(entry.name_hash, (entry.segments[0], (buffer[0], buffer[1], 99)))
             blob[buffer[0] : buffer[0] + 4] = KARK  # the buffer is now Kraken-packed
             archive = Archive(io.BytesIO(bytes(blob)))
-            self.assertFalse(archive.write(packed, Path(tmp), None))  # skipped, so said
+            self.assertTrue(archive.write(packed, Path(tmp), None))  # no Oodle needed for it
+            written = (Path(tmp) / f"{entry.name_hash:016x}.bin").read_bytes()
+            self.assertEqual(
+                written, b"main" + KARK + b"er-raw"
+            )  # kept as stored: the reader inflates
 
     def test_the_oodle_bridge(self) -> None:
         lib = mock.Mock()
@@ -303,8 +306,8 @@ class NameListTests(unittest.TestCase):
             entries = {e.name_hash: e for e in rdar_file.entries()}
             rdar_file.write(entries[0x10], dest, None, "base\\props\\crate.mesh")
             rdar_file.write(entries[0x20], dest, None, "..\\..\\escape.bk2")
-            self.assertTrue((dest / "base" / "props" / "crate.mesh").is_file())
-            self.assertEqual((dest / "base" / "props" / "crate.mesh.1.buffer").read_bytes(), b"buf")
+            crate = (dest / "base" / "props" / "crate.mesh").read_bytes()
+            self.assertEqual(crate, cr2w("CMesh") + b"buf")  # one file, buffers after the header
             self.assertTrue((dest / "0000000000000020.bk2").is_file())
             self.assertFalse((dest.parent / "escape.bk2").exists())
 
