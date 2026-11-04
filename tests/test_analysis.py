@@ -13,7 +13,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tests.helpers import runtime, tree_hashes
+from tests.helpers import cleanup, runtime, tree_hashes
 from viwo.contracts import ViwoError
 from viwo.core.analysis import (
     AnalysisRequest,
@@ -192,7 +192,7 @@ class AnalyzeTests(unittest.TestCase):
         self.ws = self.root / "ws"
 
     def tearDown(self) -> None:
-        self._tmp.cleanup()
+        cleanup(self._tmp)  # the killed GUI tools let go of their folders
 
     def test_headless_run_writes_artifacts_and_record(self) -> None:
         before = tree_hashes(self.unity)

@@ -84,7 +84,9 @@ the manual suite.
   (`tools/version.py commit`).
 - Coverage floors (ratchet, `tools/coverage_check.py`, line coverage per layer): `viwo/contracts`
   90, `viwo/core` 86, `viwo/plugins` 80, `viwo/os` 60, `viwo` 75. The owner's target is 98 % line
-  and 95 % branch **per file**; measured at 1.6.0: 84.9 % line, 73.2 % branch (open).
+  and 95 % branch **per file**; measured at 1.6.2: 86.1 % line, 74.2 % branch (open). Child
+  processes (CLI runs, worker scripts) are measured: `[tool.coverage.run] patch = ["subprocess"]`
+  in `pyproject.toml`, then `coverage combine`.
 
 ## 17.6 Definition of done (a feature or a release)
 

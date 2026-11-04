@@ -57,6 +57,7 @@ viwo/
     mods.py                            T2 mod packages
     jobs.py, workspace.py, records.py, provenance.py, context.py, steps.py, media.py
     thirdparty.py, workers.py, preflight.py   pinned installer, worker tools, startup check
+    downloads.py                       verified download, safe unzip/untar, folder swap
     scan_exclusions.py, indexes.py, diag.py   antivirus exclusions, per-game indexes, diagnostics
   api/         server.py (token, JSON only, Host check, preview), routes.py (envelope routes),
                handlers*.py (legacy-shaped routes per area), app.py (jobs, locks, payloads),

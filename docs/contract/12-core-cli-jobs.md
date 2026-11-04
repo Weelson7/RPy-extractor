@@ -79,7 +79,7 @@ Commands are grouped by arm; `viwo -h` lists them, `viwo <arm>` lists one arm, a
 | static | `diff OLD NEW [--out DIR]` | function-level diff of two analyses |
 | dynamic | `capture GAME --exe EXE --workspace W [--confirm] [--auto SECONDS]` | RenderDoc capture (doc 11) |
 | dynamic | `dump (--pid PID \| --name NAME) --workspace W` | memory dump |
-| dynamic | `trace (--pid \| --name) --workspace W [--functions GLOBS] [--seconds S]` | frida-trace |
+| dynamic | `trace (--pid \| --name) --workspace W [--functions GLOBS] [--seconds S]` | frida-trace (comma-separated globs, default `CreateFileW`; an empty list is refused) |
 | dynamic | `agent GAME --exe EXE --workspace W [--copy DIR] [--timeout S]` | the engine's runtime agent |
 | dynamic | `record --workspace W [--seconds S]` | system sound to WAV |
 | patching | `repack WORKSPACE [--out DIR] [--plan]` | patched copy with the edited files (doc 18) |

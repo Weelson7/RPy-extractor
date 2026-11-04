@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "viwo"
-version = "1.6.2"
+version = "1.6.3"
 description = "Vidya Wormhole: cross-platform game asset extraction and curation framework"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -39,3 +39,8 @@ select = ["E", "F", "W", "I"]
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]
+
+[tool.coverage.run]  # doc 17.5; owner's target: 98 % line, 95 % branch per file
+branch = true
+source = ["viwo"]
+patch = ["subprocess"]  # CLI runs and worker scripts are measured too (parallel data files)

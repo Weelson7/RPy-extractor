@@ -89,7 +89,7 @@ a reason in the comment next to it. Split functions rather than bending the caps
 - `viwo/contracts/` interfaces only · `viwo/os/` OS layer · `viwo/backends/` core unarchivers
 - `viwo/core/` wiring (ini, registry, binder, distros), pipeline, carve, decode, curation, merger,
   sanitizer, survey, analysis (static arm), capture (dynamic arm), roundtrip, patchsets, mods,
-  thirdparty, workers, preflight, indexes
+  thirdparty, downloads, workers, preflight, indexes
 - `viwo/plugins/<engine>/` one folder per engine · `viwo/api/` server · `viwo/web/` UI ·
   `viwo/cli*.py` CLI (commands grouped by arm in `cli_arms.py`)
 - `distros/` generated configs (`viwo config generate`; a test guards against drift)

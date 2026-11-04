@@ -12,25 +12,18 @@ Nothing is installed outside third_party/.
 from __future__ import annotations
 
 import gzip
-import hashlib
 import json
 import os
-import shutil
 import subprocess
 import sys
-import tarfile
 import tempfile
-import urllib.request
-import zipfile
 from pathlib import Path
 
-from viwo import __version__
 from viwo.contracts.errors import ViwoError
-from viwo.contracts.workspace import inside, safe_member
+from viwo.contracts.workspace import inside
 from viwo.os import host_os_id
 
-from . import workers
-from .pipeline.ticker import Ticker
+from . import downloads, workers
 
 MANIFEST = Path(__file__).resolve().parent.parent / "data" / "tools.json"
 PLATFORM = host_os_id()
@@ -152,77 +145,18 @@ def installable(dep_id: str, kind: str) -> bool:
     return PLATFORM in data["tools"].get(dep_id, {}) or (not FROZEN and dep_id in workers.entries())
 
 
-def _download(url: str, target: Path, size: int, say, cancel) -> str:
-    """Fetch url into target; returns the sha256. Short reads (flaky links) are retried."""
-    if not url.startswith(("https://", "file://")):  # file: fixtures in tests
-        raise ViwoError("refused", f"{target.name}: downloads must use https")
-    last = ""
-    for attempt in range(1, 4):
-        digest, got = _fetch_once(url, target, size, say, cancel)
-        if got == size or not size:
-            return digest
-        last = f"{target.name}: incomplete download ({got} of {size} bytes, attempt {attempt})"
-        if say:
-            say(last + ", retrying")
-    raise ViwoError("failed", last, hint="check the connection and try again")
-
-
-def _fetch_once(url: str, target: Path, size: int, say, cancel) -> tuple[str, int]:
-    digest, ticker = hashlib.sha256(), Ticker(say, f"Downloading {target.name}, KB:", size // 1024)
-    got = 0
-    request = urllib.request.Request(url, headers={"User-Agent": f"ViWo/{__version__}"})  # some
-    # build servers refuse Python's default agent (builds.bepinex.dev answers 403)
-    with urllib.request.urlopen(request, timeout=60) as response, open(target, "wb") as out:
-        while chunk := response.read(1 << 20):
-            if cancel is not None and cancel.cancelled:
-                raise ViwoError("cancelled", "download cancelled")
-            out.write(chunk)
-            digest.update(chunk)
-            got += len(chunk)
-            ticker.tick(len(chunk) // 1024)
-    return digest.hexdigest(), got
-
-
-def _write(src, target: Path, mode: int) -> None:
-    target.parent.mkdir(parents=True, exist_ok=True)
-    with open(target, "wb") as dst:
-        shutil.copyfileobj(src, dst)
-    if PLATFORM != "windows" and mode & 0o111:
-        os.chmod(target, os.stat(target).st_mode | 0o111)
-
-
-def _unzip(file: Path, out: Path) -> None:
-    with zipfile.ZipFile(file) as archive:
-        for info in archive.infolist():
-            rel = safe_member(info.filename)
-            if rel is None or info.is_dir():
-                continue
-            with archive.open(info) as src:
-                _write(src, out.joinpath(*rel.parts), info.external_attr >> 16)
-
-
-def _untar(file: Path, out: Path) -> None:
-    with tarfile.open(file) as archive:
-        for member in archive.getmembers():
-            rel = safe_member(member.name)
-            if rel is None or not member.isfile():
-                continue  # links, devices and traversal are never extracted
-            with archive.extractfile(member) as src:
-                _write(src, out.joinpath(*rel.parts), member.mode)
-
-
 def _unpack(kind: str, file: Path, out: Path, spec: dict, runner, home: Path) -> None:
     out.mkdir(parents=True, exist_ok=True)
     if kind == "zip":
-        _unzip(file, out)
+        downloads.unzip(file, out)
     elif kind == "tar":
-        _untar(file, out)
+        downloads.untar(file, out)
     elif kind == "gz":
         with gzip.open(file) as src:
-            _write(src, out / spec["save_as"], 0o755)
+            downloads.write(src, out / spec["save_as"], 0o755)
     elif kind == "raw":
         with open(file, "rb") as src:
-            _write(src, out / spec["save_as"], 0o755)
+            downloads.write(src, out / spec["save_as"], 0o755)
     elif kind == "msi":  # administrative install (no admin rights); msiexec parses its own
         # command line, so the quotes around paths with spaces must reach it verbatim
         done = subprocess.run(f'msiexec /a "{file}" /qn TARGETDIR="{out}"', timeout=600)
@@ -237,6 +171,8 @@ def _unpack(kind: str, file: Path, out: Path, spec: dict, runner, home: Path) ->
             raise ViwoError(
                 "failed", f"7-Zip could not unpack {file.name}", hint=result.stderr[-200:]
             )
+    else:
+        raise ViwoError("failed", f"{file.name}: unknown archive kind {kind!r} in tools.json")
 
 
 def install_tool(dep_id: str, home: Path, runner, say=None, cancel=None) -> str:
@@ -264,7 +200,7 @@ def install_tool(dep_id: str, home: Path, runner, say=None, cancel=None) -> str:
 def _fetch(dep_id: str, spec: dict, root: Path, runner, say, cancel) -> None:
     with tempfile.TemporaryDirectory(prefix=f".{dep_id}-", dir=root) as tmp:
         file = Path(tmp) / spec["url"].rsplit("/", 1)[-1]
-        if _download(spec["url"], file, spec["size"], say, cancel) != spec["sha256"]:
+        if downloads.download(spec["url"], file, spec["size"], say, cancel) != spec["sha256"]:
             raise ViwoError("refused", f"{file.name}: checksum mismatch, not installed")
         out = Path(tmp) / "out"
         try:
@@ -276,17 +212,9 @@ def _fetch(dep_id: str, spec: dict, root: Path, runner, say, cancel) -> None:
                 hint="an antivirus may have quarantined the file: check its history and allow "
                 "the third_party folder, then install again",
             )
-        dest = root / dep_id
-        try:
-            if dest.exists():
-                shutil.rmtree(dest)
-            os.replace(out, dest)
-        except OSError as exc:  # Windows: a running tool keeps its folder locked
-            raise ViwoError(
-                "busy",
-                f"{dep_id}: cannot replace {dest.name} ({exc.strerror or exc})",
-                hint="close programs using this tool, then install again",
-            )
+        if not spec.get("from") and _hit(out, spec["find"]) is None:  # the old tool stays
+            raise ViwoError("failed", f"{dep_id}: {spec['find']} not found after unpacking")
+        downloads.swap(out, root / dep_id)
 
 
 def lock_file(dep_id: str) -> Path:

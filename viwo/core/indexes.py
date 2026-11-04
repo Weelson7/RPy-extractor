@@ -11,15 +11,13 @@ from __future__ import annotations
 
 import hashlib
 import json
-import os
 import re
-import shutil
 import tempfile
 from pathlib import Path
 
 from viwo.contracts.errors import ViwoError
 
-from . import thirdparty
+from . import downloads, thirdparty
 from .steps import teller
 from .wiring.boot import DEFAULT_INI
 
@@ -129,7 +127,7 @@ def _install_script(item: dict, folder: Path, say, cancel) -> str:
     folder.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".script-", dir=folder) as tmp:
         file = Path(tmp) / item["name"]
-        if thirdparty._download(item["url"], file, item["size"], say, cancel) != item["sha256"]:
+        if downloads.download(item["url"], file, item["size"], say, cancel) != item["sha256"]:
             raise ViwoError("refused", f"{item['name']}: checksum mismatch, not installed")
         file.replace(target)
     return "installed"
@@ -186,17 +184,11 @@ def _release_assets(major: int, fetch) -> tuple[str, dict]:
 
 
 def _swap(home: Path, fresh: Path) -> Path:
-    """Replace <home>/indexes with `fresh` (old one kept until the new one is in place)."""
-    target, old = home / "indexes", home / "indexes.old"
+    """Replace <home>/indexes with `fresh`; a git checkout (the submodule) is never replaced."""
+    target = home / "indexes"
     if (target / ".git").exists():
         raise ViwoError("refused", "indexes/ is a git checkout: use git submodule update instead")
-    if old.exists():
-        shutil.rmtree(old)
-    if target.exists():
-        os.replace(target, old)
-    shutil.move(str(fresh), str(target))
-    if old.exists():
-        shutil.rmtree(old, ignore_errors=True)
+    downloads.swap(fresh, target)
     return target
 
 
@@ -210,14 +202,14 @@ def update_indexes(home: Path, major: int, sink=None, cancel=None, fetch=None) -
     home.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".indexes-", dir=home) as tmp:
         sums = Path(tmp) / "SHA256SUMS.txt"
-        thirdparty._download(assets["SHA256SUMS.txt"], sums, 0, None, cancel)
+        downloads.download(assets["SHA256SUMS.txt"], sums, 0, None, cancel)
         pairs = [line.split() for line in sums.read_text().splitlines()]
         want = {n.lstrip("*"): h for h, n in (p for p in pairs if len(p) == 2)}.get(name, "")
         file = Path(tmp) / name
-        if not want or thirdparty._download(assets[name], file, 0, say, cancel) != want:
+        if not want or downloads.download(assets[name], file, 0, say, cancel) != want:
             raise ViwoError("refused", f"{name}: checksum mismatch, indexes not updated")
         fresh = Path(tmp) / "new"
-        thirdparty._unzip(file, fresh)
+        downloads.unzip(file, fresh)
         root = fresh if (fresh / "games").is_dir() else next(fresh.glob("*/games"), fresh).parent
         (root / "VERSION").write_text(tag + "\n", encoding="utf-8")
         where = _swap(home, root)

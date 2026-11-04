@@ -2,7 +2,8 @@
 
 Every third-party tool is pinned in `viwo/data/tools.json` and installed by ViWo into
 `third_party/` next to the active `startup.ini` (next to `viwo.exe` in the portable build), and
-nowhere else (`viwo/core/thirdparty.py`, `viwo/core/workers.py`, `viwo/core/preflight.py`). The
+nowhere else (`viwo/core/thirdparty.py`, `viwo/core/downloads.py`, `viwo/core/workers.py`,
+`viwo/core/preflight.py`). The
 OS layer only locates tools (doc 1.2). Decision D8: pinned release binaries with checksums, not
 vendored sources.
 

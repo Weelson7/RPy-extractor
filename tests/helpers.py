@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import io
 import tarfile
+import time
 import zipfile
 from pathlib import Path
 
@@ -12,6 +13,19 @@ from viwo.contracts import Outcome, OutcomeKind, Unarchiver
 from viwo.core.wiring.boot import boot
 
 ROOT = Path(__file__).resolve().parent.parent
+
+
+def cleanup(tmp, seconds: float = 10.0) -> None:
+    """TemporaryDirectory.cleanup() that waits for Windows to let go: a child process killed by
+    the test (taskkill /T) releases its working folder a moment after it is reported gone."""
+    deadline = time.monotonic() + seconds
+    while True:
+        try:
+            return tmp.cleanup()
+        except PermissionError:
+            if time.monotonic() > deadline:
+                raise
+            time.sleep(0.2)
 
 
 class FakeUnarchiver(Unarchiver):

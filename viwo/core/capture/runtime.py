@@ -103,6 +103,8 @@ def dump(rt, workspace: Path, pid: int = 0, image: str = "") -> dict:
 def trace(rt, req: RuntimeRequest, cancel=None) -> dict:
     """frida-trace -p <pid> -i <function>... for `seconds`, its log in the workspace."""
     _enabled(rt)
+    if not req.functions:  # frida-trace without -i traces nothing and writes no log
+        raise ViwoError("invalid_request", "give at least one function to trace")
     pid = resolve_pid(rt, req.pid, req.name)
     out = runtime_dir(req.workspace, "trace", f"{pid}-{stamp()}")
     home = thirdparty.home_of(rt.config)

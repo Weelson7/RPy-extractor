@@ -52,9 +52,9 @@ def _text(value) -> str:
 
 def read_index(fh) -> dict[str, list[tuple[int, int, bytes]]]:
     """Parse an RPA-2.0/3.0 header and index. Raises ValueError when unsupported."""
-    parts = fh.readline().split()
+    parts = fh.readline(80).split()  # "RPA-3.0 <offset> <key>": bounded, any file may come here
     if not parts or parts[0] not in (b"RPA-2.0", b"RPA-3.0"):
-        raise ValueError(f"unsupported RPA header {parts[:1]}")
+        raise ValueError(f"unsupported RPA header {parts[0][:16] if parts else b''}")
     offset = int(parts[1], 16)
     key = int(parts[2], 16) if parts[0] == b"RPA-3.0" else 0
     fh.seek(offset)

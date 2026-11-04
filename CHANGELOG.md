@@ -4,6 +4,20 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.6.3 (2026-11-04)
+- Coverage work (owner's target 98 % line / 95 % branch per file): child processes are measured
+  (`[tool.coverage.run] patch = ["subprocess"]`, CI combines); property tests for `viwo slots
+  --check`, `unpack --slot/--backend`, `patch`, `mod`, `trace`, `capture`, the indexes
+  (validator faults, `indexes update`) and the third_party installer (every archive kind).
+- Fixes they found: reinstalling a tool whose folder is locked (Windows: it is running) no
+  longer half deletes it (the old folder moves aside and comes back); a build whose `find` file
+  is missing leaves the installed tool in place; an unknown archive kind in tools.json is named;
+  the RPA reader reads at most 80 bytes of a header (it read any non-RPA file up to its first
+  newline) and quotes 16; `viwo trace` with an empty function list is refused (it traced
+  nothing), `--functions ""` is no longer replaced by the default.
+- `core/downloads.py`: the verified download, safe unzip/untar and folder swap the installer and
+  the indexes share (the indexes' own swap removed).
+
 ## 1.6.2 (2026-11-04)
 - Docs: current state only (CHANGELOG holds history; HANDOFF is the handover and the open work;
   CONFORMANCE regenerated: 165 implemented, 5 partial, 15 open).

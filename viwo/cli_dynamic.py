@@ -15,7 +15,7 @@ def runtime(rt, args, printer) -> Envelope:
     from viwo.core.capture.runtime import RuntimeRequest, run
 
     given = {f: getattr(args, f) for f in FIELDS if getattr(args, f, None) is not None}
-    if getattr(args, "functions", None):
+    if getattr(args, "functions", None) is not None:  # a blank list is refused by the core
         given["functions"] = tuple(f.strip() for f in args.functions.split(",") if f.strip())
     req = RuntimeRequest(args.workspace, **given)
     return Envelope.success(run(rt, args.command, req, printer))
