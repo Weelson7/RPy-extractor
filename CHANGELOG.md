@@ -4,6 +4,15 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.6.14 (2026-11-04)
+- Fix: `viwo survey` classifies encrypted or compressed blobs under 128 KiB as dense. Their
+  "middle" sample started at offset 0, the same bytes twice compressed well, and they were
+  reported as structured data ("try --deep") instead of needing a key or a decoder.
+- Property tests: a survey of random games counts every file in exactly one category, reports
+  the coverage its categories give, names every missing tool and exporter, counts a file an
+  antivirus holds as unreadable, and stops on cancel; a decoder that reports success without
+  output is a named failure; the probes report exactly the facts of the file.
+
 ## 1.6.13 (2026-11-04)
 - Property tests: GDScript decompilation (the bytecode option wins, then the engine version, then
   GDRE's own listing for the header number; files in batches of at most 100; every failure

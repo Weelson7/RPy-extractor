@@ -62,8 +62,9 @@ def dense(path: Path, size: int) -> bool:
     """True when samples from the start and middle barely compress (encrypted/compressed)."""
     with open(path, "rb") as fh:
         sample = fh.read(SAMPLE)
-        fh.seek(max(0, size // 2 - SAMPLE // 2))
-        sample += fh.read(SAMPLE)
+        if size > 2 * SAMPLE:  # a smaller file is read once: the same bytes twice compress well
+            fh.seek(size // 2 - SAMPLE // 2)
+            sample += fh.read(SAMPLE)
     return len(zlib.compress(sample, 1)) > 0.95 * len(sample)
 
 

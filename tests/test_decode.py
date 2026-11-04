@@ -82,5 +82,76 @@ class DecodeTests(unittest.TestCase):
             self.assertFalse((root / "ws2" / "wav").exists())
 
 
+def _ctx(run, located=True):
+    from types import SimpleNamespace
+
+    tool = SimpleNamespace(argv_prefix=("tool",))
+    host = SimpleNamespace(
+        tools=SimpleNamespace(locate=lambda spec: tool if located else None),
+        process=SimpleNamespace(run=run),
+    )
+    return SimpleNamespace(os=host, cancel=None)
+
+
+class DecoderBackendTests(unittest.TestCase):
+    def test_success_without_output_is_a_named_failure(self) -> None:
+        from types import SimpleNamespace
+
+        from viwo.contracts.types import OutcomeKind
+        from viwo.core.decode import FfmpegVideo, VgmstreamCli
+
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp)
+            for wrote, ok in ((0, True), (2, True), (1, False)):
+
+                def run(argv, timeout=None, cancel=None, wrote=wrote, ok=ok):
+                    for i in range(wrote):
+                        (dest / f"out{i}.wav").write_bytes(b"RIFF")
+                    return SimpleNamespace(ok=ok, stderr="codec unknown", stdout="")
+
+                for f in dest.iterdir():
+                    f.unlink()
+                out = VgmstreamCli().decode(dest / "a.wem", dest, _ctx(run))
+                if ok and wrote:
+                    self.assertEqual((out.kind, out.files), (OutcomeKind.OK, wrote))
+                else:  # "ok, 0 files" is never a success (never silent)
+                    self.assertEqual(out.kind, OutcomeKind.FAILED)
+                    self.assertIn("codec unknown", out.error)
+            missing = FfmpegVideo().decode(dest / "a.bik", dest, _ctx(None, located=False))
+            self.assertEqual(missing.kind, OutcomeKind.UNAVAILABLE)
+            self.assertTrue(FfmpegVideo().argv(dest / "a.bik", dest)[-1].endswith("a.bik.mp4"))
+
+    def test_probes_report_exactly_the_files_facts(self) -> None:
+        import random
+        from types import SimpleNamespace
+
+        from PIL import Image
+
+        from viwo.contracts.types import OutcomeKind
+        from viwo.core.decode import FfprobeProbe, PillowProbe
+
+        rng = random.Random(4)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for i in range(10):
+                fmt = rng.choice(["PNG", "GIF", "BMP"])
+                w, h = rng.randint(1, 64), rng.randint(1, 64)
+                path = root / f"i{i}.{fmt.lower()}"
+                Image.new("RGB", (w, h)).save(path, format=fmt)
+                facts = PillowProbe().probe(path, None).notes
+                self.assertEqual(facts, (f"format={fmt}", f"width={w}", f"height={h}"))
+            (root / "junk.png").write_bytes(b"not an image")
+            self.assertEqual(PillowProbe().probe(root / "junk.png", None).kind, OutcomeKind.FAILED)
+            said = "format_name=ogg\nduration=1.5\ncodec_type=audio\n[junk]\n"
+            answer = SimpleNamespace(ok=True, stdout=said, stderr="")
+            out = FfprobeProbe().probe(root / "a.ogg", _ctx(lambda argv, timeout: answer))
+            self.assertEqual(out.notes, ("format_name=ogg", "duration=1.5", "codec_type=audio"))
+            bad = SimpleNamespace(ok=False, stdout="", stderr="Invalid data")
+            out = FfprobeProbe().probe(root / "a.ogg", _ctx(lambda argv, timeout: bad))
+            self.assertEqual((out.kind, out.error), (OutcomeKind.FAILED, "Invalid data"))
+            gone = FfprobeProbe().probe(root / "a.ogg", _ctx(None, located=False))
+            self.assertEqual(gone.kind, OutcomeKind.UNAVAILABLE)
+
+
 if __name__ == "__main__":
     unittest.main()

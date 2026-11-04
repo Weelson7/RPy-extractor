@@ -9,6 +9,7 @@ import tempfile
 import unittest
 from contextlib import redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 from tests.helpers import make_zip, runtime, tree_hashes, write_ini
 from tests.test_carve import blob
@@ -33,6 +34,104 @@ def make_library(root: Path) -> Path:
     make_zip(odd / "extra.zip", {"a.txt": b"a"})
     (odd / "Game.exe").write_bytes(b"MZ" + b"\0" * 5000)
     return lib
+
+
+class SurveyPropertyTests(unittest.TestCase):
+    """Random games: every file lands in exactly one category, the coverage is what the
+    categories say, every missing tool is named, and an unreadable file is counted, never
+    fatal."""
+
+    def test_every_file_is_counted_once_and_coverage_is_honest(self) -> None:
+        import random
+
+        from tests.helpers import make_rar
+        from viwo.core.survey import COVERED, survey_game
+
+        rng = random.Random(11)
+        kinds = {
+            "asset": lambda r: (".png", b"\x89PNG" + r.randbytes(2000)),
+            "code": lambda r: (".dll", b"MZ" + r.randbytes(2000)),
+            "small": lambda r: (".bin", r.randbytes(100)),
+            "dense": lambda r: (".dat", r.randbytes(5000)),
+            "structured": lambda r: (".dat", b"rows " * 1000),
+        }
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            rt = runtime(root)
+            for case in range(8):
+                game = root / f"g{case}"
+                (game / "sub").mkdir(parents=True)
+                want = {}
+                for i in range(rng.randint(3, 12)):
+                    kind = rng.choice(sorted(kinds))
+                    ext, body = kinds[kind](rng)
+                    (game / rng.choice(["", "sub"]) / f"f{i}{ext}").write_bytes(body)
+                    want[kind] = want.get(kind, 0) + 1
+                make_zip(game / "a.zip", {"x.txt": b"x"})
+                make_rar(game / "b.rar", {"y.txt": b"y"})  # its tool is made missing below
+                locked = game / "locked.bin"
+                locked.write_bytes(b"x" * 4000)
+                real = Path.stat
+
+                def stat(self, *a, **k):
+                    if self.name == "locked.bin" and k.get("follow_symlinks", True) is not False:
+                        raise PermissionError(13, "held by an antivirus")
+                    return real(self, *a, **k)
+
+                no_rar = {"unarchive.rar": mock.Mock(bound=False)}
+                with mock.patch.object(Path, "stat", stat), mock.patch.dict(rt.bindings, no_rar):
+                    report = survey_game(rt, game).to_dict()
+                cats = {c: v["files"] for c, v in report["categories"].items()}
+                self.assertEqual(sum(cats.values()), sum(want.values()) + 3)  # +zip, rar, locked
+                self.assertEqual(cats.get("asset", 0), want.get("asset", 0))
+                self.assertEqual(cats.get("code", 0), want.get("code", 0))
+                self.assertEqual(cats.get("small", 0), want.get("small", 0))
+                self.assertEqual(cats.get("unknown-dense", 0), want.get("dense", 0))
+                self.assertEqual(cats.get("unreadable"), 1)
+                self.assertEqual((cats.get("container"), cats.get("container-no-tool")), (1, 1))
+                self.assertIn("unarchive.rar (see `viwo slots`)", report["missingTools"])
+                data = sum(
+                    v["bytes"]
+                    for c, v in report["categories"].items()
+                    if c not in ("code", "small")
+                )
+                covered = sum(report["categories"].get(c, {"bytes": 0})["bytes"] for c in COVERED)
+                self.assertAlmostEqual(
+                    report["coverage"], round(covered / data, 3) if data else 1.0
+                )
+
+    def test_an_engine_without_its_exporter_is_named_and_a_cancel_stops(self) -> None:
+        from viwo.contracts import CancelToken, ViwoError
+        from viwo.core.survey import GameSurvey, _claimed, survey
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            rt = runtime(root, "[plugins]\ngeneric = on\nunity = on\n")
+            report = GameSurvey(str(root), "unity", 0.9, ())
+            unbound = mock.Mock(bound=False)
+            with mock.patch.dict(rt.bindings, {"export.unity": unbound}):
+                self.assertEqual(_claimed(rt, report, "unity"), frozenset())
+            self.assertIn("export.unity exporter (see `viwo slots`)", report.missing)
+            from tests.test_unity import fake_unitypy, make_unity_game
+            from viwo.core.survey import _examine, _rel, games_in, survey_game
+
+            with mock.patch.dict("sys.modules", {"UnityPy": fake_unitypy()}):
+                unity = survey_game(rt, make_unity_game(root)).to_dict()
+            self.assertIn("engine", unity["categories"])  # what its exporter decodes
+            self.assertEqual(_rel(GameSurvey(None, "g", 0, ()), root / "x.bin"), "x.bin")
+            gone = GameSurvey(str(root), "g", 0, ())
+            _examine(gone, [(root / "vanished.bin", "", 9000)], False, CancelToken(), None)
+            self.assertEqual(gone.sizes["unreadable"][0], 1)  # gone mid-survey: counted
+            (root / "empty").mkdir()
+            self.assertEqual(games_in(root / "empty", rt), [])
+            lib = make_library(root)
+            token = CancelToken()
+            token.cancel()
+            with self.assertRaises(ViwoError):
+                _examine(gone, [(root / "x", "", 1)], False, token, None)
+            with self.assertRaises(ViwoError) as err:
+                survey(rt, lib, cancel=token)
+            self.assertEqual(err.exception.code, "cancelled")
 
 
 class SurveyTests(unittest.TestCase):
