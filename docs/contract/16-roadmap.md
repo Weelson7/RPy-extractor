@@ -16,7 +16,7 @@ covers which files and flags dense unknown blobs (likely encrypted or compressed
 | 2. Container unpackers | zip, tar, 7z, rar and every plugin container, recursive to depth 10 | shipped |
 | 3. Signature carver | complete standard files inside unknown blobs (PNG, JPEG, GIF, WAV/WEM, Ogg, MIDI, MP4, Bink, FSB5, BNK, DDS, glTF, zip, 7z) | shipped |
 | 4. Compressed-stream scan | zlib and gzip streams inflated (bounded) and carved; zstd and LZ4 when `zstandard` / `lz4` import | shipped |
-| 5. Decoders | game audio to WAV (vgmstream), DDS to PNG, Bink to MP4 (opt-in), SLP to PNG, `.rpyc` to `.rpy` | shipped; meshes to glTF, fonts, localization tables open |
+| 5. Decoders | game audio to WAV (vgmstream), DDS to PNG, Bink to MP4 (opt-in; Bink 2 through the game's own DLL), SLP to PNG, `.rpyc` to `.rpy` | shipped; meshes to glTF, fonts, localization tables open |
 | 6. Script-driven unpackers | QuickBMS with one `<ext>.bms` per format, scripts from the per-game indexes | shipped; no index entry carries a pinned script yet |
 | 7. Runtime | RenderDoc capture, runtime agents, audio loopback (16.2b D1-D2) | shipped |
 
@@ -38,7 +38,7 @@ libraries (Oodle, Bink), as for Kraken today; a pinned community tool run as a s
 
 | Engine | Comes out and is decoded today | Open (decode, arm) |
 |--------|-------------------------------|--------------------|
-| REDengine 4 (Cyberpunk 2077) | RDAR members with names; Wwise audio to WAV (vgmstream) | CR2W: textures (`.xbm`) to DDS/PNG, meshes/rigs/anims to glTF, the rest to JSON; Bink 2 video through the game's `bink2w64.dll`; `final.redscripts` decompiled; TweakDB to JSON; mod-over-base archive conflicts; Ghidra names from `cyberpunk2077_addresses.json`; runtime agent (Cyber Engine Tweaks); `pack.archive` (RDAR writer, Oodle through the game's DLL) |
+| REDengine 4 (Cyberpunk 2077) | RDAR members with names; Wwise audio to WAV (vgmstream); Bink 2 video to MP4 through the game's `bink2w64.dll` | CR2W: textures (`.xbm`) to DDS/PNG, meshes/rigs/anims to glTF, the rest to JSON; `final.redscripts` decompiled; TweakDB to JSON; mod-over-base archive conflicts; Ghidra names from `cyberpunk2077_addresses.json`; runtime agent (Cyber Engine Tweaks); `pack.archive` (RDAR writer, Oodle through the game's DLL) |
 | Unity | textures, audio, text, meshes (OBJ), IL2CPP and managed code | animations, materials, prefabs and scenes (type tree to JSON), video clips, shaders, meshes to glTF |
 | Unreal | pak and IoStore members (`.uasset`) | asset export: textures, meshes, sounds, data tables, localization |
 | Godot | PCK members, resources (GDRE), GDScript | - (verify `.ctex`/`.stex` to PNG without GDRE) |

@@ -134,7 +134,9 @@ Rules:
 
 **Carve and decode:** `carve.signatures` (`signature-carver`); `decode.audio` (`vgmstream-cli`,
 spare `ffmpeg-decode`; Wwise, FMOD, CRI, XACT and console audio to WAV); `decode.image`
-(`ffmpeg-image`, DDS to PNG); `decode.video` (`ffmpeg-video`, Bink to MP4, opt-in); `decode.rpyc`
+(`ffmpeg-image`, DDS to PNG); `decode.video` (`ffmpeg-video`, Bink to MP4, opt-in); `decode.bink2` (`bink-game`: Bink 2 to MP4
+through the game's own `bink2w64.dll` in a helper process, frames piped into ffmpeg, opt-in with
+video); `decode.rpyc`
 (`unrpyc-cli`, renpy, option `decompile`); `decode.slp` (`slp-builtin`, genie).
 
 **Media:** `media.probe` (`ffprobe-probe`, spare `pillow-probe`), `media.encode` (`ffmpeg`).

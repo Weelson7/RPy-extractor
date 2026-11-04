@@ -4,6 +4,16 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.7.0 (2026-11-04)
+- Completeness contract (doc 16.0c), first gap closed: Bink 2 video (`.bk2`, Cyberpunk 2077 and
+  many other games) decodes to MP4 in the new `decode.bink2` slot (`bink-game`). ffmpeg has no
+  Bink 2 decoder; the game ships one: a helper process (`viwo/data/bink/decode_bink.py`) decodes
+  every frame with the game's own `bink2w64.dll` and pipes it into the pinned ffmpeg, so the
+  game's code never runs inside ViWo. Opt-in with the other video (`core.decode_video=on`).
+  Verified on Cyberpunk 2077's video archive (500x500, 299 frames at 30 fps). Video only: the
+  audio track is not decoded yet (said in every note).
+- `viwo` LoC budget 14200 -> 14600 for the completeness work (reason in `loc_caps.ini`).
+
 ## 1.6.24 (2026-11-04)
 - Property tests: a settings change that would break the ini is refused and the ini stays as it
   was (no draft left); a file that is not a patch set is named, and an export without a unique
