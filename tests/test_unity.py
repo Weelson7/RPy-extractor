@@ -55,6 +55,99 @@ def fake_unitypy() -> types.ModuleType:
     return module
 
 
+class _Stored:
+    """A UnityPy object's parsed data as the packer sees it: text or an image, saved back."""
+
+    def __init__(self, kind: str):
+        from PIL import Image
+
+        self.kind, self.m_Script = kind, "old text"
+        self.image = Image.new("RGBA", (2, 2), (1, 2, 3, 255))
+
+    def set_image(self, img, target_format=None):
+        self.image = img.copy()
+
+    def save(self):
+        self.saved = True
+
+
+def fake_pack_unitypy(kinds: dict[int, str]) -> types.ModuleType:
+    """UnityPy over one container whose objects keep what the packer writes into them."""
+    stored = {pid: _Stored(kind) for pid, kind in kinds.items()}
+    module = types.ModuleType("UnityPy")
+
+    def load(path):
+        objects = [
+            types.SimpleNamespace(
+                path_id=pid,
+                type=types.SimpleNamespace(name=kinds[pid]),
+                parse_as_object=lambda pid=pid: stored[pid],
+            )
+            for pid in kinds
+        ]
+        bundle = types.SimpleNamespace(save=lambda packer: b"UnityFS repacked")
+        return types.SimpleNamespace(objects=objects, files={"f": bundle})
+
+    module.load = load
+    return module
+
+
+class UnityPackTests(unittest.TestCase):
+    def test_edits_written_back_verify_and_every_refusal_is_named(self) -> None:
+        import random
+
+        from PIL import Image
+
+        from viwo.contracts.types import OutcomeKind
+        from viwo.plugins.unity.pack import UnityPyPacker
+
+        rng = random.Random(3)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            container = root / "data.unity3d"
+            for _ in range(8):
+                kinds = {pid: rng.choice(["TextAsset", "Texture2D"]) for pid in range(1, 6)}
+                members = {}
+                for pid in rng.sample(sorted(kinds), rng.randint(1, 5)):
+                    src = root / f"edit{pid}"
+                    if kinds[pid] == "TextAsset":
+                        src.write_bytes(rng.randbytes(20).hex().encode())
+                    else:
+                        color = tuple(rng.randrange(256) for _ in range(3)) + (255,)
+                        Image.new("RGBA", (3, 3), color).save(src, format="PNG")
+                    members[str(pid)] = src
+                container.write_bytes(b"UnityFS original")
+                module = fake_pack_unitypy(kinds)
+                with mock.patch.dict(sys.modules, {"UnityPy": module}):
+                    out = UnityPyPacker().pack(container, members, None)
+                    self.assertEqual((out.kind, out.files), (OutcomeKind.OK, len(members)))
+                    self.assertEqual(container.read_bytes(), b"UnityFS repacked")
+                    self.assertEqual(UnityPyPacker().verify(container, members, None), [])
+                    other = root / "other.txt"
+                    other.write_text("not what was written")
+                    some = (
+                        next(m for m in members if kinds[int(m)] == "TextAsset")
+                        if any(kinds[int(m)] == "TextAsset" for m in members)
+                        else None
+                    )
+                    if some:  # a member whose bytes differ is reported by verify
+                        self.assertEqual(
+                            UnityPyPacker().verify(container, {some: other}, None), [some]
+                        )
+            refusals = (
+                ({1: "TextAsset"}, {"99": root / "edit1"}, "object 99 not found"),
+                ({1: "Mesh"}, {"1": root / "edit1"}, "Mesh cannot be written back"),
+            )
+            for kinds, members, why in refusals:
+                with mock.patch.dict(sys.modules, {"UnityPy": fake_pack_unitypy(kinds)}):
+                    out = UnityPyPacker().pack(container, members, None)
+                self.assertEqual(out.kind, OutcomeKind.FAILED)
+                self.assertIn(why, out.error)
+            with mock.patch.dict(sys.modules, {"UnityPy": None}):
+                out = UnityPyPacker().pack(container, {}, None)
+            self.assertEqual(out.kind, OutcomeKind.UNAVAILABLE)
+
+
 def make_unity_game(root: Path) -> Path:
     game = root / "MyGame"
     (game / "MyGame_Data").mkdir(parents=True)

@@ -4,6 +4,14 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.6.13 (2026-11-04)
+- Property tests: GDScript decompilation (the bytecode option wins, then the engine version, then
+  GDRE's own listing for the header number; files in batches of at most 100; every failure
+  named); the Unity packer writes TextAsset and Texture2D edits back, verifies them, and names a
+  missing object or a type it cannot write; an OS layer without a capability says it cannot;
+  the zip packer changes exactly the edited members and leaves a broken container untouched;
+  one plugin's verify crash stays on its own entry; provenance keeps damaged lines.
+
 ## 1.6.12 (2026-11-04)
 - Fix: every dump, trace and profile run gets a new folder and every recording a new WAV. Two
   runs on one process within one second shared `<pid>-<stamp>`, and a trace that wrote nothing

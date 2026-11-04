@@ -163,6 +163,107 @@ def _result(ok: bool, text: str = ""):
     return SimpleNamespace(ok=ok, stderr=text, stdout="", returncode=0 if ok else 1)
 
 
+LISTING = (
+    "4.3.0-stable (77dcf97 / 2024-08-14 / Bytecode version: 100)\n"
+    "3.5.0-stable (991bb6a / 2022-08-05 / Bytecode version: 13)\n"
+)
+
+
+def _gdre(staging: Path, options: dict, writes: bool, located: bool = True):
+    """A fake GDRE (lists its bytecode revisions, writes one .gd per --decompile when `writes`)
+    and the analysis context around it; returns (ctx, the argv of every run)."""
+    from types import SimpleNamespace
+
+    runs = []
+
+    def run(argv, timeout=None, cancel=None):
+        runs.append(argv)
+        if "--list-bytecode-versions" in argv:
+            return SimpleNamespace(stdout=LISTING, stderr="", ok=True)
+        for a in argv if writes else ():
+            if a.startswith("--decompile="):
+                (staging / (Path(a[12:]).stem + ".gd")).write_text("x")
+        return SimpleNamespace(stdout="", stderr="gdre: bad bytecode", ok=writes)
+
+    tool = SimpleNamespace(argv_prefix=("gdre",))
+    host = SimpleNamespace(
+        tools=SimpleNamespace(locate=lambda spec: tool if located else None),
+        process=SimpleNamespace(run=run),
+    )
+    ctx = SimpleNamespace(
+        os=host, options=options, staging=staging, cancel=None, log=lambda *a, **k: None
+    )
+    return ctx, runs
+
+
+def _scripts(root: Path, n: int, magic: bytes, number: int) -> tuple:
+    files = []
+    for i in range(n):
+        f = root / f"s{i}.gdc"
+        f.write_bytes(magic + struct.pack("<I", number) + b"code")
+        files.append(f)
+    return tuple(files)
+
+
+class GdscriptTests(unittest.TestCase):
+    """analysis.gdscript: the bytecode option wins, then the engine version hint, then GDRE's own
+    listing for the header number; files go in batches; every failure is named."""
+
+    def test_bytecode_choice_batches_and_failures(self) -> None:
+        import random
+
+        from viwo.contracts.analysis import AnalysisTarget
+        from viwo.contracts.types import OutcomeKind
+        from viwo.plugins.godot.gdscript import BATCH, GdreDecompile
+
+        rng = random.Random(5)
+        for case in range(14):
+            with tempfile.TemporaryDirectory() as tmp:
+                root, n = Path(tmp), rng.randint(1, 250)
+                magic, number = rng.choice([b"GDSC", b"GDSC", b"JUNK"]), rng.choice([100, 13, 7])
+                option, hint = rng.choice(["", "4.2.0"]), rng.choice(["", "3.6.1"])
+                writes = rng.random() < 0.8
+                (root / "out").mkdir()
+                ctx, runs = _gdre(root / "out", {"bytecode": option} if option else {}, writes)
+                hints = {"engine_version": hint} if hint else {}
+                files = _scripts(root, n, magic, number)
+                target = AnalysisTarget("s", "gdscript_bytecode", files, "godot", hints=hints)
+                out = GdreDecompile().analyze(target, ctx)
+                listed = {100: "4.3.0", 13: "3.5.0"}.get(number, "") if magic == b"GDSC" else ""
+                chosen = option or hint or listed
+                if not chosen:
+                    self.assertIn("bytecode option", out.error)
+                    continue
+                work = [a for a in runs if "--list-bytecode-versions" not in a]
+                self.assertEqual(len(work), -(-n // BATCH))  # ceil: no run over the batch size
+                self.assertTrue(all(f"--bytecode={chosen}" in a for a in work))
+                per_run = [sum(x.startswith("--decompile=") for x in a) for a in work]
+                self.assertEqual((sum(per_run), max(per_run) <= BATCH), (n, True))
+                if writes:
+                    self.assertEqual((out.kind, out.files), (OutcomeKind.OK, n))
+                else:
+                    self.assertIn("bad bytecode", out.error)
+
+    def test_engine_version_and_a_missing_tool(self) -> None:
+        from viwo.contracts.analysis import AnalysisTarget
+        from viwo.contracts.types import OutcomeKind
+        from viwo.plugins.godot.gdscript import GdreDecompile, engine_version
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            exe = root / "game.exe"
+            exe.write_bytes(b"MZ ... 3.3.2.stable.official ...")
+            self.assertEqual(engine_version(exe), "3.3.2")
+            self.assertEqual(engine_version(root / "gone.exe"), "")
+            from viwo.plugins.godot.gdscript import _from_header
+
+            junk = _scripts(root, 1, b"JUNK", 100)[0]
+            self.assertEqual(_from_header(None, junk, None), "")  # no header: GDRE never asked
+            ctx, _ = _gdre(root, {}, True, located=False)
+            target = AnalysisTarget("s", "gdscript_bytecode", (), "godot")
+            self.assertEqual(GdreDecompile().analyze(target, ctx).kind, OutcomeKind.UNAVAILABLE)
+
+
 class ParserPropertyTests(unittest.TestCase):
     def test_trailers_and_pe_headers_never_lie_or_raise(self) -> None:
         import random
