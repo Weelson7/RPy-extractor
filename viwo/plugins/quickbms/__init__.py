@@ -49,8 +49,7 @@ class QuickBmsCli(Unarchiver):
     def __init__(self, table: ScriptTable) -> None:
         self.table = table
 
-    def dependencies(self):
-        return (QUICKBMS,)
+    requires = (QUICKBMS,)
 
     def extract(self, archive: Path, dest: Path, ctx) -> Outcome:
         tool, script = ctx.os.tools.locate(QUICKBMS), self.table.scripts.get(archive.suffix.lower())
@@ -71,9 +70,7 @@ class QuickBmsPlugin(EnginePlugin):
     def __init__(self) -> None:
         self.table = ScriptTable()
 
-    @property
-    def manifest(self) -> PluginManifest:
-        return MANIFEST
+    manifest = MANIFEST
 
     def configure(self, options) -> None:
         """`[options.quickbms] scripts`, else the pinned scripts folder under third_party/."""

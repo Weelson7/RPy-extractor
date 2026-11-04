@@ -71,7 +71,8 @@ async function run(kind) {
     await prog.finish("ok", `${kind.toUpperCase()} DONE`);
     fill(el.result, panel("13.D", "RESULT", openBtn(res.outputDir || res.wav || ""),
       Object.entries(res).filter(([k, v]) => k !== "success" && typeof v !== "object").map(([k, v]) => kv(k.toUpperCase(), h("span", { class: "mono" }, String(v)))),
-      res.notCopied?.length ? h("p", { class: "note" }, `Left out of the copy (the OS refused to read them): ${res.notCopied.join(", ")}`) : null));
+      res.notCopied?.length ? h("p", { class: "note" }, `Left out of the copy (the OS refused to read them): ${res.notCopied.join(", ")}`) : null,
+      (res.warnings || []).map((w) => h("p", { class: "note warn-text" }, w))));
     toast(`${kind} finished.`, "ok");
   } catch (err) {
     await prog.finish(err.code === "cancelled" ? "cancel" : "fail", `${kind.toUpperCase()} FAILED`);

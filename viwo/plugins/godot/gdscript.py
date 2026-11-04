@@ -46,8 +46,7 @@ class GdreDecompile(Analyzer):
     backend_id, owner, license, isolation = "gdre-decompile", "godot", "MIT", "subprocess"
     kinds = ("gdscript_bytecode",)
 
-    def dependencies(self):
-        return (GDRE,)
+    requires = (GDRE,)
 
     def analyze(self, target: AnalysisTarget, ctx) -> Outcome:
         tool = ctx.os.tools.locate(GDRE)

@@ -125,6 +125,25 @@ def make_games(root: Path) -> tuple[Path, Path]:
     return unity, unreal
 
 
+class TableNameTests(unittest.TestCase):
+    def test_any_executable_name_round_trips_through_the_table(self) -> None:
+        import random
+        import re
+        from xml.etree import ElementTree
+
+        from viwo.core.analysis.handoffs import TABLE, table_name
+
+        rng = random.Random(4)
+        alphabet = "ab &<>\"'\\é漢.-_"
+        for _ in range(300):
+            name = "".join(rng.choice(alphabet) for _ in range(rng.randint(1, 12))) + ".exe"
+            script = (
+                ElementTree.fromstring(TABLE.format(name=table_name(name))).find("LuaScript").text
+            )
+            literal = re.search(r'local name = "((?:[^"\\]|\\.)*)"', script).group(1)
+            self.assertEqual(re.sub(r"\\(.)", r"\1", literal), name)
+
+
 class TargetTests(unittest.TestCase):
     def test_plugins_propose_targets(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -296,9 +315,12 @@ for f in [Path(v) for k, v in pairs if k == "--decompile"]:
             prefs = Path(tmp) / "ghidra" / "ghidra_12.2_PUBLIC" / "preferences"
             prefs.parent.mkdir(parents=True)
             prefs.write_text("Theme=x\nSHOW_TIPS=true\n", encoding="utf-8")
-            ghidra.quiet_gui(select_os(), Path("/opt/ghidra_12.2_PUBLIC"))
+            for _ in range(2):  # idempotent: a second handoff changes nothing
+                self.assertEqual(ghidra.quiet_gui(select_os(), Path("/opt/ghidra_12.2_PUBLIC")), "")
             lines = prefs.read_text(encoding="utf-8").splitlines()
-            self.assertEqual(lines, ["Theme=x", "USER_AGREEMENT=ACCEPT", "SHOW_TIPS=false"])
+            self.assertEqual(
+                lines, ["Theme=x", "SHOW_TIPS=true", "USER_AGREEMENT=ACCEPT"]
+            )  # the user's choice kept
 
     def test_switch_off_unknown_target_and_handoff_without_project(self) -> None:
         with self.assertRaises(ViwoError) as err:

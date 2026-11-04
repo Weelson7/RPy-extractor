@@ -103,6 +103,19 @@ class ContainerTests(unittest.TestCase):
             self.assertEqual((ws / "wav" / "5000.wav").read_bytes(), b"RIFFwav")
             self.assertEqual(result.archives_extracted, 1)
 
+    def test_drs_names_are_safe_whatever_the_table_says(self) -> None:
+        import io
+        import random
+        import re
+
+        from viwo.plugins.genie import entries
+
+        rng = random.Random(1)
+        for _ in range(100):
+            ext = "".join(rng.choice("ab:?*<>|. \\/1") for _ in range(3))
+            names = [n for n, _, _ in entries(io.BytesIO(drs({ext: {7: b"x", 8: b"y"}})))]
+            self.assertTrue(all(re.fullmatch(r"\d+\.[A-Za-z0-9]+", n) for n in names), (ext, names))
+
     def test_pack_members_keep_their_paths_and_block_traversal(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             files = {

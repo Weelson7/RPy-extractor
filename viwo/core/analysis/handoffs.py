@@ -6,6 +6,7 @@ Both run as tracked children of ViWo, like the Ghidra GUI."""
 from __future__ import annotations
 
 from pathlib import Path
+from xml.sax.saxutils import escape
 
 from viwo.contracts.analysis import AnalysisTarget, Handoff, LaunchSpec
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
@@ -45,6 +46,13 @@ end
 """
 
 
+def table_name(name: str) -> str:
+    """An executable name inside the table's Lua string, inside its XML: "&", "<", quotes and
+    backslashes in names ("Command & Conquer.exe") would otherwise break the table."""
+    lua = name.replace("\\", "\\\\").replace('"', '\\"')
+    return escape(lua)
+
+
 def _bits(exe: Path) -> int:
     with open(exe, "rb") as fh:
         info = pe(fh.read(4096))
@@ -71,8 +79,7 @@ class X64dbgGui(Handoff):
     label, accepts = "Continue in x64dbg", ("native_binary",)
     self_check_args = ()  # a GUI: never started just to answer
 
-    def dependencies(self):
-        return (X64DBG,)
+    requires = (X64DBG,)
 
     def prepare(self, target: AnalysisTarget, ctx) -> LaunchSpec | Outcome:
         tool = ctx.os.tools.locate(X64DBG)
@@ -107,8 +114,7 @@ class CheatEngineGui(Handoff):
     label, accepts = "Continue in Cheat Engine", ("native_binary",)
     self_check_args = ()
 
-    def dependencies(self):
-        return (CHEATENGINE,)
+    requires = (CHEATENGINE,)
 
     def prepare(self, target: AnalysisTarget, ctx) -> LaunchSpec | Outcome:
         tool = ctx.os.tools.locate(CHEATENGINE)
@@ -117,7 +123,7 @@ class CheatEngineGui(Handoff):
         exe = target.paths[0]
         ctx.staging.mkdir(parents=True, exist_ok=True)
         table = (ctx.staging / f"{exe.stem}.CT").resolve()
-        table.write_text(TABLE.format(name=exe.name), encoding="utf-8")
+        table.write_text(TABLE.format(name=table_name(exe.name)), encoding="utf-8")
         if ctx.os.os_id == "windows":
             quiet_cheatengine(ctx.os, Path(tool.path).resolve().parent)
         return LaunchSpec((*tool.argv_prefix, str(table)), table.parent)

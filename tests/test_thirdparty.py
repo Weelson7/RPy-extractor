@@ -6,10 +6,13 @@ from __future__ import annotations
 import hashlib
 import io
 import os
+import subprocess
+import sys
 import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from types import SimpleNamespace
 from unittest import mock
 
 from tests.helpers import runtime
@@ -178,6 +181,77 @@ class InstallerTests(unittest.TestCase):
                     thirdparty.install_tool("x", Path(tmp), None)
                 self.assertEqual(err.exception.code, "refused")
 
+    def test_every_runtime_file_ships_in_the_wheel_and_the_bundle(self) -> None:
+        """What the code reads from its own package at run time ships: every file under
+        viwo/data and viwo/web is in the wheel, every script module is added to the bundle."""
+
+        root = Path(__file__).resolve().parent.parent
+        sys.path.insert(0, str(root / "packaging"))
+        try:
+            import build_portable
+        finally:
+            sys.path.pop(0)
+        added = build_portable.script_data()
+        for script in build_portable.scripts():
+            self.assertIn(str(script) + build_portable.SEP, " ".join(added))
+        self.assertTrue(
+            {"rd_trigger.py", "rd_harvest.py", "emulate.py"}
+            <= {p.name for p in build_portable.scripts()}
+        )
+        with tempfile.TemporaryDirectory() as tmp:
+            argv = [
+                sys.executable,
+                "-m",
+                "pip",
+                "wheel",
+                str(root),
+                "--no-deps",
+                "--no-build-isolation",
+                "-q",
+                "-w",
+                tmp,
+            ]
+            subprocess.run(argv, check=True, capture_output=True, timeout=300)
+            with zipfile.ZipFile(next(Path(tmp).glob("viwo-*.whl"))) as wheel:
+                shipped = set(wheel.namelist())
+        needed = {
+            p.relative_to(root).as_posix()
+            for folder in ("viwo/data", "viwo/web")
+            for p in (root / folder).rglob("*")
+            if p.is_file() and "__pycache__" not in p.parts
+        }
+        self.assertEqual(needed - shipped, set())
+
+    def test_python_pins_install_only_from_their_hash_locks(self) -> None:
+        import re
+        import sys as _sys
+
+        data = thirdparty.manifest()
+        pins = {**data["python"], **{k: v for k, v in data["workers"].items() if k[0] != "_"}}
+        here = f"{_sys.version_info.major}.{_sys.version_info.minor}"
+        for dep_id in pins:
+            for lock in (thirdparty.MANIFEST.parent / "locks").glob(f"{dep_id}-*.txt"):
+                for line in lock.read_text(encoding="utf-8").splitlines():
+                    self.assertRegex(
+                        line, r"^[a-z0-9.\-]+==[^ ]+ --hash=sha256:[0-9a-f]{64}$", lock.name
+                    )
+            self.assertTrue(
+                thirdparty.lock_file(dep_id).is_file(), f"{dep_id}: no lock for this host"
+            )
+        calls = []
+        runner = SimpleNamespace(
+            run=lambda argv, timeout: calls.append(argv) or SimpleNamespace(ok=True)
+        )
+        with mock.patch.object(thirdparty, "lock_file", return_value=Path("missing.txt")):
+            with self.assertRaises(ViwoError) as err:
+                thirdparty.pip_install("unitypy", Path("t"), runner)
+        self.assertEqual((err.exception.code, calls), ("unavailable", []))  # never unpinned
+        thirdparty.pip_install("lz4", Path("t"), runner)
+        self.assertIn("--require-hashes", calls[0])
+        self.assertIn("--no-deps", calls[0])
+        self.assertEqual(calls[0][-1], str(thirdparty.lock_file("lz4")))
+        self.assertTrue(re.search(r"-\d+\.\d+\.txt$", calls[0][-1]) and here in calls[0][-1])
+
     def test_manifest_pins_match_pyproject(self) -> None:
         text = (Path(__file__).resolve().parent.parent / "pyproject.toml").read_text()
         for pin in thirdparty.manifest()["python"].values():
@@ -213,6 +287,9 @@ class InstallerTests(unittest.TestCase):
                 self.assertRegex(spec["sha256"], r"^[0-9a-f]{64}$", dep)
                 self.assertGreater(spec["size"], 1000, dep)
                 self.assertIn(spec["kind"], ("zip", "tar", "gz", "raw", "msi", "sfx"), dep)
+                self.assertTrue(spec.get("find"), dep)  # how the installed tool is found
+                if spec["kind"] in ("raw", "gz"):  # a single file needs the name it is saved as
+                    self.assertTrue(spec.get("save_as"), dep)
 
     def test_strict_problems_name_unbound_plugin_slots(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

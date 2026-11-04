@@ -377,6 +377,46 @@ so `progress.js` stops parsing message text, let `list_window` return the type c
   from its pin, instead of crashing the check.
 - Games pass from the committed 1.5.0 (worktree `../viwo-pass`): TF2 PASS (VPK subset).
 
+## 1.6.0 (audit fixes, LoC reclaim, typed decoders, hash-locked pins, 2026-11-04)
+- Full audit (a read-only agent, 46 verified findings) and its fixes, each with a property test:
+  the wheel ships viwo/data/** (Ghidra script, worker scripts) and the portable build adds every
+  script module (a `__main__` block) by itself; an identifier that cannot read a file (antivirus,
+  lock) and a game file removed mid-run never fail an extraction (named instead: Approximately
+  Up); a reused agent copy never looks finished from the last run (UE4SS done file relative:
+  ANSI Lua paths); patch offsets are bounded (never grow the binary); duplicate mod names are
+  refused; a mod's AOB adaptation reads every patch back; a cancel anywhere in sanitize apply
+  stays undoable, undo keeps what it could not restore; antivirus exclusions are shared by
+  concurrent jobs and a refused removal stays journaled and is said; new workspace folders get
+  a cross-process lock (removed again when left empty); the probe cache keys on size and mtime;
+  one damaged provenance line never breaks a capture or a repack; the Cheat Engine table
+  escapes any executable name; the API binds to this machine unless a LAN address is chosen;
+  save-remaining needs an absolute destination; finished jobs are bounded in memory; dbghelp
+  errors are its own and a failed dump leaves no file; backends no longer import core (no L0
+  debt left); Genie names are safe whatever the table says; the CLI prints every envelope
+  warning in text mode; Ghidra and RenderDoc first-run answers keep the user's choices and say
+  when they cannot be written; a plugin UI add-on that fails says so; BepInEx declares its
+  first-start download; dead `indexes.match_game` removed.
+- Decoders: AoE SLP sprites to PNG sheets with the game's palette (`decode.slp` in the Genie
+  plugin; verified on AoE II HD's graphics.drs, 41 sampled files, visually checked); Bannerlord
+  TPAC textures to DDS, format and shape from the item metadata (6255 of the Native module's
+  6258 textures, the rest kept raw and counted; visually checked DXT1 and BC7); Cyberpunk
+  archive members at their real paths from WolvenKit's path list (`cp77-hashes`, pinned by
+  commit, inflated with the game's Oodle, indexed once; verified on basegame_2_mainmenu).
+- LoC reclaim (an agent in a worktree, merged): viwo 13,860 -> 13,493 before the decoders;
+  one patched-copy helper (repack, patch, mod, agent) that warns about files the OS refused,
+  one RuntimeRequest/run table for every runtime kind (CLI, API, jobs), one context builder,
+  the dead journal overlay path and image.convert slot removed, process listing through
+  Toolhelp32 (non-ASCII names), agents report progress and an unfinished run, decode failures
+  counted and said. Budget: viwo 13,900 with the three decoders (reason in loc_caps.ini).
+- Hash locks: every Python pin x platform x CPython 3.11-3.14 that has wheels; the gaps are real
+  (py7zr none for 3.14, soundcard/numpy 2.5 none for 3.11, angr 9.2.223 only 3.12-3.13): those
+  installs say why instead of installing unpinned.
+- Games pass from 1.5.0/1.5.1: Rome II 12/12, TF2 PASS, Schedule I 12/12.
+- D2 closed: the BepInEx IL2CPP agent verified on a real game (Among Us, Steam): the patched
+  copy started, the chainloader came up, 120 interop assemblies (Assembly-CSharp.dll) came
+  back; index entry `among-us`. Python pins are hash-locked (`tools/pin_python.py`,
+  `viwo/data/locks/`, `pip install --require-hashes`).
+
 ## Morning deliverable (owner, 2026-11-04)
 A PDF presentation of the project status, the sqc suite and the CTF flags (`sqc/ctf.json`,
 `sqc/17-ctf.md`: five basic objectives per game plus one per GB), with no known limitation or

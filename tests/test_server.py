@@ -115,6 +115,24 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(body["total"], sum(body["typeCounts"].values()))
         self.assertEqual(body["total"], body["totalCount"])
 
+    def test_only_this_machine_unless_bound_to_a_lan_address(self) -> None:
+        from types import SimpleNamespace
+
+        from viwo.api.server import Handler
+
+        def ok(bound: str, peer: str, host: str = "127.0.0.1:8000") -> bool:
+            fake = SimpleNamespace(headers={"Host": host}, client_address=(peer, 50000))
+            fake.app = SimpleNamespace(server=SimpleNamespace(host=bound))
+            return Handler._host_ok(fake)
+
+        local = ("127.0.0.1", "::1", "::ffff:127.0.0.1", "127.8.9.1")
+        lan = ("10.0.0.5", "192.168.1.20", "fe80::1", "not-an-ip")
+        for bound in ("127.0.0.1", "0.0.0.0", "::", "localhost"):
+            self.assertTrue(all(ok(bound, p) for p in local), bound)
+            self.assertFalse(any(ok(bound, p) for p in lan), bound)  # a faked Host header
+        self.assertTrue(all(ok("192.168.1.10", p, "192.168.1.10:8000") for p in lan))
+        self.assertFalse(ok("192.168.1.10", "127.0.0.1", "evil.example"))  # rebinding
+
     def test_security_model(self) -> None:
         self.assertEqual(self.call("POST", "/api/logs/clear", {}, **{"X-VIWO-Token": None})[0], 403)
         self.assertEqual(self.call("GET", "/api/logs", **{"X-VIWO-Token": "wrong"})[0], 403)

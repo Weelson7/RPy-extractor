@@ -43,8 +43,7 @@ class BsaBuiltin(Unarchiver):
     backend_id, owner, license = "bsa-builtin", "bethesda", "MIT"
     parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
-    def dependencies(self):
-        return (LZ4,)
+    requires = (LZ4,)
 
     def available(self, os) -> tuple[bool, str]:
         return True, ""  # lz4 only unlocks version-105 entries; everything else works without it
@@ -104,9 +103,7 @@ PLUGIN = "BethesdaPlugin"  # discovered by viwo.core.wiring.registry
 
 
 class BethesdaPlugin(EnginePlugin):
-    @property
-    def manifest(self) -> PluginManifest:
-        return MANIFEST
+    manifest = MANIFEST
 
     def detect(self, probe: GameProbe) -> DetectionResult:
         found = [

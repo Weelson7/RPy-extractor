@@ -78,9 +78,7 @@ PLUGIN = "WarscapePlugin"  # discovered by viwo.core.wiring.registry
 
 
 class WarscapePlugin(EnginePlugin):
-    @property
-    def manifest(self) -> PluginManifest:
-        return MANIFEST
+    manifest = MANIFEST
 
     def detect(self, probe: GameProbe) -> DetectionResult:
         evidence = []

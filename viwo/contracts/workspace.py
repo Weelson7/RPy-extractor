@@ -6,7 +6,6 @@ import re
 from pathlib import Path, PurePosixPath
 
 MARKER = ".viwo-workspace"
-LEGACY_MARKERS = (".rpyx-workspace",)  # written by the v1 hotfix
 METADATA_DIR = ".extraction_metadata"
 RUNS_DIR = f"{METADATA_DIR}/runs"
 PROVENANCE_FILE = f"{METADATA_DIR}/provenance.jsonl"
@@ -35,7 +34,7 @@ def ext_folder(ext: str) -> str:
 
 
 def has_marker(folder: Path) -> bool:
-    return any((folder / name).exists() for name in (MARKER, *LEGACY_MARKERS))
+    return (folder / MARKER).exists()
 
 
 def next_free(path: Path) -> Path:
@@ -79,3 +78,25 @@ def inside(root: Path, target: Path) -> bool:
             return False
         probe = probe.parent
     return True
+
+
+def member_path(root: Path, rel: str) -> Path | None:
+    """`rel` (a member name, a path read back from a record) under `root`; None when it is
+    unsafe (see safe_member) or leads out of root, through a link included (see inside)."""
+    member = safe_member(rel)
+    path = root.joinpath(*member.parts) if member is not None else None
+    return path if path is not None and inside(root, path) else None
+
+
+def stage_members(members: dict[str, Path], root: Path) -> list[Path]:
+    """Copy edited members to root/<member> for a packer (unsafe names are skipped); returns
+    the staged files."""
+    staged = []
+    for member, source in members.items():
+        rel = safe_member(member)
+        if rel is not None:
+            target = root.joinpath(*rel.parts)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(source.read_bytes())
+            staged.append(target)
+    return staged

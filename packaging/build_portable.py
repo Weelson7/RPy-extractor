@@ -18,6 +18,26 @@ ROOT = Path(__file__).resolve().parent.parent
 SEP = ";" if os.name == "nt" else ":"
 
 
+ENTRY_POINTS = {"cli.py", "__main__.py"}
+
+
+def scripts() -> list[Path]:
+    """Modules that run as their own process (a `__main__` block: RenderDoc helpers, worker
+    scripts). --collect-data leaves .py files out, so each must be added as data."""
+    return sorted(
+        p
+        for p in (ROOT / "viwo").rglob("*.py")
+        if p.name not in ENTRY_POINTS and '__name__ == "__main__"' in p.read_text(encoding="utf-8")
+    )
+
+
+def script_data() -> list[str]:
+    out: list[str] = []
+    for path in scripts():
+        out += ["--add-data", f"{path}{SEP}{path.parent.relative_to(ROOT).as_posix()}"]
+    return out
+
+
 def build(out: Path) -> Path:
     work = Path(tempfile.mkdtemp(prefix="viwo-build-"))
     args = [
@@ -43,8 +63,7 @@ def build(out: Path) -> Path:
         "_ssl",
         "--collect-data",
         "viwo",
-        "--add-data",
-        f"{ROOT / 'viwo/core/capture/rd_harvest.py'}{SEP}viwo/core/capture",
+        *script_data(),
         "--add-data",
         f"{ROOT / 'indexes'}{SEP}indexes",  # per-game indexes ship with the bundle
     ]

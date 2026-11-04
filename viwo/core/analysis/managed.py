@@ -61,10 +61,8 @@ class IlSpy(Analyzer):
 
     backend_id, license, isolation = "ilspycmd", "MIT", "subprocess"
     kinds = ("dotnet_assembly",)
-    self_check_args = ("--version",)
 
-    def dependencies(self):
-        return (ILSPY, DOTNET)
+    requires = (ILSPY, DOTNET)
 
     def analyze(self, target: AnalysisTarget, ctx) -> Outcome:
         tool = ctx.os.tools.locate(ILSPY)
@@ -107,8 +105,7 @@ class Cpp2Il(Analyzer):
     kinds = ("il2cpp",)
     self_check_args = ("--help",)
 
-    def dependencies(self):
-        return (CPP2IL,)
+    requires = (CPP2IL,)
 
     def analyze(self, target: AnalysisTarget, ctx) -> Outcome:
         tool = ctx.os.tools.locate(CPP2IL)
@@ -138,8 +135,7 @@ class Unluac(Analyzer):
     kinds = ("script_vm",)
     self_check_args = ()  # `java -jar unluac.jar` with no file prints the usage
 
-    def dependencies(self):
-        return (UNLUAC, JDK)
+    requires = (UNLUAC, JDK)
 
     def analyze(self, target: AnalysisTarget, ctx) -> Outcome:
         tool, env = ctx.os.tools.locate(UNLUAC), java_env(ctx)

@@ -1,9 +1,9 @@
-"""capture.audio (D2): the system's sound output recorded to WAV while a game plays, through the
-soundcard package (BSD; WASAPI loopback on Windows, the PulseAudio monitor on Linux)."""
+"""Audio capture (D2, `viwo record`): the system's sound output recorded to WAV while a game
+plays, through the soundcard package (BSD; WASAPI loopback on Windows, the PulseAudio monitor
+on Linux)."""
 
 from __future__ import annotations
 
-import time
 import warnings
 import wave
 from pathlib import Path
@@ -12,7 +12,7 @@ from viwo.contracts.errors import ViwoError
 from viwo.contracts.slots import Backend
 from viwo.contracts.types import DependencySpec
 
-from .runtime import _enabled
+from .runtime import _enabled, runtime_dir, stamp
 
 SOUNDCARD = DependencySpec(
     "soundcard",
@@ -25,13 +25,12 @@ RATE = 48000
 
 
 class LoopbackRecorder(Backend):
-    """capture.audio: owns the soundcard dependency (preflight, 05 SYSTEM)."""
+    """Owns the soundcard dependency (preflight, 05 SYSTEM, `viwo install`). It serves no slot:
+    record() below is the one loopback recorder, with nothing to bind or fail over to."""
 
     backend_id, license, isolation = "soundcard-loopback", "BSD-3-Clause", "inprocess"
-    families = frozenset({"capture"})
 
-    def dependencies(self):
-        return (SOUNDCARD,)
+    requires = (SOUNDCARD,)
 
 
 def record(rt, workspace: Path, seconds: float) -> dict:
@@ -49,9 +48,7 @@ def record(rt, workspace: Path, seconds: float) -> dict:
     with warnings.catch_warnings():  # "data discontinuity": a dropped buffer, not an error
         warnings.simplefilter("ignore")
         frames = loop.record(samplerate=RATE, numframes=int(RATE * seconds))
-    out = workspace.resolve() / ".runtime" / "audio"
-    out.mkdir(parents=True, exist_ok=True)
-    path = out / f"loopback-{time.strftime('%Y%m%d-%H%M%S')}.wav"
+    path = runtime_dir(workspace, "audio") / f"loopback-{stamp()}.wav"
     pcm = (numpy.clip(frames, -1, 1) * 32767).astype("<i2")
     with wave.open(str(path), "wb") as fh:
         fh.setnchannels(pcm.shape[1] if pcm.ndim > 1 else 1)

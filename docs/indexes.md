@@ -11,7 +11,7 @@ needs, what to know before extracting. ViWo stays small; coverage grows by addin
   `indexes/tools/validate.py`, `indexes/README.md`, `indexes/SCHEMA.md`. The folder is laid out
   exactly as the root of the future `vidya_wormhole_indexes` repository, so it can be split out
   without moving anything.
-- Code: `viwo/core/indexes.py` (`list_games`, `load_index`, `validate`, `match_game`,
+- Code: `viwo/core/indexes.py` (`list_games`, `load_index`, `validate`,
   `install_game`). `install_game` installs the entry's tools through the preflight installer
   (`viwo.core.preflight.install`, pinned and checksummed into `third_party/`) and its scripts into
   `third_party/quickbms/scripts/` (HTTPS only, sha256 verified, an existing script with another

@@ -8,6 +8,8 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
+from viwo.contracts.workspace import safe_member
+
 KARK = b"KARK"
 LIMIT = 1 << 30  # one segment, inflated
 ENTRY, SEGMENT = 56, 16
@@ -88,20 +90,25 @@ class Archive:
         (raw_size,) = struct.unpack_from("<I", data, 4)
         return oodle.decompress(data[8:], min(raw_size, size))
 
-    def write(self, entry: Entry, dest: Path, oodle: "Oodle | None") -> bool:
-        """`<hash>.<ext>` for the main segment, `<hash>.<n>.buffer` for the others."""
+    def write(self, entry: Entry, dest: Path, oodle: "Oodle | None", name: str = "") -> bool:
+        """The main segment at its path when the name is known (else `<hash>.<ext>`), the
+        others as `<that>.<n>.buffer`."""
         if not entry.segments:
             return True
         main = self._read(entry.segments[0], oodle)
         if main is None:
             return False
-        name = f"{entry.name_hash:016x}"
-        (dest / f"{name}.{extension(main)}").write_bytes(main)
+        rel = safe_member(name) if name else None
+        target = dest.joinpath(*rel.parts) if rel else dest / f"{entry.name_hash:016x}"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        if not rel:
+            target = target.with_name(f"{target.name}.{extension(main)}")
+        target.write_bytes(main)
         for n, segment in enumerate(entry.segments[1:], 1):
             data = self._read(segment, oodle)
             if data is None:
                 return False
-            (dest / f"{name}.{n}.buffer").write_bytes(data)
+            target.with_name(f"{target.name}.{n}.buffer").write_bytes(data)
         return True
 
 

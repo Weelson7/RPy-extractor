@@ -25,9 +25,9 @@ READY = "Chainloader startup complete"
 
 class BepInExAgent(RuntimeAgent):
     backend_id, owner, license, isolation = "bepinex-agent", "unity", "LGPL-2.1", "subprocess"
+    network = "download"  # its first start fetches the Unity base libraries for the game
 
-    def dependencies(self):
-        return (BEPINEX,)
+    requires = (BEPINEX,)
 
     def accepts(self, copy: Path, exe: Path) -> str:
         if (exe.parent / "GameAssembly.dll").is_file():
@@ -37,6 +37,7 @@ class BepInExAgent(RuntimeAgent):
     def install(self, copy: Path, exe: Path, ctx) -> list[str]:
         source = Path(ctx.os.tools.locate(BEPINEX).path).parent
         shutil.copytree(source, exe.parent, dirs_exist_ok=True)
+        self._log(exe).unlink(missing_ok=True)  # a reused copy: the last run's log is not done
         config = exe.parent / "BepInEx" / "config" / "BepInEx.cfg"
         config.parent.mkdir(parents=True, exist_ok=True)
         if not config.is_file():

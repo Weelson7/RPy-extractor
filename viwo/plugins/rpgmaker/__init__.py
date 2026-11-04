@@ -30,9 +30,7 @@ PLUGIN = "RpgMakerPlugin"  # discovered by viwo.core.wiring.registry
 
 
 class RpgMakerPlugin(EnginePlugin):
-    @property
-    def manifest(self) -> PluginManifest:
-        return MANIFEST
+    manifest = MANIFEST
 
     def detect(self, probe: GameProbe) -> DetectionResult:
         evidence = []

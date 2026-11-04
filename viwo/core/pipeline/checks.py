@@ -21,7 +21,7 @@ def _verify(unpacked, collected) -> list[str]:
             f"{len(collected.unreadable)} file(s) could not be read "
             f"(antivirus block or lock), skipped: {shown}"
         )
-    return warnings
+    return warnings + collected.warnings
 
 
 def verify_one(plugin, ctx, collected: int) -> tuple[tuple[str, ...], int, int]:

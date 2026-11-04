@@ -52,13 +52,21 @@ class DecodeTests(unittest.TestCase):
             (game / "bad.wem").write_bytes(b"BROKEN")
             (game / "logo.dds").write_bytes(b"DDS-tex")
             rt = runtime(root, tools(root))
+            events = []
             result = extract(
                 rt,
                 ExtractionRequest(str(game), str(root / "ws")),
                 "j",
-                lambda e: None,
+                events.append,
                 CancelToken(),
             )
+            # never silent: the failed file is one warning (result and event) naming its slot
+            [warning] = [w for w in result.warnings if "could not be decoded" in w]
+            self.assertTrue(warning.startswith("1 file(s)") and "decode.audio" in warning)
+            self.assertIn("bad.wem", warning)
+            self.assertNotIn("music.wem", warning)
+            warned = [e for e in events if e.level == "warn" and e.message == warning]
+            self.assertEqual(len(warned), 1)
             ws = root / "ws"
             self.assertEqual((ws / "wav" / "music.wem_1.wav").read_bytes(), b"decoded:RIFF-wem")
             self.assertEqual((ws / "png" / "logo.dds.png").read_bytes(), b"decoded:DDS-tex")

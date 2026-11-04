@@ -352,6 +352,11 @@
     "min": 1000
    },
    {
+    "name": "SLP sprites decoded to PNG sheets with the game's palette",
+    "glob": "png/*.png",
+    "min": 1000
+   },
+   {
     "name": "terrain graphics (SLP) out of terrain.drs",
     "glob": "slp/*.slp",
     "min": 1500
@@ -633,9 +638,19 @@
     "min": 10
    },
    {
+    "name": "textures named from the path list",
+    "glob": "xbm/[g-z]*.xbm",
+    "min": 5
+   },
+   {
     "name": "meshes (CMesh)",
     "glob": "mesh/*.mesh",
     "min": 10
+   },
+   {
+    "name": "archive members named from the community path list (not their hash)",
+    "glob": "mesh/[g-z]*.mesh",
+    "min": 5
    },
    {
     "name": "entity templates and appearances",
@@ -723,8 +738,8 @@
     "min": 1000
    },
    {
-    "name": "texture pixel data segments present (.1.bin)",
-    "glob": "bin/*.1.bin",
+    "name": "textures as DDS out of the TPAC packages (format and shape from the metadata)",
+    "glob": "dds/*.dds",
     "min": 100
    },
    {

@@ -6,7 +6,6 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Mapping
 
-from .legacy import run_to_legacy
 from .types import DetectionResult
 from .workspace import METADATA_DIR
 
@@ -83,6 +82,21 @@ class PluginRun:
     inventory_items: int = 0  # doc 0.4: items the plugin's inventory() listed (0 = no claim)
     inventory_found: int = 0
 
+    def to_legacy_dict(self) -> dict[str, Any]:
+        """One `plugins[]` entry of the v1 extract result (doc 0.4, doc 3.5)."""
+        return {
+            "id": self.plugin_id,
+            "detection": self.detection.to_legacy_dict(),
+            "exported": self.exported,
+            "exportedByKind": dict(sorted(self.exported_by_kind.items())),
+            "exportedByTool": self.backend,
+            "inventoryCount": self.inventory_items or self.inventory_found,
+            "verifyPassed": self.verify_passed,
+            "backend": self.backend,
+            "warnings": list(self.warnings),
+            "error": self.error,
+        }
+
 
 @dataclass(frozen=True)
 class ExtractionResult:
@@ -127,7 +141,7 @@ class ExtractionResult:
             "collectedFromInventory": sum(r.inventory_found for r in self.runs),
             "contractVersion": CONTRACT_VERSION,
             "manifestsPath": f"{self.workspace}/{METADATA_DIR}" if self.workspace else "",
-            "plugins": [run_to_legacy(r) for r in self.runs],
+            "plugins": [r.to_legacy_dict() for r in self.runs],
         }
         if self.error:
             payload["error"] = self.error

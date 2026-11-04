@@ -289,21 +289,33 @@ def _fetch(dep_id: str, spec: dict, root: Path, runner, say, cancel) -> None:
             )
 
 
+def lock_file(dep_id: str) -> Path:
+    """The hash lock of a pinned Python package for this platform and interpreter."""
+    python = f"{sys.version_info.major}.{sys.version_info.minor}"
+    return MANIFEST.parent / "locks" / f"{dep_id}-{PLATFORM}-{python}.txt"
+
+
+def pip_install(dep_id: str, target: Path, runner) -> None:
+    """Every file of the pin's closure, each checked against its sha256 (tools/pin_python.py);
+    a pin without a lock for this platform and Python is not installed unpinned."""
+    lock = lock_file(dep_id)
+    if not lock.is_file():
+        raise ViwoError(
+            "unavailable",
+            f"no hash lock for {dep_id} on {PLATFORM} with Python {sys.version.split()[0]}",
+            hint="tools/pin_python.py writes it (or says the pin has no build for this Python)",
+        )
+    argv = [sys.executable, "-m", "pip", "install", "--disable-pip-version-check"]
+    argv += ["--require-hashes", "--no-deps", "--target", str(target), "-r", str(lock)]
+    result = runner.run(argv, timeout=3600)
+    if not result.ok:
+        raise ViwoError(
+            "failed", f"pip could not install {dep_id}", hint=(result.stderr or "")[-300:]
+        )
+
+
 def install_python(dep_id: str, home: Path, runner) -> str:
     pin = manifest()["python"][dep_id]
-    target = python_dir(home)
-    argv = [
-        sys.executable,
-        "-m",
-        "pip",
-        "install",
-        "--disable-pip-version-check",
-        "--target",
-        str(target),
-        *pin.split(),  # a pin may name several exact requirements
-    ]
-    result = runner.run(argv, timeout=1800)
-    if not result.ok:
-        raise ViwoError("failed", f"pip could not install {pin}", hint=(result.stderr or "")[-300:])
+    pip_install(dep_id, python_dir(home), runner)
     activate(home)
     return pin

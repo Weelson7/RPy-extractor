@@ -7,7 +7,7 @@ export class ApiError extends Error {
   constructor(message, info = {}) {
     super(message || "Request failed");
     this.code = info.code || "";
-    this.hint = info.hint || info.details || "";
+    this.hint = info.hint || "";
     this.owner = info.owner || "";
     this.payload = info.payload || null;
   }
@@ -45,7 +45,7 @@ export async function v2(method, url, body) {
 export async function v1(method, url, body) {
   const json = await request(method, url, body);
   if (json.success === false || (json.error && json.success === undefined)) {
-    throw new ApiError(json.error, { code: json.code, hint: json.hint, details: json.details, payload: json });
+    throw new ApiError(json.error, { code: json.code, hint: json.hint, payload: json });
   }
   return json;
 }

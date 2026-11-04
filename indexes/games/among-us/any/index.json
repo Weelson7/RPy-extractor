@@ -1,0 +1,22 @@
+{
+  "schema": 1,
+  "slug": "among-us",
+  "game_version": "any",
+  "title": "Among Us",
+  "engine": "unity",
+  "detect": [
+    "Among Us.exe",
+    "Among Us_Data",
+    "GameAssembly.dll"
+  ],
+  "plugins": [
+    "unity"
+  ],
+  "tools": [
+    "bepinex"
+  ],
+  "notes": "Unity IL2CPP (1.1 GB, Steam): the runtime.unity agent (BepInEx 6 be.785) ran in a patched copy, the chainloader started, and 120 interop assemblies (Assembly-CSharp.dll included) came back into the workspace; the game folder was only read. Online title: the capture policy warns.",
+  "source": "own testing (2026-11-04, viwo agent; docs/HANDOFF.md 1.5.2)",
+  "options": {},
+  "scripts": []
+}

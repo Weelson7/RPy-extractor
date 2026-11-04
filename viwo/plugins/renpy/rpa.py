@@ -107,8 +107,7 @@ class RpaSafe(Unarchiver):
 class Unrpa(Unarchiver):
     backend_id, owner, license, isolation = "unrpa", "renpy", "GPL-3.0", "subprocess"
 
-    def dependencies(self):
-        return (UNRPA,)
+    requires = (UNRPA,)
 
     def extract(self, archive, dest, ctx) -> Outcome:
         tool = ctx.os.tools.locate(UNRPA)

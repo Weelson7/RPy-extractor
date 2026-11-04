@@ -4,7 +4,8 @@ Header (36 bytes): magic TPAC, version (1 or 2), package GUID, item count, data 
 reserved. Items follow in a row: type GUID, asset GUID, [version], name (i32 length, UTF-8),
 metadata (u64 size), checksum, then the data segments (absolute offset, actual size, stored
 size, two GUIDs, 12 unknown bytes, a storage format byte: 0 raw, 1 LZ4 block) and dependencies
-(48 bytes each). Members come out as `<name>.<segment index>.bin`; LZ4 needs the `lz4` package.
+(48 bytes each). Textures come out as `<name>.dds` (textures.py); every other item as
+`<name>.<segment index>.bin`. LZ4 needs the `lz4` package.
 """
 
 from __future__ import annotations
@@ -16,6 +17,8 @@ from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest
 from viwo.contracts.slots import SlotDefinition, Unarchiver
 from viwo.contracts.types import DependencySpec, DetectionResult, Outcome, OutcomeKind
 from viwo.contracts.workspace import count_files, safe_member
+
+from .textures import CUBE_TAG, TEXTURE, dds, shape
 
 MAGIC = b"TPAC"
 HEADER = 36
@@ -35,7 +38,8 @@ def _string(fh) -> str:
 
 
 def entries(fh):
-    """(name, [(offset, actual size, stored size, format)]) per item."""
+    """(name, [(offset, actual size, stored size, format)], type GUID, metadata) per item; the
+    metadata is read for textures only (the rest is skipped)."""
     head = fh.read(HEADER)
     if head[:4] != MAGIC:
         raise ValueError("not a TPAC package")
@@ -43,14 +47,19 @@ def entries(fh):
     if version not in (1, 2) or count > 1 << 20:
         raise ValueError("version or item count out of range")
     for _ in range(count):
-        fh.read(32)  # type GUID, asset GUID
+        kind = fh.read(32)[:16]  # type GUID, asset GUID
         if version > 1:
             fh.read(4)
         name = _string(fh)
         (meta,) = struct.unpack("<Q", fh.read(8))
         if meta > LIMIT:
             raise ValueError("metadata size out of range")
-        fh.seek(meta + 8, 1)  # metadata, checksum
+        blob = b""
+        if kind == TEXTURE and meta < 1 << 16:
+            blob = fh.read(meta)
+        else:
+            fh.seek(meta, 1)
+        fh.seek(8, 1)  # checksum
         (segments,) = struct.unpack("<i", fh.read(4))
         if not 0 <= segments < 1 << 12:
             raise ValueError("segment count out of range")
@@ -61,7 +70,7 @@ def entries(fh):
             found.append((offset, actual, stored, fh.read(1)[0]))
         (deps,) = struct.unpack("<i", fh.read(4))
         fh.seek(48 * max(deps, 0), 1)
-        yield name, found
+        yield name, found, kind, blob
 
 
 def _inflate(data: bytes, actual: int, fmt: int) -> bytes | None:
@@ -83,44 +92,63 @@ class TpacBuiltin(Unarchiver):
     backend_id, owner, license = "tpac-builtin", "taleworlds", "MIT"
     parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
-    def dependencies(self):
-        return (LZ4,)
+    requires = (LZ4,)
 
     def available(self, os):
         return True, ""  # lz4 only unlocks compressed segments; raw ones come out without it
 
     def extract(self, archive: Path, dest: Path, ctx) -> Outcome:
-        skipped = 0
+        counts = {"lz4": 0, "raw texture": 0}
         try:
             with open(archive, "rb") as fh:
-                for name, segments in list(entries(fh)):
+                for name, segments, kind, meta in list(entries(fh)):
                     rel = safe_member(name)
                     if rel is None or ctx.cancel.cancelled:
                         continue
-                    for n, (offset, actual, stored, fmt) in enumerate(segments):
-                        if actual > LIMIT or stored > LIMIT:
-                            raise ValueError("segment size out of range")
-                        fh.seek(offset)
-                        data = _inflate(fh.read(stored), actual, fmt)
-                        if data is None:
-                            skipped += 1
-                            continue
-                        target = dest.joinpath(*rel.parts[:-1], f"{rel.name}.{n}.bin")
-                        target.parent.mkdir(parents=True, exist_ok=True)
-                        target.write_bytes(data)
+                    _item(fh, dest.joinpath(*rel.parts), segments, (kind, meta), counts)
         except (OSError, ValueError, struct.error) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"bad TPAC: {exc}")
-        notes = (f"{skipped} LZ4 segment(s) need the 'lz4' Python package",) if skipped else ()
-        return Outcome(OutcomeKind.OK, count_files(dest), notes=notes)
+        notes = [f"{counts['lz4']} LZ4 segment(s) need the 'lz4' Python package"]
+        notes.append(f"{counts['raw texture']} texture(s) of an unknown shape kept as raw .bin")
+        return Outcome(
+            OutcomeKind.OK, count_files(dest), notes=tuple(n for n in notes if n[0] != "0")
+        )
+
+
+def _segment(fh, segment, counts: dict) -> bytes | None:
+    offset, actual, stored, fmt = segment
+    if actual > LIMIT or stored > LIMIT:
+        raise ValueError("segment size out of range")
+    fh.seek(offset)
+    data = _inflate(fh.read(stored), actual, fmt)
+    counts["lz4"] += data is None
+    return data
+
+
+def _item(fh, target: Path, segments: list, typed: tuple[bytes, bytes], counts: dict) -> None:
+    """A texture as one DDS (its largest chain); anything else, or a texture whose shape is
+    not recognised (counted), as one .bin per segment."""
+    target.parent.mkdir(parents=True, exist_ok=True)
+    kind, meta = typed
+    if kind == TEXTURE and segments:
+        faces = 6 if CUBE_TAG in meta else 1
+        data = _segment(fh, max(segments, key=lambda s: s[1]), counts)
+        found = shape(meta, len(data), faces) if data is not None else None
+        if found:
+            target.with_name(f"{target.name}.dds").write_bytes(dds(data, *found, faces))
+            return
+        counts["raw texture"] += 1
+    for n, segment in enumerate(segments):
+        data = _segment(fh, segment, counts)
+        if data is not None:
+            target.with_name(f"{target.name}.{n}.bin").write_bytes(data)
 
 
 PLUGIN = "TaleworldsPlugin"  # discovered by viwo.core.wiring.registry
 
 
 class TaleworldsPlugin(EnginePlugin):
-    @property
-    def manifest(self) -> PluginManifest:
-        return MANIFEST
+    manifest = MANIFEST
 
     def detect(self, probe: GameProbe) -> DetectionResult:
         evidence = []

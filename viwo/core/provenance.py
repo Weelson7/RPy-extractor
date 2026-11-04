@@ -19,6 +19,20 @@ def relative(workspace: Path, path: Path) -> str | None:
         return None
 
 
+def entries(workspace: Path) -> list[dict]:
+    """Every provenance entry; a damaged line (a crash mid-write) is skipped, not fatal."""
+    file = workspace / ws.PROVENANCE_FILE
+    out = []
+    for line in file.read_text(encoding="utf-8").splitlines() if file.is_file() else []:
+        try:
+            entry = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(entry, dict):
+            out.append(entry)
+    return out
+
+
 def rewrite(workspace: Path, moves: dict[str, str | None]) -> int:
     """Point entries at their files' new paths (old rel -> new rel); returns entries changed."""
     moves = {old: new for old, new in moves.items() if new and old != new}

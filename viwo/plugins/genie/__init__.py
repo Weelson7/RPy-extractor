@@ -14,6 +14,8 @@ from viwo.contracts.slots import SlotDefinition, Unarchiver
 from viwo.contracts.types import DetectionResult, Outcome, OutcomeKind
 from viwo.contracts.workspace import count_files
 
+from .slp import SLP_SLOT, SlpDecoder
+
 MAGIC = b"Copyright (c) 1997 Ensemble Studios."
 HEADER = 56  # copyright 40 + version 4 + file type 12; then table count + first file offset
 LIMIT = 1 << 31
@@ -33,7 +35,8 @@ def entries(fh):
         raise ValueError("table count out of range")
     specs = [struct.unpack("<4sII", fh.read(12)) for _ in range(tables)]
     for kind, offset, count in specs:
-        ext = kind[1:4][::-1].decode("ascii", "replace").strip() or "bin"
+        raw = kind[1:4][::-1].decode("ascii", "replace")  # from the file: letters only
+        ext = "".join(c for c in raw if c.isascii() and c.isalnum()) or "bin"
         if count > 1 << 20:
             raise ValueError("file count out of range")
         fh.seek(offset)
@@ -65,9 +68,7 @@ PLUGIN = "GeniePlugin"  # discovered by viwo.core.wiring.registry
 
 
 class GeniePlugin(EnginePlugin):
-    @property
-    def manifest(self) -> PluginManifest:
-        return MANIFEST
+    manifest = MANIFEST
 
     def detect(self, probe: GameProbe) -> DetectionResult:
         evidence = []
@@ -88,7 +89,8 @@ class GeniePlugin(EnginePlugin):
                 suffixes=(".drs",),
                 magic=(MAGIC,),
             ),
+            SLP_SLOT,
         )
 
     def backends(self):
-        return (DrsBuiltin(),)
+        return (DrsBuiltin(), SlpDecoder())

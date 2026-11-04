@@ -38,7 +38,7 @@ def ui_config(host) -> Path:
     return base / "qrenderdoc" / "UI.config"
 
 
-def quiet_ui(host) -> None:
+def quiet_ui(host) -> str:
     """Answer qrenderdoc's first-run prompts (analytics, tips, update check) once: they are
     modal and would block `qrenderdoc --py` forever in an unattended run. A choice the user
     already made about analytics or update checks is kept."""
@@ -51,8 +51,9 @@ def quiet_ui(host) -> None:
         cfg.setdefault("CheckUpdate_AllowChecks", False)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps(cfg, indent=4), encoding="utf-8")
-    except (OSError, ValueError):
-        pass  # the prompt may then block; the trigger timeout reports it
+    except (OSError, ValueError) as exc:
+        return f"RenderDoc's first-run answers not written ({exc}): a prompt may block it"
+    return ""
 
 
 class RenderDocCapture(Backend):
@@ -61,15 +62,16 @@ class RenderDocCapture(Backend):
     families = frozenset({"capture"})
     network = "none"  # doc 11.6 declaration: nothing is fetched or reported
 
-    def dependencies(self):
-        return (RENDERDOCCMD, RD_PYTHON)
+    requires = (RENDERDOCCMD, RD_PYTHON)
 
     def capture(self, spec: dict, staging: Path, ctx) -> Outcome:
         """Launch, wait for the game to exit, then harvest every capture into staging."""
         cmd, py = ctx.os.tools.locate(RENDERDOCCMD), ctx.os.tools.locate(RD_PYTHON)
         if cmd is None or py is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=RENDERDOCCMD.hint)
-        quiet_ui(ctx.os)
+        problem = quiet_ui(ctx.os)
+        if problem:
+            ctx.log(problem, "warn", "capture")
         captures = staging.parent / "captures"
         captures.mkdir(parents=True, exist_ok=True)
         argv = [

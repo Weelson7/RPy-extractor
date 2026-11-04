@@ -17,7 +17,7 @@ def patch(rt, args, printer) -> Envelope:
     return Envelope.success(patchsets.apply(rt, args.game, args.patchset, args.out, printer))
 
 
-def mod(rt, args) -> Envelope:
+def mod(rt, args, printer) -> Envelope:
     from viwo.core import mods
 
     if args.action == "check":
@@ -28,4 +28,4 @@ def mod(rt, args) -> Envelope:
         split = lambda text: [s.strip() for s in text.split(",") if s.strip()]  # noqa: E731
         needs = {"requires": split(args.requires), "after": split(args.after)}
         return Envelope.success(mods.pack(args.game, args.copy, args.mod[0], args.name, needs))
-    return Envelope.success(mods.apply(rt, args.game, args.mod, args.copy))
+    return Envelope.success(mods.apply(rt, args.game, args.mod, args.copy, printer))

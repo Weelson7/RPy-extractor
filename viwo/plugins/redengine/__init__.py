@@ -2,7 +2,8 @@
 
 The index lists files by name hash (no names ship with the game), each as a run of segments;
 a segment either sits raw in the archive or starts with `KARK` (Oodle Kraken). Members come out
-as `<hash>.<ext>`, the extension read from the CR2W root class or sniffed from the first bytes.
+at their paths from the community path list (names.py), or as `<hash>.<ext>` when the list does
+not know them (the extension read from the CR2W root class or sniffed from the first bytes).
 Kraken segments are inflated with the decompressor the game itself ships (`bin/x64/oo2ext_*.dll`,
 found beside the archive; Windows only): ViWo authors no decompressor and fetches none.
 """
@@ -17,6 +18,7 @@ from viwo.contracts.slots import SlotDefinition, Unarchiver
 from viwo.contracts.types import DetectionResult, Outcome, OutcomeKind
 from viwo.contracts.workspace import count_files
 
+from .names import CP77_HASHES, Names
 from .rdar import Archive, Oodle
 
 MAGIC = b"RDAR"
@@ -30,33 +32,56 @@ class RdarBuiltin(Unarchiver):
     backend_id, owner, license = "rdar-builtin", "redengine", "MIT"
     parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
+    def dependencies(self):
+        return (CP77_HASHES,)
+
+    def available(self, os):
+        return True, ""  # the path list only names members; without it they keep their hash
+
     def extract(self, archive: Path, dest: Path, ctx) -> Outcome:
         oodle = Oodle.beside(archive)
-        skipped = 0
+        names, notes = _names(ctx, oodle)
+        skipped = unnamed = 0
         try:
             with open(archive, "rb") as fh:
                 rdar = Archive(fh)
                 for entry in rdar.entries():
                     if ctx.cancel.cancelled:
                         break
-                    if not rdar.write(entry, dest, oodle):
-                        skipped += 1
+                    name = names.get(entry.name_hash) if names else None
+                    unnamed += name is None
+                    skipped += not rdar.write(entry, dest, oodle, name or "")
         except (OSError, ValueError, struct.error) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"bad RDAR: {exc}")
-        notes = ()
+        finally:
+            if names:
+                names.close()
         if skipped:
             why = "no Oodle decompressor found beside the archive" if oodle is None else "bad data"
-            notes = (f"{skipped} Kraken-compressed member(s) skipped: {why}",)
-        return Outcome(OutcomeKind.OK, count_files(dest), notes=notes)
+            notes.append(f"{skipped} Kraken-compressed member(s) skipped: {why}")
+        if unnamed and names:
+            notes.append(f"{unnamed} member(s) not in the path list: kept as <hash>.<ext>")
+        return Outcome(OutcomeKind.OK, count_files(dest), notes=tuple(notes))
+
+
+def _names(ctx, oodle) -> tuple[Names | None, list[str]]:
+    """The path list, or why members keep their hashes this run."""
+    tool = ctx.os.tools.locate(CP77_HASHES)
+    if tool is None:
+        return None, [f"members keep their hashes: {CP77_HASHES.hint}"]
+    if oodle is None:
+        return None, ["members keep their hashes: the path list needs the game's Oodle (Windows)"]
+    try:
+        return Names.load(Path(tool.path), oodle), []
+    except (OSError, ValueError) as exc:
+        return None, [f"members keep their hashes: the path list did not load ({exc})"]
 
 
 PLUGIN = "RedenginePlugin"  # discovered by viwo.core.wiring.registry
 
 
 class RedenginePlugin(EnginePlugin):
-    @property
-    def manifest(self) -> PluginManifest:
-        return MANIFEST
+    manifest = MANIFEST
 
     def detect(self, probe: GameProbe) -> DetectionResult:
         evidence = []

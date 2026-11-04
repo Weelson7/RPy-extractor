@@ -2,23 +2,24 @@
 reused), the agent installs itself and its settings there, the copy's executable runs as a
 tracked child until the agent says it is finished (or the timeout), then it is stopped and the
 agent's files are collected into `<workspace>/.runtime/agent/<agent>/`. The game folder is only
-read. Audio (`capture.audio`) records the system output while a game plays."""
+read. Audio (`viwo record`) records the system output while a game plays."""
 
 from __future__ import annotations
 
 import shutil
-import tempfile
 import time
-from dataclasses import dataclass
 from pathlib import Path
 
 from viwo.contracts.errors import ViwoError
 from viwo.contracts.runtime import RuntimeAgent
 
+from ..context import core_context
 from ..pipeline.probe import FolderProbe
 from ..pipeline.runner import detect_all
-from ..roundtrip import MARKER, prepare_copy
-from .runtime import _enabled
+from ..roundtrip import prepare_copy
+from .runtime import RuntimeRequest, _enabled, runtime_dir
+
+REPORT_EVERY = 30  # seconds between "still waiting" events
 
 
 def agent_for(rt, game: Path) -> RuntimeAgent:
@@ -33,57 +34,76 @@ def agent_for(rt, game: Path) -> RuntimeAgent:
     )
 
 
-def _wait(agent: RuntimeAgent, copy: Path, exe: Path, child, timeout: float, cancel) -> bool:
-    deadline = time.monotonic() + timeout
-    while time.monotonic() < deadline and child.alive():
+def _wait(agent: RuntimeAgent, copy: Path, exe: Path, child, req: RuntimeRequest, ctx) -> bool:
+    start = last = time.monotonic()
+    while time.monotonic() - start < req.timeout and child.alive():
         if agent.finished(copy, exe):
             return True
-        if cancel is not None and cancel.cancelled:
+        if ctx.cancel.cancelled:
             break
+        if time.monotonic() - last >= REPORT_EVERY:
+            last = time.monotonic()
+            waited = f"{last - start:.0f} / {req.timeout:.0f} s"
+            ctx.log(f"Waiting for {agent.backend_id}: {waited}", stage="agent")
         time.sleep(1)
     return agent.finished(copy, exe)
 
 
-@dataclass(frozen=True)
-class AgentRequest:
-    game: Path
-    exe: Path
-    workspace: Path
-    copy: Path | None = None  # the patched copy to use (default: beside the workspace)
-    timeout: float = 600
+def _exe_in_game(req: RuntimeRequest) -> Path:
+    """`exe` relative to the game: the copy's executable sits at the same place in the copy."""
+    try:
+        return req.exe.resolve().relative_to(req.game.resolve())
+    except ValueError:
+        raise ViwoError(
+            "invalid_request",
+            f"{req.exe} is not inside the game folder {req.game}",
+            hint="give the game's own executable; the agent runs it from the patched copy",
+        ) from None
 
 
-def run_agent(rt, req: AgentRequest, cancel=None) -> dict:
-    game, exe, workspace, copy, timeout = req.game, req.exe, req.workspace, req.copy, req.timeout
+def _unfinished(agent: str, files: list[Path], req: RuntimeRequest, ctx) -> list[str]:
+    """Never silent: an agent that did not finish is a warning, or a failure with no files."""
+    why = f"the game closed, the run was cancelled or {req.timeout:.0f} s passed"
+    if not files:
+        raise ViwoError(
+            "failed",
+            f"{agent} did not finish ({why}) and wrote nothing",
+            hint="let the game run until the agent is done, or raise --timeout",
+        )
+    text = f"{agent} did not finish ({why}): what it wrote so far was kept"
+    ctx.log(text, "warn", "agent")
+    return [text]
+
+
+def run_agent(rt, req: RuntimeRequest, sink=None, cancel=None) -> dict:
     _enabled(rt)
-    agent = agent_for(rt, game)
-    copy = (copy or workspace.parent / f"{workspace.name}.agent-copy").resolve()
-    left: list[str] = []
-    if not (copy / MARKER).is_dir():
-        rt.temp_root.mkdir(parents=True, exist_ok=True)
-        with tempfile.TemporaryDirectory(dir=rt.temp_root) as tmp:
-            left = prepare_copy(game, copy, Path(tmp))  # antivirus-held files stay out
-    target = copy / exe.resolve().relative_to(game.resolve())
+    agent = agent_for(rt, req.game)
+    copy = (req.copy or req.workspace.parent / f"{req.workspace.name}.agent-copy").resolve()
+    target = copy / _exe_in_game(req)  # refused before anything is copied
+    left = prepare_copy(rt, req.game, copy, sink, "agent", reuse=True)
     why = agent.accepts(copy, target)
     if why:
         raise ViwoError("unavailable", f"{agent.backend_id}: {why}")
-    from ..context import core_context
-
-    ctx = core_context(rt, "agent", copy, rt.temp_root)
+    ctx = core_context(rt, "agent", copy, rt.temp_root, sink, cancel)
+    ctx.log(f"Installing {agent.backend_id} into {copy}", stage="agent")
     args = agent.install(copy, target, ctx)
+    ctx.log(f"Running {target.name} until {agent.backend_id} is done", stage="agent")
     child = rt.os.process.launch([str(target), *args], target.parent)
     try:
-        done = _wait(agent, copy, target, child, timeout, cancel)
+        done = _wait(agent, copy, target, child, req, ctx)
     finally:
         child.kill()
-    out = workspace.resolve() / ".runtime" / "agent" / agent.backend_id
-    out.mkdir(parents=True, exist_ok=True)
-    files = [Path(shutil.copy2(f, out / f.name)) for f in agent.outputs(copy, target)]
+    found = agent.outputs(copy, target)
+    warnings = [] if done else _unfinished(agent.backend_id, found, req, ctx)
+    out = runtime_dir(req.workspace, "agent", agent.backend_id)
+    files = [Path(shutil.copy2(f, out / f.name)) for f in found]
+    ctx.log(f"Collected {len(files)} file(s) into {out}", stage="agent")
     return {
         "agent": agent.backend_id,
         "finished": done,
         "copy": str(copy),
         "outputDir": str(out),
         "files": [f.name for f in files],
-        "notCopied": left,  # files the antivirus held back from the copy
+        "notCopied": left,  # files the OS refused to copy (also a warn event)
+        "warnings": warnings,
     }

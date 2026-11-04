@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import hmac
+import ipaddress
 import json
 import mimetypes
 import re
@@ -42,6 +43,18 @@ def byte_range(header: str, size: int) -> tuple[int, int] | None:
     return (start, end) if start <= end and start < size else (-1, -1)
 
 
+WILDCARD_OR_LOOPBACK = {"0.0.0.0", "::", "", "127.0.0.1", "localhost", "::1"}
+
+
+def _loopback(peer: str) -> bool:
+    try:
+        address = ipaddress.ip_address(peer)
+    except ValueError:
+        return False
+    mapped = getattr(address, "ipv4_mapped", None)
+    return address.is_loopback or bool(mapped and mapped.is_loopback)
+
+
 class Handler(BaseHTTPRequestHandler):
     app: App
     token = ""
@@ -51,9 +64,14 @@ class Handler(BaseHTTPRequestHandler):
         pass
 
     def _host_ok(self) -> bool:
+        """The Host header names this machine (DNS rebinding) and the peer is this machine,
+        unless the server is bound to one LAN address on purpose (then the token guards)."""
         host = str(self.headers.get("Host", "")).lower()
         name = host.rsplit("]", 1)[0] + "]" if host.startswith("[") else host.rsplit(":", 1)[0]
-        return name in {"127.0.0.1", "localhost", "[::1]", self.app.server.host.lower()}
+        bound = self.app.server.host.lower()
+        if name not in {"127.0.0.1", "localhost", "[::1]", bound}:
+            return False
+        return bound not in WILDCARD_OR_LOOPBACK or _loopback(str(self.client_address[0]))
 
     def _token_ok(self) -> bool:
         sent = str(self.headers.get(TOKEN_HEADER, ""))

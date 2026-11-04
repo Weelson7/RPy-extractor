@@ -38,8 +38,7 @@ class Patcher(Backend):
     backend_id, license, isolation = "viwo-patcher", "MIT", "inprocess"
     families = frozenset({"patch"})
 
-    def dependencies(self):
-        return (KEYSTONE, CAPSTONE)
+    requires = (KEYSTONE, CAPSTONE)
 
     def available(self, os):
         return True, ""  # writing bytes needs nothing; asm and disassembly are optional extras

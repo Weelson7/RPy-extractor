@@ -51,8 +51,7 @@ class UnityPyPacker(Packer):
     backend_id, owner, license = "unitypy-pack", "unity", "MIT"
     parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
-    def dependencies(self):
-        return (UNITYPY,)
+    requires = (UNITYPY,)
 
     def pack(self, container, members, ctx) -> Outcome:
         try:

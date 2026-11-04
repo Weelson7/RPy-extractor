@@ -101,6 +101,13 @@ class ModTests(unittest.TestCase):
             )
             with self.assertRaises(ViwoError):
                 mods.order([root / "b.zip"])  # its requirement is missing
+            (root / "twin").mkdir()
+            mods.pack(game, root / "copy", root / "twin" / "a.zip", "a")
+            with self.assertRaises(
+                ViwoError
+            ) as err:  # same name: one would silently replace the other
+                mods.order([root / "a.zip", root / "twin" / "a.zip"])
+            self.assertIn("share the name a", err.exception.message)
             (root / "copy" / "extra.txt").write_text("c")
             mods.pack(game, root / "copy", root / "c.zip", "c")
             clash = mods.conflicts([root / "b.zip", root / "c.zip"])

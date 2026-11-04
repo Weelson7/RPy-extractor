@@ -106,9 +106,7 @@ PLUGIN = "SourcePlugin"  # discovered by viwo.core.wiring.registry
 
 
 class SourcePlugin(EnginePlugin):
-    @property
-    def manifest(self) -> PluginManifest:
-        return MANIFEST
+    manifest = MANIFEST
 
     def detect(self, probe: GameProbe) -> DetectionResult:
         dirs = [p for p in probe.with_suffix(".vpk")[:40] if probe.head(p, 4) == MAGIC]

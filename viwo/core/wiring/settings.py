@@ -13,9 +13,8 @@ from pathlib import Path
 
 from viwo.contracts.errors import ViwoError
 
-from .ini import SECRET_WORDS, load_ini
+from .ini import FORM_KEYS, SECRET_WORDS, load_ini
 
-FORM_STARTUP = ("os", "profile", "features", "auto_install", "strict_preflight", "av_exclusions")
 KEY_LINE = re.compile(r"^(\s*)([^;#=\s\[][^=]*?)\s*=\s*(.*?)(\s*[;#].*)?$")
 SAFE_KEY = re.compile(r"^[a-z0-9_.-]+$")
 Values = dict[str, "str | None"]  # None removes the key
@@ -55,7 +54,7 @@ def _flatten(changes: dict) -> tuple[dict[str, Values], list[str]]:
     out: dict[str, Values] = {}
     problems: list[str] = []
     for key, value in (changes.get("startup") or {}).items():
-        if key in FORM_STARTUP:
+        if key in FORM_KEYS:
             out.setdefault("startup", {})[key] = _render(value)
     for pid, on in (changes.get("plugins") or {}).items():
         out.setdefault("plugins", {})[str(pid).lower()] = "on" if on else "off"

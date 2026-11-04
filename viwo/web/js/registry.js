@@ -55,7 +55,7 @@ export async function loadPluginModules(api, ui) {
       const mod = await import(m.url);
       await mod.default?.({ registry: { registerView, registerPanel, views, panels }, api, ui, plugin: m.plugin });
       loaded.push(m.plugin);
-    } catch (err) { console.error(`UI module of plugin ${m.plugin} failed to load`, err); }
+    } catch (err) { console.error(`UI module of plugin ${m.plugin} failed to load`, err); ui.toast?.(`The UI add-on of plugin ${m.plugin} failed to load: ${err.message || err}`, "warn"); }
   }
   return loaded;
 }

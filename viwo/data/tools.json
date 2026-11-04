@@ -15,6 +15,12 @@
   "angr": {"pin": "angr==9.2.223 bitstring==4.2.3 pycparser==3.0", "version": "9.2.223", "on_demand": true, "_note": "angr 10's native claripy crashes in its z3 solver on Windows (access violation, 2026-11-04); 9.2.223 needs bitstring<4.4 (ConstBitStream) and pycparser 3.0 exactly", "license": "BSD-2-Clause (angr); GPL-2.0 (its Unicorn engine)", "script": "symbolic.py"}
  },
  "tools": {
+  "cp77-hashes": {
+   "version": "95074158",
+   "license": "WolvenKit (AGPL-3.0), used as data",
+   "_note": "Cyberpunk 2077 archive path list (WolvenKit usedhashes.kark at commit 95074158, 2026-10-22); Kraken-compressed: inflated with the game's own Oodle, so Windows only",
+   "windows": {"url": "https://raw.githubusercontent.com/WolvenKit/WolvenKit/95074158ed971aea39fc8abc50c2574381f4aad2/WolvenKit.Common/Resources/usedhashes.kark", "sha256": "e1f2bf54f5d24660a4a8ecff5694b39d2ca9db4a4a8ca3c3a8900dc71477a9e2", "size": 2756503, "kind": "raw", "save_as": "usedhashes.kark", "find": "usedhashes.kark"}
+  },
   "repak": {
    "version": "0.2.3",
    "license": "MIT OR Apache-2.0",

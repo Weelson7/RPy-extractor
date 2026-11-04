@@ -26,8 +26,13 @@ class Host:
         self.excluded |= set(new)
         return new, ""
 
+    refuse = False
+
     def include_in_scan(self, paths):
+        if self.refuse:
+            return False
         self.excluded -= set(paths)
+        return True
 
 
 def runtime(root: Path, host, on: bool = True):
@@ -66,15 +71,44 @@ class ScanExclusionTests(unittest.TestCase):
             with excluded(runtime(root, host, on=False), (root / "ws",)) as added:
                 self.assertEqual((added, host.excluded), ([], set()))
 
-    def test_refusal_is_said_once_and_the_real_host_answers(self) -> None:
+    def test_jobs_share_an_exclusion_and_only_the_last_removes_it(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            host = Host()
+            rt = runtime(root, host)
+            with excluded(rt, (root / "ws", root / "a")):
+                with excluded(rt, (root / "ws", root / "b")) as inner:
+                    self.assertEqual(set(inner), {root / "ws", root / "b"})
+                self.assertEqual(host.excluded, {root / "ws", root / "a"})  # still in use
+            self.assertEqual((host.excluded, scan_exclusions.ACTIVE), (set(), {}))
+
+    def test_a_refused_removal_is_said_journaled_and_finished_later(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp).resolve()
+            host, said = Host(), []
+            rt = runtime(root, host)
+            host.refuse = True
+            with excluded(rt, (root / "ws",), said.append):
+                pass
+            self.assertTrue(any("could not be removed" in s for s in said), said)
+            journal = json.loads(next((root / "scan-exclusions").glob("*.json")).read_text())
+            self.assertEqual(journal["paths"], [str(root / "ws")])
+            host.refuse = False
+            with excluded(rt, (root / "other",)):
+                pass
+            journal["pid"] = 2**22 + 777  # as if this process had died: the next job finishes it
+            (root / "scan-exclusions" / "gone.json").write_text(json.dumps(journal))
+            undo_leftovers(rt)
+            self.assertEqual(host.excluded, set())
+
+    def test_refusal_is_said_every_job_and_the_real_host_answers(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp).resolve()
             rt, said = runtime(root, Host("needs administrator")), []
-            scan_exclusions.NOTED.discard("needs administrator")
             for _ in range(2):
                 with excluded(rt, (root / "ws",), said.append):
                     pass
-            self.assertEqual(said, ["needs administrator"])
+            self.assertEqual(said, ["needs administrator"] * 2)
             added, note = select_os().exclude_from_scan([])  # never changes anything here
             self.assertEqual(added, [])
             self.assertIsInstance(note, str)

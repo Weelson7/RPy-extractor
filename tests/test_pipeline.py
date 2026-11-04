@@ -11,6 +11,7 @@ import tarfile
 import tempfile
 import unittest
 import zipfile
+from dataclasses import replace
 from pathlib import Path
 from unittest import mock
 
@@ -65,6 +66,49 @@ class PipelineTests(unittest.TestCase):
             result = run_extract(self.rt, self.game, self.root / "ws")
         self.assertTrue(any("could not be read" in w and "readme.md" in w for w in result.warnings))
         self.assertNotIn("md/readme.md", tree_hashes(self.root / "ws", skip_reserved=True))
+
+    def test_an_identifier_that_cannot_read_the_file_never_fails_the_run(self) -> None:
+        from viwo.core.pipeline import identify as ident
+
+        real, refused = ident.identify, []
+
+        def held(path, slots):  # every plugin identifier meets an antivirus hold on bg.png
+            wrapped = []
+            for slot in slots:
+                if slot.identify is not None and path.name == "bg.png":
+                    refused.append(path)
+                    slot = replace(
+                        slot, identify=lambda *a: (_ for _ in ()).throw(PermissionError(13, "held"))
+                    )
+                wrapped.append(slot)
+            return real(path, wrapped)
+
+        with mock.patch("viwo.core.pipeline.unpack.identify", held):
+            result = run_extract(self.rt, self.game, self.root / "ws")
+        self.assertTrue(refused)
+        self.assertTrue(result.success)
+        self.assertIn("png/bg.png", tree_hashes(self.root / "ws", skip_reserved=True))
+
+    def test_a_game_file_removed_after_the_listing_never_fails_the_run(self) -> None:
+        from viwo.core.pipeline import carving, runner
+
+        real = runner.files_under
+        blob = self.game / "data" / "blob.bin"  # unknown and large: a carving candidate
+        blob.write_bytes(b"\x01" * carving.MIN_SIZE)
+
+        def then_quarantined(root, label, skip):  # listed, then removed by someone else
+            found = real(root, label, skip)
+            if label == "game":
+                blob.unlink()
+            return found
+
+        with mock.patch("viwo.core.pipeline.runner.files_under", then_quarantined):
+            result = run_extract(self.rt, self.game, self.root / "ws")
+        self.assertTrue(result.success)
+        self.assertTrue(
+            any("removed" in w and "blob.bin" in w for w in result.warnings), result.warnings
+        )
+        self.assertIn("ogg/hello.ogg", tree_hashes(self.root / "ws", skip_reserved=True))
 
     def test_a_file_removed_mid_copy_is_named_and_the_rest_collected(self) -> None:
         real, gone = collect.shutil.copy2, []

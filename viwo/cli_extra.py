@@ -17,8 +17,7 @@ from viwo.contracts.pipeline import (
     MixedPolicy,
     OnExisting,
 )
-from viwo.contracts.plugin import ExtractionContext
-from viwo.contracts.types import CancelToken, DetectionResult
+from viwo.core.context import core_context, for_owner
 from viwo.core.pipeline.runner import SECRET
 from viwo.core.pipeline.unpack import unpack_all
 from viwo.core.wiring.boot import boot
@@ -62,23 +61,8 @@ def replay_request(
 
 
 def context_factory(rt, root: Path, work: Path, options: dict, sink):
-    def make(owner: str) -> ExtractionContext:
-        merged = {**rt.owner_options(owner), **options.get(owner, {})}
-        return ExtractionContext(
-            "unpack",
-            root,
-            work / "staging" / owner,
-            work / "scratch",
-            rt.os,
-            DetectionResult(owner, 0.0, (), owner),
-            None,
-            merged,
-            sink,
-            CancelToken(),
-            "core" if owner == "core" else f"plugin:{owner}",
-        )
-
-    return make
+    base = core_context(rt, "unpack", root, work, sink)
+    return lambda owner: for_owner(base, rt, owner, options.get(owner, {}))
 
 
 def unpack_one(rt, archive: Path, out: Path, options: dict, sink) -> dict:
@@ -152,29 +136,11 @@ def _analyze(rt, args) -> Envelope:
 
 
 def workspace_command(rt, args) -> Envelope:
-    """The tool commands (survey, repack, sanitize, capture, analyze, diff, config, install,
-    diag, indexes): one handler each."""
-    handlers = {
-        "repack": _repack,
-        "sanitize": _sanitize,
-        "survey": _survey,
-        "capture": capture,
-        "dump": runtime,
-        "trace": runtime,
-        "agent": runtime,
-        "record": runtime,
-        "analyze": _analyze,
-        "diff": _diff,
-        "patch": lambda r, a: patch(r, a, event_printer(a)),
-        "mod": mod,
-        "config": lambda _rt, a: _config(a),
-        "install": _install,
-        "diag": _system,
-        "indexes": _system,
-    }
-    if args.command not in handlers:
-        raise ViwoError("invalid_request", f"unknown command {args.command}")
-    return handlers[args.command](rt, args)
+    """One of the TOOLS commands (below)."""
+    handler = TOOLS[args.command]
+    if handler in (runtime, patch, mod):  # long runs: progress lines on stderr
+        return handler(rt, args, event_printer(args))
+    return handler(rt, args)
 
 
 def event_printer(args):
@@ -300,3 +266,23 @@ def add_plugin_commands(sub, common, rt) -> None:
 def run_plugin_command(rt, cmd, args) -> Envelope:
     result = cmd.run(rt, args)
     return result if isinstance(result, Envelope) else Envelope.success(result)
+
+
+TOOLS = {  # the tool commands (the dynamic and patching arms, survey, analyze, system): a handler
+    "repack": _repack,
+    "sanitize": _sanitize,
+    "survey": _survey,
+    "capture": capture,
+    "dump": runtime,
+    "trace": runtime,
+    "agent": runtime,
+    "record": runtime,
+    "analyze": _analyze,
+    "diff": _diff,
+    "patch": patch,
+    "mod": mod,
+    "config": lambda _rt, a: _config(a),
+    "install": _install,
+    "diag": _system,
+    "indexes": _system,
+}

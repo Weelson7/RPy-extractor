@@ -9,9 +9,9 @@ import sys
 from pathlib import Path
 from typing import Mapping, Sequence
 
-from viwo.contracts.os import OS, DesktopShell, FileSystemPolicy
+from viwo.contracts.os import FileSystemPolicy
 
-from ._shared import Locator, SubprocessRunner, tk_pick_file, tk_pick_folder
+from ._shared import HostOS, Locator, SubprocessRunner, TkShell
 
 _FORBIDDEN = re.compile(r'[\\/:*?"<>|\x00-\x1f]')
 _RESERVED = {"con", "prn", "aux", "nul"} | {f"{p}{i}" for p in ("com", "lpt") for i in range(1, 10)}
@@ -64,7 +64,7 @@ class WindowsFs(FileSystemPolicy):
         return Path("\\\\?\\" + absolute)
 
 
-class WindowsShell(DesktopShell):
+class WindowsShell(TkShell):
     def open_folder(self, path: Path) -> tuple[bool, str]:
         if not path.is_dir():
             return False, f"Folder not found: {path}"
@@ -74,21 +74,47 @@ class WindowsShell(DesktopShell):
         except OSError as exc:
             return False, str(exc)
 
-    def pick_folder(self, title: str, initial: Path | None = None) -> Path | None:
-        return tk_pick_folder(title, initial)
-
-    def pick_file(self, title: str, initial: Path | None = None, patterns=()) -> Path | None:
-        return tk_pick_file(title, initial, patterns)
-
 
 LONG_PATH_LIMIT = 248  # MAX_PATH minus room for a file name: beyond it, extended-length form
 
 
-def _running_images(runner: SubprocessRunner) -> set[str]:
-    """Image names from `tasklist` (CSV, no header), lowercased."""
-    result = runner.run(["tasklist", "/FO", "CSV", "/NH"], timeout=10)
-    rows = (line.split('","')[0].strip('"') for line in result.stdout.splitlines())
-    return {name.lower() for name in rows if name}
+def _processes() -> list[tuple[int, str]]:
+    """(pid, lowercased image name) of every process from a Toolhelp snapshot: the names come
+    as UTF-16, so non-ASCII names match (tasklist prints them in the OEM code page)."""
+    import ctypes
+    from ctypes import wintypes
+
+    class Entry(ctypes.Structure):  # PROCESSENTRY32W
+        _fields_ = [
+            ("size", wintypes.DWORD),
+            ("usage", wintypes.DWORD),
+            ("pid", wintypes.DWORD),
+            ("heap", ctypes.c_size_t),
+            ("module", wintypes.DWORD),
+            ("threads", wintypes.DWORD),
+            ("parent", wintypes.DWORD),
+            ("priority", wintypes.LONG),
+            ("flags", wintypes.DWORD),
+            ("exe", wintypes.WCHAR * 260),
+        ]
+
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    k32.CreateToolhelp32Snapshot.restype = wintypes.HANDLE
+    k32.Process32FirstW.argtypes = k32.Process32NextW.argtypes = (wintypes.HANDLE, ctypes.c_void_p)
+    k32.CloseHandle.argtypes = (wintypes.HANDLE,)
+    snap = k32.CreateToolhelp32Snapshot(0x2, 0)  # TH32CS_SNAPPROCESS
+    if snap in (None, wintypes.HANDLE(-1).value):
+        raise OSError(ctypes.get_last_error(), "cannot list the running processes")
+    entry, found = Entry(), []
+    entry.size = ctypes.sizeof(Entry)
+    try:
+        more = k32.Process32FirstW(snap, ctypes.byref(entry))
+        while more:
+            found.append((int(entry.pid), entry.exe.lower()))
+            more = k32.Process32NextW(snap, ctypes.byref(entry))
+    finally:
+        k32.CloseHandle(snap)
+    return found
 
 
 def _install_roots() -> list[Path]:
@@ -123,13 +149,14 @@ def _ps_list(paths) -> str:
     return ",".join("'" + str(p).replace("'", "''") + "'" for p in paths)
 
 
-def _minidump(pid: int, path: Path) -> None:
-    """MiniDumpWithFullMemory through dbghelp (part of Windows)."""
+def _minidump(pid: int, out: Path) -> Path:
+    """out/<pid>.dmp: MiniDumpWithFullMemory through dbghelp (part of Windows)."""
     import ctypes
     import msvcrt
     from ctypes import wintypes
 
-    k32, dbghelp = ctypes.WinDLL("kernel32", use_last_error=True), ctypes.WinDLL("dbghelp")
+    k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    dbghelp = ctypes.WinDLL("dbghelp", use_last_error=True)  # its own error code, not kernel32's
     k32.OpenProcess.restype = wintypes.HANDLE
     k32.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
     write = dbghelp.MiniDumpWriteDump
@@ -139,23 +166,27 @@ def _minidump(pid: int, path: Path) -> None:
     handle = k32.OpenProcess(0x0410, False, pid)  # QUERY_INFORMATION | VM_READ
     if not handle:
         raise OSError(ctypes.get_last_error(), f"cannot open process {pid}")
+    path = out / f"{pid}.dmp"
     try:
         with open(path, "wb") as fh:
             if not write(handle, pid, msvcrt.get_osfhandle(fh.fileno()), 0x2, None, None, None):
                 raise OSError(ctypes.get_last_error(), f"MiniDumpWriteDump failed for {pid}")
+    except OSError:
+        path.unlink(missing_ok=True)  # never leave a partial dump that looks complete
+        raise
     finally:
         k32.CloseHandle(handle)
+    return path
 
 
-class WindowsOS(OS):
+class WindowsOS(HostOS):
     os_id = "windows"
     display_name = "Windows"
+    _dump = staticmethod(_minidump)
 
     def __init__(self, tool_overrides: Mapping[str, str | Sequence[str]] | None = None) -> None:
         flags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
-        self._process = SubprocessRunner(
-            32767, {"creationflags": flags}, _kill_tree, _running_images
-        )
+        self._process = SubprocessRunner(32767, {"creationflags": flags}, _kill_tree, _processes)
         suffixes = [".exe", ".bat", ".cmd", ""]
         self._tools = Locator(tool_overrides or {}, _install_roots(), suffixes, _wrap, "windows")
         self._fs = WindowsFs()
@@ -177,29 +208,6 @@ class WindowsOS(OS):
         kernel.CloseHandle(handle)
         return bool(alive)
 
-    @property
-    def process(self) -> SubprocessRunner:
-        return self._process
-
-    @property
-    def tools(self) -> Locator:
-        return self._tools
-
-    @property
-    def fs(self) -> WindowsFs:
-        return self._fs
-
-    def pids_of(self, image: str) -> list[int]:
-        result = self._process.run(["tasklist", "/FO", "CSV", "/NH"], timeout=10)
-        rows = [line.strip('"').split('","') for line in result.stdout.splitlines() if line]
-        return [int(r[1]) for r in rows if len(r) > 1 and r[0].lower() == image.lower()]
-
-    def dump_process(self, pid: int, out: Path) -> Path:
-        out.mkdir(parents=True, exist_ok=True)
-        path = out / f"{pid}.dmp"
-        _minidump(pid, path)
-        return path
-
     def exclude_from_scan(self, paths) -> tuple[list[Path], str]:
         """Windows Defender: only an elevated process may read or change its exclusions, so a
         normal ViWo says so once and scanning stays on. Folders already excluded by the user
@@ -216,9 +224,8 @@ class WindowsOS(OS):
             return [], "antivirus exclusions skipped: Add-MpPreference was refused"
         return new, ""
 
-    def include_in_scan(self, paths) -> None:
-        if paths:
-            self._ps(f"Remove-MpPreference -ExclusionPath {_ps_list(paths)}")
+    def include_in_scan(self, paths) -> bool:
+        return not paths or self._ps(f"Remove-MpPreference -ExclusionPath {_ps_list(paths)}").ok
 
     def _ps(self, command: str):
         argv = ["powershell", "-NoProfile", "-NonInteractive", "-Command", command]
@@ -229,7 +236,3 @@ class WindowsOS(OS):
 
     def data_home(self) -> Path:
         return Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local")
-
-    @property
-    def shell(self) -> WindowsShell:
-        return self._shell

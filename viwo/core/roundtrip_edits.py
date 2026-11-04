@@ -4,13 +4,13 @@ provenance map, files the user adds under `_added/<target path>`, and the same-f
 
 from __future__ import annotations
 
-import json
 from dataclasses import dataclass
 from pathlib import Path
 
 from viwo.contracts import workspace as ws
 
 from .pipeline.collect import sha256
+from .provenance import entries
 
 ADDED_DIR = "_added"  # <workspace>/_added/<game-relative path> -> loose file in the patched copy
 MAGIC = {
@@ -55,16 +55,10 @@ def format_ok(file: Path, member: str) -> bool:
     return not any(head.startswith(m) for m in others)
 
 
-def _entries(workspace: Path) -> list[dict]:
-    path = workspace / ws.PROVENANCE_FILE
-    lines = path.read_text(encoding="utf-8").splitlines() if path.is_file() else []
-    return [json.loads(line) for line in lines]
-
-
 def original_hashes(workspace: Path) -> dict[str, dict[str, str]]:
     """container -> {member path: original sha256}, for the untouched-member check (18.3)."""
     out: dict[str, dict[str, str]] = {}
-    for entry in _entries(workspace):
+    for entry in entries(workspace):
         if entry.get("kind") == "member" and entry.get("container"):
             out.setdefault(entry["container"], {})[entry["member"]] = entry["sha256"]
     return out
@@ -86,7 +80,7 @@ def added_files(workspace: Path) -> list[Edit]:
 def edit_set(workspace: Path) -> tuple[list[Edit], list[str]]:
     """Workspace files whose content differs from what extraction wrote, plus added files."""
     edits, skipped, missing = [], [], []
-    for entry in _entries(workspace):
+    for entry in entries(workspace):
         rel = ws.safe_member(entry["path"])
         file = workspace.joinpath(*rel.parts) if rel else None
         if file is None or not file.is_file():

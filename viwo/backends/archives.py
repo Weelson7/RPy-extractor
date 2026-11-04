@@ -126,8 +126,7 @@ class Py7zrBackend(Unarchiver):
     backend_id, license = "py7zr", "LGPL-2.1"
     parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
-    def dependencies(self):
-        return (PY7ZR,)
+    requires = (PY7ZR,)
 
     def extract(self, archive, dest, ctx) -> Outcome:
         try:

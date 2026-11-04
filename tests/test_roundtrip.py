@@ -2,16 +2,19 @@
 
 from __future__ import annotations
 
+import os
+import shutil
 import tempfile
 import unittest
 import zipfile
 from pathlib import Path
+from unittest import mock
 
 from tests.helpers import make_zip, runtime, tree_hashes
 from tests.test_renpy import make_rpa
 from viwo.contracts import CancelToken, ExtractionRequest, ViwoError
 from viwo.core.pipeline.runner import extract
-from viwo.core.roundtrip import MARKER, repack
+from viwo.core.roundtrip import MARKER, prepare_copy, repack
 from viwo.plugins.renpy.rpa import read_index
 
 
@@ -96,6 +99,37 @@ class RoundTripTests(unittest.TestCase):
         self.assertEqual(POST["/api/repack"](app, {})["code"], "invalid_request")
         built = POST["/api/repack"](app, {"out": str(self.root / "web-patched")})
         self.assertTrue(built["verified"] and built["jobId"], built)
+
+    def test_patched_copy_has_no_links_no_partial_files_and_says_what_it_left_out(self) -> None:
+        game = self.root / "g"
+        (game / "data").mkdir(parents=True)
+        (game / "data" / "a.bin").write_bytes(b"A" * 64)
+        (game / "held.bin").write_bytes(b"H" * 64)
+        try:
+            os.symlink(game / "data" / "a.bin", game / "link.bin")
+        except OSError:  # no symlink right on this Windows account: the rest still holds
+            pass
+        real_copy, events = shutil.copy2, []
+
+        def flaky(src, dst, **kw):  # the antivirus cuts the read of held.bin half-way
+            if Path(src).name == "held.bin":
+                Path(dst).write_bytes(b"H" * 10)
+                raise PermissionError(13, "held by another process")
+            return real_copy(src, dst, **kw)
+
+        with mock.patch("viwo.core.roundtrip.shutil.copy2", flaky):
+            left = prepare_copy(self.rt, game, self.root / "copy", events.append, "t")
+        copy = self.root / "copy"
+        self.assertEqual([n.split(" ")[0] for n in left], ["held.bin"])
+        self.assertFalse((copy / "held.bin").exists())  # no truncated file
+        self.assertEqual((copy / "data" / "a.bin").read_bytes(), b"A" * 64)
+        self.assertFalse(any(p.is_symlink() for p in copy.rglob("*")))  # nothing leads back
+        warned = [e.message for e in events if e.level == "warn"]
+        self.assertEqual(len(warned), 1)
+        self.assertIn("held.bin", warned[0])
+        (copy / "data" / "a.bin").write_bytes(b"edited")
+        again = prepare_copy(self.rt, game, copy, None, "t", reuse=True)  # a copy is reused
+        self.assertEqual((again, (copy / "data" / "a.bin").read_bytes()), ([], b"edited"))
 
     def test_nothing_edited_writes_nothing(self) -> None:
         game = self.root / "plain"

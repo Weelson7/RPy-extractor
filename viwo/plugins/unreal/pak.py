@@ -9,7 +9,7 @@ from pathlib import Path
 
 from viwo.contracts.slots import Match, Packer, Unarchiver
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
-from viwo.contracts.workspace import count_files
+from viwo.contracts.workspace import count_files, stage_members
 
 from .aes import decrypt_block
 from .keys import resolve_key
@@ -80,10 +80,6 @@ def key_opens(path: Path, info: PakInfo, key: bytes) -> bool:
     return bool(text) and all(32 <= b < 127 for b in text.rstrip(b"\0")) and b"/" in text
 
 
-def _files(dest: Path) -> int:
-    return count_files(dest)
-
-
 class _UnrealCli(Unarchiver):
     spec: DependencySpec
     owner, isolation, supports_keys = "unreal", "subprocess", True
@@ -121,7 +117,7 @@ class _UnrealCli(Unarchiver):
                 else OutcomeKind.FAILED
             )
             return Outcome(kind, error=text[-300:] or f"exit {result.returncode}")
-        return Outcome(OutcomeKind.OK, _files(dest))
+        return Outcome(OutcomeKind.OK, count_files(dest))
 
 
 class RepakCli(_UnrealCli):
@@ -163,25 +159,18 @@ class RepakPatch(Packer):
         "subprocess",
     )
 
-    def dependencies(self):
-        return (REPAK,)
+    requires = (REPAK,)
 
     def output_for(self, container: Path) -> Path:
         return container.with_name(f"{container.stem}_P.pak")
 
     def pack(self, container, members, ctx) -> Outcome:
-        from viwo.contracts.workspace import safe_member
-
         tool, info = ctx.os.tools.locate(REPAK), pak_info(container)
         if tool is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=REPAK.hint)
         ctx.scratch.mkdir(parents=True, exist_ok=True)
         root = Path(tempfile.mkdtemp(prefix="pak-", dir=ctx.scratch))  # one per pack call
-        for member, source in members.items():
-            rel = safe_member(member)
-            if rel is not None:
-                (root / rel).parent.mkdir(parents=True, exist_ok=True)
-                (root / rel).write_bytes(source.read_bytes())
+        stage_members(members, root)
         version = REPAK_VERSIONS.get(info.version if info else 8, "V8B")
         argv = [
             *tool.argv_prefix,

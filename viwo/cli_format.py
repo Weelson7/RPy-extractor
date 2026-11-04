@@ -220,9 +220,13 @@ FORMATTERS: dict[str, Any] = {
         if "written" in d
         else "OK: " + ", ".join(d["checked"])
     ),
-    "capture": lambda d: (
-        f"Captured {d['gathered']} file(s) with {d['backend']}; "
-        f"{d['newVsStatic']} not found by static extraction"
+    "capture": lambda d: "\n".join(
+        [
+            f"Captured {d['gathered']} file(s) with {d['backend']}; "
+            f"{d['newVsStatic']} not found by static extraction",
+            *(["warning: nothing was captured (see the log above)"] if not d["gathered"] else []),
+            *(f"warning: {w}" for w in d.get("warnings", [])),
+        ]
     ),
     "slots": slots,
     "info": info,

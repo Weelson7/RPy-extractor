@@ -123,6 +123,31 @@ class SanitizerTests(unittest.TestCase):
             self.assertFalse(POST["/api/sanitizer/plan"](app, {"recipeId": "nope"})["success"])
             self.assertFalse(POST["/api/sanitizer/plan"](app, {"path": "../.."})["success"])
 
+    def test_a_cancel_anywhere_in_apply_stays_undoable(self) -> None:
+        class After(CancelToken):  # cancelled once `k` actions have run
+            def __init__(self, k: int) -> None:
+                super().__init__()
+                self.left = k
+
+            @property
+            def cancelled(self) -> bool:
+                self.left -= 1
+                return self.left < 0
+
+        for k in range(6):
+            with tempfile.TemporaryDirectory() as tmp:
+                ws = make_workspace(Path(tmp))
+                before = tree_hashes(ws, skip_reserved=True)
+                plan = sanitizer.plan(ws)
+                try:
+                    done = sanitizer.apply(ws, plan["planId"], cancel=After(k))
+                except ViwoError as err:
+                    self.assertEqual(err.code, "cancelled")
+                    done = {"undoToken": plan["planId"]}
+                undone = sanitizer.undo(ws, done["undoToken"])
+                self.assertEqual(undone["notRestored"], [])
+                self.assertEqual(tree_hashes(ws, skip_reserved=True), before, f"cancel after {k}")
+
     def test_cancel_stops_the_scan(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             ws = make_workspace(Path(tmp))

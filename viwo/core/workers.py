@@ -52,11 +52,13 @@ def install(dep_id: str, home: Path, runner) -> str:
     lib = folder(home, dep_id)
     fresh = lib.with_name(f".{dep_id}-new")  # a fresh folder: a pin change never mixes versions
     shutil.rmtree(fresh, ignore_errors=True)
-    cmd = [sys.executable, "-m", "pip", "install", "--disable-pip-version-check"]
-    result = runner.run([*cmd, "--target", str(fresh), *pin.split()], timeout=3600)
-    if not result.ok:
+    from .thirdparty import pip_install
+
+    try:
+        pip_install(dep_id, fresh, runner)  # hash-locked like every pinned package
+    except ViwoError:
         shutil.rmtree(fresh, ignore_errors=True)
-        raise ViwoError("failed", f"pip could not install {pin}", hint=(result.stderr or "")[-300:])
+        raise
     (fresh / MARK).write_text(pin, encoding="utf-8")
     shutil.rmtree(lib, ignore_errors=True)
     fresh.rename(lib)

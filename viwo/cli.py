@@ -10,6 +10,7 @@ from pathlib import Path
 from viwo import cli_args, cli_arms, cli_format
 from viwo.cli_check import slots_check, unpack_forced
 from viwo.cli_extra import (
+    TOOLS,
     add_plugin_commands,
     boot_for_cli,
     event_printer,
@@ -27,24 +28,6 @@ from viwo.core.pipeline.runner import detect_all, extract
 from viwo.core.wiring.boot import boot
 
 EXIT = {"invalid_request": 2, "needs_decision": 2, "refused": 3, "cancelled": 130}
-TOOL_COMMANDS = (
-    "repack",
-    "sanitize",
-    "survey",
-    "capture",
-    "dump",
-    "trace",
-    "agent",
-    "record",
-    "analyze",
-    "diff",
-    "patch",
-    "mod",
-    "config",
-    "install",
-    "diag",
-    "indexes",
-)
 
 
 def _parser(rt=None) -> argparse.ArgumentParser:
@@ -119,7 +102,7 @@ def _run(args, rt=None) -> Envelope:
         return run_plugin_command(rt, plugin_command, args)
     if args.command in ("info", "slots", "detect"):
         return _query(rt, args)
-    if args.command in TOOL_COMMANDS:
+    if args.command in TOOLS:
         return workspace_command(rt, args)
     sink = event_printer(args)
     if args.command == "unpack":
@@ -177,6 +160,8 @@ def main(argv: list[str] | None = None) -> int:
         print(cli_format.error(envelope.error), file=sys.stderr)
     else:
         print(_formatter(args)(envelope.data))
+        for warning in envelope.warnings or ():  # never silent: the text mode says them too
+            print(f"viwo: warning: {warning}", file=sys.stderr)
     return 0 if envelope.ok else EXIT.get(envelope.error["code"], 1)
 
 

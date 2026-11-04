@@ -42,10 +42,8 @@ class DetectItEasy(Analyzer):
     backend_id, license, isolation = "die", "MIT", "subprocess"
     label = "Detect It Easy"
     kinds = ("native_binary", "dotnet_assembly", "il2cpp")
-    self_check_args = ("--version",)
 
-    def dependencies(self):
-        return (DIE,)
+    requires = (DIE,)
 
     def analyze(self, target: AnalysisTarget, ctx) -> Outcome:
         tool = ctx.os.tools.locate(DIE)

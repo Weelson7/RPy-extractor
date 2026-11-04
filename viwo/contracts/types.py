@@ -90,9 +90,6 @@ class DependencySpec:
             return tuple(self.executables.get(os_id, ()))
         return tuple(self.executables)
 
-    def package_map(self) -> dict[str, str]:
-        return dict(self.packages)
-
 
 @dataclass(frozen=True)
 class ToolLocation:

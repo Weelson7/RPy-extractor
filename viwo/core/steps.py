@@ -15,6 +15,12 @@ def teller(sink, stage: str, level: str = "info", source: str = "core"):
     return lambda message: sink(ProgressEvent(message, level, source, stage))
 
 
+def tell(sink, message: str, stage: str, level: str = "info") -> None:
+    """One core event, when there is a sink."""
+    if sink is not None:
+        sink(ProgressEvent(message, level, "core", stage))
+
+
 class Step:
     def __init__(self, sink, stage: str, label: str, total: int = 0) -> None:
         self.sink, self.stage, self.label, self.total = sink, stage, label, total

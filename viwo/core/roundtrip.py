@@ -8,15 +8,17 @@ owning plugin's pack.* slot, and every packed container is re-extracted to verif
 from __future__ import annotations
 
 import json
+import os
 import shutil
 import tempfile
 from collections import defaultdict
+from contextlib import suppress
 from dataclasses import dataclass, field
 from pathlib import Path
 
 from viwo.contracts import workspace as ws
 from viwo.contracts.errors import ViwoError
-from viwo.contracts.types import CancelToken, ProgressEvent
+from viwo.contracts.types import CancelToken
 
 from .context import core_context
 from .pipeline.collect import sha256
@@ -26,7 +28,7 @@ from .pipeline.identify import identify
 from .pipeline.ticker import Ticker
 from .records import record_context
 from .roundtrip_edits import Edit, edit_set, original_hashes
-from .steps import teller
+from .steps import tell, teller
 from .workspace import workspace_lock, write_atomic
 
 UNVERIFIED = (
@@ -107,35 +109,49 @@ def _reminders(rt, items: list[PlanItem]) -> list[str]:
     return []
 
 
-def prepare_copy(game: Path, target: Path, temp: Path, say=None) -> list[str]:
-    """The patched copy (doc 18): a full copy of the game, marked, never a link into it.
-    A file the OS refuses to read (an antivirus hold, a lock) is left out and returned."""
-    refuse_writes_inside(game, workspace=target, temp_folder=temp)
+def _copy_tree(game: Path, target: Path, say) -> list[str]:
+    """Every file of the game as a real file (a link is followed, never recreated, so nothing
+    in the copy leads back into the game); returns the files the OS refused to read."""
     ticker = Ticker(say, "Copied game files:")
     skipped: list[str] = []
 
-    def copy(src, dst):  # copies (never links), with a throttled count for the progress rail
+    def copy(src, dst):
         try:
             shutil.copy2(src, dst)
-        except OSError as exc:
+        except OSError as exc:  # an antivirus hold, a lock, a dangling link
             skipped.append(f"{Path(src).name} ({exc.strerror or exc.errno})")
+            with suppress(OSError):  # a read that failed part-way leaves no truncated file
+                os.remove(dst)
         ticker.tick()
 
+    shutil.copytree(game, target, symlinks=False, dirs_exist_ok=True, copy_function=copy)
+    return skipped
+
+
+def not_copied(left: list[str]) -> str:
+    return f"{len(left)} file(s) not copied (antivirus or lock): {', '.join(left[:5])}"
+
+
+def prepare_copy(rt, game: Path, target: Path, sink=None, stage="copy", reuse=False) -> list[str]:
+    """The patched copy (doc 18): a full copy of the game, marked. With `reuse`, a target that
+    already is a patched copy is kept as it is, so patches and mods stack on it. A file the OS
+    refuses to read is left out, said in a warn event and returned (callers report it too)."""
+    if reuse and (target / MARKER).is_dir():
+        return []
+    rt.temp_root.mkdir(parents=True, exist_ok=True)
+    refuse_writes_inside(game, workspace=target, temp_folder=rt.temp_root)
+    tell(sink, f"Copying the game to {target}", stage)
     if target.exists() and any(p.name != ws.METADATA_DIR for p in target.iterdir()):
         if not (target / MARKER).is_dir():
             raise ViwoError("refused", f"{target} is not empty and is not a ViWo patched copy")
         for entry in target.iterdir():  # the lock file (.extraction_metadata) stays
             if entry.name != ws.METADATA_DIR:
                 shutil.rmtree(entry) if entry.is_dir() else entry.unlink()
-    shutil.copytree(game, target, symlinks=True, dirs_exist_ok=True, copy_function=copy)
+    left = _copy_tree(game, target, teller(sink, stage))
     (target / MARKER).mkdir(exist_ok=True)
-    return skipped
-
-
-def _ctx(rt, target: Path, work: Path, sink, cancel):
-    ctx = core_context(rt, "repack", target, work, sink, cancel)
-    ctx.staging = work / "out"
-    return ctx
+    if left:
+        tell(sink, not_copied(left), stage, "warn")
+    return left
 
 
 def _verify(rt, packed: Path, item: PlanItem, ctx) -> list[str]:
@@ -162,9 +178,8 @@ def _override(item: PlanItem, target: Path) -> dict:
     """Loose files copied over; never through a link or outside the patched copy."""
     bad = []
     for member, source in item.members.items():
-        rel = ws.safe_member(member)
-        dest = target.joinpath(*rel.parts) if rel else None
-        if dest is None or not ws.inside(target, dest.parent) or dest.is_symlink():
+        dest = ws.member_path(target, member)
+        if dest is None:
             bad.append(member)
             continue
         dest.parent.mkdir(parents=True, exist_ok=True)
@@ -174,16 +189,10 @@ def _override(item: PlanItem, target: Path) -> dict:
     return {"container": "", "slot": "override", "members": len(item.members), "failed": bad}
 
 
-def _container(target: Path, rel: str) -> Path | None:
-    member = ws.safe_member(rel)
-    path = target.joinpath(*member.parts) if member else None
-    return path if path is not None and ws.inside(target, path) else None
-
-
 def _apply(rt, item: PlanItem, target: Path, ctx) -> dict:
     if item.slot == "override":
         return _override(item, target)
-    container = _container(target, item.container)
+    container = ws.member_path(target, item.container)
     if container is None:  # a link or a crafted path would lead out of the copy
         failed = {"failed": list(item.members), "error": "container is a link or outside the copy"}
         return {"container": item.container, "slot": item.slot, **failed}
@@ -250,19 +259,15 @@ def repack(
 def _build(rt, game: Path, target: Path, items: list[PlanItem], report: dict, control) -> dict:
     """control: (progress sink or None, cancel token)."""
     sink, cancel = control
-    say = sink or (lambda e: None)
     before = snapshot(game)
     rt.temp_root.mkdir(parents=True, exist_ok=True)
     work = Path(tempfile.mkdtemp(prefix="viwo-repack-", dir=rt.temp_root))
     try:
-        say(ProgressEvent(f"Copying the game to {target}", "info", "core", "repack"))
-        left = prepare_copy(game, target, rt.temp_root, teller(say, "repack") or (lambda m: None))
+        left = prepare_copy(rt, game, target, sink, "repack")
         if left:
-            shown = ", ".join(left[:5])
-            report["warnings"].append(
-                f"{len(left)} file(s) not copied (antivirus or lock): {shown}"
-            )
-        ctx = _ctx(rt, target, work, sink, cancel)
+            report["warnings"].append(not_copied(left))
+        ctx = core_context(rt, "repack", target, work, sink, cancel)
+        ctx.staging = work / "out"
         (work / "scratch").mkdir(parents=True, exist_ok=True)
         report["results"] = []
         for item in items:
@@ -276,12 +281,6 @@ def _build(rt, game: Path, target: Path, items: list[PlanItem], report: dict, co
     if changed:
         report["warnings"].append(changed)
     write_atomic(target / MARKER / "report.json", json.dumps(report, indent=2))
-    say(
-        ProgressEvent(
-            f"Patched copy ready ({'verified' if report['verified'] else 'NOT verified'})",
-            "info",
-            "core",
-            "repack",
-        )
-    )
+    state = "verified" if report["verified"] else "NOT verified"
+    tell(sink, f"Patched copy ready ({state})", "repack")
     return report

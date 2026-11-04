@@ -72,9 +72,7 @@ class GodotPlugin(EnginePlugin):
     def __init__(self) -> None:
         self._recover = False
 
-    @property
-    def manifest(self) -> PluginManifest:
-        return MANIFEST
+    manifest = MANIFEST
 
     def configure(self, options) -> None:
         self._recover = option_bool(options, "recover")

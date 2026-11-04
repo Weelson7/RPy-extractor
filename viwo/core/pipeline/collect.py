@@ -35,6 +35,7 @@ class CollectReport:
     skipped_by_ext: Counter = field(default_factory=Counter)
     provenance: list[dict] = field(default_factory=list)
     unreadable: list[str] = field(default_factory=list)  # the OS refused them (antivirus, lock)
+    warnings: list[str] = field(default_factory=list)  # e.g. files no decoder could read
 
     @property
     def collected(self) -> int:
@@ -54,7 +55,7 @@ def _walk(root: Path, skip: set[str], avoid: Path):
         here = Path(dirpath)
         dirnames[:] = sorted(d for d in dirnames if d not in skip and (here / d).resolve() != avoid)
         for name in sorted(filenames):
-            if name not in (ws.MARKER, ws.EXPORT_MAP, *ws.LEGACY_MARKERS) and not os.path.islink(
+            if name not in (ws.MARKER, ws.EXPORT_MAP) and not os.path.islink(
                 here / name
             ):  # links are never followed: they could point outside the game
                 yield here / name

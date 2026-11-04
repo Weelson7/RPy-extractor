@@ -18,11 +18,7 @@ ROOT = Path(__file__).resolve().parent.parent
 # doc 17 L0 layer rule: contracts <- os <- plugins/backends <- core <- api/cli. A module may
 # import only its own layer and the layers below it.
 LAYERS = {"contracts": 0, "os": 1, "plugins": 2, "backends": 2, "core": 3, "api": 4, "cli": 4}
-# Recorded debt (doc 17.2): the core-owned carver and ffmpeg backends are listed by backends/.
-ALLOWED = {
-    ("viwo/backends/__init__.py", "viwo.core.carve"),
-    ("viwo/backends/__init__.py", "viwo.core.merger.ffmpeg"),
-}
+ALLOWED: set[tuple[str, str]] = set()  # no recorded debt left (1.5.2)
 NETWORK = {"none", "download", "any"}
 CAPS_INI = """[caps]
 function = 40

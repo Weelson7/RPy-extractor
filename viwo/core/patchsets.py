@@ -17,15 +17,14 @@ from __future__ import annotations
 import json
 import re
 import shutil
-import tempfile
 from pathlib import Path
 
 from viwo.contracts import workspace as ws
 from viwo.contracts.errors import ViwoError
-from viwo.contracts.types import ProgressEvent
 
 from .patch_tools import around, assemble, pe, rva_to_offset, signature
 from .roundtrip import MARKER, prepare_copy
+from .steps import tell
 from .workspace import write_atomic
 
 HEX = re.compile(r"^([0-9A-Fa-f]{2}|\?\?)$")
@@ -64,10 +63,13 @@ def _hits(data: bytes, pattern: bytes, mask: list[bool]) -> list[int]:
 def _offset(data: bytes, patch: dict) -> int | str:
     """Where the patch goes, or why it cannot. A pattern that the patch itself overwrites is
     also looked for in its patched form, so an applied set is found again (`already`)."""
-    if "rva" in patch:
-        return rva_to_offset(data, int(str(patch["rva"]), 0))
-    if "pattern" not in patch:
-        return int(str(patch.get("offset", "")), 0)
+    try:
+        if "rva" in patch:
+            return rva_to_offset(data, int(str(patch["rva"]), 0))
+        if "pattern" not in patch:
+            return int(str(patch["offset"]), 0)
+    except (KeyError, ValueError):
+        return "give an offset, an rva or a pattern (a number such as 0x1a2b)"
     pattern, mask = _bytes(patch["pattern"], wild=True)
     at = int(patch.get("at", 0))
     new = _bytes(patch["patched"])[0] if "patched" in patch else b""  # asm: no patched form
@@ -84,9 +86,8 @@ def _offset(data: bytes, patch: dict) -> int | str:
 
 
 def _file(game: Path, patch: dict) -> Path | None:
-    rel = ws.safe_member(str(patch.get("file", "")))
-    path = game.joinpath(*rel.parts) if rel else None
-    return path if path is not None and path.is_file() and ws.inside(game, path) else None
+    path = ws.member_path(game, str(patch.get("file", "")))
+    return path if path is not None and path.is_file() else None
 
 
 def locate(game: Path, patch: dict, host=None) -> dict:
@@ -104,6 +105,9 @@ def locate(game: Path, patch: dict, host=None) -> dict:
     new = (
         assemble(host, patch["asm"], data, where) if "asm" in patch else _bytes(patch["patched"])[0]
     )
+    if where < 0 or where + len(new) > len(data):  # never grow or underrun the binary
+        reason = f"out of range: {len(new)} byte(s) at {where:#x} in a {len(data):#x}-byte file"
+        return {**out, "status": "mismatch", "offset": where, "reason": reason}
     current = data[where : where + len(new)]
     original = _bytes(patch["original"])[0] if "original" in patch else current
     status = "already" if current == new else "ready" if current == original else "mismatch"
@@ -163,7 +167,6 @@ def export(game: Path, patch_set: dict, report: dict, folder: Path, name: str) -
 def apply(rt, game: Path, set_path: Path, target: Path, say=None) -> dict:
     """Plan against the game; copy it to `target` (or reuse target when it is already a ViWo
     patched copy, so edits and patches stack), write every ready patch, read it back."""
-    say = say or (lambda e: None)
     patch_set = load(set_path)
     reuse = (target / MARKER).is_dir()
     report = plan(target if reuse else game, patch_set, rt.os)  # the folder that gets written
@@ -174,11 +177,7 @@ def apply(rt, game: Path, set_path: Path, target: Path, say=None) -> dict:
             if r["status"] not in ("ready", "already")
         ]
         raise ViwoError("failed", "the patch set does not fit this game: " + "; ".join(bad[:5]))
-    if not reuse:
-        say(ProgressEvent(f"Copying the game to {target}", "info", "core", "patch"))
-        rt.temp_root.mkdir(parents=True, exist_ok=True)
-        with tempfile.TemporaryDirectory(dir=rt.temp_root) as tmp:
-            report["notCopied"] = prepare_copy(game, target, Path(tmp))
+    report["notCopied"] = prepare_copy(rt, game, target, say, "patch", reuse=True)
     for patch, result in zip(patch_set["patches"], report["results"]):
         if result["status"] == "ready":
             result["written"] = write(target, patch, result)
@@ -187,9 +186,5 @@ def apply(rt, game: Path, set_path: Path, target: Path, say=None) -> dict:
     export(game, patch_set, report, target / MARKER, name.removesuffix(".patch"))
     write_atomic(target / MARKER / f"{name}.report.json", json.dumps(report, indent=2))
     shutil.copy2(set_path, target / MARKER / Path(set_path).name)  # the set travels with the copy
-    say(
-        ProgressEvent(
-            f"Patched copy ready: {len(report['results'])} patch(es)", "info", "core", "patch"
-        )
-    )
+    tell(say, f"Patched copy ready: {len(report['results'])} patch(es)", "patch")
     return report

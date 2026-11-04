@@ -14,10 +14,11 @@ import time
 from pathlib import Path
 from typing import Callable, Mapping, Sequence
 
-from viwo.contracts.os import Child, ProcessRunner, ToolLocator
+from viwo.contracts.os import OS, Child, DesktopShell, FileSystemPolicy, ProcessRunner, ToolLocator
 from viwo.contracts.types import DependencySpec, ProcessResult, ToolLocation
 
 KillTree = Callable[[subprocess.Popen], None]
+Lister = Callable[[], list[tuple[int, str]]]  # (pid, lowercased image name) per process
 
 
 CHILDREN: list[Child] = []  # tracked GUI children (doc 8.3a), torn down at exit
@@ -33,15 +34,15 @@ atexit.register(_reap_children)
 
 
 class SubprocessRunner(ProcessRunner):
-    def __init__(self, max_len: int, popen_kwargs: dict, kill_tree: KillTree, lister=None):
+    def __init__(self, max_len: int, popen_kwargs: dict, kill_tree: KillTree, lister: Lister):
         self._max_len = max_len
         self._popen_kwargs = popen_kwargs
         self._kill_tree = kill_tree
-        self._lister = lister  # per-OS process lister (doc 1.1 running_images)
+        self.processes = lister  # the per-OS process listing (running_images, pids_of)
 
     def running_images(self) -> set[str]:
         try:
-            return set(self._lister(self)) if self._lister else set()
+            return {name for _, name in self.processes()}
         except Exception:  # noqa: BLE001  (a process list is advice, never a blocker)
             return set()
 
@@ -213,8 +214,9 @@ def open_with(command: Sequence[str]) -> tuple[bool, str]:
         return False, str(exc)
 
 
-def tk_pick_folder(title: str, initial: Path | None) -> Path | None:
-    """v1 folder dialog (tkinter); None when no display or cancelled."""
+def _tk_ask(kind: str, **options) -> Path | None:
+    """A tkinter dialog (`askdirectory`, `askopenfilename`) on top; None when there is no
+    display or the user cancelled."""
     try:
         import tkinter as tk
         from tkinter import filedialog
@@ -222,28 +224,54 @@ def tk_pick_folder(title: str, initial: Path | None) -> Path | None:
         root = tk.Tk()
         root.withdraw()
         root.attributes("-topmost", True)
-        chosen = filedialog.askdirectory(initialdir=str(initial or Path.home()), title=title)
+        chosen = getattr(filedialog, kind)(**options)
         root.destroy()
         return Path(chosen) if chosen else None
     except Exception:
         return None
 
 
-def tk_pick_file(title: str, initial: Path | None, patterns: Sequence[str]) -> Path | None:
-    """v1 file dialog (tkinter); None when no display or cancelled."""
-    try:
-        import tkinter as tk
-        from tkinter import filedialog
+class TkShell(DesktopShell):
+    """The folder and file pickers both OS layers use (tkinter); open_folder is per OS."""
 
-        root = tk.Tk()
-        root.withdraw()
-        root.attributes("-topmost", True)
+    def pick_folder(self, title: str, initial: Path | None = None) -> Path | None:
+        return _tk_ask("askdirectory", initialdir=str(initial or Path.home()), title=title)
+
+    def pick_file(self, title: str, initial: Path | None = None, patterns=()) -> Path | None:
         start = initial.parent if initial and initial.is_file() else (initial or Path.home())
         types = [("Supported files", " ".join(patterns))] if patterns else []
-        chosen = filedialog.askopenfilename(
-            initialdir=str(start), title=title, filetypes=types + [("All files", "*.*")]
-        )
-        root.destroy()
-        return Path(chosen) if chosen else None
-    except Exception:
-        return None
+        types.append(("All files", "*.*"))
+        return _tk_ask("askopenfilename", initialdir=str(start), title=title, filetypes=types)
+
+
+class HostOS(OS):
+    """What both OS layers share: the services their __init__ sets up, pids_of over the
+    per-OS process listing, and dump_process over the per-OS dumper."""
+
+    _process: SubprocessRunner
+    _tools: Locator
+    name_limit = 0  # characters of a process name the OS keeps (Linux comm: 15)
+
+    @property
+    def process(self) -> SubprocessRunner:
+        return self._process
+
+    @property
+    def tools(self) -> Locator:
+        return self._tools
+
+    @property
+    def fs(self) -> FileSystemPolicy:
+        return self._fs
+
+    @property
+    def shell(self) -> DesktopShell:
+        return self._shell
+
+    def pids_of(self, image: str) -> list[int]:
+        key = image.lower()[: self.name_limit or None]
+        return [pid for pid, name in self._process.processes() if name == key]
+
+    def dump_process(self, pid: int, out: Path) -> Path:
+        out.mkdir(parents=True, exist_ok=True)
+        return self._dump(pid, out)  # each OS layer sets _dump (minidump, /proc mem)

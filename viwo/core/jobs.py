@@ -48,6 +48,9 @@ class Job:
         }
 
 
+KEEP = 200  # finished jobs kept in memory
+
+
 class JobRunner:
     def __init__(self, listener: ProgressSink | None = None) -> None:
         self._jobs: dict[str, Job] = {}
@@ -60,12 +63,20 @@ class JobRunner:
         self, listener: ProgressSink | None, kind: str, fn: JobFn, background: bool = True
     ) -> Job:
         job = Job(f"{time.strftime('%Y%m%d-%H%M%S')}-{next(_IDS):04d}", kind)
+        self._forget_old()
         self._jobs[job.job_id] = job
         if background:
             threading.Thread(target=self._run, args=(job, fn, listener), daemon=True).start()
         else:
             self._run(job, fn, listener)
         return job
+
+    def _forget_old(self) -> None:
+        """A long-running server keeps the last KEEP finished jobs (their run records stay on
+        disk); running jobs are never dropped."""
+        finished = [j for j in self._jobs.values() if j.done.is_set()]
+        for job in finished[: max(0, len(finished) - KEEP + 1)]:  # room for the new one
+            self._jobs.pop(job.job_id, None)
 
     def list(self) -> list[Job]:
         return list(self._jobs.values())

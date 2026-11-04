@@ -9,9 +9,7 @@ conflicts. The game folder itself is only ever read. The in-game side of a mod f
 
 from __future__ import annotations
 
-import hashlib
 import json
-import tempfile
 import time
 import zipfile
 from pathlib import Path
@@ -21,18 +19,11 @@ from viwo.contracts import workspace as ws
 from viwo.contracts.errors import ViwoError
 
 from . import patchsets
+from .pipeline.collect import sha256
 from .roundtrip import MARKER, prepare_copy
 
 MANIFEST = "viwo-mod.json"
 SKIP = {MARKER, ws.METADATA_DIR}
-
-
-def _sha(path: Path) -> str:
-    digest = hashlib.sha256()
-    with open(path, "rb") as fh:
-        for block in iter(lambda: fh.read(1 << 20), b""):
-            digest.update(block)
-    return digest.hexdigest()
 
 
 def changes(game: Path, copy: Path) -> list[dict]:
@@ -47,12 +38,12 @@ def changes(game: Path, copy: Path) -> list[dict]:
             a, b = original.stat(), path.stat()
             if a.st_size == b.st_size and a.st_mtime_ns == b.st_mtime_ns:
                 continue  # copy2 keeps times: an untouched file
-            old = _sha(original)
-            if old == _sha(path):
+            old = sha256(original)
+            if old == sha256(path):
                 continue
         else:
             old = ""
-        out.append({"path": rel.as_posix(), "original": old, "sha256": _sha(path)})
+        out.append({"path": rel.as_posix(), "original": old, "sha256": sha256(path)})
     return out
 
 
@@ -113,7 +104,7 @@ def check(game: Path, mod: Path) -> dict:
     for item in manifest["files"]:
         rel = ws.safe_member(item["path"])
         target = game.joinpath(*rel.parts) if rel else None
-        current = _sha(target) if target is not None and target.is_file() else ""
+        current = sha256(target) if target is not None and target.is_file() else ""
         state = (
             "installed"
             if current == item["sha256"]
@@ -138,7 +129,11 @@ def check(game: Path, mod: Path) -> dict:
 def order(mods: list[Path]) -> list[Path]:
     """Load order: a mod comes after everything it `requires` or names in `after`; a missing
     requirement or a cycle is refused."""
-    by_name = {read_manifest(m).get("name", m.stem): m for m in mods}
+    names = [read_manifest(m).get("name", m.stem) for m in mods]
+    twice = sorted({n for n in names if names.count(n) > 1})
+    if twice:  # one would silently replace the other
+        raise ViwoError("invalid_request", f"two mods share the name {', '.join(twice)}")
+    by_name = dict(zip(names, mods))
     needs = {name: read_manifest(m) for name, m in by_name.items()}
     done: list[str] = []
 
@@ -183,7 +178,19 @@ def conflicts(mods: list[Path]) -> list[str]:
     return found
 
 
-def _apply_one(game: Path, mod: Path, copy: Path) -> dict:
+def _adapt(copy: Path, path: str, patches: list[dict]) -> None:
+    """Each AOB patch is already there, or written and read back; anything else stops the
+    apply with the patch's own reason (a half-adapted file is never left unsaid)."""
+    for patch in patches:
+        found = patchsets.locate(copy, patch)
+        if found["status"] == "already":
+            continue
+        if found["status"] != "ready" or not patchsets.write(copy, patch, found):
+            why = found["reason"] or "the written bytes did not read back"
+            raise ViwoError("failed", f"{path}: a patch of the mod did not apply ({why})")
+
+
+def _apply_one(mod: Path, copy: Path) -> dict:
     report = check(copy, mod)
     if not report["fits"]:
         bad = [r["path"] for r in report["files"] if r["state"] == "differs"]
@@ -194,22 +201,18 @@ def _apply_one(game: Path, mod: Path, copy: Path) -> dict:
     patched = _patched_files(mod, manifest)
     with zipfile.ZipFile(mod) as archive:
         for row in report["files"]:
-            rel = ws.safe_member(row["path"])
-            target = copy.joinpath(*rel.parts) if rel is not None else None
-            if target is None or not ws.inside(copy, target):
+            target = ws.member_path(copy, row["path"])
+            if target is None:
                 raise ViwoError("refused", f"unsafe path in the mod: {row['path']}")
             if row["state"] == "adapts":  # another version: the AOB patches, not the file
-                for patch in patched[row["path"]]:
-                    found = patchsets.locate(copy, patch)
-                    if found["status"] == "ready":
-                        patchsets.write(copy, patch, found)
+                _adapt(copy, row["path"], patched[row["path"]])
                 continue
             target.parent.mkdir(parents=True, exist_ok=True)
             target.write_bytes(archive.read(f"files/{row['path']}"))
     return report
 
 
-def apply(rt, game: Path, mods: list[Path], copy: Path) -> dict:
+def apply(rt, game: Path, mods: list[Path], copy: Path, sink=None) -> dict:
     """Mods in load order into one patched copy (made from the game first when `copy` is not
     one); conflicts between them are refused before anything is written."""
     mods = order(list(mods))
@@ -220,14 +223,12 @@ def apply(rt, game: Path, mods: list[Path], copy: Path) -> dict:
             "mods conflict: " + "; ".join(clash[:5]),
             hint="declare `after` in the mod that should win",
         )
-    if not (copy / MARKER).is_dir():
-        rt.temp_root.mkdir(parents=True, exist_ok=True)
-        with tempfile.TemporaryDirectory(dir=rt.temp_root) as tmp:
-            prepare_copy(game, copy, Path(tmp))  # held files: reported by check() as missing
-    reports = [_apply_one(game, mod, copy) for mod in mods]
+    left = prepare_copy(rt, game, copy, sink, "mod", reuse=True)
+    reports = [_apply_one(mod, copy) for mod in mods]
     return {
         "copy": str(copy),
         "order": [r["name"] for r in reports],
         "mods": reports,
         "applied": sum(len(r["files"]) for r in reports),
+        "notCopied": left,  # files the OS refused to copy (also a warn event)
     }

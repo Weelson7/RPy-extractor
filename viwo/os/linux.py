@@ -10,9 +10,9 @@ import sys
 from pathlib import Path
 from typing import Mapping, Sequence
 
-from viwo.contracts.os import OS, DesktopShell, FileSystemPolicy
+from viwo.contracts.os import FileSystemPolicy
 
-from ._shared import Locator, SubprocessRunner, open_with, tk_pick_file, tk_pick_folder
+from ._shared import HostOS, Locator, SubprocessRunner, TkShell, open_with
 
 
 def _kill_group(proc: subprocess.Popen) -> None:
@@ -39,25 +39,24 @@ class PosixFs(FileSystemPolicy):
         return not bad and len(name.encode("utf-8")) <= 255
 
 
-class LinuxShell(DesktopShell):
+class LinuxShell(TkShell):
     def open_folder(self, path: Path) -> tuple[bool, str]:
         if not path.is_dir():
             return False, f"Folder not found: {path}"
         return open_with(["xdg-open", str(path)])
 
-    def pick_folder(self, title: str, initial: Path | None = None) -> Path | None:
-        return tk_pick_folder(title, initial)
 
-    def pick_file(self, title: str, initial: Path | None = None, patterns=()) -> Path | None:
-        return tk_pick_file(title, initial, patterns)
-
-
-def _running_images(_runner: SubprocessRunner) -> set[str]:
-    """Command names from /proc/<pid>/comm, lowercased."""
-    names = set()
+def _processes() -> list[tuple[int, str]]:
+    """(pid, lowercased command name) from /proc/<pid>/comm; a process that exits while the
+    list is read is left out."""
+    found = []
     for comm in Path("/proc").glob("[0-9]*/comm"):
-        names.add(comm.read_text(encoding="utf-8", errors="replace").strip().lower())
-    return names
+        try:
+            name = comm.read_text(encoding="utf-8", errors="replace").strip().lower()
+        except OSError:
+            continue
+        found.append((int(comm.parent.name), name))
+    return found
 
 
 def _install_roots() -> list[Path]:
@@ -107,14 +106,16 @@ def _proc_dump(pid: int, out: Path) -> Path:
     return dump
 
 
-class LinuxOS(OS):
+class LinuxOS(HostOS):
     os_id = "linux"
     display_name = "Linux"
+    name_limit = 15  # /proc/<pid>/comm keeps 15 characters
+    _dump = staticmethod(_proc_dump)
 
     def __init__(self, tool_overrides: Mapping[str, str | Sequence[str]] | None = None) -> None:
         arg_max = os.sysconf("SC_ARG_MAX") if hasattr(os, "sysconf") else 131072
         self._process = SubprocessRunner(
-            max(4096, arg_max // 2), {"start_new_session": True}, _kill_group, _running_images
+            max(4096, arg_max // 2), {"start_new_session": True}, _kill_group, _processes
         )
         self._tools = Locator(
             tool_overrides or {}, _install_roots(), [""], lambda p: (str(p),), "linux"
@@ -135,41 +136,8 @@ class LinuxOS(OS):
             return True
         return True
 
-    @property
-    def process(self) -> SubprocessRunner:
-        return self._process
-
-    @property
-    def tools(self) -> Locator:
-        return self._tools
-
-    @property
-    def fs(self) -> PosixFs:
-        return self._fs
-
     def config_home(self) -> Path:
         return Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config")
 
     def data_home(self) -> Path:
         return Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share")
-
-    def pids_of(self, image: str) -> list[int]:
-        found = []
-        for comm in Path("/proc").glob("[0-9]*/comm"):
-            try:
-                if (
-                    comm.read_text(encoding="utf-8", errors="replace").strip().lower()
-                    == image.lower()[:15]
-                ):
-                    found.append(int(comm.parent.name))
-            except OSError:
-                continue
-        return found
-
-    def dump_process(self, pid: int, out: Path) -> Path:
-        out.mkdir(parents=True, exist_ok=True)
-        return _proc_dump(pid, out)
-
-    @property
-    def shell(self) -> LinuxShell:
-        return self._shell

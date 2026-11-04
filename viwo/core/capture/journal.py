@@ -1,20 +1,17 @@
-"""Journaled overlay (doc 11.4): every file a runtime agent adds to or replaces in the game
-folder is recorded with backups and hashes; restore undoes it and checks the result. A
-journal left behind by a crash is restored before the next capture starts.
+"""Game-folder journal restore (doc 11.5). Runtime agents work in a patched copy, so nothing
+writes into a game folder any more; a journal left in `<temp>/capture/<name>/journal.json` (by
+a crashed session that did) is still restored before the next capture starts: every recorded
+file is put back from its backup (or removed when it was new) and its hash checked.
 
-The journal is JSON lines (a header line, then one line per entry), written atomically
-(temp file + replace), so a truncated file still restores every complete entry.
+The journal is JSON lines: a header line `{"game": ...}`, then one line per entry
+`{"rel", "backup", "original", "dirs"}`; a damaged line is skipped with a warning.
 """
 
 from __future__ import annotations
 
 import json
-import os
 import shutil
 from pathlib import Path
-
-from viwo.contracts.errors import ViwoError
-from viwo.contracts.workspace import safe_member
 
 from ..pipeline.collect import sha256
 
@@ -22,46 +19,7 @@ from ..pipeline.collect import sha256
 class Journal:
     def __init__(self, folder: Path, game: Path, name: str = "journal") -> None:
         self.folder, self.game = folder / name, game
-        self.file = self.folder / "journal.json"
         self.entries: list[dict] = []
-
-    def _new_dirs(self, target: Path) -> list[str]:
-        """Folders write() will create, game-relative, deepest first (removed on restore)."""
-        created, parent = [], target.parent
-        while parent != self.game and not parent.exists():
-            created.append(parent.relative_to(self.game).as_posix())
-            parent = parent.parent
-        return created
-
-    def write(self, rel: str, data: bytes) -> None:
-        member = safe_member(rel)
-        if member is None:
-            raise ViwoError("refused", f"journal path leaves the game folder: {rel}")
-        target = self.game.joinpath(*member.parts)
-        backup = ""
-        if target.exists():
-            backup = f"backup/{len(self.entries)}"
-            (self.folder / backup).parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(target, self.folder / backup)
-        self.entries.append(
-            {
-                "rel": member.as_posix(),
-                "backup": backup,
-                "original": sha256(target) if backup else "",
-                "dirs": self._new_dirs(target),
-            }
-        )
-        self._save()  # recorded before the write, so a crash mid-write is still undone
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(data)
-
-    def _save(self) -> None:
-        self.folder.mkdir(parents=True, exist_ok=True)
-        lines = [json.dumps({"game": str(self.game)})]
-        lines += [json.dumps(entry) for entry in self.entries]
-        tmp = self.file.with_suffix(".tmp")
-        tmp.write_text("\n".join(lines) + "\n", encoding="utf-8")
-        os.replace(tmp, self.file)  # atomic: the journal is complete or unchanged
 
     def restore(self) -> list[str]:
         """Undo every change in reverse; returns the paths that do not match afterwards."""
@@ -84,17 +42,10 @@ class Journal:
 
 
 def _parse(file: Path, warn) -> tuple[str, list[dict]] | None:
-    """(game, entries) from a journal file: JSON lines, or the older single-object form.
-    Damaged lines are skipped with a warning; a journal without a readable header is skipped."""
-    text = file.read_text(encoding="utf-8", errors="replace")
-    try:
-        whole = json.loads(text)
-        if isinstance(whole, dict) and "entries" in whole:
-            return str(whole["game"]), list(whole["entries"])
-    except ValueError:
-        pass
+    """(game, entries) from a journal file. Damaged lines are skipped with a warning; a journal
+    without a readable header is skipped."""
     game, entries, broken = "", [], 0
-    for line in text.splitlines():
+    for line in file.read_text(encoding="utf-8", errors="replace").splitlines():
         try:
             item = json.loads(line)
         except ValueError:

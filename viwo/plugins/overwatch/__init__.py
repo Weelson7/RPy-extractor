@@ -65,8 +65,7 @@ class DataToolExporter(Exporter):
     backend_id, owner, license, isolation = "datatool", "overwatch", "MIT", "subprocess"
     network = "download"
 
-    def dependencies(self):
-        return (DATATOOL,)
+    requires = (DATATOOL,)
 
     def export(self, ctx) -> Outcome:
         tool = ctx.os.tools.locate(DATATOOL)
@@ -93,9 +92,7 @@ PLUGIN = "OverwatchPlugin"  # discovered by viwo.core.wiring.registry
 
 
 class OverwatchPlugin(EnginePlugin):
-    @property
-    def manifest(self) -> PluginManifest:
-        return MANIFEST
+    manifest = MANIFEST
 
     def detect(self, probe: GameProbe) -> DetectionResult:
         evidence = ()

@@ -14,17 +14,8 @@ from viwo.contracts.slots import SlotDefinition
 RESERVED = {"mixed", "auto", "core", "none"}
 SLUG = re.compile(r"[a-z][a-z0-9_-]{1,31}")
 OS_LAYERS = {"windows", "linux"}
-CAPABILITIES = (  # doc 2.1; a manifest that declares none gets them derived
-    "detect",
-    "unpack",
-    "export",
-    "pack",
-    "decode",
-    "inventory",
-    "verify",
-    "sanitize",
-    "analyze",
-)
+# doc 2.1; a manifest that declares none gets them derived
+CAPABILITIES = tuple("detect unpack export pack decode inventory verify sanitize analyze".split())
 
 
 class EmptyProbe:

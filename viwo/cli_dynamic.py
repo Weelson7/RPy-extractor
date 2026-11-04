@@ -1,4 +1,5 @@
-"""The dynamic arm's commands (doc 11, 16.2b D1/D3): `viwo capture`, `viwo dump`, `viwo trace`."""
+"""The dynamic arm's commands (doc 11, 16.2b D1-D3): `viwo capture`, `viwo dump`, `viwo trace`,
+`viwo agent`, `viwo record`."""
 
 from __future__ import annotations
 
@@ -6,26 +7,18 @@ import sys
 
 from viwo.contracts.errors import Envelope, ViwoError
 
+FIELDS = ("pid", "name", "seconds", "game", "exe", "copy", "timeout")
 
-def runtime(rt, args) -> Envelope:
-    from viwo.core.capture import runtime as tools
 
-    if args.command == "agent":
-        from viwo.core.capture.agents import AgentRequest, run_agent
+def runtime(rt, args, printer) -> Envelope:
+    """dump, trace, agent, record: the options each command has fill one RuntimeRequest."""
+    from viwo.core.capture.runtime import RuntimeRequest, run
 
-        req = AgentRequest(args.game, args.exe, args.workspace, args.copy, args.timeout)
-        done = run_agent(rt, req)
-        return Envelope.success(done)
-    if args.command == "record":
-        from viwo.core.capture.audio import record
-
-        return Envelope.success(record(rt, args.workspace, args.seconds))
-    if args.command == "dump":
-        return Envelope.success(tools.dump(rt, args.workspace, args.pid, args.name))
-    names = [f.strip() for f in args.functions.split(",") if f.strip()]
-    return Envelope.success(
-        tools.trace(rt, args.workspace, (args.pid, args.name), names, args.seconds)
-    )
+    given = {f: getattr(args, f) for f in FIELDS if getattr(args, f, None) is not None}
+    if getattr(args, "functions", None):
+        given["functions"] = tuple(f.strip() for f in args.functions.split(",") if f.strip())
+    req = RuntimeRequest(args.workspace, **given)
+    return Envelope.success(run(rt, args.command, req, printer))
 
 
 def capture(rt, args) -> Envelope:

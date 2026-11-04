@@ -8,10 +8,9 @@ from __future__ import annotations
 import importlib.metadata
 
 from viwo.contracts.errors import ViwoError
-from viwo.contracts.types import ProgressEvent
 
 from . import thirdparty
-from .steps import teller
+from .steps import tell, teller
 
 NO_RUN = {"rdpython", "datatool"}  # a GUI host or a slow start: never run just for a version
 
@@ -51,11 +50,7 @@ def check(rt, say) -> list[dict]:
     for index, item in enumerate(items, 1):
         item["version"] = _version(rt, item)
         state = f"found {item['version']}".strip() if item["available"] else "missing"
-        say(
-            ProgressEvent(
-                f"Checking {item['label']} ({index}/{len(items)}): {state}", "info", "core", "check"
-            )
-        )
+        tell(say, f"Checking {item['label']} ({index}/{len(items)}): {state}", "check")
     return items
 
 
@@ -77,33 +72,28 @@ def install(rt, dep_id: str, sink=None, cancel=None) -> dict:
     return {"installed": dep_id, "where": done}
 
 
-def _event(message: str, stage: str, level: str = "info") -> ProgressEvent:
-    return ProgressEvent(message, level, "core", stage)
-
-
 def _install_missing(rt, todo: list[dict], sink, cancel) -> tuple[list[str], list[str]]:
-    say, installed, failed = sink or (lambda e: None), [], []
+    installed, failed = [], []
     for index, item in enumerate(todo, 1):
-        say(_event(f"Installing missing tools ({index}/{len(todo)}): {item['label']}", "install"))
+        tell(sink, f"Installing missing tools ({index}/{len(todo)}): {item['label']}", "install")
         try:
             install(rt, item["id"], sink, cancel)
             installed.append(item["id"])
         except ViwoError as exc:
             failed.append(f"{item['label']}: {exc.message}")
-            say(_event(f"Could not install {item['label']}: {exc.message}", "install", "warn"))
+            tell(sink, f"Could not install {item['label']}: {exc.message}", "install", "warn")
     return installed, failed
 
 
 def preflight(rt, sink=None, cancel=None) -> dict:
     """Checks, then (auto_install = on, the default) installs everything missing that can be."""
-    say = sink or (lambda e: None)
-    say(_event(f"Loaded {len(rt.plugins)} engine plugins, {len(rt.slots)} formats", "boot"))
-    items = check(rt, say)
+    tell(sink, f"Loaded {len(rt.plugins)} engine plugins, {len(rt.slots)} formats", "boot")
+    items = check(rt, sink)
     missing = [i for i in items if not i["available"] and i["installable"] and not i["onDemand"]]
     todo = missing if rt.config.auto_install else []
     installed, failed = _install_missing(rt, todo, sink, cancel)
     ready = sum(1 for i in items if i["available"]) + len(installed)
-    say(_event(f"Ready: {ready}/{len(items)} tools available", "ready"))
+    tell(sink, f"Ready: {ready}/{len(items)} tools available", "ready")
     result = {"dependencies": items, "installed": installed, "failed": failed, "ready": ready}
     return {**result, "total": len(items), "problems": list(rt.problems)}
 

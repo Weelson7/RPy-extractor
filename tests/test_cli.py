@@ -244,6 +244,17 @@ class PluginCommandTests(unittest.TestCase):
             self.assertEqual(code, 1)
             self.assertIn("viwo: not_found", err)
 
+    def test_text_mode_says_every_warning_the_envelope_carries(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            custom = dropin(root / "a", "clasher", override=False)
+            ini = str(write_ini(root / "a", f"[plugins]\ncustom_dirs = {custom.as_posix()}\n"))
+            warned = json.loads(run(["--ini", ini, "--json", "info"])[1])["warnings"]
+            _, _, err = run(["--ini", ini, "info"])
+        self.assertTrue(warned)
+        for warning in warned:
+            self.assertIn(f"viwo: warning: {warning}", err)
+
     def test_core_command_clash_and_override(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

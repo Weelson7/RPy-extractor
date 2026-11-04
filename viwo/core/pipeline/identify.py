@@ -15,7 +15,10 @@ def identify(path: Path, slots: Iterable[SlotDefinition]) -> Match | None:
     head = _read(path, SNIFF_BYTES, False)
     for slot in candidates:
         if slot.identify is not None:
-            found = slot.identify(path, head, _read(path, SNIFF_BYTES, True))
+            try:  # an identifier may reopen the file: a lock or an antivirus hold surfaces here
+                found = slot.identify(path, head, _read(path, SNIFF_BYTES, True))
+            except OSError:  # unidentified; the collect step names the file as unreadable
+                continue
             if found is not None:
                 return found
     name = path.name.lower()

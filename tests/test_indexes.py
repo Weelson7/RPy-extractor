@@ -107,14 +107,6 @@ class ValidatorTests(unittest.TestCase):
 
 
 class MatchAndInstallTests(unittest.TestCase):
-    def test_match_game_finds_freedoom(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            game = Path(tmp) / "Freedoom"
-            game.mkdir()
-            (game / "freedoom1.wad").write_bytes(b"IWAD")
-            self.assertEqual(indexes.match_game(ROOT, game), [("freedoom", "any")])
-            self.assertEqual(indexes.match_game(ROOT, Path(tmp)), [])
-
     def test_install_game_scripts_and_refusal(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

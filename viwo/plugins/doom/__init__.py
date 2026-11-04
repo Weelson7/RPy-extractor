@@ -25,34 +25,16 @@ MANIFEST = PluginManifest(
 WAD_SLOT = SlotDefinition(
     "unarchive.wad", "unarchive", "doom", "wad-builtin", suffixes=(".wad",), magic=MAGICS
 )
-PORTS = (
-    "doom.exe",
-    "doom2.exe",
-    "heretic.exe",
-    "hexen.exe",
-    "gzdoom.exe",
-    "gzdoom",
-    "zdoom.exe",
-    "chocolate-doom",
-    "chocolate-doom.exe",
-    "crispy-doom",
-    "crispy-doom.exe",
-    "prboom-plus",
-    "prboom-plus.exe",
-    "dsda-doom",
-    "dsda-doom.exe",
-    "woof",
-    "woof.exe",
-)
+SOURCE_PORTS = "gzdoom zdoom chocolate-doom crispy-doom prboom-plus dsda-doom woof".split()
+PORTS = ("doom.exe", "doom2.exe", "heretic.exe", "hexen.exe")
+PORTS += tuple(SOURCE_PORTS) + tuple(f"{p}.exe" for p in SOURCE_PORTS)  # Linux and Windows names
 
 
 PLUGIN = "DoomPlugin"  # discovered by viwo.core.wiring.registry
 
 
 class DoomPlugin(EnginePlugin):
-    @property
-    def manifest(self) -> PluginManifest:
-        return MANIFEST
+    manifest = MANIFEST
 
     def detect(self, probe: GameProbe) -> DetectionResult:
         heads = [probe.head(p, 4) for p in probe.with_suffix(".wad")[:50]]

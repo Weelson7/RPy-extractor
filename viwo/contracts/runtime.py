@@ -21,7 +21,8 @@ class RuntimeAgent(Backend):
 
     def install(self, copy: Path, exe: Path, ctx) -> list[str]:
         """Put the agent and its settings into the copy (every first-run question pre-answered:
-        no console, no dialog); return the extra launch arguments (windowed, small)."""
+        no console, no dialog) and remove what a previous run left (a reused copy must not look
+        finished); return the extra launch arguments (windowed, small)."""
         raise NotImplementedError
 
     def finished(self, copy: Path, exe: Path) -> bool:

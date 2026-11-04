@@ -9,7 +9,7 @@ slot/backend, OS-layer, pinned-tool and provenance plumbing:
   analysis (Ghidra and friends: disasm/decompile, type/symbol recovery, bytecode VMs, protector ID,
   emulation, version diffing). Reads copies, never runs the game. Docs 3 and 6.
 - **Dynamic/runtime** — capture, debugging, instrumentation/tracing, memory, hooking, own-traffic
-  networking, profiling. Runs or attaches to the game through `core/capture/journal.py`, behind the
+  networking, profiling. Runs or attaches to the game (agents in a patched copy, doc 11.5), behind the
   `runtime` feature flag with warnings and one opt-in. Doc 11.
 - **Authoring** — asset round trip, binary patch sets with AOB signatures, and mod-runtime
   packaging. Writes only a separate, marked patched copy. Doc 18.
@@ -31,7 +31,7 @@ viwo/
     curation/  extension groups, sorting (keep / trash / rename / undo), three trash areas
     merger/    media merger: candidates, timeline expansion, ffmpeg filtergraph and builds
     carve/     signature carver (format sizers) and zlib/gzip stream inflation
-    capture/   runtime capture pilot: warnings policy, journaled overlay, RenderDoc backend
+    capture/   dynamic arm: warnings policy, RenderDoc, dumps, traces, agents in a patched copy
     analysis/  static analysis arm (A1): targets from the plugins, Ghidra headless into
                <workspace>/.analysis/, "Continue in Ghidra" handoff as a tracked child
     decode.py  DECODE stage: game audio -> WAV (vgmstream), DDS -> PNG, Bink -> MP4
@@ -78,8 +78,9 @@ Key invariants (tested):
   sensitive plugins produce warnings; the user confirms once and is responsible (README: Philosophy).
 - Two job classes: **static** jobs (extraction, `analysis.*`) read copies and never run or touch the
   game; **dynamic** jobs (`capture/runtime/debug/trace/memory/hook/net/profile`) touch the running
-  game and so go through the capture journal, the `runtime` feature flag and the opt-in. A GUI
-  handoff that runs code in the game is a dynamic action; one that opens a static file is not.
+  game and so go through the `runtime` feature flag and the opt-in (agents work in a patched
+  copy). A GUI handoff that runs code in the game is a dynamic action; one that opens a static
+  file is not.
 - GUI tools are launched as tracked child subprocesses inside ViWo's process tree, so tree-kill and
   timeouts reach them (doc 8.3a, doc 1).
 - Code size caps: see `loc_caps.ini` and `tools/loc_count.py`.

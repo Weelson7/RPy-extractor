@@ -117,9 +117,7 @@ PLUGIN = "KiriKiriPlugin"  # discovered by viwo.core.wiring.registry
 
 
 class KiriKiriPlugin(EnginePlugin):
-    @property
-    def manifest(self) -> PluginManifest:
-        return MANIFEST
+    manifest = MANIFEST
 
     def detect(self, probe: GameProbe) -> DetectionResult:
         found = any(probe.head(p, 11) == MAGIC for p in probe.with_suffix(".xp3")[:20])

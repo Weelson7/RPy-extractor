@@ -34,8 +34,7 @@ class FfmpegBackend(Backend):
     backend_id, license, isolation = "ffmpeg", "LGPL-2.1-or-later", "subprocess"
     families = frozenset({"media.encode"})
 
-    def dependencies(self):
-        return (FFMPEG, FFPROBE)
+    requires = (FFMPEG, FFPROBE)
 
 
 @dataclass

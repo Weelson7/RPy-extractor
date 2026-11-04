@@ -8,7 +8,7 @@ from pathlib import Path
 
 from viwo.contracts.slots import Exporter, Match, Packer, Unarchiver
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
-from viwo.contracts.workspace import count_files
+from viwo.contracts.workspace import count_files, stage_members
 
 MAGIC = b"GDPC"
 GDRE = DependencySpec(
@@ -128,8 +128,7 @@ class GdreRecover(Exporter):
 
     backend_id, owner, license, isolation = "gdre-recover", "godot", "MIT", "subprocess"
 
-    def dependencies(self):
-        return (GDRE,)
+    requires = (GDRE,)
 
     def export(self, ctx) -> Outcome:
         tool = ctx.os.tools.locate(GDRE)
@@ -170,29 +169,12 @@ class GodotPckTool(_PckCli):
         return ["--pack", str(archive), "--action", "extract", "--output", str(dest)]
 
 
-def stage_members(members: dict[str, Path], root: Path) -> list[Path]:
-    """Copy edited members to root/<member> (traversal-checked); returns the staged files."""
-    from viwo.contracts.workspace import safe_member
-
-    staged = []
-    for member, source in members.items():
-        rel = safe_member(member)
-        if rel is None:
-            continue
-        target = root.joinpath(*rel.parts)
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(source.read_bytes())
-        staged.append(target)
-    return staged
-
-
 class GodotPckPacker(Packer):
     """Round trip: GodotPckTool adds (replaces) the edited files inside the copied PCK."""
 
     backend_id, owner, license, isolation = "godotpcktool-pack", "godot", "MIT", "subprocess"
 
-    def dependencies(self):
-        return (PCKTOOL,)
+    requires = (PCKTOOL,)
 
     def pack(self, container, members, ctx) -> Outcome:
         tool = ctx.os.tools.locate(PCKTOOL)

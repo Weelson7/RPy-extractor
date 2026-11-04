@@ -63,12 +63,22 @@ class FolderProbe:
         return _read(path, size, True)
 
 
-@lru_cache(maxsize=4096)
 def _read(path: Path, size: int, from_end: bool) -> bytes:
+    """Head or tail bytes; cached per (path, size, mtime), so a changed file (a game update,
+    a rebuilt patched copy) is read again in a long-running server."""
+    try:
+        st = path.stat()
+    except OSError:
+        return b""
+    return _cached(path, st.st_size, st.st_mtime_ns, size, from_end)
+
+
+@lru_cache(maxsize=4096)
+def _cached(path: Path, length: int, _mtime: int, size: int, from_end: bool) -> bytes:
     try:
         with open(path, "rb") as fh:
             if from_end:
-                fh.seek(max(0, path.stat().st_size - size))
+                fh.seek(max(0, length - size))
             return fh.read(size)
     except OSError:
         return b""

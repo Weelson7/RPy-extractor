@@ -51,19 +51,25 @@ def project_dir(staging: Path) -> Path:
     return workspace.parent / f"{workspace.name}.ghidra" / staging.name
 
 
-def quiet_gui(host, root: Path) -> None:
+ANSWERS = {"USER_AGREEMENT": "ACCEPT", "SHOW_TIPS": "false"}
+
+
+def quiet_gui(host, root: Path) -> str:
     """Pre-answer the GUI's first-run prompts (user agreement, tip of the day) in Ghidra's
     per-version preferences: an unattended handoff must not wait on a dialog. The ViWo
-    disclaimer covers the agreement; a user who answered already is left alone."""
+    disclaimer covers the agreement; an answer already there (the user's) is kept. Returns
+    why the preferences could not be written ("" when fine): the dialog may then show."""
     path = host.config_home() / "ghidra" / root.name / "preferences"
     try:
         lines = path.read_text(encoding="utf-8").splitlines() if path.is_file() else []
-        keep = [ln for ln in lines if not ln.startswith(("USER_AGREEMENT=", "SHOW_TIPS="))]
-        path.parent.mkdir(parents=True, exist_ok=True)
-        text = "\n".join([*keep, "USER_AGREEMENT=ACCEPT", "SHOW_TIPS=false", ""])
-        path.write_text(text, encoding="utf-8")
-    except OSError:
-        pass  # the dialog may then show; the handoff still launches
+        known = {line.split("=", 1)[0] for line in lines}
+        missing = [f"{k}={v}" for k, v in ANSWERS.items() if k not in known]
+        if missing:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text("\n".join([*lines, *missing, ""]), encoding="utf-8")
+    except OSError as exc:
+        return f"Ghidra's first-run answers not written ({exc}): its dialogs may show once"
+    return ""
 
 
 def _gui_argv(headless: Path, java: Path, gpr: Path) -> list[str] | None:
@@ -93,8 +99,7 @@ class GhidraHeadless(Analyzer):
     kinds = ("native_binary",)
     self_check_args = ()  # analyzeHeadless with no arguments prints its usage
 
-    def dependencies(self):
-        return (GHIDRA, JDK)
+    requires = (GHIDRA, JDK)
 
     def analyze(self, target: AnalysisTarget, ctx) -> Outcome:
         tool, env = ctx.os.tools.locate(GHIDRA), java_env(ctx)
@@ -126,8 +131,7 @@ class GhidraGui(Handoff):
     label, accepts = "Continue in Ghidra", ("native_binary",)
     self_check_args = ()
 
-    def dependencies(self):
-        return (GHIDRA, JDK)
+    requires = (GHIDRA, JDK)
 
     def prepare(self, target: AnalysisTarget, ctx) -> LaunchSpec | Outcome:
         tool, env = ctx.os.tools.locate(GHIDRA), java_env(ctx)
@@ -142,5 +146,7 @@ class GhidraGui(Handoff):
         argv = _gui_argv(Path(tool.path), Path(java.path), gpr) if java else None
         if argv is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error="Ghidra's Utility.jar not found")
-        quiet_gui(ctx.os, Path(tool.path).resolve().parent.parent)
+        problem = quiet_gui(ctx.os, Path(tool.path).resolve().parent.parent)
+        if problem:
+            ctx.log(problem, "warn", "analyze")
         return LaunchSpec(tuple(argv), gpr.parent, env)

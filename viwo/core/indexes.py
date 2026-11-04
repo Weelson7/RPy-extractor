@@ -118,20 +118,6 @@ def validate(entry: dict) -> list[str]:
     return out
 
 
-def match_game(root: Path, game: Path) -> list[tuple[str, str]]:
-    """(slug, version) of every index whose detect markers all exist under the game folder."""
-    hits = []
-    for slug, versions in list_games(root).items():
-        for version in versions:
-            try:
-                entry = load_index(root, slug, version)
-            except ViwoError:
-                continue
-            if all(any(game.glob(marker)) for marker in entry["detect"]):
-                hits.append((slug, version))
-    return hits
-
-
 def _install_script(item: dict, folder: Path, say, cancel) -> str:
     target = folder / item["name"]
     if target.is_file():

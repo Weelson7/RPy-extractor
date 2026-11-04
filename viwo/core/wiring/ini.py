@@ -10,16 +10,8 @@ from viwo import CONTRACT_VERSION
 from viwo.contracts.errors import ViwoError
 
 KNOWN_SECTIONS = {"startup", "plugins", "slots", "tools", "server"}
-STARTUP_KEYS = {
-    "os",
-    "profile",
-    "features",
-    "auto_install",
-    "strict_preflight",
-    "av_exclusions",
-    "base",
-    "contract",
-}
+FORM_KEYS = ("os", "profile", "features", "auto_install", "strict_preflight", "av_exclusions")
+STARTUP_KEYS = {*FORM_KEYS, "base", "contract"}
 SERVER_KEYS = {"host", "port", "workspace", "merged", "logs", "temp"}
 MAX_LAYERS = 2  # doc 9.1: the ini and at most one base file
 SECRET_WORDS = ("key", "secret", "password", "token")
@@ -160,15 +152,7 @@ def _unknown_keys(cfg: configparser.ConfigParser, out: StartupConfig) -> None:
 def _sources(files: list[Path], out: StartupConfig) -> None:
     """Doc 9.1: where every effective value comes from (default, base, ini); cli is added by
     boot. Keys are "section.key"; [startup] fields absent from every file read "default"."""
-    for name in (
-        "os",
-        "profile",
-        "features",
-        "auto_install",
-        "strict_preflight",
-        "av_exclusions",
-        "contract",
-    ):
+    for name in (*FORM_KEYS, "contract"):
         out.sources[f"startup.{name}"] = "default"
     for index, file in enumerate(files):
         origin = "ini" if index == len(files) - 1 else "base"

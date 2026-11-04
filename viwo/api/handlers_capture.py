@@ -10,7 +10,7 @@ from viwo.core.capture import CaptureRequest, capture, warnings
 from viwo.core.capture.policy import CONFIRMATION, DEFAULT_AUTO
 from viwo.core.workspace import claim
 
-from .app import App, failure
+from .app import App, failure, picked
 
 
 def browse_file(app: App, q: dict) -> dict:
@@ -20,14 +20,7 @@ def browse_file(app: App, q: dict) -> dict:
     chosen = app.rt.os.shell.pick_file(
         "Select the game executable", start if start.exists() else None, ()
     )
-    if chosen is None:
-        return {
-            "success": False,
-            "cancelled": True,
-            "error": "No file selected",
-            "code": "cancelled",
-        }
-    return {"success": True, "path": str(chosen)}
+    return picked(chosen, "file")
 
 
 def capture_warnings(app: App, d: dict) -> dict:
@@ -69,41 +62,35 @@ def run_capture(app: App, d: dict) -> dict:
 
 
 def runtime_job(app: App, d: dict, kind: str) -> dict:
-    """POST /api/runtime/dump {pid|name} and /api/runtime/trace {pid|name, functions, seconds}:
-    the D3 headless runs as jobs, written under the active workspace's .runtime/."""
-    from viwo.core.capture import runtime
+    """POST /api/runtime/<kind>: dump {pid|name}, trace {pid|name, functions, seconds}, agent
+    {gamePath, exePath}, record {seconds}; jobs that write under the active workspace's
+    .runtime/."""
+    from viwo.core.capture.runtime import RuntimeRequest, run
 
     pid, name = int(d.get("pid") or 0), str(d.get("name", ""))
     if kind in ("dump", "trace") and not pid and not name:
         return failure(ViwoError("invalid_request", "give pid or name"))
-    functions = [str(f) for f in (d.get("functions") or ["CreateFileW"])]
-    seconds = float(d.get("seconds") or 10)
+    req = RuntimeRequest(
+        app.workspace,
+        pid,
+        name,
+        tuple(str(f) for f in (d.get("functions") or ["CreateFileW"])),
+        float(d.get("seconds") or 10),
+        Path(str(d.get("gamePath", ""))),
+        Path(str(d.get("exePath", ""))),
+    )
+    return app.job(kind, lambda jid, s, c: {"success": True, **run(app.rt, kind, req, s, c)})
 
-    def run(sink, cancel) -> dict:
-        if kind == "agent":
-            from viwo.core.capture.agents import AgentRequest, run_agent
 
-            game, exe = Path(str(d.get("gamePath", ""))), Path(str(d.get("exePath", "")))
-            req = AgentRequest(game, exe, app.workspace)
-            return {"success": True, **run_agent(app.rt, req, cancel)}
-        if kind == "record":
-            from viwo.core.capture.audio import record
-
-            return {"success": True, **record(app.rt, app.workspace, seconds)}
-        if kind == "dump":
-            return {"success": True, **runtime.dump(app.rt, app.workspace, pid, name)}
-        done = runtime.trace(app.rt, app.workspace, (pid, name), functions, seconds, cancel)
-        return {"success": True, **done}
-
-    return app.job(kind, lambda jid, s, c: run(s, c))
+def runtime_routes(prefix: str) -> dict[str, Callable[[App, dict], Any]]:
+    """`<prefix><kind>` -> runtime_job for every dynamic-arm kind (routes and job kinds)."""
+    kinds = ("dump", "trace", "agent", "record")
+    return {f"{prefix}{k}": (lambda app, d, k=k: runtime_job(app, d, k)) for k in kinds}
 
 
 CAPTURE_GET: dict[str, Callable[[App, dict], Any]] = {"/api/browse-file": browse_file}
 CAPTURE_POST: dict[str, Callable[[App, dict], Any]] = {
     "/api/capture/warnings": capture_warnings,
     "/api/capture": run_capture,
-    "/api/runtime/dump": lambda app, d: runtime_job(app, d, "dump"),
-    "/api/runtime/trace": lambda app, d: runtime_job(app, d, "trace"),
-    "/api/runtime/agent": lambda app, d: runtime_job(app, d, "agent"),
-    "/api/runtime/record": lambda app, d: runtime_job(app, d, "record"),
+    **runtime_routes("/api/runtime/"),
 }

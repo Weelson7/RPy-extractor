@@ -17,20 +17,7 @@ from viwo.core.curation.trash import trash_files
 from .ffmpeg import FFMPEG, Timeline, filtergraph, probe
 from .media import AUDIO, PATTERNS, expand, list_entries, media_type
 
-ENCODE = [
-    "-c:v",
-    "libx264",
-    "-preset",
-    "medium",
-    "-crf",
-    "20",
-    "-c:a",
-    "aac",
-    "-b:a",
-    "192k",
-    "-movflags",
-    "+faststart",
-]
+ENCODE = "-c:v libx264 -preset medium -crf 20 -c:a aac -b:a 192k -movflags +faststart".split()
 
 
 @dataclass

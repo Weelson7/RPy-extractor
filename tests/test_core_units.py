@@ -179,6 +179,43 @@ class SelectionTests(unittest.TestCase):
             self.assertEqual(chosen, select_plugins(req, shuffled, {}))
 
 
+class JobMemoryTests(unittest.TestCase):
+    def test_a_long_server_keeps_recent_and_running_jobs_only(self) -> None:
+        import threading
+
+        from viwo.core.jobs import KEEP, JobRunner
+
+        runner, release = JobRunner(), threading.Event()
+        long = runner.submit("capture", lambda j, s, c: release.wait(30))
+        ids = [
+            runner.submit("survey", lambda j, s, c: {}, background=False).job_id
+            for _ in range(KEEP + 60)
+        ]
+        kept = {j.job_id for j in runner.list()}
+        self.assertLessEqual(len(kept), KEEP + 1)
+        self.assertIn(long.job_id, kept)  # still running: never dropped
+        self.assertTrue(set(ids[-KEEP + 1 :]) <= kept)  # the newest finished ones stay
+        release.set()
+
+
+class ProbeCacheTests(unittest.TestCase):
+    def test_a_rewritten_file_is_read_again(self) -> None:
+        import os
+
+        from viwo.core.pipeline.probe import _read
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / "data.pak"
+            for i, body in enumerate((b"AAAA-old", b"BBBB-new", b"CC")):
+                path.write_bytes(body)
+                os.utime(path, ns=(10**18 + i * 10**9,) * 2)  # a later write, a later mtime
+                self.assertEqual(
+                    (_read(path, 4, False), _read(path, 2, True)), (body[:4], body[-2:])
+                )
+            path.unlink()
+            self.assertEqual(_read(path, 4, False), b"")
+
+
 class IdentifyTests(unittest.TestCase):
     def test_suffix_magic_custom_and_carve(self) -> None:
         tar = SlotDefinition(

@@ -205,7 +205,6 @@ PCKs embedded in executables, AGS, Love2D and NW.js need this.
 |------|------|-------|
 | `media.probe` | `ffprobe` | `pillow` (images only) |
 | `media.encode` | `ffmpeg` | — |
-| `image.convert` | `pillow` | `imagemagick` |
 | `audio.decode` (game codecs) | `vgmstream` | — |
 
 **Analysis** (doc 6):
@@ -219,7 +218,8 @@ PCKs embedded in executables, AGS, Love2D and NW.js need this.
 | `analysis.gdscript` | `gdre-tools --decompile` | — |
 
 **Capture and runtime** (doc 11): `capture.gpu`, `capture.memory`,
-`capture.audio`, `runtime.<engine>`.
+`capture.audio`, `runtime.<engine>`. (Frida tracing and the audio loopback recorder, one tool each,
+serve no slot: their backends only declare the dependencies.)
 
 **Backend declarations, added after the research:**
 - `license` (SPDX). A GPL or AGPL backend must use `isolation: subprocess`.

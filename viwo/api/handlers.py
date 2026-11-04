@@ -11,16 +11,10 @@ from viwo.core.curation import sorting, trash
 from viwo.core.merger import media
 from viwo.core.merger.build import Settings, build
 
-from .app import App, failure
+from .app import App, failure, picked, safe
+from .plugin_assets import ui_modules
 
 DEFAULTS = Settings()  # the merger's own defaults, once
-
-
-def safe(fn: Callable[[], dict]) -> dict:
-    try:
-        return fn()
-    except ViwoError as exc:
-        return failure(exc)
 
 
 def _int(query: dict, key: str, default: int) -> int:
@@ -72,14 +66,7 @@ def dependencies(app: App, q: dict) -> dict:
 def pick_folder(app: App, q: dict) -> dict:
     start = Path(q.get("initialPath") or Path.home()).expanduser()
     chosen = app.rt.os.shell.pick_folder("Select folder", start if start.exists() else None)
-    if chosen is None:
-        return {
-            "success": False,
-            "cancelled": True,
-            "error": "No folder selected",
-            "code": "cancelled",
-        }
-    return {"success": True, "path": str(chosen)}
+    return picked(chosen, "folder")
 
 
 def _group(kind: str, op) -> Callable[[App, dict], dict]:
@@ -146,7 +133,10 @@ def _sorting(op, *keys: str) -> Callable[[App, dict], dict]:
 
 
 def save_remaining(app: App, d: dict) -> dict:
-    target = Path(str(d.get("destinationPath", "")).strip() or ".").expanduser().resolve()
+    raw = Path(str(d.get("destinationPath", "")).strip()).expanduser()
+    if not raw.is_absolute():  # "" or a relative path would land in the server's own folder
+        return failure(ViwoError("invalid_request", "give an absolute destinationPath"))
+    target = raw.resolve()
     paths, folder = [str(p) for p in d.get("paths") or []], app.workspace
     if d.get("all"):  # every remaining asset, not only the visible page
         paths = [sorting.encode(folder, p) for p in sorting.asset_files(folder)]
@@ -239,21 +229,10 @@ def merger_overlay(app: App, d: dict) -> dict:
     start = Path(str(d.get("initialPath", "")) or Path.home()).expanduser()
     patterns = [f"*{e}" for e in sorted(media.AUDIO)]
     chosen = app.rt.os.shell.pick_file("Select overlay sound", start, patterns)
-    if chosen is None:
-        return {
-            "success": False,
-            "cancelled": True,
-            "error": "No file selected",
-            "code": "cancelled",
-        }
-    if chosen.suffix.lower() not in media.AUDIO:
-        return {
-            "success": False,
-            "error": "Selected file is not a supported audio format",
-            "code": "invalid_request",
-            "hint": "pick an .ogg, .mp3, .wav, .flac, .m4a or .opus file",
-        }
-    return {"success": True, "path": str(chosen.resolve())}
+    if chosen is not None and chosen.suffix.lower() not in media.AUDIO:
+        hint = "pick an .ogg, .mp3, .wav, .flac, .m4a or .opus file"
+        return failure(ViwoError("invalid_request", "not a supported audio format", hint=hint))
+    return picked(chosen.resolve() if chosen else None, "file")
 
 
 GET: dict[str, Callable[[App, dict], Any]] = {
@@ -265,6 +244,7 @@ GET: dict[str, Callable[[App, dict], Any]] = {
     "/api/assets-window-preview": asset_preview,
     "/api/media-merger/state": merger_state,
     "/api/logs": lambda app, q: {"logs": app.logs()},
+    "/api/ui-modules": lambda app, q: {"success": True, "modules": ui_modules(app.rt)},
 }
 
 
@@ -292,12 +272,11 @@ POST: dict[str, Callable[[App, dict], Any]] = {
 from .handlers_analysis import ANALYSIS_GET, ANALYSIS_POST  # noqa: E402
 from .handlers_capture import CAPTURE_GET, CAPTURE_POST  # noqa: E402
 from .handlers_jobs import JOBS_POST  # noqa: E402
-from .handlers_plugins import PLUGINS_GET  # noqa: E402
 from .handlers_settings import SETTINGS_GET, SETTINGS_POST  # noqa: E402
 from .handlers_system import SYSTEM_GET, SYSTEM_POST  # noqa: E402
 from .handlers_tools import TOOL_GET, TOOL_POST  # noqa: E402  (tables merged last)
 
-for table in (TOOL_GET, CAPTURE_GET, SETTINGS_GET, SYSTEM_GET, PLUGINS_GET, ANALYSIS_GET):
+for table in (TOOL_GET, CAPTURE_GET, SETTINGS_GET, SYSTEM_GET, ANALYSIS_GET):
     GET.update(table)
 for table in (TOOL_POST, CAPTURE_POST, SETTINGS_POST, SYSTEM_POST, JOBS_POST, ANALYSIS_POST):
     POST.update(table)

@@ -38,11 +38,6 @@ def _markers(game: Path, markers: dict[str, str]) -> list[str]:
     return found
 
 
-def running_processes(rt) -> set[str]:
-    """Lowercase image names of the running processes, through the OS layer (principle 3)."""
-    return rt.os.process.running_images() if rt is not None else set()
-
-
 def network_reachable() -> bool:
     """Best effort: one short connection attempt; True when the network answers."""
     try:
@@ -63,7 +58,8 @@ def warnings_for(game: Path, sensitive: list[str], rt=None) -> list[str]:
             "be blocked, and running a capture tool next to it can get an account banned"
         )
     services = policy.get("anti_cheat_services", {})
-    running = sorted(services[n] for n in running_processes(rt) if n in services)
+    images = rt.os.process.running_images() if rt is not None else set()  # OS layer (principle 3)
+    running = sorted(services[n] for n in images if n in services)
     if running:
         out.append(f"anti-cheat service running now: {', '.join(running)}")
     title = next((v for k, v in policy["online_titles"].items() if k in game.name.lower()), "")

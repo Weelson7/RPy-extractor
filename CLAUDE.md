@@ -26,6 +26,9 @@ becomes an option.
   and `contracts.workspace.inside` (traversal, drive letters, links).
 - Third-party tools are pinned (version, size, sha256) in `viwo/data/tools.json`, HTTPS only,
   installed into `third_party/` and nowhere else.
+- Python packages are pinned in `tools.json` (`python`, `workers`) and installed only from their
+  hash locks (`viwo/data/locks/`, written by `python tools/pin_python.py`; rerun it when a pin
+  changes). Worker packages (GPL: Unicorn, angr) are never imported, only run as processes.
 
 ## Commands (Windows, PowerShell)
 ```powershell

@@ -23,7 +23,7 @@ from ..pipeline.probe import FolderProbe
 from ..pipeline.runner import detect_all
 from ..records import record_context
 from ..scan_exclusions import excluded
-from ..steps import teller
+from ..steps import tell, teller
 from ..workspace import claim, write_atomic
 from .audio import LoopbackRecorder
 from .journal import pending
@@ -31,21 +31,19 @@ from .policy import DEFAULT_AUTO, check, warnings_for
 from .renderdoc import RENDERDOCCMD, RenderDocCapture
 from .runtime import FridaTrace
 
-SLOTS = (
-    SlotDefinition("capture.gpu", "capture", "core", "renderdoc"),
-    SlotDefinition("trace.api", "trace", "core", "frida-trace"),
-    SlotDefinition("capture.audio", "capture", "core", "soundcard-loopback"),
-)
+SLOTS = (SlotDefinition("capture.gpu", "capture", "core", "renderdoc"),)
 
 
 def backends() -> list:
+    """RenderDoc serves capture.gpu; Frida and the loopback recorder serve no slot (one tool
+    each, nothing to fail over to) and are listed for their dependencies (preflight, 05 SYSTEM)."""
     return [FridaTrace(), LoopbackRecorder(), RenderDocCapture()]
 
 
 def _known_hashes(workspace: Path) -> set[str]:
-    path = workspace / ws.PROVENANCE_FILE
-    lines = path.read_text(encoding="utf-8").splitlines() if path.is_file() else []
-    return {json.loads(line)["sha256"] for line in lines}
+    from ..provenance import entries
+
+    return {e["sha256"] for e in entries(workspace) if e.get("sha256")}
 
 
 def sensitive_plugins(rt, game: Path) -> list[str]:
@@ -73,11 +71,7 @@ class CaptureRequest:
 def _restore_pending(rt, say) -> None:
     warn = teller(say, "restore", "warn") or (lambda m: None)
     for journal in pending(rt.temp_root.parent / "capture", warn):
-        say(
-            ProgressEvent(
-                f"Restoring an interrupted session in {journal.game}", "warn", "core", "restore"
-            )
-        )
+        tell(say, f"Restoring an interrupted session in {journal.game}", "restore", "warn")
         if journal.restore():
             raise ViwoError(
                 "failed", f"could not restore {journal.game}; check it before capturing"
@@ -126,11 +120,10 @@ def _run(rt, req: CaptureRequest, known: set[str], sink, cancel) -> tuple:
 
 
 def capture(rt, req: CaptureRequest, sink=None, cancel=None) -> dict:
-    say = sink or (lambda e: None)
     if not ws.inside(req.game, req.exe) or not req.exe.is_file():  # policy covers the game only
         raise ViwoError("refused", "the executable must be a file inside the game folder")
     warnings = check(rt, req.game, req.confirmed, sensitive_plugins(rt, req.game))
-    _restore_pending(rt, say)
+    _restore_pending(rt, sink)
     known = _prepare(rt, req)
     gathered, used, job, same = _run(rt, req, known, sink, cancel)
     new = gathered.provenance
@@ -150,12 +143,5 @@ def capture(rt, req: CaptureRequest, sink=None, cancel=None) -> dict:
     (req.workspace / ws.RUNS_DIR).mkdir(parents=True, exist_ok=True)
     record = req.workspace / ws.RUNS_DIR / f"capture-{job}.json"
     write_atomic(record, json.dumps(report, indent=2))
-    say(
-        ProgressEvent(
-            f"Captured {gathered.collected} file(s), {len(new)} new vs static",
-            "info",
-            "core",
-            "report",
-        )
-    )
+    tell(sink, f"Captured {gathered.collected} file(s), {len(new)} new vs static", "report")
     return report

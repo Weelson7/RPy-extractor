@@ -19,6 +19,7 @@ UE4SS = DependencySpec(
 )
 MOD = "ViwoDump"
 DONE = "viwo-done.txt"
+OUTPUTS = ("Mappings.usmap", "UE4SS_ObjectDump.txt", "UE4SS.log")
 LUA = """-- Written by ViWo: once the game has loaded, write the mappings and the object dump.
 ExecuteWithDelay({delay}, function()
   pcall(DumpUSMAP)
@@ -51,14 +52,15 @@ class Ue4ssAgent(RuntimeAgent):
     backend_id, owner, license, isolation = "ue4ss-agent", "unreal", "MIT", "subprocess"
     delay_ms = 20000  # the game's own startup first
 
-    def dependencies(self):
-        return (UE4SS,)
+    requires = (UE4SS,)
 
     def accepts(self, copy: Path, exe: Path) -> str:
         return "" if shipping(copy, exe) else "no <Project>/Binaries/Win64/*-Shipping.exe"
 
     def install(self, copy: Path, exe: Path, ctx) -> list[str]:
         win64 = shipping(copy, exe).parent
+        for stale in (DONE, *OUTPUTS):  # a reused copy: only this run's files may count
+            (win64 / stale).unlink(missing_ok=True)
         source = Path(ctx.os.tools.locate(UE4SS).path).parent
         shutil.copytree(source, win64, dirs_exist_ok=True)
         _settings(win64 / "UE4SS-settings.ini")
@@ -68,8 +70,9 @@ class Ue4ssAgent(RuntimeAgent):
         (mods / "mods.txt").write_text("\n".join([*off, f"{MOD} : 1"]) + "\n", encoding="utf-8")
         script = mods / MOD / "Scripts" / "main.lua"
         script.parent.mkdir(parents=True, exist_ok=True)
-        done = (win64 / DONE).as_posix()
-        script.write_text(LUA.format(delay=self.delay_ms, done=done), encoding="utf-8")
+        # relative: Unreal runs from Binaries/Win64, and Lua's io.open takes an ANSI path that
+        # a non-ASCII absolute path (user or game name) would break
+        script.write_text(LUA.format(delay=self.delay_ms, done=DONE), encoding="utf-8")
         return ["-windowed", "-ResX=640", "-ResY=360"]
 
     def finished(self, copy: Path, exe: Path) -> bool:
@@ -77,5 +80,4 @@ class Ue4ssAgent(RuntimeAgent):
 
     def outputs(self, copy: Path, exe: Path) -> list[Path]:
         win64 = shipping(copy, exe).parent
-        names = ("Mappings.usmap", "UE4SS_ObjectDump.txt", "UE4SS.log")
-        return [win64 / n for n in names if (win64 / n).is_file()]
+        return [win64 / n for n in OUTPUTS if (win64 / n).is_file()]

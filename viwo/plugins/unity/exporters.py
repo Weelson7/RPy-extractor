@@ -190,8 +190,7 @@ class UnityPyExporter(Exporter):
     backend_id, owner, license = "unitypy", "unity", "MIT"
     parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
-    def dependencies(self):
-        return (UNITYPY,)
+    requires = (UNITYPY,)
 
     def export(self, ctx) -> Outcome:
         try:
@@ -217,8 +216,7 @@ class UnityPyExporter(Exporter):
 class AssetStudioModCli(Exporter):
     backend_id, owner, license, isolation = "assetstudiomod-cli", "unity", "MIT", "subprocess"
 
-    def dependencies(self):
-        return (ASSETSTUDIO,)
+    requires = (ASSETSTUDIO,)
 
     @staticmethod
     def argv(ctx, tool) -> list[str]:

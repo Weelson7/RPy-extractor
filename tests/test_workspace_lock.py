@@ -55,11 +55,21 @@ class LockFileTests(unittest.TestCase):
             self.assertTrue(workspace.pid_alive(os.getpid()))
             self.assertFalse(workspace.pid_alive(2**22 + 12345))
 
-    def test_missing_folder_uses_the_in_process_lock_only(self) -> None:
+    def test_a_new_folder_is_locked_across_processes_and_left_as_found(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             folder = Path(tmp) / "later"
             with workspace.workspace_lock(folder):
-                self.assertFalse(folder.exists())
+                lock = json.loads((folder / workspace.LOCK_FILE).read_text())
+                self.assertEqual(lock["pid"], os.getpid())  # another process sees it
+            self.assertFalse(folder.exists())  # nothing landed in it: removed again
+            with workspace.workspace_lock(folder):
+                (folder / "kept.txt").write_text("x")
+            self.assertEqual(sorted(p.name for p in folder.iterdir()), ["kept.txt"])
+            empty = Path(tmp) / "mine"
+            empty.mkdir()
+            with workspace.workspace_lock(empty):
+                pass
+            self.assertTrue(empty.is_dir())  # it was there before: never removed
 
 
 if __name__ == "__main__":

@@ -5,9 +5,11 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-from .app import App
+from viwo.contracts.errors import ViwoError
+
+from .app import App, failure
 from .handlers_analysis import run_analysis
-from .handlers_capture import run_capture, runtime_job
+from .handlers_capture import run_capture, runtime_routes
 from .handlers_tools import (
     apply_patch_set,
     install_dependency,
@@ -27,10 +29,7 @@ KINDS: dict[str, Callable[[App, dict], dict]] = {
     "preflight": run_preflight,
     "install": install_dependency,
     "capture": run_capture,
-    "dump": lambda app, p: runtime_job(app, p, "dump"),
-    "trace": lambda app, p: runtime_job(app, p, "trace"),
-    "agent": lambda app, p: runtime_job(app, p, "agent"),
-    "record": lambda app, p: runtime_job(app, p, "record"),
+    **runtime_routes(""),
     "analyze": run_analysis,
     "cleanup": lambda app, params: sanitize_handler(str(params.get("op") or "plan"))(app, params),
 }
@@ -40,12 +39,8 @@ def submit(app: App, d: dict) -> dict:
     kind = str(d.get("kind", ""))
     params = d.get("params") if isinstance(d.get("params"), dict) else {}
     if kind not in KINDS:
-        return {
-            "success": False,
-            "error": f"unknown job kind: {kind or '(none)'}",
-            "code": "invalid_request",
-            "hint": "kinds: " + ", ".join(sorted(KINDS)),
-        }
+        why = f"unknown job kind: {kind or '(none)'}"
+        return failure(ViwoError("invalid_request", why, hint="kinds: " + ", ".join(sorted(KINDS))))
     return KINDS[kind](app, params)
 
 

@@ -82,10 +82,67 @@ class RedengineTests(unittest.TestCase):
             ws = root / "ws"
             self.assertTrue((ws / "mesh" / "0000000000001234.mesh").is_file())
             self.assertEqual(
-                (ws / "buffer" / "0000000000001234.1.buffer").read_bytes(), b"buffer-bytes"
+                (ws / "buffer" / "0000000000001234.mesh.1.buffer").read_bytes(), b"buffer-bytes"
             )
             self.assertEqual((ws / "bk2" / "0000000000000099.bk2").read_bytes(), b"KB2jvideo")
             self.assertEqual(result.archives_extracted, 1)
+
+
+class NameListTests(unittest.TestCase):
+    """The community path list: every listed path is found by its own hash, nothing else is."""
+
+    class PlainOodle:  # the list arrives Kraken-compressed; here it is stored as is
+        def decompress(self, packed: bytes, size: int) -> bytes:
+            return packed[:size]
+
+    def test_every_listed_path_is_found_by_its_hash_and_only_those(self) -> None:
+        import random
+
+        from viwo.plugins.redengine.names import Names, fnv1a64
+
+        self.assertEqual(fnv1a64(b""), 0xCBF29CE484222325)  # FNV-1a 64 test vectors
+        self.assertEqual(fnv1a64(b"a"), 0xAF63DC4C8601EC8C)
+        rng = random.Random(3)
+        paths = sorted(
+            {
+                "base\\"
+                + "\\".join(rng.choice("abcxyz_") * rng.randint(1, 6) for _ in range(3))
+                + ".mesh"
+                for _ in range(300)
+            }
+        )
+        plain = "\r\n".join(paths).encode()  # the last line has no line break after it
+        with tempfile.TemporaryDirectory() as tmp:
+            kark = Path(tmp) / "usedhashes.kark"
+            kark.write_bytes(b"KARK" + struct.pack("<I", len(plain)) + plain)
+            names = Names.load(kark, self.PlainOodle())
+            try:
+                for path in paths:
+                    self.assertEqual(names.get(fnv1a64(path.encode())), path)
+                listed = {fnv1a64(p.encode()) for p in paths}
+                for other in (rng.getrandbits(64) for _ in range(200)):
+                    if other not in listed:
+                        self.assertIsNone(names.get(other))
+            finally:
+                names.close()
+            self.assertIsNone(Names.load(kark, None))  # no Oodle: no names, said by the plugin
+
+    def test_a_named_member_lands_at_its_path_an_unsafe_name_keeps_its_hash(self) -> None:
+        import io
+
+        from viwo.plugins.redengine.rdar import Archive
+
+        data = rdar({0x10: [cr2w("CMesh"), b"buf"], 0x20: [b"KB2jv"]})
+        with tempfile.TemporaryDirectory() as tmp:
+            dest = Path(tmp)
+            rdar_file = Archive(io.BytesIO(data))
+            entries = {e.name_hash: e for e in rdar_file.entries()}
+            rdar_file.write(entries[0x10], dest, None, "base\\props\\crate.mesh")
+            rdar_file.write(entries[0x20], dest, None, "..\\..\\escape.bk2")
+            self.assertTrue((dest / "base" / "props" / "crate.mesh").is_file())
+            self.assertEqual((dest / "base" / "props" / "crate.mesh.1.buffer").read_bytes(), b"buf")
+            self.assertTrue((dest / "0000000000000020.bk2").is_file())
+            self.assertFalse((dest.parent / "escape.bk2").exists())
 
 
 if __name__ == "__main__":

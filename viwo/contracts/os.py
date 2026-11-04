@@ -141,8 +141,9 @@ class OS(ABC):
         not). Hosts without a scanner ViWo can manage add nothing and say nothing."""
         return [], ""
 
-    def include_in_scan(self, paths: Sequence[Path]) -> None:
-        """Undo exclude_from_scan for exactly these folders."""
+    def include_in_scan(self, paths: Sequence[Path]) -> bool:
+        """Undo exclude_from_scan for exactly these folders; False when the host refused."""
+        return True
 
     def pids_of(self, image: str) -> list[int]:
         """Process ids whose image name is `image` (case-insensitive)."""

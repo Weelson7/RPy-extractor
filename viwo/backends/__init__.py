@@ -47,16 +47,13 @@ CORE_SLOTS = (
 
 
 def core_backends() -> list[Backend]:
-    from viwo.core.carve import SignatureCarver
-    from viwo.core.merger.ffmpeg import FfmpegBackend
-
+    """The backends of this package (the core's own, carver and ffmpeg, are added by
+    core.wiring: backends sit below core and never import it)."""
     return [
         ZipBackend(),
         TarBackend(),
         SevenZipCli(),
         UnrarCli(),
         Py7zrBackend(),
-        FfmpegBackend(),
-        SignatureCarver(),
         ZipPacker(),
     ]

@@ -34,10 +34,20 @@ class CarveReport:
     failures: list[str] = field(default_factory=list)
 
 
+def _size(path: Path) -> int | None:
+    """None when the file is gone or held (an antivirus): not a candidate; the collect step
+    and the game-folder guard name it."""
+    try:
+        return path.stat().st_size
+    except OSError:
+        return None
+
+
 def wanted(path: Path, mode: CarveMode, claimed: frozenset[str], slots) -> bool:
     """Whether a file is a carving candidate under this mode."""
     ext, name = path.suffix.lower(), path.name.lower()
-    if mode is CarveMode.OFF or ext in KNOWN or path.stat().st_size < MIN_SIZE:
+    size = _size(path)
+    if mode is CarveMode.OFF or ext in KNOWN or size is None or size < MIN_SIZE:
         return False
     if mode is CarveMode.UNKNOWN and (ext in CODE or ext in claimed or name in claimed):
         return False
@@ -58,8 +68,8 @@ def carve_all(run, claimed: frozenset[str], items: list[tuple[Path, str]]) -> Ca
         if run.cancel.cancelled:
             break
         ticker.tick(note=f"{report.files:,} embedded file(s) found")
-        if path.stat().st_size > BIG:
-            run.log(f"Scanning {path.name} ({path.stat().st_size >> 20} MB)", "carve")
+        if (_size(path) or 0) > BIG:
+            run.log(f"Scanning {path.name} ({(_size(path) or 0) >> 20} MB)", "carve")
         dest = run.work / "carve" / f"{report.scanned:05d}_{uuid.uuid4().hex[:6]}"
         report.scanned += 1
         outcome, used = run_with_failover(

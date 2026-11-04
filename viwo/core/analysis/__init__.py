@@ -11,7 +11,7 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from viwo.contracts.analysis import ANALYSIS_DIR, AnalysisTarget, LaunchSpec
+from viwo.contracts.analysis import ANALYSIS_DIR, AnalysisTarget
 from viwo.contracts.errors import ViwoError
 from viwo.contracts.slots import SlotDefinition
 from viwo.contracts.types import CancelToken, Outcome
@@ -36,6 +36,12 @@ def slot_for(kind: str) -> str:
 
 def output_dir(workspace: Path, backend_id: str, key: str) -> Path:
     return workspace / ANALYSIS_DIR / backend_id / key
+
+
+def _failure(outcome: Outcome, default: str) -> ViwoError:
+    """A failed outcome as an error: its kind is the code ("failed" for a stray "ok")."""
+    kind = outcome.kind.value
+    return ViwoError(kind if kind != "ok" else "failed", outcome.error or default)
 
 
 SLOTS = (
@@ -187,10 +193,7 @@ def analyze(rt, req: AnalysisRequest, sink=None, cancel: CancelToken | None = No
                 binding, rt.backends, lambda b: b.analyze(inputs, ctx)
             )
     if not outcome.ok:
-        raise ViwoError(
-            outcome.kind.value if outcome.kind.value != "ok" else "failed",
-            outcome.error or f"{slot} failed",
-        )
+        raise _failure(outcome, f"{slot} failed")
     if outcome.fallback:
         ctx.log(outcome.fallback, "warn", "analyze")
     artifacts = sorted(p.name for p in out.iterdir() if p.is_file())  # where the run wrote
@@ -255,7 +258,7 @@ def open_in(rt, req: AnalysisRequest, handoff_id: str = "") -> dict:
     ctx.staging = output_dir(req.workspace, rt.bindings[slot].main if own else choice, target.key)
     spec = backend.prepare(target, ctx)
     if isinstance(spec, Outcome):
-        raise ViwoError(spec.kind.value if spec.kind.value != "ok" else "failed", spec.error)
+        raise _failure(spec, f"{choice} could not prepare the target")
     child = rt.os.process.launch(spec.argv, spec.cwd, spec.env)
     LAUNCHED[child.pid] = child
     return {
@@ -264,16 +267,3 @@ def open_in(rt, req: AnalysisRequest, handoff_id: str = "") -> dict:
         "pid": child.pid,
         "target": target.key,
     }
-
-
-__all__ = [
-    "AnalysisRequest",
-    "extras_for",
-    "LaunchSpec",
-    "SLOTS",
-    "analyze",
-    "backends",
-    "handoffs_for",
-    "open_in",
-    "targets_for",
-]

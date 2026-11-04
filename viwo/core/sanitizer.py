@@ -121,9 +121,7 @@ def _plan_id(value) -> str:
 
 def _ws_file(workspace: Path, rel) -> Path | None:
     """A path read back from a plan or journal, only if it stays inside the workspace."""
-    member = ws.safe_member(str(rel))
-    path = workspace.joinpath(*member.parts) if member else None
-    return path if path is not None and ws.inside(workspace, path) else None
+    return ws.member_path(workspace, str(rel))
 
 
 def _act(workspace: Path, finding: dict) -> str:
@@ -165,47 +163,62 @@ def apply(workspace: Path, plan_id: str, accept="all-safe", sink=None, cancel=No
     chosen = _chosen(workspace, json.loads(path.read_text(encoding="utf-8"))["findings"], accept)
     journal, failed = [], []
     step = Step(sink, "apply", "Applying actions:", len(chosen))
-    for finding in chosen:
-        step.tick(cancel)
-        if finding["action"] in ("trash", "rename"):
-            try:
-                journal.append([_act(workspace, finding), finding["path"]])
-            except OSError as exc:
-                failed.append(f"{finding['path']}: {exc}")
+    try:
+        for finding in chosen:
+            step.tick(cancel)
+            if finding["action"] in ("trash", "rename"):
+                try:
+                    journal.append([_act(workspace, finding), finding["path"]])
+                except OSError as exc:
+                    failed.append(f"{finding['path']}: {exc}")
+    finally:  # a cancel keeps what was already moved undoable
+        _record(workspace, plan_id, journal)
     if chosen:
         step.done()
+    moved = [{"from": before, "to": now} for now, before in journal]
+    done = {before for _, before in journal}
+    return {
+        "planId": plan_id,
+        "applied": len(journal),
+        "moved": moved,
+        "trashed": sum(1 for f in chosen if f["action"] == "trash" and f["path"] in done),
+        "failed": failed,
+        "undoToken": plan_id,
+    }
+
+
+def _record(workspace: Path, plan_id: str, journal: list) -> None:
     folder = workspace / ROOT / "journal"
     folder.mkdir(parents=True, exist_ok=True)
     record = folder / f"{plan_id}.json"  # several applies of one plan add up
     earlier = json.loads(record.read_text(encoding="utf-8")) if record.is_file() else []
     write_atomic(record, json.dumps(earlier + journal))
     provenance.rewrite(workspace, {before: now for now, before in journal})
-    moved = [{"from": before, "to": now} for now, before in journal]
-    return {
-        "planId": plan_id,
-        "applied": len(journal),
-        "moved": moved,
-        "trashed": sum(1 for f in chosen if f["action"] == "trash") - len(failed),
-        "failed": failed,
-        "undoToken": plan_id,
-    }
 
 
 def undo(workspace: Path, token: str, sink=None, cancel=None) -> dict:
+    """Move every journaled file back; what cannot go back (or a cancel did not reach) stays
+    in the journal and is named, so a later undo can finish."""
     path = workspace / ROOT / "journal" / f"{_plan_id(token)}.json"
     if not path.is_file():
         raise ViwoError("not_found", f"nothing to undo for {token}")
-    restored, back = 0, {}
     entries = json.loads(path.read_text(encoding="utf-8"))
+    left, back = list(entries), {}
     step = Step(sink, "undo", "Undoing actions:", len(entries))
-    for now, before in reversed(entries):
-        step.tick(cancel)
-        src, dest = _ws_file(workspace, now), _ws_file(workspace, before)
-        if src is not None and dest is not None and src.is_file():
-            back[now] = _move(src, dest).relative_to(workspace).as_posix()
-            restored += 1
+    try:
+        for entry in reversed(entries):
+            step.tick(cancel)
+            now, before = entry
+            src, dest = _ws_file(workspace, now), _ws_file(workspace, before)
+            if src is not None and dest is not None and src.is_file():
+                back[now] = _move(src, dest).relative_to(workspace).as_posix()
+                left.remove(entry)
+    finally:
+        provenance.rewrite(workspace, back)
+        if left:
+            write_atomic(path, json.dumps(left))
+        else:
+            path.unlink()
     if entries:
         step.done()
-    provenance.rewrite(workspace, back)
-    path.unlink()
-    return {"restored": restored}
+    return {"restored": len(back), "notRestored": [now for now, _ in left]}

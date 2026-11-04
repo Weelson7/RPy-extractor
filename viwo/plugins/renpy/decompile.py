@@ -26,8 +26,7 @@ ANALYSIS_SLOT = SlotDefinition("analysis.python", "analysis", "renpy", "unrpyc-a
 class UnrpycCli(Decoder):
     backend_id, owner, license, isolation = "unrpyc-cli", "renpy", "MIT", "subprocess"
 
-    def dependencies(self):
-        return (UNRPYC,)
+    requires = (UNRPYC,)
 
     def decode(self, path: Path, dest: Path, ctx) -> Outcome:
         """unrpyc writes <name>.rpy next to its input: work on a copy inside dest."""
@@ -54,8 +53,7 @@ class UnrpycAnalyzer(Analyzer):
     backend_id, owner, license, isolation = "unrpyc-analyze", "renpy", "MIT", "subprocess"
     kinds = ("python_bytecode",)
 
-    def dependencies(self):
-        return (UNRPYC,)
+    requires = (UNRPYC,)
 
     def analyze(self, target: AnalysisTarget, ctx) -> Outcome:
         tool = ctx.os.tools.locate(UNRPYC)

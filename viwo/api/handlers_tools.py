@@ -7,14 +7,14 @@ from pathlib import Path
 from typing import Any, Callable
 
 from viwo.contracts.errors import ViwoError
-from viwo.contracts.types import ProgressEvent
 from viwo.core import sanitizer, surveys
 from viwo.core.preflight import install, preflight
 from viwo.core.roundtrip import repack
 from viwo.core.sanitizer_rules import collect_rules
+from viwo.core.steps import tell
 from viwo.core.survey import survey
 
-from .app import App, failure
+from .app import App, failure, safe
 
 
 def survey_library(app: App, d: dict) -> dict:
@@ -27,13 +27,11 @@ def survey_library(app: App, d: dict) -> dict:
 
     def run(jid, sink, cancel) -> dict:
         def note(game: Path, index: int, total: int) -> None:
-            sink(
-                ProgressEvent(f"Surveying {game.name} ({index}/{total})", "info", "core", "survey")
-            )
+            tell(sink, f"Surveying {game.name} ({index}/{total})", "survey")
 
         games = survey(app.rt, folder, deep, note, cancel, sink)
         saved = surveys.save(reports, folder, deep, games)
-        sink(ProgressEvent(f"Report saved: {saved['path']}", "info", "core", "report"))
+        tell(sink, f"Report saved: {saved['path']}", "report")
         return {"success": True, "games": games, "reportId": saved["id"], **_meta(saved)}
 
     return app.job("survey", run)
@@ -53,11 +51,8 @@ def survey_reports(app: App, q: dict) -> dict:
 
 
 def survey_report(app: App, q: dict) -> dict:
-    try:
-        report = surveys.load(_reports_dir(app), q.get("id", ""))
-    except ViwoError as exc:
-        return {"success": False, "error": exc.message, "code": exc.code}
-    return {"success": True, "report": report}
+    reports = _reports_dir(app)
+    return safe(lambda: {"success": True, "report": surveys.load(reports, q.get("id", ""))})
 
 
 def sanitize_handler(op: str) -> Callable[[App, dict], dict]:
@@ -89,11 +84,7 @@ def repack_workspace(app: App, d: dict) -> dict:
             lambda: {"success": True, **repack(app.rt, folder, None, apply=False)}, folder
         )
     if not out:
-        return {
-            "success": False,
-            "error": "Choose a target folder for the patched copy",
-            "code": "invalid_request",
-        }
+        return failure(ViwoError("invalid_request", "Choose a target folder for the patched copy"))
 
     def run(sink, cancel) -> dict:
         return {"success": True, **repack(app.rt, folder, Path(out), sink, cancel)}
@@ -110,11 +101,10 @@ def apply_patch_set(app: App, d: dict) -> dict:
     out = str(d.get("out", "")).strip()
     if not game.is_dir() or not set_path.is_file():
         return failure(ViwoError("not_found", "give an existing gamePath and patchSet file"))
-    try:
-        if d.get("plan") or not out:
-            return {"success": True, **patchsets.plan(game, patchsets.load(set_path), app.rt.os)}
-    except ViwoError as exc:
-        return failure(exc)
+    if d.get("plan") or not out:
+        return safe(
+            lambda: {"success": True, **patchsets.plan(game, patchsets.load(set_path), app.rt.os)}
+        )
 
     def run(sink, cancel) -> dict:
         return {"success": True, **patchsets.apply(app.rt, game, set_path, Path(out), sink)}
@@ -134,15 +124,12 @@ def mod_package(app: App, d: dict) -> dict:
     if action not in ("pack", "check", "apply") or not game.is_dir():
         return failure(ViwoError("invalid_request", "give action pack|check|apply and a gamePath"))
     if action == "check":
-        try:
-            return {"success": True, **mods.check(game, mod)}
-        except ViwoError as exc:
-            return failure(exc)
+        return safe(lambda: {"success": True, **mods.check(game, mod)})
 
     def run(sink, cancel) -> dict:
         if action == "pack":
             return {"success": True, **mods.pack(game, copy, mod, str(d.get("name", "")))}
-        return {"success": True, **mods.apply(app.rt, game, mod_list, copy)}
+        return {"success": True, **mods.apply(app.rt, game, mod_list, copy, sink)}
 
     return app.locked_job("mod", copy, run)
 

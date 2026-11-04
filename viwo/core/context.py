@@ -1,8 +1,10 @@
-"""The ExtractionContext core-owned work hands to backends (capture, repack, merger probe,
-analysis, forced unpack): one builder instead of a hand-written record per caller."""
+"""The ExtractionContext handed to backends and plugin hooks: built here only. core_context
+serves core-owned work (capture, repack, merger probe, analysis, agents); for_owner turns it
+into one owner's view (the extraction pipeline and `viwo unpack`, per plugin or "core")."""
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 from viwo.contracts.plugin import ExtractionContext
@@ -26,3 +28,15 @@ def core_context(rt, job: str, root: Path, work: Path, sink=None, cancel=None):
         sink or (lambda e: None),
         cancel or CancelToken(),
     )
+
+
+def for_owner(ctx: ExtractionContext, rt, owner: str, options: dict, **fields):
+    """`ctx` as `owner` sees it: staging/<owner>, its ini options with `options` over them, its
+    source tag and a placeholder detection; `fields` set the rest (detection, probe...)."""
+    view = {
+        "staging": ctx.staging / owner,
+        "detection": DetectionResult(owner, 0.0, (), owner),
+        "options": {**rt.owner_options(owner), **options},
+        "source": "core" if owner == "core" else f"plugin:{owner}",
+    }
+    return replace(ctx, **{**view, **fields})

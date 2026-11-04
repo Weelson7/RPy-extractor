@@ -107,7 +107,7 @@ A dynamic job (doc 12), separate from extraction. Kind `capture`, `runtime`, `de
 | Step | Owner | What happens |
 |------|-------|--------------|
 | POLICY | core | the warnings and opt-in in 11.1 (none refuses) |
-| SETUP | core + backend | install agents or a user DLL through a **journal** (11.5), or work on a copy of the game |
+| SETUP | core + backend | install agents or a user DLL into a **patched copy** of the game (11.5) |
 | LAUNCH / ATTACH | OS layer + backend | the OS layer starts the game under the backend, or attaches to a process the user points at. On Linux, Windows games go through Proton/Wine; injection there is largely UNVERIFIED |
 | INTERACT | user + backend | the user plays, breakpoints hit, scans refine, frames/scenes trigger a capture; or a scripted trigger where the backend supports it |
 | HARVEST | backend | turn backend output into plain files/artifacts in staging (RenderDoc replay → png/obj, agent dumps → files, traces → logs, scans → address lists) |
@@ -137,15 +137,15 @@ attach to a pid, and set up audio loopback, all of which differ between Windows 
 
 Doc 0 says the game folder is read-only. Dynamic agents (BepInEx, MelonLoader, UE4SS, a Ren'Py
 `.rpy` hook, Godot `override.cfg`, an injected proxy DLL) work by **adding files to the game
-folder**. Two ways to reconcile that, both already in the capture pilot:
+folder**. ViWo reconciles that by **copying the game**: the agent installs itself into a marked
+patched copy (made once, then reused; doc 18), and the game folder is only read. Files the OS
+refuses to copy (an antivirus hold, a lock) are named in a warning and left out.
 
-1. **Journaled overlay:** every file written or replaced is recorded with its hash; RESTORE removes
-   or restores each one and checks the hashes. A startup check finishes any restore interrupted by a
-   killed process. This is the only sanctioned way core touches a game folder (`core/capture/journal.py`).
-2. **Copy the game:** work on a copy in scratch. Safe, costly for large games; an ini option.
-
-Overlay by default, with the startup-restore check; copy mode as an option. Attaching to a process
-the user launched themselves touches no files at all and skips SETUP/RESTORE.
+A journaled overlay (every file written or replaced in the game folder recorded with its hash,
+restored and checked afterwards) was the original plan; nothing writes one. What remains is the
+startup check in `core/capture/journal.py`, which restores a journal an interrupted session left
+behind before the next capture starts. Attaching to a process the user launched themselves
+touches no files at all and skips SETUP/RESTORE.
 
 ## 11.6 Risks and open questions
 

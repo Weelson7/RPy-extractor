@@ -126,6 +126,35 @@ class PatchSetTests(unittest.TestCase):
             self.assertIn("mismatch", err.exception.message)
             self.assertFalse((root / "other").exists())
 
+    def test_a_patch_lands_only_inside_the_file(self) -> None:
+        import random
+
+        rng = random.Random(9)
+        with tempfile.TemporaryDirectory() as tmp:
+            game, _ = fixture(Path(tmp))
+            size = len(BINARY)
+            for _ in range(200):
+                offset, width = rng.randint(-8, size + 8), rng.randint(1, 4)
+                patch = {
+                    "file": "bin/Game.exe",
+                    "offset": str(offset),
+                    "patched": " ".join(["90"] * width),
+                }
+                result = patchsets.locate(game, patch)
+                fits = 0 <= offset and offset + width <= size
+                self.assertEqual(result["status"] != "mismatch", fits, (offset, width, result))
+                if not fits:
+                    self.assertIn("out of range", result["reason"])
+            for broken in (
+                {"file": "bin/Game.exe", "patched": "90"},
+                {"file": "bin/Game.exe", "offset": "zz", "patched": "90"},
+            ):
+                result = patchsets.locate(
+                    game, broken
+                )  # a malformed address is a reason, not a crash
+                self.assertEqual(result["status"], "mismatch")
+                self.assertIn("offset", result["reason"])
+
     def test_bad_input_is_refused_and_cli_api(self) -> None:
         from viwo.api.handlers_tools import apply_patch_set
         from viwo.cli import main

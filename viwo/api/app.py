@@ -16,7 +16,6 @@ from viwo.contracts.pipeline import (
     MixedPolicy,
     OnExisting,
 )
-from viwo.core.curation.trash import migrate
 from viwo.core.jobs import JobRunner
 from viwo.core.pipeline.runner import extract
 from viwo.core.wiring.boot import Runtime, boot
@@ -26,18 +25,13 @@ from viwo.core.workspace import precheck, workspace_lock
 class App:
     def __init__(self, rt: Runtime, ini: Path | None = None) -> None:
         self.rt, self.ini = rt, ini
-        self.server = rt.config.server
+        self.server = server = rt.config.server
         self.jobs = JobRunner()
-        self.workspace = self.server.workspace
+        self.workspace = server.workspace
         self.history: list[dict] = []
         self._log: deque[str] = deque(maxlen=2000)
         self._lock = threading.Lock()
-        for folder in (
-            self.server.logs,
-            self.server.temp,
-            self.server.workspace,
-            self.server.merged,
-        ):
+        for folder in (server.logs, server.temp, server.workspace, server.merged):
             folder.mkdir(parents=True, exist_ok=True)  # a fresh install works out of the box
 
     def reload(self) -> None:
@@ -83,13 +77,8 @@ class App:
             background=False,
         )
         if job.error:
-            decision = job.error["code"] == "needs_decision"
-            return {
-                **failure(job.error),
-                **DECISION,
-                "needsDecision": decision,
-                "jobId": job.job_id,
-            }
+            asks = job.error["code"] == "needs_decision"
+            return {**failure(job.error), **DECISION, "needsDecision": asks, "jobId": job.job_id}
         result = job.result.to_legacy_dict()
         self.set_workspace(Path(job.result.workspace))
         return {
@@ -116,18 +105,13 @@ class App:
         target = folder or self.workspace
         try:
             with workspace_lock(target):
-                migrate(target)
                 return fn()
         except ViwoError as exc:
             return failure(exc)
 
     def locked_job(self, kind: str, folder: Path, fn: Callable[..., dict]) -> dict:
         """fn(sink, cancel) runs as a job under the workspace lock."""
-
-        def run() -> dict:
-            return self.job(kind, lambda jid, s, c: fn(s, c))
-
-        return self.locked(run, folder)
+        return self.locked(lambda: self.job(kind, lambda jid, s, c: fn(s, c)), folder)
 
 
 _STATE: dict[str, App] = {}
@@ -154,21 +138,28 @@ DECISION = {"needsDecision": True, "options": ["new", "replace", "cancel"]}
 
 def failure(error) -> dict:
     """The v1 failure shape from a ViwoError or a job's error dict (doc 4.1)."""
-    if isinstance(error, dict):
-        return {
-            "success": False,
-            "error": error["message"],
-            "code": error["code"],
-            "hint": error.get("hint", ""),
-            "details": error.get("hint", ""),
-        }
+    info = error if isinstance(error, dict) else error.to_dict()
     return {
         "success": False,
-        "error": error.message,
-        "code": error.code,
-        "hint": error.hint,
-        "details": error.hint,
+        "error": info["message"],
+        "code": info["code"],
+        "hint": info.get("hint", ""),
     }
+
+
+def safe(fn: Callable[[], dict]) -> dict:
+    """fn(), or its ViwoError as the failure shape."""
+    try:
+        return fn()
+    except ViwoError as exc:
+        return failure(exc)
+
+
+def picked(chosen: Path | None, what: str) -> dict:
+    """A picker's answer: the path, or the cancelled failure when the user closed it."""
+    if chosen is None:
+        return {**failure(ViwoError("cancelled", f"No {what} selected")), "cancelled": True}
+    return {"success": True, "path": str(chosen)}
 
 
 def request_from_payload(data: Mapping[str, Any], workspace: str = "") -> ExtractionRequest:

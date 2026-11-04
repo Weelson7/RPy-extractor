@@ -25,9 +25,7 @@ def lua_targets(probe: GameProbe) -> list[AnalysisTarget]:
 
 
 class GenericPlugin(EnginePlugin):
-    @property
-    def manifest(self) -> PluginManifest:
-        return MANIFEST
+    manifest = MANIFEST
 
     def detect(self, probe: GameProbe) -> DetectionResult:
         return DetectionResult(

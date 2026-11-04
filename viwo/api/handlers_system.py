@@ -11,15 +11,12 @@ from viwo.core import diag
 from viwo.core.indexes import update_indexes
 from viwo.core.thirdparty import home_of
 
-from .app import App, failure
+from .app import App, safe
 
 
 def check_updates(app: App, q: dict) -> dict:
     """GET /api/updates: latest ViWo and indexes releases; never called automatically."""
-    try:
-        return {"success": True, **diag.check_updates(home_of(app.rt.config))}
-    except ViwoError as exc:
-        return failure(exc)
+    return safe(lambda: {"success": True, **diag.check_updates(home_of(app.rt.config))})
 
 
 def make_diag(app: App, d: dict) -> dict:

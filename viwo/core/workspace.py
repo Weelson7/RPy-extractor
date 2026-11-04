@@ -65,7 +65,7 @@ def claim(folder: Path) -> Path:
 
 def _has_content(folder: Path) -> bool:
     for entry in folder.iterdir():
-        if entry.name in (ws.MARKER, *ws.LEGACY_MARKERS):
+        if entry.name == ws.MARKER:
             continue
         if entry.name == ws.METADATA_DIR and all(c.name == "lock" for c in entry.iterdir()):
             continue  # only our own lock file: not an extraction
@@ -134,10 +134,13 @@ def _stale(path: Path) -> str:
     return "" if pid_alive(pid) else f"owner pid {pid} is not running"
 
 
-def _lock_file(folder: Path) -> Path | None:
-    """Create the lock file exclusively; None when the folder does not exist yet."""
-    if not folder.is_dir():
-        return None
+def _lock_file(folder: Path) -> tuple[Path | None, bool]:
+    """Create the lock file exclusively; (its path, whether the folder was created for it: a
+    missing folder is, and is removed again on release when nothing else landed in it)."""
+    if folder.exists() and not folder.is_dir():
+        return None, False  # precheck reports it
+    created = not folder.exists()
+    folder.mkdir(parents=True, exist_ok=True)
     path = folder / LOCK_FILE
     path.parent.mkdir(parents=True, exist_ok=True)
     body = json.dumps({"pid": os.getpid(), "time": time.time()})
@@ -153,16 +156,18 @@ def _lock_file(folder: Path) -> Path | None:
             continue
         with os.fdopen(fd, "w", encoding="utf-8") as fh:
             fh.write(body)
-        return path
-    return None
+        return path, created
+    return None, created
 
 
-def _unlock_file(path: Path | None) -> None:
+def _unlock_file(path: Path | None, created: bool) -> None:
     if path is None:
         return
     path.unlink(missing_ok=True)
     try:
         path.parent.rmdir()  # only when nothing else lives in .extraction_metadata
+        if created:  # a folder made for the lock, still empty: as it was before
+            path.parent.parent.rmdir()
     except OSError:
         pass
 
@@ -176,10 +181,10 @@ def workspace_lock(folder: Path, timeout: float = 0.0):
     if not acquired:
         raise ViwoError("busy", f"workspace {folder} is busy with another job")
     try:
-        held = _lock_file(folder)
+        held, created = _lock_file(folder)
         try:
             yield
         finally:
-            _unlock_file(held)
+            _unlock_file(held, created)
     finally:
         lock.release()

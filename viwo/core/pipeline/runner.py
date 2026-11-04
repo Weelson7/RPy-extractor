@@ -16,8 +16,10 @@ from viwo.contracts.pipeline import ExtractionRequest, ExtractionResult
 from viwo.contracts.plugin import ExtractionContext
 from viwo.contracts.types import CancelToken, DetectionResult, ProgressEvent, ProgressSink
 
+from ..context import core_context, for_owner
 from ..records import record_context
 from ..scan_exclusions import excluded
+from ..steps import tell
 from ..workspace import precheck, resolve_target, workspace_lock, write_atomic
 from .carving import carve_all
 from .checks import _verify, verified
@@ -53,22 +55,13 @@ class Run:
         self.emit(ProgressEvent(message, level, "core", stage))
 
     def ctx(self, owner: str, game: Path | None = None) -> ExtractionContext:
-        options = {**self.rt.owner_options(owner), **self.request.plugin_options.get(owner, {})}
-        detection = self.detections.get(owner) or DetectionResult(owner, 0.0, (), owner)
-        return ExtractionContext(
-            self.job_id,
-            game or self.game,
-            self.work / "staging" / owner,
-            self.work / "scratch",
-            self.rt.os,
-            detection,
-            self.request.selected_exts,
-            options,
-            self.emit,
-            self.cancel,
-            "core" if owner == "core" else f"plugin:{owner}",
-            probe=self.probe if game is None else None,
-        )
+        root = game or self.game
+        base = core_context(self.rt, self.job_id, root, self.work, self.emit, self.cancel)
+        found = {"detection": self.detections[owner]} if owner in self.detections else {}
+        options = self.request.plugin_options.get(owner, {})
+        probe = self.probe if game is None else None
+        extra = {"selected_exts": self.request.selected_exts, "probe": probe, **found}
+        return for_owner(base, self.rt, owner, options, **extra)
 
 
 def extract(
@@ -88,14 +81,7 @@ def extract(
     refuse_writes_inside(game, workspace=target, temp_folder=rt.temp_root)
     with workspace_lock(target):
         precheck(target, request.on_existing, default_workspace)  # ask before announcing work
-        sink(
-            ProgressEvent(
-                f"Preparing workspace {target} ({request.on_existing.value})",
-                "info",
-                "core",
-                "prepare",
-            )
-        )
+        tell(sink, f"Preparing workspace {target} ({request.on_existing.value})", "prepare")
         workspace = resolve_target(target, request.on_existing, default_workspace)
         rt.temp_root.mkdir(parents=True, exist_ok=True)
         work = Path(tempfile.mkdtemp(prefix=f"viwo-{job_id}-", dir=rt.temp_root))
@@ -163,19 +149,10 @@ def _collect(run: Run, workspace: Path, sources, skip: set[str]):
     collected = collect(sources, workspace, run.request.selected_exts, skip, run.cancel, say)
     groups = len(collected.by_ext)
     run.log(f"Collected {collected.collected} file(s) into {groups} group(s)", "collect")
-    collected = _decode(run, workspace, collected)
-    run.log("Verifying: game folder, archives, plugin checks", "verify")
-    return collected
-
-
-def _decode(run: Run, workspace: Path, collected):
-    """Viewable copies of game media (WAV/PNG/MP4) join the collect report."""
     from ..decode import decode_all
 
-    decoded = decode_all(run, workspace, collected.provenance)
-    if decoded is not None:
-        collected.by_ext.update(decoded.by_ext)
-        collected.provenance += decoded.provenance
+    decode_all(run, workspace, collected)  # viewable copies of game media join the report
+    run.log("Verifying: game folder, archives, plugin checks", "verify")
     return collected
 
 

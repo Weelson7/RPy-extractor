@@ -56,16 +56,12 @@ class GroupTrashTests(unittest.TestCase):
             self.assertTrue((outside / "sub").is_dir())
             self.assertEqual(trash.kept(ws), {"png": 2, "pngx": 1, "txt": 1})
 
-    def test_migrate_and_clear(self) -> None:
+    def test_clear_empties_every_area(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             ws = make_workspace(Path(tmp))
-            for rel in ("png/old.png", "png_1/older.png", "media-merger/clip.mp4"):
+            for rel in ("groups/png/old.png", "items/png/older.png", "merger/clip.mp4"):
                 (ws / ".trash" / rel).parent.mkdir(parents=True, exist_ok=True)
                 (ws / ".trash" / rel).write_text("x")
-            self.assertEqual(trash.migrate(ws), 3)
-            self.assertTrue((ws / ".trash/groups/png_1/older.png").exists())
-            self.assertTrue((ws / ".trash/merger/clip.mp4").exists())
-            self.assertEqual(trash.migrate(ws), 0)
             count, _ = trash.clear(ws)
             self.assertEqual(count, 3)
             self.assertEqual(trash.trashed(ws), {})
@@ -106,6 +102,28 @@ class SortingTests(unittest.TestCase):
             result = sorting.save_remaining(ws, ["png/a.png", "png/missing.png"], dest)
             self.assertEqual((result["moved"], result["skipped"]), (1, 1))
             self.assertTrue((dest / "png/a.png").exists())
+
+
+class SaveRouteTests(unittest.TestCase):
+    def test_only_an_absolute_destination_is_accepted(self) -> None:
+        import os
+
+        from viwo.api.handlers import save_remaining
+
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = make_workspace(Path(tmp))
+            app = App(boot(write_ini(Path(tmp), "[server]\nlogs = logs\n")))
+            app.workspace = ws
+            here = sorted(os.listdir("."))
+            for bad in ("", "  ", "out", "./out", "../out"):
+                answer = save_remaining(app, {"destinationPath": bad, "paths": ["png/a.png"]})
+                self.assertFalse(answer.get("success", True), bad)
+            self.assertEqual(sorted(os.listdir(".")), here)  # nothing landed in the server's folder
+            (Path(tmp) / "out").mkdir()
+            done = save_remaining(
+                app, {"destinationPath": str(Path(tmp) / "out"), "paths": ["png/a.png"]}
+            )
+            self.assertTrue((Path(tmp) / "out" / "png" / "a.png").exists(), done)
 
 
 class LockTests(unittest.TestCase):

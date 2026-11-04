@@ -8,6 +8,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from tests.helpers import runtime
 from viwo.contracts import ViwoError
@@ -33,6 +34,30 @@ class RuntimeToolTests(unittest.TestCase):
         finally:
             child.kill()
             child.wait()
+
+    def test_every_kind_and_entry_point_share_one_dispatch(self) -> None:
+        """The CLI, the /api/runtime/<kind> routes and POST /api/jobs reach the same core run:
+        with the dynamic arm off, every kind is refused the same way everywhere."""
+        from viwo.api.app import App
+        from viwo.api.handlers import POST
+        from viwo.cli import main
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            rt = runtime(root)
+            app = App(rt)
+            app.set_workspace(root / "ws")
+            params = {"pid": 1, "gamePath": str(root), "exePath": str(root / "g.exe")}
+            for kind in ("dump", "trace", "agent", "record"):
+                for answer in (
+                    POST[f"/api/runtime/{kind}"](app, params),
+                    POST["/api/jobs"](app, {"kind": kind, "params": params}),
+                ):
+                    self.assertEqual((answer["success"], answer["code"]), (False, "refused"))
+            args = ["--quiet", "--ini", str(root / "test.ini"), "dump", "--pid", "1"]
+            with mock.patch("sys.stdout"):
+                code = main([*args, "--workspace", str(root / "ws")])
+            self.assertEqual(code, 3)  # refused
 
 
 if __name__ == "__main__":

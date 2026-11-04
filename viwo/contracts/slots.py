@@ -59,9 +59,10 @@ class Backend(ABC):
     network: str = "none"  # "none" | "download" | "any": what the backend may reach (doc 8.4)
     parses_untrusted_in_process: bool = False  # reads game/archive bytes in the ViWo process
     self_check_args: tuple[str, ...] = ("--version",)  # how self_check() pokes a CLI tool
+    requires: tuple[DependencySpec, ...] = ()  # the tools it needs; or override dependencies()
 
     def dependencies(self) -> Sequence[DependencySpec]:
-        return ()
+        return self.requires
 
     def available(self, os: "OS") -> tuple[bool, str]:
         """Side-effect free check: (usable, reason when not)."""
@@ -128,15 +129,6 @@ class Prober(Backend):
     @abstractmethod
     def probe(self, path: Path, ctx: "ExtractionContext") -> Outcome:
         """Outcome.notes carry the facts ("format=png", "width=640", "duration=1.5")."""
-
-
-class Converter(Backend):
-    """image.convert (doc 8.3): one image into a standard format inside the empty dest."""
-
-    families = frozenset({"convert"})
-
-    @abstractmethod
-    def convert(self, path: Path, dest: Path, ctx: "ExtractionContext") -> Outcome: ...
 
 
 class Packer(Backend):
