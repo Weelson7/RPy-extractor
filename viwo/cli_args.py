@@ -193,6 +193,14 @@ def analysis_command(command) -> None:
     an.add_argument(
         "--slot", default="", help="another analyzer for the target (see --list extras)"
     )
+    an.add_argument(
+        "--set",
+        action="append",
+        default=[],
+        metavar="KEY=VALUE",
+        help="analyzer option, repeatable (analysis.emulate / .symbolic: start=, args=, dump=, "
+        "find=, avoid=, max_insns=)",
+    )
 
 
 def extract_args(ex: argparse.ArgumentParser) -> None:

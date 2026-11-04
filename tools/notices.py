@@ -50,6 +50,11 @@ def render() -> str:
             f"{cells[0]} | {cells[1]} |"
         )
     pins = [f"| {name} | `{pin}` |" for name, pin in sorted(data["python"].items())]
+    workers = {k: v for k, v in data.get("workers", {}).items() if not k.startswith("_")}
+    pins += [
+        f"| {name} (worker, own process; {w['license']}) | `{w['pin']}` |"
+        for name, w in sorted(workers.items())
+    ]
     return HEAD + "\n".join(rows) + "\n" + TAIL + "\n".join(pins) + "\n"
 
 

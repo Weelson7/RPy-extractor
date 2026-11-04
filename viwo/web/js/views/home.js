@@ -14,7 +14,7 @@ const PATHS = {
     ["CLEANUP", "empty, junk, duplicate, mislabeled and broken files", "#cleanup", S, ""],
     ["MERGER", "frame sequences to video", "#merger", S, ""],
     ["ANALYSIS", "Ghidra, ILSpy, Cpp2IL, unrpyc, GDRE, unluac, Detect It Easy, version diff", "#analysis", S, "A1-A3"],
-    ["EMULATE + SOLVE", "run one isolated routine (Unicorn) or solve its inputs (angr)", "", R, "A4"]]],
+    ["EMULATE + SOLVE", "run one isolated routine (Unicorn) or solve its inputs (angr)", "#analysis", S, "A4"]]],
   dynamic: ["D", "DYNAMIC", "The game is running: capture what it draws and plays, read its memory and calls, load an agent into a copy.", [
     ["CAPTURE", "GPU frames through RenderDoc: textures, meshes, shaders", "#capture", S, "D1"],
     ["AGENTS", "UE4SS (Unreal) or BepInEx (Unity IL2CPP) in a patched copy: mappings, dumps", "#runtime", S, "D2"],

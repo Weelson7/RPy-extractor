@@ -22,6 +22,7 @@ from ..pipeline.probe import FolderProbe
 from ..records import record_context
 from ..scan_exclusions import excluded
 from ..workspace import write_atomic
+from .emulate import AngrSymbolic, UnicornEmulate
 from .ghidra import GhidraGui, GhidraHeadless
 from .handoffs import CheatEngineGui, X64dbgGui
 from .identify import DetectItEasy
@@ -44,6 +45,8 @@ SLOTS = (
     SlotDefinition("analysis.il2cpp", "analysis", "core", "cpp2il"),
     SlotDefinition("analysis.script", "analysis", "core", "unluac"),
     SlotDefinition("analysis.protector", "analysis", "core", "die"),
+    SlotDefinition("analysis.emulate", "analysis", "core", "unicorn-emulate"),
+    SlotDefinition("analysis.symbolic", "analysis", "core", "angr-symbolic"),
     SlotDefinition("handoff.debug", "handoff", "core", "x64dbg-gui"),
     SlotDefinition("handoff.memory", "handoff", "core", "cheatengine-gui"),
 )
@@ -57,6 +60,8 @@ def backends() -> list:
         Cpp2Il(),
         Unluac(),
         DetectItEasy(),
+        UnicornEmulate(),
+        AngrSymbolic(),
         X64dbgGui(),
         CheatEngineGui(),
     ]

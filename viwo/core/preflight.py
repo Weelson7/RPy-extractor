@@ -38,7 +38,10 @@ def _version(rt, item: dict) -> str:
     if pinned or item["id"] in NO_RUN:
         return pinned
     args = _version_args(rt).get(item["id"], ("--version",))
-    result = rt.os.process.run([item["location"], *args], timeout=4)
+    try:
+        result = rt.os.process.run([item["location"], *args], timeout=4)
+    except OSError:  # not runnable on its own (a folder, a script): found, version unknown
+        return ""
     text = (result.stdout or result.stderr or "").strip().splitlines()
     return text[0][:80] if text else ""
 

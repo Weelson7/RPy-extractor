@@ -104,13 +104,24 @@ def collect(
         if selected is not None and ext not in selected:
             report.skipped_by_ext[group] += 1
             continue
-        try:
-            digest = sha256(src)  # where an antivirus hold or a lock on the source surfaces
-        except OSError as exc:  # a warning, not a crash; workspace errors below still raise
-            report.unreadable.append(f"{src.name} ({exc.strerror or exc.errno})")
-            continue
-        _collect_one(src, digest, workspace / group, source, report)
+        _take(src, workspace / group, source, report)
     return report
+
+
+def _take(src: Path, folder: Path, source: Source, report) -> None:
+    """Collect one file; a source the OS refuses or that vanishes (an antivirus hold or a
+    quarantine) is a named warning, never a crash. Workspace-side errors still raise."""
+    try:
+        digest = sha256(src)
+    except OSError as exc:
+        report.unreadable.append(f"{src.name} ({exc.strerror or exc.errno})")
+        return
+    try:
+        _collect_one(src, digest, folder, source, report)
+    except FileNotFoundError:
+        if src.exists():
+            raise
+        report.unreadable.append(f"{src.name} (removed while collecting, e.g. by an antivirus)")
 
 
 def _where(source: Source, rel: str) -> dict:

@@ -66,6 +66,21 @@ class PipelineTests(unittest.TestCase):
         self.assertTrue(any("could not be read" in w and "readme.md" in w for w in result.warnings))
         self.assertNotIn("md/readme.md", tree_hashes(self.root / "ws", skip_reserved=True))
 
+    def test_a_file_removed_mid_copy_is_named_and_the_rest_collected(self) -> None:
+        real, gone = collect.shutil.copy2, []
+
+        def quarantine(src, dst):  # the antivirus deletes the file after it was hashed
+            if Path(src).name == "bg.png" and not gone:
+                gone.append(src)
+                Path(src).unlink()
+            return real(src, dst)
+
+        with mock.patch("viwo.core.pipeline.collect.shutil.copy2", quarantine):
+            result = run_extract(self.rt, self.game, self.root / "ws")
+        named = [w for w in result.warnings if "bg.png" in w and "removed while collecting" in w]
+        self.assertTrue(gone and named, result.warnings)
+        self.assertIn("ogg/hello.ogg", tree_hashes(self.root / "ws", skip_reserved=True))
+
     def test_tar_links_and_devices_are_never_written(self) -> None:
         """Doc 17.3: symlinks, hard links and device members are filtered, regular files kept."""
         game = self.root / "nasty"

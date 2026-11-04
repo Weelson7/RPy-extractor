@@ -14,6 +14,8 @@ function mount(root) {
   el.game = h("input", { class: "input mono grow", id: "an-game", placeholder: "/path/to/game", value: pref("gamePath") || "",
     spellcheck: "false", onkeydown: (e) => e.key === "Enter" && list() });
   el.targets = h("div", {});
+  el.opts = h("textarea", { class: "input mono", id: "an-opts", rows: "4", spellcheck: "false", value: pref("anOpts") || "",
+    placeholder: "start=export:decode\nargs=hex:00112233,4,0x5a\ndump=arg0:4", oninput: (e) => pref("anOpts", e.target.value) });
   el.prog = jobProgress("analyze", { logClass: "mini", onStatus: (t) => { if (S.running && t) el.sum.textContent = t; } });
   el.progPanel = panel("12.C", "RUN", null, el.prog.el);
   el.progPanel.hidden = true;
@@ -33,7 +35,10 @@ function mount(root) {
           h("label", { class: "lbl", for: "an-game" }, "GAME FOLDER"),
           h("div", { class: "row" }, el.game, browseBtn(el.game, (p) => { setGame(p); list(); }), btn("LIST TARGETS", (e) => busy(e.currentTarget, list), "primary")),
           h("p", { class: "note" }, "Results go to the active workspace: ", (el.wsNote = h("code", { class: "mono" }, S.ws || "—")), ".")),
-        panel("12.B", "TARGETS", null, el.targets)),
+        panel("12.B", "TARGETS", null, el.targets),
+        panel("12.E", "ROUTINE OPTIONS (EMULATE / SOLVE)", null,
+          h("label", { class: "lbl", for: "an-opts" }, "ONE KEY=VALUE PER LINE: START, ARGS, DUMP, MAX_INSNS; FIND, AVOID FOR SOLVE"),
+          el.opts, h("p", { class: "note" }, "Unicorn runs one isolated routine of the binary; angr solves the inputs that reach FIND. Both run as their own process."))),
       h("div", { class: "col" }, el.progPanel, el.result)),
     h("div", { class: "actionbar" }, el.sum, el.why, el.cancel));
   bus.addEventListener("wspath", (e) => { S.ws = e.detail.path || ""; el.wsNote.textContent = S.ws || "—"; bar(); });
@@ -91,10 +96,11 @@ async function run(t, slot = "") {
   await el.prog.start();
   el.prog.log.append(logLine(`// ANALYZE :: ${t.label} → ${S.ws}/.analysis`));
   try {
-    const res = await api.analyze({ gamePath: el.game.value.trim(), targetKey: t.key, slot });
+    const options = Object.fromEntries(el.opts.value.split("\n").map((l) => l.trim()).filter((l) => l.includes("=")).map((l) => [l.slice(0, l.indexOf("=")).trim(), l.slice(l.indexOf("=") + 1).trim()]));
+    const res = await api.analyze({ gamePath: el.game.value.trim(), targetKey: t.key, slot, options });
     await el.prog.finish("ok", `${res.artifacts.length} ARTIFACT(S) · ${res.backend}`);
     fill(el.result, panel("12.D", "RESULT", btn("OPEN FOLDER", () => api.openFolder(res.outputDir).catch(toastErr), "sm ghost"),
-      kv("TARGET", res.target.label), kv("BACKEND", res.backend), kv("NOTES", (res.notes || []).join("; ") || "-"), kv("OUTPUT", h("code", { class: "mono" }, res.outputDir)),
+      kv("TARGET", res.target.label), kv("BACKEND", res.backend), kv("NOTES", (res.notes || []).join("; ") || "-"), res.fallback ? kv("FALLBACK", res.fallback) : null, kv("OUTPUT", h("code", { class: "mono" }, res.outputDir)),
       h("ul", { class: "plain mono small" }, res.artifacts.map((a) => h("li", {}, a)))));
     toast(`Analysis done: ${res.artifacts.length} artifact(s).`, "ok");
   } catch (err) {

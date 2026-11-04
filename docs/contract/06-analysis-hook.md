@@ -76,8 +76,17 @@ All belong to the `analysis` family; the sub-name says the job. Every backend de
 | `analysis.signatures` | library/middleware/compiler names onto functions (FLIRT/FID style); middleware fingerprints (PhysX, Havok, Wwise, FMOD, Bink, Oodle, zlib, LZ4, Lua) | Ghidra FID | community signature sets | §4 |
 | `analysis.diff` | name/type port between two builds; stable signatures for update resilience | `bindiff` (Apache-2.0) | `diaphora` (AGPL, subprocess) | §16 |
 | `analysis.protector` | packer/protector identification so the user knows what they are looking at | `die` (Detect It Easy, MIT) | — | §14 |
-| `analysis.emulate` | run one isolated routine (decoder, checksum, hash) outside the game | `unicorn`/`qiling` (GPL, subprocess) | — | §15 |
-| `analysis.symbolic` | solve input constraints for one isolated routine | `angr` (BSD) | `triton` | §15 |
+| `analysis.emulate` | run one isolated routine (decoder, checksum, hash) outside the game: result.json (status returned/limit/import/fault, return value) + the dumped buffers | `unicorn-emulate` (Unicorn 2.1.4, GPL: a worker process) | — | §15 |
+| `analysis.symbolic` | solve the inputs that make one routine reach an address: result.json + the solved buffers | `angr-symbolic` (angr 9.2.223, BSD; a worker process: its engine is Unicorn) | — | §15 |
+
+**Worker tools (A4).** Unicorn and angr are pip pins ViWo never imports (`tools.json` `workers`):
+installed into `third_party/<id>/`, run as `python -I viwo/data/workers/<script> --lib <folder>
+<spec.json> <out>`. Options come as `viwo analyze ... --slot analysis.emulate --set start=... --set
+args=...` (or the API's `options`): `start` (0x<va> | rva:0x<rva> | export:<name>), `args`
+(int | hex:<bytes> | file:<path> | zeros:<n> | sym:<n>), `dump` (argN:<size>), `max_insns`;
+`find` and `avoid` for symbolic runs. The image is mapped at its preferred base, calls into imports
+stop the run and name the import (an isolated routine has no OS). angr 10's native claripy crashes
+in its solver on Windows, hence the 9.2 pin.
 
 `dnSpyEx`, `x64dbg` and other GUI-first tools are not headless backends. Instead each target offers
 an **interactive handoff** (doc 8.3a): a "continue in Ghidra", "open in dnSpyEx" action that imports

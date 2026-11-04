@@ -364,6 +364,19 @@ so `progress.js` stops parsing message text, let `list_window` return the type c
 - Process: a games pass must run against a committed version, never a tree being edited (a
   pass run imported a half-edited module: the transient SyntaxError in the Schedule I report).
 
+## 1.5.1 (rung A4, 2026-11-04)
+- `analysis.emulate` (`unicorn-emulate`) and `analysis.symbolic` (`angr-symbolic`): worker tools
+  (`tools.json` `workers`, `core/workers.py`): pip pins in `third_party/<id>/`, never imported,
+  run as `python -I viwo/data/workers/<script>`; `viwo analyze --slot analysis.emulate --set
+  start=... --set args=...`; 12 ROUTINE OPTIONS in the GUI. Verified on synthetic PE32+/ELF64
+  routines (XOR decode in both ABIs, named import stop, budget, fault; angr solves a 4-byte key).
+- angr pinned at 9.2.223 (+ bitstring 4.2.3, pycparser 3.0): angr 10's native claripy crashes in
+  its solver on Windows (0xC0000005). Worker installs go into a fresh folder, then swap (a pin
+  change never mixes versions); a worker that crashes still reports (any exception -> result).
+- Preflight: a dependency whose location cannot run alone (a worker folder) is found, version
+  from its pin, instead of crashing the check.
+- Games pass from the committed 1.5.0 (worktree `../viwo-pass`): TF2 PASS (VPK subset).
+
 ## Morning deliverable (owner, 2026-11-04)
 A PDF presentation of the project status, the sqc suite and the CTF flags (`sqc/ctf.json`,
 `sqc/17-ctf.md`: five basic objectives per game plus one per GB), with no known limitation or

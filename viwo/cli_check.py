@@ -118,7 +118,11 @@ def analyze_command(rt, args) -> Envelope:
         return Envelope.success({"targets": targets})
     if args.workspace is None:
         raise ViwoError("invalid_request", "give --workspace <folder>")
-    options = {"timeout_s": args.timeout} if args.timeout else {}
+    pairs = [s.partition("=") for s in args.set]
+    if any(not key or not sep for key, sep, _ in pairs):
+        raise ViwoError("invalid_request", "--set takes KEY=VALUE", hint="e.g. --set start=0x1400")
+    options = {key: value for key, _, value in pairs}
+    options.update({"timeout_s": args.timeout} if args.timeout else {})
     req = AnalysisRequest(args.game, args.workspace, args.target, options, args.slot)
     if args.open is not None:
         opened = open_in(rt, req, args.open)

@@ -34,7 +34,8 @@ LISTS = ("detect", "plugins", "tools", "scripts")
 
 def _known_tools() -> set[str]:
     data = thirdparty.manifest()
-    return {k for k, v in data["tools"].items() if not v.get("hidden")} | set(data["python"])
+    tools = {k for k, v in data["tools"].items() if not v.get("hidden")}
+    return tools | set(data["python"]) | {k for k in data.get("workers", {}) if k[0] != "_"}
 
 
 def list_games(root: Path = DEFAULT_ROOT) -> dict[str, list[str]]:

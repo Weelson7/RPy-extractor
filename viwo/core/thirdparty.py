@@ -4,7 +4,8 @@ Executables: downloaded from pinned HTTPS releases, checked against the pinned s
 safely into third_party/<id>/ and found there at boot. A spec may need other entries first
 ("needs": 7-Zip unpacks self-extractors, the .NET runtime runs framework-dependent tools), may
 borrow another entry's folder ("from") and may run through a prefix ("argv", e.g. dotnet + dll,
-or qrenderdoc --py). Python packages: pinned pip install into third_party/python (sys.path).
+or qrenderdoc --py). Python packages: pinned pip install into third_party/python (sys.path);
+worker packages (never imported, GPL) into third_party/<id>/, run as processes (core/workers.py).
 Nothing is installed outside third_party/.
 """
 
@@ -28,6 +29,7 @@ from viwo.contracts.errors import ViwoError
 from viwo.contracts.workspace import inside, safe_member
 from viwo.os import host_os_id
 
+from . import workers
 from .pipeline.ticker import Ticker
 
 MANIFEST = Path(__file__).resolve().parent.parent / "data" / "tools.json"
@@ -123,11 +125,13 @@ def found_tools(home: Path) -> dict[str, str | Argv]:
             argv = tool_argv(dep, home, spec)
             if argv:
                 out[dep] = argv[0] if len(argv) == 1 else argv
-    return out
+    return {**out, **workers.found(home)}
 
 
 def installed_version(dep_id: str, home: Path) -> str:
     """The pinned version when the tool runs from third_party/, else ""."""
+    if dep_id in workers.entries():
+        return workers.entries()[dep_id]["version"] if workers.argv(dep_id, home) else ""
     entry = manifest()["tools"].get(dep_id, {})
     spec = entry.get(PLATFORM)
     if spec and tool_argv(dep_id, home, spec):
@@ -137,14 +141,15 @@ def installed_version(dep_id: str, home: Path) -> str:
 
 def on_demand(dep_id: str) -> bool:
     """Heavy pins (Ghidra) install only when asked by name, never by the startup preflight."""
-    return bool(manifest()["tools"].get(dep_id, {}).get("on_demand"))
+    entry = manifest()["tools"].get(dep_id) or workers.entries().get(dep_id) or {}
+    return bool(entry.get("on_demand"))
 
 
 def installable(dep_id: str, kind: str) -> bool:
     data = manifest()
     if kind == "python":
         return not FROZEN and dep_id in data["python"]
-    return PLATFORM in data["tools"].get(dep_id, {})
+    return PLATFORM in data["tools"].get(dep_id, {}) or (not FROZEN and dep_id in workers.entries())
 
 
 def _download(url: str, target: Path, size: int, say, cancel) -> str:
@@ -236,6 +241,8 @@ def _unpack(kind: str, file: Path, out: Path, spec: dict, runner, home: Path) ->
 
 def install_tool(dep_id: str, home: Path, runner, say=None, cancel=None) -> str:
     """Install one entry (and what it needs first); returns how it runs."""
+    if dep_id in workers.entries():
+        return workers.install(dep_id, home, runner)
     spec = spec_of(dep_id)
     if spec is None:
         raise ViwoError("unavailable", f"no pinned {dep_id} build for {PLATFORM}")

@@ -9,6 +9,11 @@
   "frida-tools": "frida-tools==14.11.0 frida==17.25.2",
   "soundcard": "soundcard==0.4.6 numpy==2.5.4"
  },
+ "workers": {
+  "_comment": "Python packages ViWo never imports: pip installs each pin into third_party/<id>/ and a worker script under viwo/data/workers/ runs it as a separate process (GPL code, doc 6.2).",
+  "unicorn": {"pin": "unicorn==2.1.4 pefile==2024.8.26 pyelftools==0.33", "version": "2.1.4", "license": "GPL-2.0 (Unicorn); MIT (pefile); Unlicense (pyelftools)", "script": "emulate.py"},
+  "angr": {"pin": "angr==9.2.223 bitstring==4.2.3 pycparser==3.0", "version": "9.2.223", "on_demand": true, "_note": "angr 10's native claripy crashes in its z3 solver on Windows (access violation, 2026-11-04); 9.2.223 needs bitstring<4.4 (ConstBitStream) and pycparser 3.0 exactly", "license": "BSD-2-Clause (angr); GPL-2.0 (its Unicorn engine)", "script": "symbolic.py"}
+ },
  "tools": {
   "repak": {
    "version": "0.2.3",
