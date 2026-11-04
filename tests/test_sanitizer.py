@@ -30,6 +30,54 @@ def make_workspace(root: Path) -> Path:
     return ws
 
 
+class SanitizerSafetyTests(unittest.TestCase):
+    """A plan acts only on the files it saw: a file changed since the scan refuses the plan, a
+    bad id or a missing plan is named, a finding that cannot be carried out is listed (the rest
+    go on), and an undo that cannot bring a file back keeps it in the journal for later."""
+
+    def test_stale_plans_bad_ids_and_partial_undo(self) -> None:
+        from viwo.core.sanitizer_rules import collect_rules
+
+        with tempfile.TemporaryDirectory() as tmp:
+            ws = make_workspace(Path(tmp))
+            self.assertEqual(sanitizer.recipes(collect_rules())[0]["rules"] != [], True)
+            for bad in ("../../etc", "2026", ""):
+                with self.assertRaises(ViwoError) as err:
+                    sanitizer.apply(ws, bad)
+                self.assertEqual(err.exception.code, "invalid_request")
+            with self.assertRaises(ViwoError) as err:
+                sanitizer.apply(ws, "20260101-000000-abcdef")
+            self.assertEqual(err.exception.code, "not_found")
+            with self.assertRaises(ViwoError):
+                sanitizer.undo(ws, "20260101-000000-abcdef")
+            plan = sanitizer.plan(ws)
+            sized = next(f for f in plan["findings"] if "size" in f)
+            target = ws / sized["path"]
+            original = target.read_bytes()
+            target.write_bytes(original + b"changed since the scan")
+            with self.assertRaises(ViwoError) as err:
+                sanitizer.apply(ws, plan["planId"])
+            self.assertIn("plan is stale", err.exception.message)
+            target.write_bytes(original)
+            with self.assertRaises(ViwoError):
+                sanitizer.apply(ws, plan["planId"], accept="nonsense")
+            gone = next(
+                f for f in plan["findings"] if f["action"] in ("trash", "rename") and f is not sized
+            )
+            (ws / gone["path"]).unlink()  # removed by hand between plan and apply
+            done = sanitizer.apply(ws, plan["planId"])
+            self.assertTrue(
+                any(gone["path"] in f for f in done["failed"])
+            )  # named, the rest went on
+            moved = done["moved"][0]
+            (ws / moved["to"]).unlink()  # one moved file is lost before the undo
+            undone = sanitizer.undo(ws, done["undoToken"])
+            self.assertEqual(undone["notRestored"], [moved["to"]])
+            self.assertEqual(undone["restored"], len(done["moved"]) - 1)
+            again = sanitizer.undo(ws, done["undoToken"])  # the journal kept the one left
+            self.assertEqual(again["notRestored"], [moved["to"]])
+
+
 class SanitizerTests(unittest.TestCase):
     def test_plan_apply_undo(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

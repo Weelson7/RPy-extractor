@@ -4,6 +4,16 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.6.21 (2026-11-04)
+- Property tests: a sanitizer plan acts only on the files it saw (a file changed since the scan
+  refuses the plan, a bad id or a missing plan is named, a finding that cannot be carried out is
+  listed while the rest go on, an undo that cannot bring a file back keeps it for a later
+  undo); analysis names an unbound slot, a failed run, a fallback and a plugin whose target
+  hook crashes, and stops waiting on a GUI tool on cancel; Skyrim SE BSAs (LZ4 frames, embedded
+  names) read back byte for byte and are counted without lz4; the carver splits a stream of
+  several files; `viwo analyze` names a missing game or workspace and waits for the tool it
+  opened.
+
 ## 1.6.20 (2026-11-04)
 - Property tests: the round trip plans every edit or names why not (no packer, an unbound pack
   slot, a plugin that is not loaded), takes the newest extraction run as the game (never a

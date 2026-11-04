@@ -107,6 +107,73 @@ class AnalyzerContractTests(unittest.TestCase):
                         self.assertTrue(got.argv, backend.backend_id)
 
 
+class AnalysisFlowTests(unittest.TestCase):
+    """The analysis entry points name every way a run cannot happen or went wrong."""
+
+    def test_unbound_failed_fallback_and_a_crashing_plugin(self) -> None:
+        from unittest import mock
+
+        from tests.test_analysis import make_games
+        from viwo.contracts import ViwoError
+        from viwo.core import analysis
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            unity, _ = make_games(root)
+            rt = runtime(root, "[startup]\nfeatures = analysis\n[plugins]\nunity = on\n")
+            problems = []
+            with mock.patch.object(
+                rt.plugins["unity"], "analysis_targets", side_effect=RuntimeError("bad probe")
+            ):
+                analysis.targets_for(rt, unity, problems)
+            self.assertIn("plugin unity: analysis_targets failed: bad probe", problems)
+            req = analysis.AnalysisRequest(unity, root / "ws", "assembly-csharp")
+            from viwo.contracts.slots import SlotBinding
+
+            unbound = SlotBinding("analysis.dotnet", "", reasons=("ilspycmd missing",))
+            with mock.patch.dict(rt.bindings, {"analysis.dotnet": unbound}):
+                with self.assertRaises(ViwoError) as err:
+                    analysis.analyze(rt, req)
+            self.assertEqual(
+                (err.exception.code, err.exception.hint), ("unavailable", "ilspycmd missing")
+            )
+            bound = SlotBinding("analysis.dotnet", "ilspycmd")
+            said = []
+            for outcome in (
+                Outcome(OutcomeKind.FAILED, error="decompiler crashed"),
+                Outcome(OutcomeKind.OK, 1, fallback="ilspycmd failed: x; used spare"),
+            ):
+                with (
+                    mock.patch.dict(rt.bindings, {"analysis.dotnet": bound}),
+                    mock.patch.object(
+                        analysis, "run_with_failover", return_value=(outcome, "ilspycmd")
+                    ),
+                ):
+                    try:
+                        report = analysis.analyze(rt, req, lambda e: said.append(e.message))
+                    except ViwoError as exc:
+                        self.assertIn("decompiler crashed", exc.message)
+                        continue
+                self.assertEqual(report["fallback"], outcome.fallback)
+            self.assertTrue(any("used spare" in m for m in said))  # the fallback is said too
+
+    def test_waiting_on_a_gui_tool_stops_with_a_cancel(self) -> None:
+        from viwo.contracts import CancelToken
+        from viwo.core import analysis
+
+        killed = []
+        child = SimpleNamespace(alive=lambda: not killed, kill=lambda: killed.append(1))
+        analysis.LAUNCHED[4242] = child
+        token = CancelToken()
+        token.cancel()
+        try:
+            self.assertFalse(analysis.wait_for(4242, token))
+        finally:
+            analysis.LAUNCHED.pop(4242, None)
+        self.assertEqual(killed, [1])
+        self.assertTrue(analysis.wait_for(99999))  # not launched by ViWo: nothing to wait for
+
+
 class FirstRunAnswerTests(unittest.TestCase):
     """Minimal prompts (owner's rule): the GUI tools' first-run dialogs are pre-answered off
     screen; every answer lands once, a value the user set is kept, a second run changes
