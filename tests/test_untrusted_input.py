@@ -65,7 +65,7 @@ def _samples(root: Path) -> dict:
     from tests.helpers import make_tar, make_zip
     from tests.test_containers import drs, pack, tpac
     from tests.test_doom import make_wad
-    from tests.test_formats import asar, bsa
+    from tests.test_formats import asar, bsa, xp3
     from tests.test_redengine import rdar
     from tests.test_renpy import make_rpa
 
@@ -84,6 +84,7 @@ def _samples(root: Path) -> dict:
             make_wad(root / "s.wad", [("X", b"x" * 30)]).read_bytes(),
         ),
         "rdar-builtin": ("unarchive.archive", ".archive", rdar({7: [b"KB2j" + bytes(20)]})),
+        "xp3-builtin": ("unarchive.xp3", ".xp3", xp3([("bg/a.png", b"a" * 40, False)] * 2)),
         "py-zipfile": ("unarchive.zip", ".zip", make_zip(root / "s.zip", files).read_bytes()),
         "py-tarfile": ("unarchive.tar", ".tar.gz", make_tar(root / "s.tar.gz", files).read_bytes()),
     }

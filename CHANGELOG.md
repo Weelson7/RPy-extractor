@@ -4,6 +4,15 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.6.15 (2026-11-04)
+- Fix: the XP3 reader (KiriKiri) bounds its index: a stored index past 256 MiB (a damaged
+  64-bit size raised OverflowError) and a compressed one that inflates past it (a
+  decompression bomb) are named "bad XP3" failures. XP3 joins the mutation fuzzer.
+- Property tests: XP3 archives in every layout (version 1 and 2 headers, stored or compressed
+  index and segments, files over several segments, foreign chunks) give back every plain file
+  byte for byte; encrypted entries are counted and named, never guessed; traversal names are
+  never written; a cancel stops.
+
 ## 1.6.14 (2026-11-04)
 - Fix: `viwo survey` classifies encrypted or compressed blobs under 128 KiB as dense. Their
   "middle" sample started at offset 0, the same bytes twice compressed well, and they were

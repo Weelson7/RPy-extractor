@@ -18,6 +18,7 @@ from viwo.contracts.workspace import safe_member
 MAGIC = b"XP3\r\n \n\x1a\x8b\x67\x01"
 ENCRYPTED = 0x80000000
 LIMIT = 4 << 30  # one segment
+INDEX_LIMIT = 256 << 20  # the file index, stored or inflated: past it, damage or a bomb
 MANIFEST = PluginManifest(
     "kirikiri", "KiriKiri (XP3)", "0.1.0", engine_type="kirikiri", priority=12
 )
@@ -33,8 +34,14 @@ def _index(fh) -> bytes:
     flag = fh.read(1)[0]
     if flag & 7 == 1:
         packed, _ = struct.unpack("<QQ", fh.read(16))
-        return zlib.decompress(fh.read(packed))
+        inflate = zlib.decompressobj()
+        index = inflate.decompress(fh.read(min(packed, INDEX_LIMIT)), INDEX_LIMIT)
+        if inflate.unconsumed_tail:
+            raise ValueError("XP3 index inflates past 256 MiB")
+        return index
     (size,) = struct.unpack("<Q", fh.read(8))
+    if size > INDEX_LIMIT:
+        raise ValueError("XP3 index larger than 256 MiB")
     return fh.read(size)
 
 
@@ -98,7 +105,7 @@ class Xp3Builtin(Unarchiver):
                         for segment in segments:
                             out.write(_segment(fh, *segment))
                     written += 1
-        except (OSError, ValueError, struct.error, zlib.error, IndexError) as exc:
+        except (OSError, ValueError, OverflowError, struct.error, zlib.error, IndexError) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"bad XP3: {exc}")
         if locked and not written:
             return Outcome(
