@@ -4,6 +4,14 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.6.16 (2026-11-04)
+- Property tests for the Unity exporters' sources: containers found by name or by signature
+  behind a custom header (a file an antivirus holds is skipped), the game's cache folders only
+  from app.info and only when they exist, the source map follows an object through a bundle to
+  its file on disk, the extension filter writes only what was selected, the cache is read only
+  when asked for, a cancel stops; the AssetStudioModCLI spare names a missing tool and a failed
+  run and asks for meshes only when they are on.
+
 ## 1.6.15 (2026-11-04)
 - Fix: the XP3 reader (KiriKiri) bounds its index: a stored index past 256 MiB (a damaged
   64-bit size raised OverflowError) and a compressed one that inflates past it (a
