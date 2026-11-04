@@ -179,10 +179,16 @@ def _minidump(pid: int, out: Path) -> Path:
     return path
 
 
+def _sample(pid: int, seconds: float, cancel=None) -> tuple[list, list]:
+    from ._win_probe import sample_threads
+
+    return sample_threads(pid, seconds, cancel)
+
+
 class WindowsOS(HostOS):
     os_id = "windows"
     display_name = "Windows"
-    _dump = staticmethod(_minidump)
+    _dump, _sample = staticmethod(_minidump), staticmethod(_sample)
 
     def __init__(self, tool_overrides: Mapping[str, str | Sequence[str]] | None = None) -> None:
         flags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)

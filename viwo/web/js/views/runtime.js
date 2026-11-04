@@ -20,7 +20,7 @@ function mount(root) {
   el.progHost = h("div", {});
   el.result = h("div", {});
   el.buttons = [btn("RUN AGENT", () => run("agent"), "primary"), btn("DUMP MEMORY", () => run("dump"), ""),
-    btn("TRACE CALLS", () => run("trace"), ""), btn("RECORD SOUND", () => run("record"), "")];
+    btn("TRACE CALLS", () => run("trace"), ""), btn("PROFILE CPU", () => run("profile"), ""), btn("RECORD SOUND", () => run("record"), "")];
   root.append(
     viewHead("13", "RUNTIME", "The game is running: load the engine's agent into a patched copy, record what it plays, dump its memory or trace its API calls. Each run is a job; the outputs land in the workspace under .runtime/."),
     assure([["GAME FOLDER READ-ONLY", "the agent goes into a marked patched copy beside it, never into the game"],
@@ -38,7 +38,7 @@ function mount(root) {
           h("label", { class: "lbl", for: "rt-proc" }, "PROCESS (IMAGE NAME OR PID)"), h("div", { class: "row" }, el.proc),
           h("label", { class: "lbl", for: "rt-funcs" }, "FUNCTIONS TO TRACE (FRIDA GLOBS, COMMA-SEPARATED)"), h("div", { class: "row" }, el.funcs),
           h("label", { class: "lbl", for: "rt-secs" }, "SECONDS (TRACE AND RECORDING)"), h("div", { class: "row" }, el.secs),
-          h("div", { class: "row" }, el.buttons[1], el.buttons[2], el.buttons[3]))),
+          h("div", { class: "row" }, el.buttons[1], el.buttons[2], el.buttons[3], el.buttons[4]))),
       h("div", { class: "col" }, el.progHost, el.result)));
 }
 

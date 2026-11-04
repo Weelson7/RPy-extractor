@@ -30,8 +30,8 @@ FRIDA = DependencySpec(
 
 @dataclass(frozen=True)
 class RuntimeRequest:
-    """One headless dynamic run; each kind reads the fields it needs (dump and trace: pid or
-    name; trace and record: seconds; agent: game, exe, copy, timeout)."""
+    """One headless dynamic run; each kind reads the fields it needs (dump, trace, profile:
+    pid or name; trace, profile, record: seconds; agent: game, exe, copy, timeout)."""
 
     workspace: Path
     pid: int = 0
@@ -47,12 +47,14 @@ class RuntimeRequest:
 def run(rt, kind: str, req: RuntimeRequest, sink=None, cancel=None) -> dict:
     from .agents import run_agent
     from .audio import record
+    from .profile import profile
 
     runs = {
         "dump": lambda: dump(rt, req.workspace, req.pid, req.name),
         "trace": lambda: trace(rt, req, cancel),
         "agent": lambda: run_agent(rt, req, sink, cancel),
         "record": lambda: record(rt, req.workspace, req.seconds),
+        "profile": lambda: profile(rt, req, cancel),
     }
     return runs[kind]()
 

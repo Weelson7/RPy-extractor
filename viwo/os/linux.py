@@ -106,11 +106,17 @@ def _proc_dump(pid: int, out: Path) -> Path:
     return dump
 
 
+def _sample(pid: int, seconds: float, cancel=None) -> tuple[list, list]:
+    from ._linux_probe import sample_threads
+
+    return sample_threads(pid, seconds, cancel)
+
+
 class LinuxOS(HostOS):
     os_id = "linux"
     display_name = "Linux"
     name_limit = 15  # /proc/<pid>/comm keeps 15 characters
-    _dump = staticmethod(_proc_dump)
+    _dump, _sample = staticmethod(_proc_dump), staticmethod(_sample)
 
     def __init__(self, tool_overrides: Mapping[str, str | Sequence[str]] | None = None) -> None:
         arg_max = os.sysconf("SC_ARG_MAX") if hasattr(os, "sysconf") else 131072

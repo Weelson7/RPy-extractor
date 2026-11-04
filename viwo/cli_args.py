@@ -59,6 +59,7 @@ def runtime_commands(command) -> None:
     texts = {
         "dump": "write a memory dump of a running game (D3)",
         "trace": "trace a running game's API calls with Frida (D3)",
+        "profile": "sample where a running game spends its CPU time (D4)",
     }
     for name, text in texts.items():
         cmd = command(name, text)
@@ -67,7 +68,8 @@ def runtime_commands(command) -> None:
         cmd.add_argument("--workspace", type=Path, required=True, help="where .runtime/ lands")
         if name == "trace":
             cmd.add_argument("--functions", default="CreateFileW", help="frida-trace -i globs")
-            cmd.add_argument("--seconds", type=float, default=10, help="how long to trace")
+        if name != "dump":
+            cmd.add_argument("--seconds", type=float, default=10, help="how long to run")
 
 
 def agent_commands(command) -> None:

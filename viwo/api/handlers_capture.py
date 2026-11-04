@@ -68,7 +68,7 @@ def runtime_job(app: App, d: dict, kind: str) -> dict:
     from viwo.core.capture.runtime import RuntimeRequest, run
 
     pid, name = int(d.get("pid") or 0), str(d.get("name", ""))
-    if kind in ("dump", "trace") and not pid and not name:
+    if kind in ("dump", "trace", "profile") and not pid and not name:
         return failure(ViwoError("invalid_request", "give pid or name"))
     req = RuntimeRequest(
         app.workspace,
@@ -84,7 +84,7 @@ def runtime_job(app: App, d: dict, kind: str) -> dict:
 
 def runtime_routes(prefix: str) -> dict[str, Callable[[App, dict], Any]]:
     """`<prefix><kind>` -> runtime_job for every dynamic-arm kind (routes and job kinds)."""
-    kinds = ("dump", "trace", "agent", "record")
+    kinds = ("dump", "trace", "profile", "agent", "record")
     return {f"{prefix}{k}": (lambda app, d, k=k: runtime_job(app, d, k)) for k in kinds}
 
 

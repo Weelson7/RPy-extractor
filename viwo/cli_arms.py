@@ -7,7 +7,7 @@ STATIC = ("survey", "detect", "extract", "replay", "unpack", "sanitize", "analyz
 SYSTEM = ("serve", "info", "slots", "install", "config", "indexes", "diag")
 ARMS = {
     "static": ("the game is not running", STATIC),
-    "dynamic": ("the game is running", ("capture", "dump", "trace", "agent", "record")),
+    "dynamic": ("the game is running", ("capture", "dump", "trace", "profile", "agent", "record")),
     "patching": ("you change its content", ("repack", "patch", "mod")),
     "system": ("tools, config, the web UI", SYSTEM),
 }

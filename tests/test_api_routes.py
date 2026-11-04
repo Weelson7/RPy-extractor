@@ -47,6 +47,7 @@ class RouteTests(unittest.TestCase):
     def test_generic_job_submit_runs_the_kind_handler(self) -> None:
         """Doc 12.5: POST /api/jobs {kind, params} lands on the same handler as the route."""
         from viwo.api.handlers import POST
+        from viwo.api.handlers_capture import runtime_routes
         from viwo.api.handlers_jobs import KINDS
 
         self.assertIn("/api/jobs", POST)
@@ -54,12 +55,9 @@ class RouteTests(unittest.TestCase):
         self.assertEqual((bad["success"], bad["code"]), (False, "invalid_request"))
         self.assertEqual(
             set(KINDS),
-            {
+            {  # every runtime kind comes from the one runtime table
+                *runtime_routes(""),
                 "patch",
-                "dump",
-                "agent",
-                "record",
-                "trace",
                 "mod",
                 "extract",
                 "survey",

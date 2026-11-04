@@ -149,6 +149,10 @@ class OS(ABC):
         """Process ids whose image name is `image` (case-insensitive)."""
         return []
 
+    def sample_threads(self, pid: int, seconds: float, cancel=None) -> tuple[list, list]:
+        """profile.sample: ((thread id, pc) samples, (base, size, path) modules) of a process."""
+        raise OSError(95, "this OS layer cannot sample a process")
+
     def dump_process(self, pid: int, out: Path) -> Path:
         """A memory dump of a running process into the folder `out`; returns the main file."""
         raise NotImplementedError("this OS layer cannot dump a process")

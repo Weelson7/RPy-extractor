@@ -275,3 +275,6 @@ class HostOS(OS):
     def dump_process(self, pid: int, out: Path) -> Path:
         out.mkdir(parents=True, exist_ok=True)
         return self._dump(pid, out)  # each OS layer sets _dump (minidump, /proc mem)
+
+    def sample_threads(self, pid: int, seconds: float, cancel=None) -> tuple[list, list]:
+        return self._sample(pid, seconds, cancel)  # each OS layer sets _sample

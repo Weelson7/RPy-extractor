@@ -21,7 +21,8 @@ const PATHS = {
     ["RECORD", "the game's sound from the system output, to WAV", "#runtime", S, "D2"],
     ["DUMP + TRACE", "process memory through the OS, API calls through Frida", "#runtime", S, "D3"],
     ["DEBUGGER + MEMORY", "continue in x64dbg or Cheat Engine (attached to the game)", "#analysis", S, "D3"],
-    ["HOOKS, NETWORK, PROFILE", "a hook loader with hot reload, own-traffic tooling, profiling", "", R, "D4"]]],
+    ["CPU PROFILE", "where the running game spends its CPU time: hot spots by export, module, thread", "#runtime", S, "D4"],
+    ["HOOKS + NETWORK", "a hook loader with hot reload, own-traffic tooling", "", R, "D4"]]],
   patching: ["P", "PATCHING", "You change its content: always in a marked patched copy, the game folder stays read-only.", [
     ["PATCHED COPY", "your workspace edits repacked into a copy of the game, verified", "#repack", S, ""],
     ["PATCH SETS", "byte, RVA and AOB patches, assembly through Keystone, export", "#patches", S, "T1"],
