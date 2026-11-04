@@ -4,6 +4,26 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.15.5 (2026-11-04)
+Third audit (hostile input, completeness, the walk; an independent review, every finding verified):
+- Fix: unpackers skipped entries silently. VPK, XP3, BSA, BA2, RGSSAD, ASAR, TPAC and RPA now
+  count every skip by reason (unsafe name, missing part file, cut short) and say it; the unpack
+  stage logs every note as a warning and lists it among the run's warnings.
+- Fix: a declared size of 0 let zlib and LZ4 inflate without a limit (XP3, BSA): bounded to 1.
+- Fix: RPA member names went through a resolve check only; now `safe_member` + `inside` (NTFS
+  streams, device names, links). A member shorter than its index says is written and said.
+- Fix: a crafted SLP row or Doom column could replay one long command stream for every row:
+  both are bounded by their width or height.
+- Fix: RPG Maker MV took System.json's key unchecked; a key that does not open the images is
+  replaced by the one the PNG signature gives (said), the packer checks the game's images, and
+  a file without the RPGMV header is kept as it is (said) instead of dropped.
+- Fix: a junction in a game folder was walked into (survey, probe, collect, the game snapshot,
+  the capture policy): link-like folders are never entered.
+- Fix: what the game writes into its own folder during a capture is said as a warning.
+- Fix: an engine found inside a wrapper (an MV game in an Electron asar) mapped its exports to
+  paths of the unpacked wrapper; they are now derived, never written back to a wrong container.
+- Fix: unluac gave `main.lua` and `main.luac` one output name; both are kept.
+
 ## 1.15.4 (2026-11-04)
 Second audit (writes, the API, installs; an independent review, every finding verified):
 - Fix: a game folder (or any folder of the user's) opened as the workspace could be curated:

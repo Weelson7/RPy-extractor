@@ -4,9 +4,9 @@ layouts that would put those inside the game, and verifies the game afterwards."
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
+from viwo.contracts import workspace as ws
 from viwo.contracts.errors import ViwoError
 
 Snapshot = dict[str, tuple[int, int]]
@@ -35,7 +35,7 @@ def refuse_writes_inside(game: Path, **targets: Path) -> None:
 def snapshot(game: Path) -> Snapshot:
     """Cheap fingerprint of every file: relative path -> (size, mtime in ns)."""
     found: Snapshot = {}
-    for dirpath, _, filenames in os.walk(game):
+    for dirpath, _, filenames in ws.walk(game):
         for name in filenames:
             path = Path(dirpath) / name
             try:

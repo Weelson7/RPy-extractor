@@ -89,6 +89,9 @@ def _unpack_one(runtime, match, dest: Path, make_ctx, report: UnpackReport, orig
         return False
     if outcome.fallback:
         ctx.log(f"{match.path.name}: {outcome.fallback}", "warn", "unpack")
+    for note in outcome.notes:  # what the unpacker skipped or could not read: never silent
+        ctx.log(f"{match.path.name}: {note}", "warn", "unpack")
+        report.failures.append(f"{origin}: {note}")
     report.extracted += 1
     report.files += outcome.files
     report.by_backend[used] += 1

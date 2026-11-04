@@ -49,24 +49,26 @@ class BsaBuiltin(Unarchiver):
         return True, ""  # lz4 only unlocks version-105 entries; everything else works without it
 
     def extract(self, archive: Path, dest: Path, ctx) -> Outcome:
-        def read(blob) -> tuple[int, int]:
+        def read(blob) -> tuple[int, int, int]:
             version, flags, entries = bsa_entries(blob)
-            written, skipped = 0, 0
+            written, skipped, unsafe = 0, 0, 0
             for entry in entries:
                 if ctx.cancel.cancelled:
                     break
                 data = bsa_data(blob, version, flags, entry)
                 if data is None:
                     skipped += 1
-                else:
-                    written += _write(dest, entry[0], data)
-            return written, skipped
+                    continue
+                done = _write(dest, entry[0], data)
+                written, unsafe = written + done, unsafe + (not done)
+            return written, skipped, unsafe
 
         try:
-            written, skipped = _mapped(archive, read)
+            written, skipped, unsafe = _mapped(archive, read)
         except (OSError, ValueError, OverflowError, struct.error, zlib.error, IndexError) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"bad BSA: {exc}")
         notes = (f"{skipped} LZ4 entries need the 'lz4' Python package",) if skipped else ()
+        notes += (f"{unsafe} entr(ies) with an unsafe name skipped",) if unsafe else ()
         return Outcome(OutcomeKind.OK, written, notes=notes)
 
 
@@ -75,16 +77,19 @@ class Ba2Builtin(Unarchiver):
     parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
     def extract(self, archive: Path, dest: Path, ctx) -> Outcome:
-        def read(blob) -> int:
-            written = 0
+        def read(blob) -> tuple[int, int]:
+            written = unsafe = 0
             for name, data in ba2_files(blob):
                 if ctx.cancel.cancelled:
                     break
-                written += _write(dest, name, data)
-            return written
+                done = _write(dest, name, data)
+                written, unsafe = written + done, unsafe + (not done)
+            return written, unsafe
 
         try:
-            return Outcome(OutcomeKind.OK, _mapped(archive, read))
+            written, unsafe = _mapped(archive, read)
+            notes = (f"{unsafe} entr(ies) with an unsafe name skipped",) if unsafe else ()
+            return Outcome(OutcomeKind.OK, written, notes=notes)
         except (OSError, ValueError, OverflowError, struct.error, zlib.error, IndexError) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"bad BA2: {exc}")
 

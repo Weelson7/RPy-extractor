@@ -174,7 +174,7 @@ class RpgMvTests(unittest.TestCase):
                     path.parent.mkdir(parents=True, exist_ok=True)
                     path.write_bytes(encrypt_mv(body))
                     files[path] = body
-                (game / "www" / "img" / "plain.png_").write_bytes(b"no header")  # skipped
+                (game / "www" / "img" / "plain.png_").write_bytes(b"no header")  # kept as it is
                 staging = Path(tmp) / f"s{case}"
                 staging.mkdir()
                 ctx = SimpleNamespace(
@@ -187,7 +187,10 @@ class RpgMvTests(unittest.TestCase):
                         out.kind, OutcomeKind.NEEDS_KEY
                     )  # nothing to recover a key from
                     continue
-                self.assertEqual(out.files, len(files))
+                self.assertEqual(out.files, len(files) + 1)  # + the unheadered file, raw
+                self.assertTrue(any("without the RPGMV header" in n for n in out.notes))
+                raw = staging / "www" / "img" / "plain.png_"
+                self.assertEqual(raw.read_bytes(), b"no header")
                 for path, body in files.items():
                     rel = path.relative_to(game).with_suffix(
                         ".png" if path.suffix == ".rpgmvp" else ".ogg"

@@ -24,8 +24,10 @@ def sources_for(run, chosen, moved: dict[Path, str], runs) -> list[Source]:
             staging / r.plugin_id,
             True,
             f"export:{r.backend}",
-            kind="export",
-            mapped=_export_map(staging / r.plugin_id, r.plugin_id),
+            # an engine found inside a wrapper (doc 3.1) mapped paths in the unpacked wrapper,
+            # not in the game: no container to write back to, so derived, never misplaced
+            kind="export" if r.plugin_id in chosen else "derived",
+            mapped=_export_map(staging / r.plugin_id, r.plugin_id) if r.plugin_id in chosen else {},
         )
         for r in runs
         if r.backend

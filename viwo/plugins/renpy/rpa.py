@@ -13,6 +13,7 @@ import pickle
 import zlib
 from pathlib import Path
 
+from viwo.contracts import workspace as ws
 from viwo.contracts.slots import Unarchiver
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 from viwo.contracts.workspace import count_files
@@ -83,9 +84,9 @@ def _chunk(chunk, key: int) -> tuple[int, int, bytes]:
 
 
 def _target(dest: Path, name: str) -> Path | None:
-    root = dest.resolve()
-    target = (root / name.replace("\\", "/")).resolve()
-    return target if root in target.parents else None
+    """safe_member + inside: traversal, drive letters, NTFS streams (`a.png:x`), device names
+    and links never get a file."""
+    return ws.member_path(dest, name.replace("\\", "/"))
 
 
 class RpaSafe(Unarchiver):
@@ -96,7 +97,7 @@ class RpaSafe(Unarchiver):
         try:
             with open(archive, "rb") as fh:
                 index = read_index(fh)
-                written = sum(self._write(fh, dest, name, chunks) for name, chunks in index.items())
+                said = [self._write(fh, dest, name, chunks) for name, chunks in index.items()]
         except (
             ValueError,
             OSError,
@@ -106,19 +107,29 @@ class RpaSafe(Unarchiver):
             EOFError,
         ) as exc:
             return Outcome(OutcomeKind.FAILED, error=str(exc)[:300])
-        return Outcome(OutcomeKind.OK, written)
+        notes = []
+        if unsafe := said.count("unsafe"):
+            notes.append(f"{unsafe} member(s) with an unsafe name skipped")
+        if short := said.count("short"):
+            notes.append(f"{short} member(s) shorter than the index says (a cut archive)")
+        return Outcome(OutcomeKind.OK, said.count("ok") + short, notes=tuple(notes))
 
     @staticmethod
-    def _write(fh, dest: Path, name: str, chunks) -> int:
+    def _write(fh, dest: Path, name: str, chunks) -> str:
+        """ "ok", "short" (written, but the archive ended early) or "unsafe" (skipped)."""
         target = _target(dest, name)
         if target is None:
-            return 0  # traversal or absolute member name: skipped
+            return "unsafe"
         target.parent.mkdir(parents=True, exist_ok=True)
+        whole = True
         with open(target, "wb") as out:
             for offset, length, prefix in chunks:
                 fh.seek(offset)
-                out.write(prefix + fh.read(max(0, length - len(prefix))))
-        return 1
+                want = max(0, length - len(prefix))
+                data = fh.read(want)
+                whole = whole and len(data) == want
+                out.write(prefix + data)
+        return "ok" if whole else "short"
 
 
 class Unrpa(Unarchiver):

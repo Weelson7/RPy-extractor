@@ -51,7 +51,7 @@ def sha256(path: Path) -> str:
 
 
 def _walk(root: Path, skip: set[str], avoid: Path):
-    for dirpath, dirnames, filenames in os.walk(root):
+    for dirpath, dirnames, filenames in ws.walk(root):  # junctions are not walked into
         here = Path(dirpath)
         dirnames[:] = sorted(d for d in dirnames if d not in skip and (here / d).resolve() != avoid)
         for name in sorted(filenames):

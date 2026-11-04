@@ -84,19 +84,26 @@ class RgssadBuiltin(Unarchiver):
                 open(archive, "rb") as fh,
                 mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ) as blob,
             ):
-                return Outcome(OutcomeKind.OK, _write_all(blob, dest, ctx))
+                written, notes = _write_all(blob, dest, ctx)
+                return Outcome(OutcomeKind.OK, written, notes=tuple(notes))
         except (OSError, ValueError, struct.error) as exc:
             return Outcome(OutcomeKind.FAILED, error=str(exc))
 
 
-def _write_all(blob, dest: Path, ctx) -> int:
-    written = 0
+def _write_all(blob, dest: Path, ctx) -> tuple[int, list[str]]:
+    """(written, what was skipped and why: unsafe names, entries past a cut archive's end)."""
+    written, unsafe, cut = 0, 0, 0
     for name, offset, size, key in entries(blob):
         rel = safe_path(name)
-        if ctx.cancel.cancelled or rel is None or offset + size > len(blob):
+        if ctx.cancel.cancelled:
+            break
+        if rel is None or offset + size > len(blob):
+            unsafe, cut = unsafe + (rel is None), cut + (rel is not None)
             continue
         target = dest.joinpath(*rel.parts)
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_bytes(decrypt(blob[offset : offset + size], key))
         written += 1
-    return written
+    notes = [f"{unsafe} entr(ies) with an unsafe name skipped"] if unsafe else []
+    notes += [f"{cut} entr(ies) past the end of the archive (cut short)"] if cut else []
+    return written, notes

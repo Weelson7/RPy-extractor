@@ -61,8 +61,12 @@ def _rgba(indices: list[int | None], palette: bytes) -> bytes:
 
 
 def _column(data: bytes, start: int, height: int, pixels: list, x: int, width: int) -> None:
+    """One column's posts; more posts than the height could hold is damage (a crafted lump
+    could replay one long run of empty posts for every column)."""
     top, pos = -1, start
-    while data[pos] != 0xFF:
+    for _ in range(2 * height + 64):
+        if data[pos] == 0xFF:
+            return
         delta, length = data[pos], data[pos + 1]
         top = top + delta if delta <= top else delta  # tall patches (DeePsea)
         body = data[pos + 3 : pos + 3 + length]
@@ -72,6 +76,7 @@ def _column(data: bytes, start: int, height: int, pixels: list, x: int, width: i
             if 0 <= top + i < height:
                 pixels[(top + i) * width + x] = value
         pos += length + 4
+    raise IndexError("a column runs on past its height")
 
 
 def picture(data: bytes, palette: bytes) -> bytes | None:

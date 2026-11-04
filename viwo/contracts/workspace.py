@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import re
 from pathlib import Path, PurePosixPath
 
@@ -64,6 +65,27 @@ def safe_member(name: str) -> PurePosixPath | None:
         if part == ".." or ":" in part or part[-1] in ". " or RESERVED.match(part):
             return None
     return PurePosixPath(*parts)
+
+
+def link_like(path) -> bool:
+    """A symbolic link, a directory junction or another reparse point: never walked into (a
+    junction in a game folder may point anywhere, or back at an ancestor)."""
+    if os.path.islink(path):
+        return True
+    junction = getattr(os.path, "isjunction", None)  # Python 3.12+
+    if junction is not None:
+        return junction(path)
+    try:
+        return bool(getattr(os.lstat(path), "st_file_attributes", 0) & 0x400)  # REPARSE_POINT
+    except OSError:
+        return False
+
+
+def walk(root: Path):
+    """os.walk that never enters a link-like folder (see link_like)."""
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if not link_like(os.path.join(dirpath, d))]
+        yield dirpath, dirnames, filenames
 
 
 def inside(root: Path, target: Path) -> bool:

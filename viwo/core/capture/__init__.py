@@ -18,7 +18,7 @@ from viwo.contracts.types import CancelToken, DetectionResult, ProgressEvent
 from ..context import core_context
 from ..pipeline.collect import Source, collect, sha256
 from ..pipeline.failover import run_with_failover
-from ..pipeline.guard import refuse_writes_inside
+from ..pipeline.guard import change_warning, refuse_writes_inside, snapshot
 from ..pipeline.probe import FolderProbe
 from ..pipeline.runner import detect_all
 from ..records import record_context
@@ -113,7 +113,11 @@ def capture(rt, req: CaptureRequest, sink=None, cancel=None) -> dict:
         raise ViwoError("refused", "the executable must be a file inside the game folder")
     warnings = check(rt, req.game, req.confirmed, sensitive_plugins(rt, req.game))
     known = _prepare(rt, req)
+    before = snapshot(req.game)  # the game runs in its own folder: what it writes there is said
     gathered, used, job, same = _run(rt, req, known, sink, cancel)
+    if changed := change_warning(before, snapshot(req.game), "the capture (the game wrote there)"):
+        warnings = [*warnings, changed]
+        tell(sink, changed, "report", "warn")
     new = gathered.provenance
     (req.workspace / ws.METADATA_DIR).mkdir(parents=True, exist_ok=True)
     with open(req.workspace / ws.PROVENANCE_FILE, "a", encoding="utf-8") as fh:

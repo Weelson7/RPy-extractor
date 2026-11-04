@@ -8,10 +8,10 @@ runs. The only gate is the `capture` feature switch in the ini.
 from __future__ import annotations
 
 import json
-import os
 import socket
 from pathlib import Path
 
+from viwo.contracts import workspace as ws
 from viwo.contracts.errors import ViwoError
 
 from ..workspace import write_atomic
@@ -31,7 +31,7 @@ def load_policy() -> dict:
 
 def _markers(game: Path, markers: dict[str, str]) -> list[str]:
     found = []
-    for dirpath, dirnames, filenames in os.walk(game):
+    for dirpath, dirnames, filenames in ws.walk(game):
         for name in dirnames + filenames:
             if name.lower() in markers:
                 found.append(f"{markers[name.lower()]} ({Path(dirpath, name).relative_to(game)})")

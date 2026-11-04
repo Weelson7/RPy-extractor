@@ -57,6 +57,10 @@ Binding at boot:
 <kind>: <error>; used <spare>"); when both fail, the error names both. Every stage turns it into
 a warn event (CLI stderr, also with `--json`; the GUI job log) and, where it keeps warnings, into
 the result. An export that is `ok` but wrote nothing, or returned notes, says so too.
+An unpacker counts every entry it skips by reason (an unsafe name, a missing part file, an
+archive cut short) and returns the counts as notes; the unpack stage logs each note as a warning
+and lists it among the run's warnings. A declared size of 0 never means "inflate without a
+limit", and a stored segment past the end of its archive fails rather than writing a stub.
 
 Every result records which backend produced it: `byBackend` (unpack) and
 `plugins[].exportedByTool` (export).

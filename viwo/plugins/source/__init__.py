@@ -57,6 +57,7 @@ class VpkBuiltin(Unarchiver):
 
     def extract(self, archive: Path, dest: Path, ctx) -> Outcome:
         stem, written, handles = archive.name[: -len("_dir.vpk")], 0, {}
+        skipped = {"unsafe name": 0, "its part file is missing": 0, "cut short": 0}
         try:
             with open(archive, "rb") as fh:
                 head = fh.read(28)
@@ -65,21 +66,30 @@ class VpkBuiltin(Unarchiver):
                 entries, base = tree(fh.read((12 if version == 1 else 28) + size))
                 for path, preload, index, offset, length in entries:
                     rel = safe_member(path)
-                    if rel is None or ctx.cancel.cancelled:
+                    if ctx.cancel.cancelled:
+                        break
+                    if rel is None:
+                        skipped["unsafe name"] += 1
                         continue
                     source = fh if index == 0x7FFF else _part(handles, archive, stem, index)
                     if source is None:
+                        skipped["its part file is missing"] += 1
                         continue
                     source.seek((base if index == 0x7FFF else 0) + offset)
+                    data = source.read(length)
                     target = dest.joinpath(*rel.parts)
                     target.parent.mkdir(parents=True, exist_ok=True)
-                    target.write_bytes(preload + source.read(length))
+                    target.write_bytes(preload + data)
+                    skipped["cut short"] += len(data) != length
                     written += 1
         except (OSError, ValueError, struct.error) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"bad VPK: {exc}")
         finally:
             _close(handles)
-        return Outcome(OutcomeKind.OK, written)
+        notes = tuple(
+            f"{n} entr(ies) skipped or incomplete: {why}" for why, n in skipped.items() if n
+        )
+        return Outcome(OutcomeKind.OK, written, notes=notes)
 
 
 def _part(handles: dict, archive: Path, stem: str, index: int):

@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 import fnmatch
-import os
 from functools import lru_cache
 from pathlib import Path
 
+from viwo.contracts import workspace as ws
 from viwo.contracts.types import DetectionResult
 
 
@@ -17,7 +17,7 @@ class FolderProbe:
         # case-insensitive, the paths handed back keep their case (Linux is case-sensitive)
         self._rel: list[tuple[str, bool, str]] = []
         self.truncated = False
-        for dirpath, dirnames, filenames in os.walk(root):
+        for dirpath, dirnames, filenames in ws.walk(root):
             base = Path(dirpath).relative_to(root).as_posix()
             prefix = "" if base == "." else f"{base}/"
             entries = [(f"{prefix}{d}".lower(), True, f"{prefix}{d}") for d in dirnames]

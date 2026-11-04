@@ -50,6 +50,33 @@ def png_key(images: list[Path]) -> bytes | None:
     return key if all(bytes(a ^ b for a, b in zip(h, key)) == PNG_HEAD for h in heads) else None
 
 
+def game_images(game: Path) -> list[Path]:
+    """The game's encrypted images: what any key is checked on (an audio file says nothing)."""
+    return [p for p in sorted(game.rglob("*")) if SUFFIXES.get(p.suffix.lower()) == ".png"][:20]
+
+
+def opens(key: bytes, images: list[Path]) -> bool:
+    """D18: a key is used only once it turns an encrypted image back into a PNG."""
+    for image in images[:5]:
+        with open(image, "rb") as fh:
+            head = fh.read(32)
+        if head[:16] == HEADER and len(head) == 32:
+            return bytes(a ^ b for a, b in zip(head[16:], key)) == PNG_HEAD
+    return True  # no image to check it on (audio only): the game's own key is taken
+
+
+def verified_key(game: Path, images: list[Path]) -> tuple[bytes | None, str]:
+    """(key, note): System.json's key when it opens the images, else the one the PNG
+    signature gives (a decoy or a stale System.json is said), else None."""
+    key = system_key(game)
+    if key is not None and opens(key, images):
+        return key, ""
+    found = png_key(images)
+    if key is not None and found is not None:
+        return found, "System.json's key does not open the images: the PNG signature's key is used"
+    return found, ""
+
+
 def decrypt(data: bytes, key: bytes) -> bytes | None:
     if not data.startswith(HEADER):
         return None
@@ -68,15 +95,20 @@ class RpgMvExporter(Exporter):
         if not files:
             return Outcome(OutcomeKind.OK, 0)
         images = [p for p in files if SUFFIXES[p.suffix.lower()] == ".png"]
-        key = system_key(ctx.game_root) or png_key(images)
+        key, note = verified_key(ctx.game_root, images)
         if key is None:
-            return Outcome(OutcomeKind.NEEDS_KEY, error="no encryptionKey in System.json")
-        written, mapping = 0, {}
+            return Outcome(OutcomeKind.NEEDS_KEY, error="no key in System.json opens the images")
+        written, raw, mapping = 0, 0, {}
         for path in files:
             if ctx.cancel.cancelled:
                 break
-            plain = decrypt(path.read_bytes(), key)
-            if plain is None:
+            data = path.read_bytes()
+            plain = decrypt(data, key)
+            if plain is None:  # no RPGMV header (a placeholder, a custom header): kept as it is
+                target = ctx.staging / path.relative_to(ctx.game_root)
+                target.parent.mkdir(parents=True, exist_ok=True)
+                target.write_bytes(data)
+                raw += 1
                 continue
             rel = path.relative_to(ctx.game_root).with_suffix(SUFFIXES[path.suffix.lower()])
             target = ctx.staging / rel
@@ -85,7 +117,10 @@ class RpgMvExporter(Exporter):
             mapping[rel.as_posix()] = [path.relative_to(ctx.game_root).as_posix(), "file"]
             written += 1
         (ctx.staging / ws.EXPORT_MAP).write_text(json.dumps(mapping), encoding="utf-8")
-        return Outcome(OutcomeKind.OK, written)
+        notes = [note] if note else []
+        if raw:
+            notes.append(f"{raw} file(s) without the RPGMV header kept as they are (not decrypted)")
+        return Outcome(OutcomeKind.OK, written + raw, notes=tuple(notes))
 
 
 class RpgMvPacker(Packer):
@@ -95,13 +130,13 @@ class RpgMvPacker(Packer):
     parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
     def pack(self, container, members, ctx) -> Outcome:
-        key = system_key(ctx.game_root) or png_key([container])
+        key = verified_key(ctx.game_root, game_images(ctx.game_root))[0]
         if key is None:
-            return Outcome(OutcomeKind.NEEDS_KEY, error="no encryptionKey in System.json")
+            return Outcome(OutcomeKind.NEEDS_KEY, error="no key in System.json opens the images")
         container.write_bytes(HEADER + decrypt(HEADER + members["file"].read_bytes(), key))
         return Outcome(OutcomeKind.OK, 1)
 
     def verify(self, output, members, ctx) -> list[str]:
-        key = system_key(ctx.game_root) or png_key([output])
+        key = verified_key(ctx.game_root, game_images(ctx.game_root))[0]
         ok = key is not None and decrypt(output.read_bytes(), key) == members["file"].read_bytes()
         return [] if ok else ["file"]

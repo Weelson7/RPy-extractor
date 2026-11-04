@@ -77,8 +77,10 @@ def _segment(fh, compressed: bool, offset: int, size: int, packed: int) -> bytes
     fh.seek(offset)
     chunk = fh.read(packed)
     if not compressed:
+        if len(chunk) != packed:
+            raise ValueError("a stored segment runs past the end of the archive")
         return chunk
-    data = zlib.decompressobj().decompress(chunk, size)
+    data = zlib.decompressobj().decompress(chunk, max(size, 1))  # 0 would mean "no limit"
     if len(data) != size:
         raise ValueError("segment does not inflate to its declared size")
     return data
@@ -89,12 +91,15 @@ class Xp3Builtin(Unarchiver):
     parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
     def extract(self, archive: Path, dest: Path, ctx) -> Outcome:
-        written, locked = 0, 0
+        written, locked, unsafe = 0, 0, 0
         try:
             with open(archive, "rb") as fh:
                 for name, encrypted, segments in list(entries(_index(fh))):
                     rel = safe_member(name)
-                    if rel is None or ctx.cancel.cancelled:
+                    if ctx.cancel.cancelled:
+                        break
+                    if rel is None:
+                        unsafe += 1
                         continue
                     if encrypted:
                         locked += 1
@@ -112,6 +117,7 @@ class Xp3Builtin(Unarchiver):
                 OutcomeKind.NEEDS_KEY, error=f"{locked} entries use a game-specific cipher"
             )
         notes = (f"{locked} encrypted entries skipped (game-specific cipher)",) if locked else ()
+        notes += (f"{unsafe} entr(ies) with an unsafe name skipped",) if unsafe else ()
         return Outcome(OutcomeKind.OK, written, notes=notes)
 
 

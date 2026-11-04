@@ -54,18 +54,29 @@ class AsarBuiltin(Unarchiver):
                 tree = json.loads(fh.read(found[0]).decode("utf-8"))
             except (UnicodeDecodeError, ValueError) as exc:
                 return Outcome(OutcomeKind.FAILED, error=f"bad asar header: {exc}")
-            written = 0
-            total = archive.stat().st_size
-            for name, offset, size in _walk(tree):
-                rel = safe_member(name)
-                if rel is None or ctx.cancel.cancelled or found[1] + offset + size > total:
-                    continue
-                fh.seek(found[1] + offset)
-                target = dest.joinpath(*rel.parts)
-                target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_bytes(fh.read(size))
-                written += 1
-        return Outcome(OutcomeKind.OK, written)
+            written, unsafe, cut = _write_all(fh, tree, found[1], dest, ctx)
+        notes = (f"{unsafe} entr(ies) with an unsafe name skipped",) if unsafe else ()
+        notes += (f"{cut} entr(ies) past the end of the archive (cut short)",) if cut else ()
+        return Outcome(OutcomeKind.OK, written, notes=notes)
+
+
+def _write_all(fh, tree: dict, base: int, dest: Path, ctx) -> tuple[int, int, int]:
+    """(written, unsafe names, entries past the end of a cut archive)."""
+    written, unsafe, cut = 0, 0, 0
+    total = fh.seek(0, 2)
+    for name, offset, size in _walk(tree):
+        rel = safe_member(name)
+        if ctx.cancel.cancelled:
+            break
+        if rel is None or base + offset + size > total:
+            unsafe, cut = unsafe + (rel is None), cut + (rel is not None)
+            continue
+        fh.seek(base + offset)
+        target = dest.joinpath(*rel.parts)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(fh.read(size))
+        written += 1
+    return written, unsafe, cut
 
 
 SLOT = SlotDefinition(

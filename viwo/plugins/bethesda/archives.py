@@ -17,9 +17,9 @@ def _inflate(data: bytes, size: int, lz4: bool = False) -> bytes | None:
             import lz4.frame  # optional: Skyrim SE (BSA 105) compresses with LZ4 frames
         except ImportError:
             return None
-        out = lz4.frame.LZ4FrameDecompressor().decompress(data, max_length=size)
+        out = lz4.frame.LZ4FrameDecompressor().decompress(data, max_length=max(size, 1))
     else:
-        out = zlib.decompressobj().decompress(data, size)
+        out = zlib.decompressobj().decompress(data, max(size, 1))  # 0 would mean "no limit"
     if len(out) != size:
         raise ValueError("entry does not inflate to its declared size")
     return out

@@ -38,10 +38,14 @@ def _count(cmd: int, data: bytes, at: int) -> tuple[int, int]:
     return (cmd >> 4, at) if cmd >> 4 else (data[at], at + 1)
 
 
-def _row(data: bytes, at: int, colors: list) -> list:
-    """One row's pixels after its left padding, until the 0x0F end-of-row command."""
+def _row(data: bytes, at: int, colors: list, width: int = 4096) -> list:
+    """One row's pixels after its left padding, until the 0x0F end-of-row command, or once
+    the row is full; a row that needs more commands than its width could justify is damage
+    (a crafted file could replay one long stream for every row of every frame)."""
     out: list = []
-    while True:
+    for _ in range(2 * width + 64):
+        if len(out) >= width:
+            return out
         cmd = data[at]
         at += 1
         low2, low4 = cmd & 0x03, cmd & 0x0F
@@ -59,6 +63,7 @@ def _row(data: bytes, at: int, colors: list) -> list:
             at += n if low4 == 0x02 else 0
         else:
             at = _special(cmd, low4, data, at, colors, out)
+    raise ValueError("an SLP row runs on past its width")
 
 
 def _special(cmd: int, low4: int, data: bytes, at: int, colors: list, out: list) -> int:
@@ -100,7 +105,7 @@ def frames(data: bytes, colors: list) -> list[tuple[int, int, list]]:
                 rows.append([])
                 continue
             row = [None] * left + _row(
-                data, struct.unpack_from("<I", data, cmds + 4 * y)[0], colors
+                data, struct.unpack_from("<I", data, cmds + 4 * y)[0], colors, max(width - left, 0)
             )
             rows.append(row[:width])
         out.append((width, height, rows))

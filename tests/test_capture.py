@@ -131,6 +131,20 @@ class CaptureRunTests(unittest.TestCase):
             auto = CaptureRequest(game, game / "Game.exe", ws, True, capture_after=0.2)
             self.assertEqual(capture(rt, auto)["alreadyStatic"], 2)  # unattended: trigger + stop
             self.assertTrue((root / "trigger.ran").is_file())
+            from viwo.core import capture as module
+
+            real = module._run
+
+            def game_writes(*args):  # the game saves into its own folder while it runs
+                (game / "save.dat").write_bytes(b"s")
+                return real(*args)
+
+            with mock.patch.object(module, "_run", game_writes):
+                said = capture(rt, CaptureRequest(game, game / "Game.exe", ws, confirmed=True))
+            changed = [w for w in said["warnings"] if w.startswith("GAME FOLDER CHANGED")]
+            self.assertEqual(len(changed), 1, said["warnings"])
+            self.assertIn("save.dat", changed[0])
+            (game / "save.dat").unlink()
             foreign = root / "foreign"
             foreign.mkdir()
             (foreign / "mine.txt").write_text("x")

@@ -9,6 +9,7 @@ from __future__ import annotations
 import shutil
 from pathlib import Path
 
+from viwo.contracts import workspace as ws
 from viwo.contracts.analysis import AnalysisTarget, Analyzer
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 
@@ -144,7 +145,7 @@ class Unluac(Analyzer):
         ctx.log(f"unluac: decompiling {len(target.paths)} Lua chunk(s)", stage="analyze")
         done, result = 0, None
         for path in target.paths:
-            out = ctx.staging / f"{path.stem}.lua"
+            out = ws.next_free(ctx.staging / f"{path.stem}.lua")  # main.lua + main.luac: both kept
             result = _run(ctx, [*tool.argv_prefix, "--output", str(out), str(path)], env)
             if result.timed_out:
                 return failed(result, "unluac timed out")

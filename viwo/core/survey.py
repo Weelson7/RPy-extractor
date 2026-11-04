@@ -9,11 +9,11 @@ Every step reports its counts as events (scan, identify, probe, carve, decode).
 
 from __future__ import annotations
 
-import os
 import zlib
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from viwo.contracts import workspace as ws
 from viwo.contracts.errors import ViwoError
 from viwo.contracts.types import CancelToken
 
@@ -88,7 +88,7 @@ def _claimed(rt, report: GameSurvey, engine: str) -> frozenset[str]:
 
 def _files(game: Path, cancel, sink) -> list[Path]:
     step, out = Step(sink, "scan", "Scanning files:"), []
-    for dirpath, dirnames, filenames in os.walk(game):
+    for dirpath, dirnames, filenames in ws.walk(game):
         dirnames[:] = sorted(d for d in dirnames if not d.startswith("."))
         for name in sorted(filenames):
             out.append(Path(dirpath) / name)
