@@ -16,6 +16,11 @@ from viwo.contracts.slots import SlotDefinition, Unarchiver
 from viwo.contracts.types import DetectionResult, Outcome, OutcomeKind
 from viwo.contracts.workspace import count_files, safe_member
 
+from .db import GAMES, DbBuiltin
+from .db import SLOT as DB_SLOT
+from .loc import SLOT as LOC_SLOT
+from .loc import LocBuiltin
+
 MAGICS = (b"PFH4", b"PFH5", b"PFH6")
 HEADER = 28
 TIMESTAMPS, ENCRYPTED_INDEX = 0x40, 0x80  # pack type bits (RPFM's names)
@@ -23,7 +28,7 @@ LIMIT = 1 << 31
 MANIFEST = PluginManifest(
     "warscape", "Warscape (Total War)", "0.1.0", engine_type="warscape", priority=10
 )
-MARKERS = ("rome2.exe", "attila.exe", "empire.exe", "shogun2.exe", "warhammer.exe", "napoleon.exe")
+MARKERS = tuple(f"{exe}.exe" for exe in GAMES)  # every Warscape game ViWo has a schema for
 
 
 def entries(fh):
@@ -99,7 +104,12 @@ class WarscapePlugin(EnginePlugin):
                 suffixes=(".pack",),
                 magic=MAGICS,
             ),
+            LOC_SLOT,
+            DB_SLOT,
         )
 
+    def export_slot(self) -> str:
+        return "export.warscape"
+
     def backends(self):
-        return (PackBuiltin(),)
+        return (PackBuiltin(), LocBuiltin(), DbBuiltin())

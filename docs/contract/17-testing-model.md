@@ -1,7 +1,7 @@
 # 17. Testing model
 
 The suite uses the stdlib `unittest` (`python -m unittest discover -s tests -t .`); levels are
-selected by environment variables, not markers. At 1.14.0: 519 tests, 13 skipped without the real
+selected by environment variables, not markers. At 1.15.0: 526 tests, 13 skipped without the real
 tools (about 10 minutes on Windows including the browser smoke).
 
 ## 17.1 Principles

@@ -4,6 +4,16 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.15.0 (2026-11-04)
+- Completeness contract (doc 16.0c) on Total War, valid for every Warscape game: `.loc`
+  localisation tables decode to JSON in ViWo's own code (`decode.loc`), and DB tables to JSON
+  (`export.warscape`, one file per table under `db/`) read by ViWo with the game's RPFM schema
+  (pinned per game, 14 games, MIT, installed when asked: `viwo install rpfm-schema-<game>`). A
+  table whose version the schema lacks is tried against its other definitions (reading to the
+  last byte is the check); tables the schema lacks or misreads are counted and named. Detection
+  now knows every one of those games' executables. Verified on Rome II: 191 `.loc` tables
+  (122,423 entries) and 611 DB tables with JSON out of the real packs.
+
 ## 1.14.0 (2026-11-04)
 - Completeness contract (doc 16.0c) on Unreal, valid for every UE4/UE5 game: the new
   `export.unreal` slot runs UnrealAssetScout (pinned `uas` 0.5.0, MIT, CUE4Parse inside,

@@ -195,7 +195,7 @@ class _AnalysisFixture(unittest.TestCase):
         self.ws = self.root / "ws"
 
     def tearDown(self) -> None:
-        cleanup(self._tmp)  # the killed GUI tools let go of their folders
+        cleanup(self._tmp, 30)  # the killed GUI tools (and a scanning antivirus) let go late
 
 
 class AnalyzeTests(_AnalysisFixture):

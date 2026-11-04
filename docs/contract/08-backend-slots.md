@@ -130,7 +130,9 @@ Rules:
 
 **Export:** `export.unity` (`unitypy`, spare `assetstudiomod-cli`, D7), `export.godot`
 (`gdre-recover`, opt-in option `recover`), `export.rpgmaker` (`rpgmv-builtin`),
-`export.overwatch` (`datatool`, declares `network = "download"`), `export.unreal` (`uas-export`:
+`export.overwatch` (`datatool`, declares `network = "download"`), `export.warscape` (`db-builtin`: every `db/` member of every pack to JSON with the
+game's RPFM schema `rpfm-schema-<game>`; a table the schema lacks or misreads is counted and
+named), `decode.loc` (`loc-builtin`, Total War localisation to JSON), `export.unreal` (`uas-export`:
 UnrealAssetScout as its own process, every mode over every Paks folder with the engine version
 read from the game's binaries, the AES key per D18 and the `.usmap` the RUNTIME agent wrote into
 the workspace; packages that need mappings are counted and the way to get them named).
