@@ -268,7 +268,9 @@ class UnitySourceCoverageTests(unittest.TestCase):
                 return types.SimpleNamespace(objects=[])
 
             files = [assets / "chars", assets / "notes.txt"]
-            exporters._export_group(None, types.SimpleNamespace(load=load), files, {})
+            exporters._export_group(
+                None, types.SimpleNamespace(load=load), files, {}, {"dump": None}
+            )
             self.assertEqual(calls, [2, 1, 1])
 
 

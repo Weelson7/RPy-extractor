@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "viwo"
-version = "1.12.0"
+version = "1.13.0"
 description = "Vidya Wormhole: cross-platform game asset extraction and curation framework"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -13,7 +13,7 @@ authors = [{ name = "Weelson" }]
 dependencies = []
 
 [project.optional-dependencies]
-unity = ["UnityPy==1.25.4"]
+unity = ["UnityPy==1.25.4", "TypeTreeGeneratorAPI==0.0.10"]
 sevenzip = ["py7zr==1.1.4"]
 renpy = ["unrpa==2.3.0"]
 lz4 = ["lz4==4.4.5"]

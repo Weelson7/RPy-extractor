@@ -1,7 +1,7 @@
 {
  "_comment": "Pinned third-party tools installed automatically into third_party/<id>/ (doc 10). Every download is HTTPS and checked against the pinned sha256 before use; change a pin only together with its checksum. Keys: kind zip|tar|gz|raw|msi|sfx (sfx = 7-Zip opens a self-extractor), find = file located under the folder, argv = how to run it ({path}, {dotnet}), needs = entries installed first, from = another entry's folder (no download), hidden = not a dependency of its own, mkdir = folders created after install.",
  "python": {
-  "unitypy": "UnityPy==1.25.4",
+  "unitypy": "UnityPy==1.25.4 TypeTreeGeneratorAPI==0.0.10",
   "py7zr": "py7zr==1.1.4",
   "unrpa": "unrpa==2.3.0",
   "lz4": "lz4==4.4.5",

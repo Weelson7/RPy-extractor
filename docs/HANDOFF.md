@@ -23,7 +23,7 @@ py -3.13 -m venv .venv; .venv\Scripts\Activate.ps1
 pip install -e ".[unity,sevenzip,renpy,lz4,dev]"
 ruff format viwo tests tools packaging; ruff check viwo tests tools packaging
 python tools/loc_count.py --report
-python -m unittest discover -s tests -t .      # 503 tests, ~10 min on Windows
+python -m unittest discover -s tests -t .      # 508 tests, ~10 min on Windows
 python tools/version.py commit -m "..." [--feature|--major] [--push]
 ```
 

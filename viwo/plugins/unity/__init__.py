@@ -31,6 +31,13 @@ MANIFEST = PluginManifest(
             False,
         ),
         PluginOption("meshes", "Export meshes as Wavefront .obj files", "bool", True),
+        PluginOption(
+            "objects",
+            "Everything else too: videos, fonts, shaders, and scenes, prefabs, materials and "
+            "animations as JSON",
+            "bool",
+            True,
+        ),
     ),
 )
 SLOTS = (

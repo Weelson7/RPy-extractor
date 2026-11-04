@@ -39,7 +39,7 @@ libraries (Oodle, Bink), as for Kraken today; a pinned community tool run as a s
 | Engine | Comes out and is decoded today | Open (decode, arm) |
 |--------|-------------------------------|--------------------|
 | REDengine 4 (Cyberpunk 2077) | RDAR members with names, each the game's own file; Wwise audio to WAV (vgmstream); Bink 2 video to MP4 through the game's `bink2w64.dll`; CR2W through WolvenKit (`decode.cr2w`): textures to PNG, meshes, morph targets and animations to glTF, every resource to JSON; the game scripts (`r6/cache/final.redscripts`) decompiled to redscript source (`decode.redscripts`); edits packed into an override archive (`pack.archive`); the installed mods' conflicts in every run (members they replace, members a later mod loses) | mesh materials (need an uncooked depot); TweakDB to JSON; Ghidra names from `cyberpunk2077_addresses.json`; runtime agent (Cyber Engine Tweaks) |
-| Unity | textures, audio, text, meshes (OBJ), IL2CPP and managed code | animations, materials, prefabs and scenes (type tree to JSON), video clips, shaders, meshes to glTF |
+| Unity | textures, audio, text, meshes (OBJ), IL2CPP and managed code; video clips in their own format, fonts, shaders; every other object (scenes, prefabs, materials, animations, components, MonoBehaviour data) to JSON, one file per serialized file; MonoBehaviour layouts from the game's managed assemblies (Mono) | MonoBehaviour fields on IL2CPP builds (layouts from Cpp2IL's stand-ins); meshes and animations to glTF |
 | Unreal | pak and IoStore members (`.uasset`) | asset export: textures, meshes, sounds, data tables, localization |
 | Godot | PCK members, resources (GDRE), GDScript | - (verify `.ctex`/`.stex` to PNG without GDRE) |
 | Ren'Py | RPA members, `.rpyc` to `.rpy` | - |

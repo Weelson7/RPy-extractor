@@ -4,6 +4,17 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.13.0 (2026-11-04)
+- Completeness contract (doc 16.0c) on Unity, valid for every Unity game: besides textures,
+  audio, text and meshes, the export now writes video clips in their own format, fonts
+  (.ttf/.otf/.ttc) and shaders, and every other object (scenes, prefabs, materials, animations,
+  game objects and their components, MonoBehaviour data) as JSON from its type tree, one file per
+  serialized file (`data/<file>.objects.json`, streamed). MonoBehaviour layouts come from the
+  game's managed assemblies (pinned `TypeTreeGeneratorAPI` 0.0.10, MIT, with UnityPy); one that
+  has no layout is listed with the reason and counted. Unity option `objects` (default on).
+  Verified on ULTRAKILL Prelude: 307,864 objects to JSON in 28 files, 89 shaders, 2 fonts and a
+  video in 90 s. Open: MonoBehaviour fields on IL2CPP builds.
+
 ## 1.12.0 (2026-11-04)
 - UI numbering is computed, never written (owner): `S0`… STATIC, `D0`… DYNAMIC, `P0`…
   PATCHING (each arm's home is 0), `00`, `01`, `02` for SYSTEM, JOBS, SETTINGS, from the arm and

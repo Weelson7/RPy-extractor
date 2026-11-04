@@ -10,4 +10,5 @@ pillow==13.0.0 --hash=sha256:f7cbb7a64e7ec664775195e4f81923bc8a93d9451b963f844e5
 pyfmodex==0.7.2 --hash=sha256:1c42112b788e80ee7b4b57ae25bbbc0a98eb1e32a8e7c9e1246698cdf72efa9d
 texture2ddecoder==1.0.6 --hash=sha256:1bad8209d9dfbfc7daf13ea2e545236ea2bbc1e423b2992b6e7563909975a47b
 tpk-ar==0.2.4 --hash=sha256:d64897e5a0bcddd58e8a7d4dd922f372da984a0f98bc3b460ec869aab906ee78
+typetreegeneratorapi==0.0.10 --hash=sha256:e96003e973c8d52d221b4ae50f377bcaf7538f2098e437d5383a1b7f13fa72ba
 unitypy==1.25.4 --hash=sha256:d0349da223c9531e295204b1b987f60dad1958cbc8ea20fc5bb75b28fabcb792

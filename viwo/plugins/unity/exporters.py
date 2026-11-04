@@ -13,6 +13,8 @@ from viwo.contracts.slots import Exporter
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 from viwo.contracts.workspace import count_files
 
+from . import objects
+
 UNITYPY = DependencySpec(
     "unitypy", "UnityPy", kind="python", import_name="UnityPy", hint="pip install UnityPy"
 )
@@ -153,24 +155,50 @@ def _export_object(ctx, obj, fallback: str, record: dict) -> int:
 
 
 EXPORTED = frozenset(("Texture2D", "Sprite", "AudioClip", "TextAsset", "Mesh"))
+MEDIA = frozenset(("VideoClip", "Font", "Shader"))
+
+
+def _one(ctx, obj, label: str, record: dict) -> int:
+    """Exported in its own format, else (option `objects`) one JSON record in the dump."""
+    kind = obj.type.name
+    if kind in EXPORTED:
+        record["where"] = container_of(obj, record["files"], ctx.game_root)
+        return _export_object(ctx, obj, f"{label}_{obj.path_id}", record)
+    if record["dump"] is None:
+        return 0
+    if kind in MEDIA:
+        data = obj.parse_as_object()
+        return int(
+            objects.media(ctx, kind, data, obj, _name(data, f"{label}_{obj.path_id}")) is not None
+        )
+    record["dump"].add(obj, kind)
+    return 0
 
 
 def _export_env(ctx, env, label: str, record: dict) -> tuple[int, list[str]]:
     exported, notes = 0, []
+    shared = record["shared"]  # one per export: the layouts are looked for once
+    if record["dump"] is not None and not shared.get("layouts"):
+        shared["layouts"] = objects.layouts(env, ctx.game_root) or "set"
     for obj in env.objects:
-        if obj.type.name not in EXPORTED:  # parsing the rest is wasted (and fails on IL2CPP)
-            continue
         try:
-            record["where"] = container_of(obj, record["files"], ctx.game_root)
-            exported += _export_object(ctx, obj, f"{label}_{obj.path_id}", record)
+            exported += _one(ctx, obj, label, record)
         except Exception as exc:  # one broken object must not stop the export
-            notes.append(f"{label}#{obj.path_id}: {exc}"[:200])
+            notes.append(f"{label}#{obj.path_id} ({obj.type.name}): {exc}"[:200])
     return exported, notes
 
 
-def _export_group(ctx, unitypy, files: list[Path], mapping: dict) -> tuple[int, list[str]]:
+def _export_group(
+    ctx, unitypy, files: list[Path], mapping: dict, extra: dict
+) -> tuple[int, list[str]]:
     """Load a folder's containers together; fall back to one file at a time."""
-    record = {"files": files, "map": mapping, "meshes": _flag(ctx, "meshes", True)}
+    record = {
+        "files": files,
+        "map": mapping,
+        "meshes": _flag(ctx, "meshes", True),
+        "dump": extra["dump"],
+        "shared": extra,
+    }
     try:
         return _export_env(
             ctx, unitypy.load(*[str(f) for f in files]), files[0].parent.name, record
@@ -201,13 +229,22 @@ class UnityPyExporter(Exporter):
         if _flag(ctx, "include_cache", False):
             roots += cache_roots(ctx.game_root)
         exported, notes, mapping = 0, [], {}
+        extra = {"dump": objects.Dump(ctx.staging) if _flag(ctx, "objects", True) else None}
         for root in roots:
             for files in groups(unity_containers(root)).values():
                 if ctx.cancel.cancelled:
                     break
-                count, problems = _export_group(ctx, UnityPy, files, mapping)
+                count, problems = _export_group(ctx, UnityPy, files, mapping, extra)
                 exported, notes = exported + count, notes + problems
                 gc.collect()  # UnityPy keeps file handles until collected; Windows locks them
+        summary, said = extra["dump"].close() if extra["dump"] is not None else ("", [])
+        if summary:
+            ctx.log(summary, stage="export")
+        if extra.get("layouts") not in (None, "set") and extra["dump"].no_layout.get(
+            "MonoBehaviour"
+        ):
+            said.append(extra["layouts"])  # why those MonoBehaviours have no fields
+        notes = said + notes
         ctx.log(f"UnityPy exported {exported} asset(s), {len(notes)} problem(s)", stage="export")
         (ctx.staging / ws.EXPORT_MAP).write_text(json.dumps(mapping), encoding="utf-8")
         return Outcome(OutcomeKind.OK, exported, notes=tuple(notes[:50]))

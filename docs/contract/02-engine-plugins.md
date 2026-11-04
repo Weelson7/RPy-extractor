@@ -121,7 +121,7 @@ Detection markers live in each plugin's `detect()`; slot defaults in doc 8.4.
 |--------|------------------|---------|
 | generic | loose files and plain archives; proposes executables (two folders down) and Lua bytecode for analysis | - |
 | renpy | `unarchive.rpa` (safe reader, unrpa spare), `decode.rpyc`, `analysis.python`, `pack.rpa`; source root `game/` | `decompile` (bool) |
-| unity | `export.unity` (UnityPy, AssetStudioModCLI spare), `unarchive.unitypackage`, `pack.unity`, `runtime.unity` (BepInEx); IL2CPP and managed targets | `include_cache`, `meshes` (bool) |
+| unity | `export.unity` (UnityPy, AssetStudioModCLI spare), `unarchive.unitypackage`, `pack.unity`, `runtime.unity` (BepInEx); IL2CPP and managed targets | `include_cache`, `meshes`, `objects` (bool; `objects`: videos, fonts, shaders and every other object as JSON) |
 | godot | `unarchive.pck` (embedded PCK carving), `export.godot`, `pack.pck`, `analysis.gdscript` | `encryption_key` (secret), `recover` (bool) |
 | unreal | `unarchive.upak` (repak, QuickBMS spare), `unarchive.utoc` (retoc), `pack.upak` (`_P.pak`), `runtime.unreal` (UE4SS); AES per D18 | `aes_key` (secret), `find_key` (bool) |
 | doom | `unarchive.wad` (PNG, WAV, MIDI, maps) | `raw_lumps` (bool) |
