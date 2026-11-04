@@ -4,6 +4,15 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.6.23 (2026-11-04)
+- Property tests: mod load order over random dependency graphs puts every mod after what it
+  requires or loads after, names a cycle with its path and a missing requirement, and every
+  conflict it reports is real and undeclared; the plugin conformance check names a capability
+  list without detect or unpack and a dependency declared twice; a raising detect scores zero
+  with its reason; an extraction that needs a decision says so; GitHub's answers, missing
+  releases and errors; a workspace that is a file, a taken sibling name and the process's own
+  lock.
+
 ## 1.6.22 (2026-11-04)
 - Property tests: duplicate cleaning never trashes the last copy of any content (random
   workspaces full of duplicates keep every content after plan and apply); damaged SLP sprites
