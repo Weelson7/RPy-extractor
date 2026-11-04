@@ -147,6 +147,23 @@ def failure(error) -> dict:
     }
 
 
+def path_param(d: Mapping, key: str) -> Path | None:
+    """An absolute path from a request, else None: "" or a relative path would resolve against
+    the server's own folder, which a request never names."""
+    raw = str(d.get(key) or "").strip()
+    path = Path(raw).expanduser() if raw else None
+    return path if path is not None and path.is_absolute() else None
+
+
+def existing(d: Mapping, key: str, what: str, folder: bool = True) -> Path | dict:
+    """path_param that must name an existing folder (or file); the failure dict otherwise."""
+    path = path_param(d, key)
+    if path is not None and (path.is_dir() if folder else path.is_file()):
+        return path
+    given = str(d.get(key) or "").strip() or "(none given)"
+    return failure(ViwoError("not_found", f"{what} not found: {given}", hint="an absolute path"))
+
+
 def safe(fn: Callable[[], dict]) -> dict:
     """fn(), or its ViwoError as the failure shape."""
     try:

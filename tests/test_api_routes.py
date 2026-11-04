@@ -26,6 +26,44 @@ class RouteTests(unittest.TestCase):
         app_module.reset_app()
         self._tmp.cleanup()
 
+    def test_no_request_path_ever_names_the_servers_own_folder(self) -> None:
+        """Every route that takes a path, given "" or a relative one, is refused (named), and
+        the server's working folder is neither read as a game nor written to."""
+        import os
+
+        from tests.helpers import tree_hashes
+        from viwo.api.handlers import POST
+
+        here = Path(self._tmp.name) / "server-cwd"
+        (here / "game").mkdir(parents=True)
+        (here / "Game.exe").write_bytes(b"MZ")
+        (here / "p.patch.json").write_text("{}")
+        before = tree_hashes(here)
+        absolute = str(make_game(Path(self._tmp.name)))
+        bodies = {
+            "/api/analysis/run": {"gamePath": "", "targetKey": "g-exe"},
+            "/api/analysis/open": {"gamePath": "game", "targetKey": "g-exe"},
+            "/api/capture/warnings": {"gamePath": ""},
+            "/api/capture": {"gamePath": absolute, "exePath": "Game.exe"},
+            "/api/survey": {"folder": ""},
+            "/api/patch": {"gamePath": absolute, "patchSet": "p.patch.json"},
+            "/api/mod": {"action": "apply", "gamePath": absolute, "mod": str(here / "m.zip")},
+            "/api/workspace": {"path": ""},
+        }
+        old = os.getcwd()
+        os.chdir(here)
+        try:
+            for route, body in bodies.items():
+                answer = POST[route](self.app, body)
+                self.assertFalse(answer["success"], route)
+                self.assertIn(answer["code"], {"not_found", "invalid_request"}, route)
+            for given in ("", "game"):
+                answer, status = handle_post("/api/detect", {"gamePath": given})
+                self.assertFalse(answer["ok"], given)
+        finally:
+            os.chdir(old)
+        self.assertEqual(tree_hashes(here), before)
+
     def test_distro_plugins_detect(self) -> None:
         body, status = handle_get("/api/distro", {})
         self.assertEqual(

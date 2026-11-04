@@ -5,8 +5,6 @@ Every response is the doc 12.3b envelope with an HTTP status from the error code
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from viwo.contracts.errors import Envelope, ViwoError
 from viwo.contracts.pipeline import ExtractionMode, ExtractionRequest, MixedPolicy
 from viwo.core.pipeline.probe import FolderProbe
@@ -14,7 +12,7 @@ from viwo.core.pipeline.runner import detect_all
 from viwo.core.pipeline.select import select_plugins
 from viwo.core.wiring.conformance import capabilities_of
 
-from .app import get_app
+from .app import get_app, path_param
 
 STATUS = {
     "invalid_request": 400,
@@ -64,8 +62,8 @@ def _plugins() -> list[dict]:
 
 def _detect(data: dict) -> dict:
     """Dry run (doc 4.1): every plugin's detection plus the selection for each mode."""
-    game = Path(str(data.get("gamePath", "")))
-    if not game.is_dir():
+    game = path_param(data, "gamePath")
+    if game is None or not game.is_dir():
         raise ViwoError("invalid_request", f"game folder not found: {game}")
     rt = get_app().rt
     found = detect_all(rt, FolderProbe(game))

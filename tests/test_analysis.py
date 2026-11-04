@@ -22,6 +22,7 @@ from viwo.core.analysis import (
     ghidra,
     handoffs_for,
     open_in,
+    slot_for,
     targets_for,
 )
 from viwo.os import select_os
@@ -167,7 +168,9 @@ class TargetTests(unittest.TestCase):
             self.assertEqual(keys["shipping-exe"].paths[0].name, "Foo-Win64-Shipping.exe")
 
 
-class AnalyzeTests(unittest.TestCase):
+class _AnalysisFixture(unittest.TestCase):
+    """A Unity game and fake analyzers (Ghidra, ILSpy, Cpp2IL, unluac, DIE)."""
+
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()
         self.root = Path(self._tmp.name)
@@ -194,6 +197,8 @@ class AnalyzeTests(unittest.TestCase):
     def tearDown(self) -> None:
         cleanup(self._tmp)  # the killed GUI tools let go of their folders
 
+
+class AnalyzeTests(_AnalysisFixture):
     def test_headless_run_writes_artifacts_and_record(self) -> None:
         before = tree_hashes(self.unity)
         events = []
@@ -345,6 +350,46 @@ for f in [Path(v) for k, v in pairs if k == "--decompile"]:
         with self.assertRaises(ViwoError) as err:
             open_in(self.rt, AnalysisRequest(self.unity, self.ws, "g-exe"))
         self.assertIn("run the analysis first", err.exception.message)
+
+
+class AnalysisApiTests(_AnalysisFixture):
+    def test_the_api_answers_what_the_core_answers(self) -> None:
+        """12 ANALYSIS over HTTP handlers: the targets are the core's, each with its bound
+        analyzer; a run is a job that writes what analyze() writes; every bad request is named."""
+        from viwo.api.app import App
+        from viwo.api.handlers_analysis import ANALYSIS_GET, ANALYSIS_POST
+
+        app = App(self.rt)
+        app.set_workspace(self.ws)
+        listed = ANALYSIS_GET["/api/analysis/targets"](app, {"gamePath": str(self.unity)})
+        self.assertTrue(listed["success"] and listed["enabled"])
+        core = {t.key: t.kind for t in targets_for(self.rt, self.unity)}
+        self.assertEqual({t["key"]: t["kind"] for t in listed["targets"]}, core)
+        for t in listed["targets"]:
+            binding = self.rt.bindings.get(slot_for(t["kind"]))
+            self.assertEqual(t["analyzer"], binding.main if binding and binding.bound else "")
+        run = ANALYSIS_POST["/api/analysis/run"]
+        for key in ("g-exe", "assembly-csharp", "lua-bytecode"):
+            done = run(app, {"gamePath": str(self.unity), "targetKey": key})
+            self.assertTrue(done["success"] and done["jobId"], done)
+            self.assertTrue(
+                (self.ws / ".analysis" / done["backend"] / key / "record.json").is_file()
+            )
+        bad = (
+            ({"gamePath": str(self.root / "nowhere"), "targetKey": "g-exe"}, "not_found"),
+            ({"gamePath": str(self.unity)}, "invalid_request"),
+        )
+        for body, code in bad:
+            for route in ("/api/analysis/run", "/api/analysis/open"):
+                self.assertEqual(ANALYSIS_POST[route](app, body)["code"], code, (route, body))
+        self.assertEqual(ANALYSIS_GET["/api/analysis/targets"](app, {})["code"], "not_found")
+        opened = ANALYSIS_POST["/api/analysis/open"](
+            app, {"gamePath": str(self.unity), "targetKey": "g-exe"}
+        )
+        from viwo.os._shared import CHILDREN
+
+        next(c for c in CHILDREN if c.pid == opened["pid"]).kill()
+        self.assertEqual(opened["handoff"], "ghidra-gui")
 
 
 if __name__ == "__main__":

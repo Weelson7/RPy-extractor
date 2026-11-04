@@ -18,14 +18,11 @@ from viwo.core.analysis import (
 )
 from viwo.core.workspace import claim
 
-from .app import App, failure
+from .app import App, existing, failure
 
 
 def _game(d: dict) -> Path | dict:
-    game = Path(str(d.get("gamePath", "")).strip())
-    if not str(game) or not game.is_dir():
-        return failure(ViwoError("not_found", f"Game folder not found: {game}"))
-    return game
+    return existing(d, "gamePath", "Game folder")
 
 
 def analysis_targets(app: App, q: dict) -> dict:

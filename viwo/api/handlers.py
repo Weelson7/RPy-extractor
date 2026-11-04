@@ -11,7 +11,7 @@ from viwo.core.curation import sorting, trash
 from viwo.core.merger import media
 from viwo.core.merger.build import Settings, build
 
-from .app import App, failure, picked, safe
+from .app import App, failure, path_param, picked, safe
 from .plugin_assets import ui_modules
 
 DEFAULTS = Settings()  # the merger's own defaults, once
@@ -45,7 +45,9 @@ def workspace(app: App, q: dict) -> dict:
 
 
 def open_workspace(app: App, d: dict) -> dict:
-    path = Path(str(d.get("path", ""))).expanduser()
+    path = path_param(d, "path")
+    if path is None:
+        return failure(ViwoError("not_found", "give the workspace as an absolute folder"))
     if path.resolve() == app.server.workspace.resolve():
         path.mkdir(parents=True, exist_ok=True)
     if not path.is_dir():

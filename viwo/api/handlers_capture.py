@@ -10,7 +10,7 @@ from viwo.core.capture import CaptureRequest, capture, warnings
 from viwo.core.capture.policy import CONFIRMATION, DEFAULT_AUTO
 from viwo.core.workspace import claim
 
-from .app import App, failure, picked
+from .app import App, existing, failure, path_param, picked
 
 
 def browse_file(app: App, q: dict) -> dict:
@@ -25,9 +25,9 @@ def browse_file(app: App, q: dict) -> dict:
 
 def capture_warnings(app: App, d: dict) -> dict:
     """What the user should know before capturing this game: information, never a block."""
-    game = Path(str(d.get("gamePath", "")).strip())
-    if not str(game) or not game.is_dir():
-        return failure(ViwoError("not_found", f"Game folder not found: {game}"))
+    game = existing(d, "gamePath", "Game folder")
+    if isinstance(game, dict):
+        return game
     binding = app.rt.bindings.get("capture.gpu")
     return {
         "success": True,
@@ -40,12 +40,10 @@ def capture_warnings(app: App, d: dict) -> dict:
 
 def run_capture(app: App, d: dict) -> dict:
     """Capture into the active workspace as a job (kind "capture"); error codes pass through."""
-    game = Path(str(d.get("gamePath", "")).strip())
-    exe = Path(str(d.get("exePath", "")).strip())
-    if not str(game) or not game.is_dir():
-        return failure(ViwoError("not_found", f"Game folder not found: {game}"))
-    if not str(exe) or not exe.is_file():
-        return failure(ViwoError("not_found", f"Executable not found: {exe}"))
+    game, exe = existing(d, "gamePath", "Game folder"), existing(d, "exePath", "Executable", False)
+    for given in (game, exe):
+        if isinstance(given, dict):
+            return given
     workspace = app.workspace
     if not workspace.exists() or not any(workspace.iterdir()):
         claim(workspace)  # the lock file lands inside it before capture() looks at it
@@ -76,8 +74,8 @@ def runtime_job(app: App, d: dict, kind: str) -> dict:
         name,
         tuple(str(f) for f in (d.get("functions") or ["CreateFileW"])),
         float(d.get("seconds") or 10),
-        Path(str(d.get("gamePath", ""))),
-        Path(str(d.get("exePath", ""))),
+        path_param(d, "gamePath") or Path(""),
+        path_param(d, "exePath") or Path(""),
     )
     return app.job(kind, lambda jid, s, c: {"success": True, **run(app.rt, kind, req, s, c)})
 

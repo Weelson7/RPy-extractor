@@ -25,12 +25,12 @@ goes to the log); invalid JSON is 400.
 | workspace | `/api/status`, `/api/workspace`, `/api/assets-window?offset&limit`, `/api/assets-window-preview?path`, `/api/browse-folder?initialPath`, `/api/browse-file?initialPath` | `/api/workspace`, `/api/trash`, `/api/restore`, `/api/delete`, `/api/clear-trash`, `/api/keep-selected`, `/api/sort-keep`, `/api/sort-trash`, `/api/sort-undo`, `/api/sort-rename`, `/api/save-remaining-assets`, `/api/open-folder` |
 | merger | `/api/media-merger/state` | `/api/media-merger/list`, `/api/media-merger/build`, `/api/media-merger/browse-overlay` |
 | survey, cleanup, repack | `/api/surveys`, `/api/survey-report?id`, `/api/sanitizer/recipes` | `/api/survey`, `/api/sanitizer/plan`, `/api/sanitizer/apply`, `/api/sanitizer/undo`, `/api/repack` |
+| patching | | `/api/patch` (T1 patch sets), `/api/mod` (T2 mod packages) |
 | analysis | `/api/analysis/targets?gamePath` | `/api/analysis/run`, `/api/analysis/open`, `/api/analysis/diff` |
-| dynamic | | `/api/capture/warnings`, `/api/capture`, `/api/runtime/dump`, `/api/runtime/trace`, `/api/runtime/agent`, `/api/runtime/record` |
+| dynamic | | `/api/capture/warnings`, `/api/capture`, `/api/runtime/dump`, `/api/runtime/trace`, `/api/runtime/profile`, `/api/runtime/agent`, `/api/runtime/record` |
 | system | `/api/dependencies`, `/api/settings`, `/api/updates`, `/api/ui-modules`, `/api/logs` | `/api/preflight`, `/api/preflight/install`, `/api/settings`, `/api/diag`, `/api/indexes/update`, `/api/logs/clear` |
 
-Patch sets and mods are job kinds of `POST /api/jobs` (`patch`, `mod`); they have no route of
-their own (CONFORMANCE: the 14 PATCHES + MODS view calls `/api/patch` and `/api/mod`).
+Patch sets and mods are also job kinds of `POST /api/jobs` (`patch`, `mod`).
 
 `POST /api/detect {gamePath}` answers every plugin's detection (`detections`), the auto pick
 (`auto`) and the selection per mode (`modes.auto`, `modes.single`, `modes.mixed.{detected, all,
@@ -53,6 +53,10 @@ description, capabilities, options, slots, dependencies, error, loaded.
 4. **Binding:** `[server] host` defaults to `127.0.0.1`; `viwo serve --host` overrides it.
 5. **Path containment:** static files, `/preview/` (relative to the active workspace, byte ranges
    supported) and `/plugins/<id>/ui/<file>` resolve inside their root or answer 404.
+6. **Absolute request paths:** a game, executable, folder, patch set, mod, copy or workspace path
+   in a request is absolute (`api/app.py` `path_param`, `existing`); "" or a relative path, which
+   would name the server's own folder, is refused as `not_found` / `invalid_request`
+   (`tests/test_api_routes.py`).
 
 ## 4.2 `/api/dependencies` item
 

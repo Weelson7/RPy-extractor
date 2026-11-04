@@ -14,14 +14,14 @@ from viwo.core.sanitizer_rules import collect_rules
 from viwo.core.steps import tell
 from viwo.core.survey import survey
 
-from .app import App, failure, safe
+from .app import App, existing, failure, path_param, safe
 
 
 def survey_library(app: App, d: dict) -> dict:
     """Read-only coverage survey of a game folder or library, as a job (events per game)."""
-    folder = Path(str(d.get("folder", "")).strip())
-    if not str(folder) or not folder.is_dir():
-        return {"success": False, "error": f"Folder not found: {folder}", "code": "not_found"}
+    folder = existing(d, "folder", "Folder")
+    if isinstance(folder, dict):
+        return folder
 
     reports, deep = _reports_dir(app), bool(d.get("deep"))
 
@@ -97,19 +97,25 @@ def apply_patch_set(app: App, d: dict) -> dict:
     into a patched copy (job kind patch)."""
     from viwo.core import patchsets
 
-    game, set_path = Path(str(d.get("gamePath", ""))), Path(str(d.get("patchSet", "")))
-    out = str(d.get("out", "")).strip()
-    if not game.is_dir() or not set_path.is_file():
-        return failure(ViwoError("not_found", "give an existing gamePath and patchSet file"))
-    if d.get("plan") or not out:
+    game, set_path = (
+        existing(d, "gamePath", "Game folder"),
+        existing(d, "patchSet", "Patch set", False),
+    )
+    for given in (game, set_path):
+        if isinstance(given, dict):
+            return given
+    out = path_param(d, "out")
+    if str(d.get("out") or "").strip() and out is None:
+        return failure(ViwoError("invalid_request", "out must be an absolute folder"))
+    if d.get("plan") or out is None:
         return safe(
             lambda: {"success": True, **patchsets.plan(game, patchsets.load(set_path), app.rt.os)}
         )
 
     def run(sink, cancel) -> dict:
-        return {"success": True, **patchsets.apply(app.rt, game, set_path, Path(out), sink)}
+        return {"success": True, **patchsets.apply(app.rt, game, set_path, out, sink)}
 
-    return app.locked_job("patch", Path(out), run)
+    return app.locked_job("patch", out, run)
 
 
 def mod_package(app: App, d: dict) -> dict:
@@ -117,14 +123,21 @@ def mod_package(app: App, d: dict) -> dict:
     (pack and apply run as job kind mod)."""
     from viwo.core import mods
 
-    action, game = str(d.get("action", "")), Path(str(d.get("gamePath", "")))
+    action, game = str(d.get("action", "")), existing(d, "gamePath", "Game folder")
+    if action not in ("pack", "check", "apply"):
+        return failure(ViwoError("invalid_request", "give action pack|check|apply"))
+    if isinstance(game, dict):
+        return game
     listed = d.get("mods") if isinstance(d.get("mods"), list) else [d.get("mod", "")]
-    mod_list = [Path(str(m)) for m in listed if m]
-    mod, copy = (mod_list or [Path("")])[0], Path(str(d.get("copy", "") or "."))
-    if action not in ("pack", "check", "apply") or not game.is_dir():
-        return failure(ViwoError("invalid_request", "give action pack|check|apply and a gamePath"))
+    mod_list = [p for p in (path_param({"m": m}, "m") for m in listed) if p is not None]
+    if not mod_list:
+        return failure(ViwoError("invalid_request", "give the mod zip as an absolute path"))
+    mod, copy = mod_list[0], path_param(d, "copy")
     if action == "check":
         return safe(lambda: {"success": True, **mods.check(game, mod)})
+
+    if copy is None:  # pack reads it, apply writes it: never the server's own folder
+        return failure(ViwoError("invalid_request", f"mod {action} needs copy, an absolute folder"))
 
     def run(sink, cancel) -> dict:
         if action == "pack":

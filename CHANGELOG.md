@@ -4,6 +4,17 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.6.6 (2026-11-04)
+- Fix: no API request can name the server's own folder. An empty or relative game, folder,
+  executable, patch set, mod, copy or workspace path resolved against the server's working
+  directory (an empty `gamePath` detected, surveyed or analysed ViWo's folder; `/api/mod` without
+  `copy` defaulted to "."); every route now takes absolute paths only (`api/app.py` `path_param`,
+  `existing`; doc 4.1 security rule 6), checked as one property over every path-taking route.
+- Property tests: the startup preflight over random dependency reports (exactly the missing
+  self-installing tools, never on-demand ones, nothing with auto_install off, every failure a
+  warning, an honest ready count); the 12 ANALYSIS API answers what the core answers.
+- Doc 4.1 lists `/api/patch`, `/api/mod` and `/api/runtime/profile`.
+
 ## 1.6.5 (2026-11-04)
 - Fix: the RenderDoc helpers (`rd_trigger.py`, `rd_harvest.py`) moved to `viwo/data/renderdoc/`:
   next to ViWo's own `core/capture/renderdoc.py`, `import renderdoc` found ViWo's module in any
