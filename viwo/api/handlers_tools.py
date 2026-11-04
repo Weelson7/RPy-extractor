@@ -19,8 +19,7 @@ from .app import App, existing, failure, path_param, safe
 
 def survey_library(app: App, d: dict) -> dict:
     """Read-only coverage survey of a game folder or library, as a job (events per game)."""
-    folder = existing(d, "folder", "Folder")
-    if isinstance(folder, dict):
+    if isinstance(folder := existing(d, "folder", "Folder"), dict):
         return folder
 
     reports, deep = _reports_dir(app), bool(d.get("deep"))

@@ -4,6 +4,18 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.6.8 (2026-11-04)
+- Fix: a damaged 64-bit offset in an RDAR index (Cyberpunk 2077) or a BA2/BSA (Bethesda) is a
+  named "bad RDAR/BA2/BSA" failure; it reached `seek()` or an mmap slice and surfaced as a
+  Python OverflowError.
+- Hostile input as one property (doc 17.3): every built-in in-process reader, handed its own
+  magic followed by random bytes, answers with an Outcome and never raises, and writes nothing
+  outside its destination (`tests/test_untrusted_input.py`); corrupt RDAR archives fuzzed.
+- REDengine tests: Kraken members inflate through the game's decompressor (faked) and are
+  skipped and named without it; the Oodle bridge; every reason members keep their hashes is
+  said (no path list, no Oodle, a list that is not KARK or does not inflate); a cancel stops
+  before the first member.
+
 ## 1.6.7 (2026-11-04)
 - Property tests: merger builds over random candidate sets with the encoder faked (one output
   per candidate, every failure named, partial flagged, settings clamped, long graphs to a file,

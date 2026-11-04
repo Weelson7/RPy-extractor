@@ -11,6 +11,7 @@ from viwo.contracts.workspace import safe_member
 
 KARK = b"KARK"
 LIMIT = 1 << 30  # one segment, inflated
+FAR = 1 << 48  # no file offset lies beyond this: a larger one is damage, not data
 ENTRY, SEGMENT = 56, 16
 # CR2W root class -> the extension the game's tooling uses (unknown classes keep `.cr2w`)
 CLASSES = {
@@ -53,8 +54,8 @@ class Archive:
         if head[:4] != b"RDAR":
             raise ValueError("not an RDAR archive")
         _version, index_pos, index_size = struct.unpack_from("<IQI", head, 4)
-        if index_size > 1 << 28:
-            raise ValueError("index too large")
+        if index_size > 1 << 28 or index_pos > FAR:
+            raise ValueError("index too large or out of the file")
         fh.seek(index_pos)
         self.index = fh.read(index_size)
         _, _, _, self.files, self.segs, _ = struct.unpack_from("<IIQIII", self.index, 0)
@@ -78,8 +79,8 @@ class Archive:
 
     def _read(self, segment: tuple[int, int, int], oodle: "Oodle | None") -> bytes | None:
         offset, packed, size = segment
-        if size > LIMIT or packed > LIMIT:
-            raise ValueError("segment size out of range")
+        if size > LIMIT or packed > LIMIT or offset > FAR:
+            raise ValueError("segment out of range")
         self.fh.seek(offset)
         data = self.fh.read(packed)
         if packed == size or not data.startswith(KARK):

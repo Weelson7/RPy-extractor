@@ -64,7 +64,7 @@ class BsaBuiltin(Unarchiver):
 
         try:
             written, skipped = _mapped(archive, read)
-        except (OSError, ValueError, struct.error, zlib.error, IndexError) as exc:
+        except (OSError, ValueError, OverflowError, struct.error, zlib.error, IndexError) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"bad BSA: {exc}")
         notes = (f"{skipped} LZ4 entries need the 'lz4' Python package",) if skipped else ()
         return Outcome(OutcomeKind.OK, written, notes=notes)
@@ -85,7 +85,7 @@ class Ba2Builtin(Unarchiver):
 
         try:
             return Outcome(OutcomeKind.OK, _mapped(archive, read))
-        except (OSError, ValueError, struct.error, zlib.error, IndexError) as exc:
+        except (OSError, ValueError, OverflowError, struct.error, zlib.error, IndexError) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"bad BA2: {exc}")
 
 

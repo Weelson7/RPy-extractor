@@ -27,8 +27,7 @@ def _game(d: dict) -> Path | dict:
 
 def analysis_targets(app: App, q: dict) -> dict:
     """GET /api/analysis/targets?gamePath=: proposals with their handoffs and analyzer state."""
-    game = _game(q)
-    if isinstance(game, dict):
+    if isinstance(game := _game(q), dict):
         return game
     rt, problems = app.rt, []
     targets = []
@@ -47,8 +46,7 @@ def analysis_targets(app: App, q: dict) -> dict:
 
 
 def _request(app: App, d: dict) -> AnalysisRequest | dict:
-    game = _game(d)
-    if isinstance(game, dict):
+    if isinstance(game := _game(d), dict):
         return game
     key = str(d.get("targetKey", "")).strip()
     if not key:
@@ -59,8 +57,7 @@ def _request(app: App, d: dict) -> AnalysisRequest | dict:
 
 def run_analysis(app: App, d: dict) -> dict:
     """POST /api/analysis/run: the analyzer as a job under the workspace lock."""
-    req = _request(app, d)
-    if isinstance(req, dict):
+    if isinstance(req := _request(app, d), dict):
         return req
     if not req.workspace.exists() or not any(req.workspace.iterdir()):
         claim(req.workspace)
@@ -73,8 +70,7 @@ def run_analysis(app: App, d: dict) -> dict:
 
 def open_handoff(app: App, d: dict) -> dict:
     """POST /api/analysis/open: prepare and launch the GUI tool (a tracked child)."""
-    req = _request(app, d)
-    if isinstance(req, dict):
+    if isinstance(req := _request(app, d), dict):
         return req
     return {"success": True, **open_in(app.rt, req, str(d.get("handoff", "")))}
 

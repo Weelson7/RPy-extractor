@@ -25,8 +25,7 @@ def browse_file(app: App, q: dict) -> dict:
 
 def capture_warnings(app: App, d: dict) -> dict:
     """What the user should know before capturing this game: information, never a block."""
-    game = existing(d, "gamePath", "Game folder")
-    if isinstance(game, dict):
+    if isinstance(game := existing(d, "gamePath", "Game folder"), dict):
         return game
     binding = app.rt.bindings.get("capture.gpu")
     return {
