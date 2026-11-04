@@ -4,6 +4,14 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.6.19 (2026-11-04)
+- Property tests: any sequence of one-by-one keep, trash and rename, undone step by step, gives
+  back the exact workspace (a refused rename records nothing; an undo with nothing left or of a
+  vanished file is named; a restore never overwrites a newer file); every malformed drop-in
+  plugin.json (no id, a bad or reserved slug, a missing module, a ui path outside, a too-new
+  requirement, a class that is not a plugin or carries another id) disables only that plugin,
+  with its reason, and the built-ins boot as before; slot and backend clashes are named.
+
 ## 1.6.18 (2026-11-04)
 - Fix: "Continue in x64dbg" on a 32-bit game names a missing x32dbg (an x64dbg of the user's own
   may ship without it) instead of failing on its config file.

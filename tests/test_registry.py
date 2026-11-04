@@ -92,6 +92,68 @@ class DropinTests(unittest.TestCase):
             _, problems = registry.load_enabled({"broken": True}, [custom])
             self.assertTrue(any("broken" in p and "disabled" in p for p in problems), problems)
 
+    def test_every_broken_dropin_is_disabled_with_its_reason_and_nothing_else_is(self) -> None:
+        cases = {
+            "no id": ({"id": ""}, "needs a string 'id'"),
+            "bad slug": ({"id": "Bad Id!"}, "not a valid slug"),
+            "reserved": ({"id": "core"}, "not a valid slug"),
+            "entry form": ({"entry": "nope:Missing", "module": None, "class": None}, "not found"),
+            "ui outside": ({"ui": "../outside.js"}, "'ui' must be a relative file"),
+            "too new": ({"requires": {"viwo": ">=99.0"}}, "needs viwo >=99.0"),
+            "not a plugin": ({"class": "NOT_A_PLUGIN"}, "is not an EnginePlugin"),
+            "other id": ({"class": "OTHER_ID"}, "differs from 'hello'"),
+        }
+        baseline, _ = registry.load_enabled({})
+        for label, (change, why) in cases.items():
+            with tempfile.TemporaryDirectory() as tmp:
+                custom = copy_hello(Path(tmp), **{k: v for k, v in change.items() if v is not None})
+                meta_file = custom / "hello" / "plugin.json"
+                meta = json.loads(meta_file.read_text(encoding="utf-8"))
+                for key in [k for k, v in change.items() if v is None]:
+                    meta.pop(key, None)
+                meta_file.write_text(json.dumps(meta), encoding="utf-8")
+                module = custom / "hello" / f"{meta.get('module', 'plugin')}.py"
+                if module.is_file():  # extra classes the broken manifests point at
+                    module.write_text(
+                        module.read_text(encoding="utf-8")
+                        + "\nNOT_A_PLUGIN = object\n"
+                        + "class OTHER_ID(HelloPlugin):\n"
+                        + "    manifest = PluginManifest('other', 'O', '1', engine_type='x')\n",
+                        encoding="utf-8",
+                    )
+                wanted = {"hello": True, change.get("id") or "hello": True}
+                plugins, problems = registry.load_enabled(wanted, [custom])
+                self.assertNotIn("hello", plugins, label)
+                self.assertTrue(any(why in p for p in problems), (label, problems))
+                self.assertEqual(set(plugins), set(baseline), label)  # the built-ins boot as before
+
+    def test_clashes_and_discovery_edges_are_named(self) -> None:
+        import types
+
+        from viwo.contracts.plugin import EnginePlugin
+        from viwo.contracts.slots import SlotDefinition
+
+        first = SlotDefinition("unarchive.x", "unarchive", "a", "be")
+        backend = mock.Mock(backend_id="be")
+        plugin = mock.Mock(slot_definitions=lambda: [first], backends=lambda: [backend])
+        slots, backends, problems = registry.collect([first], [backend], {"p": plugin})
+        self.assertEqual((list(slots), list(backends)), (["unarchive.x"], ["be"]))  # first wins
+        self.assertIn("slot unarchive.x from p clashes; ignored", problems)
+        self.assertIn("backend be from p clashes; ignored", problems)
+        module = types.ModuleType("m_two")
+        for name in ("A", "B"):  # two plugin classes and no PLUGIN marker: ambiguous
+            setattr(module, name, type(name, (EnginePlugin,), {"__module__": "m_two"}))
+        with self.assertRaisesRegex(TypeError, "expected one EnginePlugin class, found 2"):
+            registry.plugin_class(module)
+        del module.B
+        self.assertIs(registry.plugin_class(module), module.A)
+        with self.assertRaisesRegex(TypeError, "is not an EnginePlugin"):
+            registry.load_plugin("collections:OrderedDict")
+        ep = mock.Mock()
+        ep.name = "from_ep"
+        with mock.patch.object(registry.importlib.metadata, "entry_points", return_value=[ep]):
+            self.assertIn("from_ep", registry.known_ids())  # a pip-installed plugin is known
+
     def test_clash_with_a_builtin_needs_override(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
