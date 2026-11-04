@@ -77,8 +77,9 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
    with hot reload (`hook.inject`), the overlay (`hook.overlay`) and own-traffic network tooling
    (`net.*`). The network plaintext capture and the DLL injection loader are the owner's call and
    are not authored by the assistant.
-2. **Coverage** (in progress): owner's target 98 % line / 95 % branch per file; measured 86.1 %
-   line / 74.2 % branch at 1.6.2 (child processes counted). Tests are property checks over random
+2. **Coverage** (in progress): owner's target 98 % line / 95 % branch per file; measured 98.6 %
+   line / 95.3 % branch overall at 1.6.23 (child processes counted); 72 files are still under
+   the per-file target, most by one or two branches. Tests are property checks over random
    inputs, never assertions for their own sake. The CI floors (`tools/coverage_check.py`) only
    move up.
 3. **CONFORMANCE partials:** built-in plugins keep no inventory and ship no sanitizer rules

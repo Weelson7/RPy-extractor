@@ -4,6 +4,15 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.6.24 (2026-11-04)
+- Property tests: a settings change that would break the ini is refused and the ini stays as it
+  was (no draft left); a file that is not a patch set is named, and an export without a unique
+  signature says so per patch; TaleWorlds LZ4 segments inflate, or are skipped without the module
+  or on bad data; DataTool names a missing tool and failed modes; the protector check names output
+  it cannot read; a damaged export map is ignored; a capture names anti-cheat services running
+  now; an unreachable network is reported as such.
+- Coverage: 98.6 % line, 95.3 % branch overall (doc 17.5); 72 files still under 98/95 alone.
+
 ## 1.6.23 (2026-11-04)
 - Property tests: mod load order over random dependency graphs puts every mod after what it
   requires or loads after, names a cycle with its path and a missing requirement, and every

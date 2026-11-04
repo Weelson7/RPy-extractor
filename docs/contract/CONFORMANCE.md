@@ -292,7 +292,7 @@ declarative (Kaitai) plugins; the indexes repository split.
 | 17.3 safety catalogue | implemented | tests named in 17.3 |
 | 17.4b operator rules | implemented | `plugins/overwatch`, `sqc/04-extraction-per-engine.md` OPERATOR checks |
 | 17.5 CI cost rule, coverage floors | implemented | `.github/workflows/ci.yml`, `tools/coverage_check.py` |
-| 17.5 98 % line / 95 % branch per file | partial | 86.1 % line, 74.2 % branch at 1.6.2 (child processes counted) |
+| 17.5 98 % line / 95 % branch per file | partial | 98.6 % line, 95.3 % branch overall at 1.6.23 (child processes counted); 72 files under the per-file target |
 
 ## 18 Patching arm (rungs T1-T2)
 
