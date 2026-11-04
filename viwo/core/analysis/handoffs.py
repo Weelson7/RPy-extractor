@@ -89,6 +89,9 @@ class X64dbgGui(Handoff):
         debugger = Path(tool.path).resolve()
         if _bits(exe) == 32:  # the pinned snapshot ships both: release/x32/x32dbg.exe
             debugger = debugger.parent.parent / "x32" / debugger.name.replace("x64", "x32")
+            if not debugger.is_file():  # an x64dbg of the user's own may come without it
+                why = f"{exe.name} is a 32-bit program and this x64dbg has no {debugger}"
+                return Outcome(OutcomeKind.UNAVAILABLE, error=why)
         quiet_x64dbg(debugger)
         return LaunchSpec((str(debugger), str(exe)), exe.parent)
 

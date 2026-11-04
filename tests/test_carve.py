@@ -157,6 +157,42 @@ class ScanTests(unittest.TestCase):
             self.assertEqual([h.suffix for h in scan(path, CancelToken())], [".zip"])
 
 
+class CarvePropertyTests(unittest.TestCase):
+    def test_placed_files_are_found_exactly_and_damage_never_misleads(self) -> None:
+        """Valid samples at random places in noise come out at their offset and size; damaged
+        ones (cut, bytes flipped) never crash the scan, never overlap and never run past it."""
+        from viwo.core.carve import MIN_SIZE, scan_buffer
+
+        rng = random.Random(19)
+        with tempfile.TemporaryDirectory() as tmp:
+            samples = {k: f(Path(tmp)) for k, f in SAMPLES.items()}
+            samples[".zip"] = zip_bytes()
+            for _ in range(40):
+                data, where = bytearray(), {}
+                for suffix in rng.sample(sorted(samples), rng.randint(1, 5)):
+                    data += bytes(rng.randint(8, 200))  # zeros: no false signature
+                    where[len(data)] = (len(samples[suffix]), suffix)
+                    data += samples[suffix]
+                data += bytes(50)
+                hits = scan_buffer(bytes(data), len(data), CancelToken())
+                self.assertEqual({h.offset: (h.size, h.suffix) for h in hits}, where)
+            for suffix, good in samples.items():
+                for _ in range(60):
+                    bad = bytearray(good)
+                    for _ in range(rng.randint(1, 4)):
+                        bad[rng.randrange(len(bad))] = rng.randrange(256)
+                    if rng.random() < 0.4:
+                        bad = bad[: rng.randrange(1, len(bad))]
+                    blob = bytes(16) + bytes(bad) + bytes(16)
+                    hits = scan_buffer(blob, len(blob), CancelToken())
+                    end = 0
+                    for h in hits:  # in order, apart, inside, never a tiny "file"
+                        self.assertGreaterEqual(h.offset, end, suffix)
+                        self.assertLessEqual(h.offset + h.size, len(blob), suffix)
+                        self.assertGreaterEqual(h.size, MIN_SIZE, suffix)
+                        end = h.offset + h.size
+
+
 class StreamTests(unittest.TestCase):
     def test_custom_archive_with_compressed_entries(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

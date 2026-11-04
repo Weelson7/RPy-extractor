@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "viwo"
-version = "1.6.17"
+version = "1.6.18"
 description = "Vidya Wormhole: cross-platform game asset extraction and curation framework"
 readme = "README.md"
 requires-python = ">=3.11"

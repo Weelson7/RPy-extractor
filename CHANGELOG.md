@@ -4,6 +4,15 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.6.18 (2026-11-04)
+- Fix: "Continue in x64dbg" on a 32-bit game names a missing x32dbg (an x64dbg of the user's own
+  may ship without it) instead of failing on its config file.
+- Property tests: the carver finds samples of every format at their exact offset and size in
+  noise, and damaged ones never crash it, overlap or run past the buffer; every analyzer and
+  handoff names a missing tool and a run that wrote nothing; the first-run answers of x64dbg,
+  Ghidra and Cheat Engine land once, keep every value the user set, change nothing the second
+  time and say when they cannot be written.
+
 ## 1.6.17 (2026-11-04)
 - Property tests: any RPA-2.0/3.0 archive (any key, prefixed chunks, byte or text names) reads
   back byte for byte and a repack keeps every member and carries every edit, a malformed index
