@@ -132,7 +132,7 @@ Detection markers live in each plugin's `detect()`; slot defaults in doc 8.4.
 | bethesda | `unarchive.bsa`, `unarchive.ba2` (textures rebuilt as DDS) | - |
 | genie | `unarchive.drs`, `decode.slp` (SLP sprites to PNG with the game palette) | - |
 | warscape | `unarchive.pack` (Total War PFH4/PFH5) | - |
-| redengine | `unarchive.archive` (Cyberpunk 2077 RDAR; Kraken through the game's Oodle DLL; names from `cp77-hashes`), `decode.cr2w` (WolvenKit: textures to PNG, meshes and animations to glTF, every resource to JSON) | - |
+| redengine | `unarchive.archive` (Cyberpunk 2077 RDAR; Kraken through the game's Oodle DLL; names from `cp77-hashes`), `decode.cr2w` (WolvenKit: textures to PNG, meshes and animations to glTF, every resource to JSON), `decode.redscripts` (redscript: `final.redscripts` to source) | `decompile` (bool) |
 | taleworlds | `unarchive.tpac` (Bannerlord TPAC; textures to DDS) | - |
 | quickbms | `unarchive.bms`: one `<ext>.bms` script per format from `[options.quickbms] scripts` (default `third_party/quickbms/scripts/`) | - |
 | overwatch | `export.overwatch` (DataTool, Windows); `tos_sensitive`: a reminder in every run's warnings | `modes` (string) |

@@ -69,9 +69,13 @@ class WolvenKitExport(Decoder):
                 cancel=ctx.cancel,
             )
             text = result.stdout + result.stderr
-            lines = [line for line in text.splitlines() if "Failed to " in line]
+            lines = [
+                line[line.index("Failed to ") :]
+                for line in text.splitlines()
+                if "Failed to " in line
+            ]
             failed += len(lines)
-            said = said or (lines[0][-200:] if lines else "")
+            said = said or (lines[0][:300] if lines else "")
             said = said or ("" if result.ok else text.strip()[-300:])
         files = sum(1 for p in dest.rglob("*") if p.is_file())
         if not files:

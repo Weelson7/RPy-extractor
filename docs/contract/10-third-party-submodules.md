@@ -49,7 +49,7 @@ dependency of their own. `on_demand` entries (Ghidra, angr) are installed only w
 | Group | Pins |
 |-------|------|
 | archives | `sevenzip` (7-Zip), `unrar`, Python `py7zr`, `unrpa`, `lz4` |
-| engines | `repak`, `retoc`, `gdre`, `godotpcktool`, `assetstudiomod` (on the `dotnet` runtime), `unrpyc`, `quickbms`, `datatool` (Windows), `wolvenkit` (WolvenKit CLI, GPL-3.0, on the `dotnet` runtime), `cp77-hashes` (WolvenKit path list, data), Python `unitypy` |
+| engines | `repak`, `retoc`, `gdre`, `godotpcktool`, `assetstudiomod` (on the `dotnet` runtime), `unrpyc`, `quickbms`, `datatool` (Windows), `wolvenkit` (WolvenKit CLI, GPL-3.0, on the `dotnet` runtime), `redscript` (0.5 line, the one with a decompiler; Windows), `cp77-hashes` (WolvenKit path list, data), Python `unitypy` |
 | media | `ffmpeg`, `ffprobe`, `vgmstream` |
 | analysis | `ghidra` (on demand) and `jdk`, `ilspycmd`, `cpp2il` (Windows), `unluac`, `die`; workers `unicorn`, `angr` (on demand) |
 | dynamic | `renderdoccmd` and `rdpython` (qrenderdoc as the harvest Python), `ue4ss` (Windows), `bepinex` (Windows), `x64dbg` (Windows), `cheatengine` (Windows, Scoop's unpacked build), Python `frida-tools`, `soundcard` |

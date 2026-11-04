@@ -13,7 +13,7 @@ from __future__ import annotations
 import struct
 from pathlib import Path
 
-from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest
+from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest, PluginOption
 from viwo.contracts.slots import SlotDefinition, Unarchiver
 from viwo.contracts.types import DetectionResult, Outcome, OutcomeKind
 from viwo.contracts.workspace import count_files
@@ -22,10 +22,17 @@ from .export import SLOT as CR2W_SLOT
 from .export import WolvenKitExport
 from .names import CP77_HASHES, Names
 from .rdar import Archive, Oodle
+from .scripts import SLOT as SCRIPTS_SLOT
+from .scripts import RedscriptDecompile
 
 MAGIC = b"RDAR"
 MANIFEST = PluginManifest(
-    "redengine", "REDengine 4 (Cyberpunk 2077)", "0.1.0", engine_type="redengine", priority=12
+    "redengine",
+    "REDengine 4 (Cyberpunk 2077)",
+    "0.1.0",
+    engine_type="redengine",
+    priority=12,
+    options=(PluginOption("decompile", "decompile final.redscripts (redscript)", "bool", "on"),),
 )
 MARKERS = ("redprelauncher.exe", "cyberpunk2077.exe", "redlauncher.exe")
 
@@ -105,7 +112,8 @@ class RedenginePlugin(EnginePlugin):
                 magic=(MAGIC,),
             ),
             CR2W_SLOT,
+            SCRIPTS_SLOT,
         )
 
     def backends(self):
-        return (RdarBuiltin(), WolvenKitExport())
+        return (RdarBuiltin(), WolvenKitExport(), RedscriptDecompile())

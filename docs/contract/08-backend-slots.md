@@ -140,7 +140,9 @@ video); `decode.cr2w` (`wolvenkit-export`, redengine: WolvenKit's console, GPL-3
 process, one run per batch of 150 files: `export` turns textures into PNG and meshes, morph
 targets, cubemaps and animations into glTF, `convert serialize` turns every CR2W resource into
 JSON; ViWo writes the export settings it needs into WolvenKit's `appsettings.json` off screen and
-every file WolvenKit could not convert is counted in one warning); `decode.rpyc`
+every file WolvenKit could not convert is counted in one warning); `decode.redscripts` (`redscript-decompile`, redengine, option `decompile`:
+redscript's console, MIT, Windows build, decompiles `final.redscripts` into one `.script` file per
+stored script); `decode.rpyc`
 (`unrpyc-cli`, renpy, option `decompile`); `decode.slp` (`slp-builtin`, genie).
 
 **Media:** `media.probe` (`ffprobe-probe`, spare `pillow-probe`), `media.encode` (`ffmpeg`).

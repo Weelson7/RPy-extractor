@@ -21,6 +21,12 @@
    "_note": "Cyberpunk 2077 archive path list (WolvenKit usedhashes.kark at commit 95074158, 2026-10-22); Kraken-compressed: inflated with the game's own Oodle, so Windows only",
    "windows": {"url": "https://raw.githubusercontent.com/WolvenKit/WolvenKit/95074158ed971aea39fc8abc50c2574381f4aad2/WolvenKit.Common/Resources/usedhashes.kark", "sha256": "e1f2bf54f5d24660a4a8ecff5694b39d2ca9db4a4a8ca3c3a8900dc71477a9e2", "size": 2756503, "kind": "raw", "save_as": "usedhashes.kark", "find": "usedhashes.kark"}
   },
+  "redscript": {
+   "version": "0.5.32",
+   "license": "MIT",
+   "_note": "redscript's console, the 0.5 line (the 1.0 previews dropped the decompiler): decompiles Cyberpunk 2077's r6/cache/final.redscripts; one Windows executable; sha256 from GitHub's release digests",
+   "windows": {"url": "https://github.com/jac3km4/redscript/releases/download/v0.5.32/redscript-cli.exe", "sha256": "c8665c40199fb784a78b980db3a304a7f0b14a9494b3b59a125ff5618bf13f6c", "size": 1859584, "kind": "raw", "save_as": "redscript-cli.exe", "find": "redscript-cli.exe"}
+  },
   "wolvenkit": {
    "version": "9.1.0",
    "license": "GPL-3.0",

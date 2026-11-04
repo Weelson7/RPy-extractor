@@ -4,6 +4,14 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.9.0 (2026-11-04)
+- Completeness contract (doc 16.0c): Cyberpunk 2077's game scripts are decompiled. The new
+  `decode.redscripts` slot (`redscript-decompile`) runs redscript's console (pinned `redscript`
+  0.5.32, MIT, Windows; the 1.0 previews dropped the decompiler) on `r6/cache/final.redscripts`
+  and writes one `.script` file per stored script (`[options.redengine] decompile = off` keeps
+  the cache as shipped only). Verified on the game's own file: 1786 scripts in about a second.
+- The `decode.cr2w` warning quotes WolvenKit's failure line from "Failed to" on.
+
 ## 1.8.0 (2026-11-04)
 - Completeness contract (doc 16.0c): Cyberpunk 2077 resources are decoded. The new
   `decode.cr2w` slot (`wolvenkit-export`) runs WolvenKit's console (pinned `wolvenkit` 9.1.0,

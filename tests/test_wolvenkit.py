@@ -195,7 +195,7 @@ class PipelineTests(unittest.TestCase):
             self.assertTrue(any("2 CR2W file(s) through WolvenKit" in e.message for e in events))
             said = [w for w in result.warnings if w.startswith("decode.cr2w:")]
             self.assertEqual(len(said), 1)
-            self.assertIn("could not convert 1 file(s), e.g. [ 0: Error ] - Failed", said[0])
+            self.assertIn("could not convert 1 file(s), e.g. Failed to export", said[0])
 
 
 class BatchTests(unittest.TestCase):
