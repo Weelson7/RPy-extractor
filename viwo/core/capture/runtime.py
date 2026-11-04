@@ -16,6 +16,7 @@ from pathlib import Path
 from viwo.contracts.errors import ViwoError
 from viwo.contracts.slots import Backend
 from viwo.contracts.types import DependencySpec
+from viwo.contracts.workspace import next_free
 
 from .. import thirdparty
 
@@ -76,6 +77,14 @@ def stamp() -> str:
     return time.strftime("%Y%m%d-%H%M%S")
 
 
+def run_dir(workspace: Path, kind: str, pid: int) -> Path:
+    """A new folder per run (`<pid>-<stamp>`, then `_1`... within one second): a run never
+    reads or overwrites what an earlier one wrote."""
+    out = next_free(runtime_dir(workspace, kind) / f"{pid}-{stamp()}")
+    out.mkdir()
+    return out
+
+
 def resolve_pid(rt, pid: int = 0, image: str = "") -> int:
     if pid:
         return pid
@@ -92,7 +101,7 @@ def resolve_pid(rt, pid: int = 0, image: str = "") -> int:
 def dump(rt, workspace: Path, pid: int = 0, image: str = "") -> dict:
     _enabled(rt)
     pid = resolve_pid(rt, pid, image)
-    out = runtime_dir(workspace, "dump", f"{pid}-{stamp()}")
+    out = run_dir(workspace, "dump", pid)
     try:
         path = rt.os.dump_process(pid, out)
     except OSError as exc:
@@ -106,7 +115,7 @@ def trace(rt, req: RuntimeRequest, cancel=None) -> dict:
     if not req.functions:  # frida-trace without -i traces nothing and writes no log
         raise ViwoError("invalid_request", "give at least one function to trace")
     pid = resolve_pid(rt, req.pid, req.name)
-    out = runtime_dir(req.workspace, "trace", f"{pid}-{stamp()}")
+    out = run_dir(req.workspace, "trace", pid)
     home = thirdparty.home_of(rt.config)
     argv = [
         sys.executable,

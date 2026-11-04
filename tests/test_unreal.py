@@ -119,6 +119,160 @@ class IdentifyTests(unittest.TestCase):
             self.assertEqual(UnrealPlugin().detect(FolderProbe(root)).confidence, 0.92)
 
 
+def _ctx(root: Path, run, located=True, key_problem=""):
+    from types import SimpleNamespace
+
+    tool = SimpleNamespace(argv_prefix=("tool",), path="tool")
+    return SimpleNamespace(
+        os=SimpleNamespace(
+            tools=SimpleNamespace(locate=lambda spec: tool if located else None),
+            process=SimpleNamespace(run=run),
+        ),
+        cancel=None,
+        scratch=root / "scratch",
+        options={},
+        tool_output=lambda *a, **k: None,
+    )
+
+
+def _tool(ok: bool = True, stderr: str = "", seen: list | None = None):
+    """A fake process runner answering ok or not, recording each argv in `seen`."""
+    from types import SimpleNamespace
+
+    def run(argv, **kw):
+        if seen is not None:
+            seen.append(argv)
+        return SimpleNamespace(ok=ok, stderr=stderr, stdout="", returncode=0 if ok else 1)
+
+    return run
+
+
+class PakPropertyTests(unittest.TestCase):
+    def test_footers_never_lie_or_raise(self) -> None:
+        import random
+
+        rng = random.Random(6)
+        for _ in range(500):
+            tail = bytearray(rng.randbytes(rng.randint(0, 300)))
+            if rng.random() < 0.6 and len(tail) > 30:
+                at = rng.randrange(len(tail) - 4)
+                tail[at : at + 4] = PAK_MAGIC
+            info = pak_info(Path("x.pak"), bytes(tail))
+            if info is not None:
+                at = bytes(tail).rfind(PAK_MAGIC)
+                self.assertTrue(1 <= info.version <= 15)
+                self.assertEqual(info.version, struct.unpack_from("<I", tail, at + 4)[0])
+
+    def test_unpack_failures_are_classified_and_the_key_never_shown(self) -> None:
+        from types import SimpleNamespace
+
+        from viwo.contracts.types import OutcomeKind
+        from viwo.plugins.unreal.pak import RepakCli, RetocLegacy, RetocUnpack
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pak = make_pak(root / "a.pak", KEY)
+            hexkey = KEY.hex()
+            self.assertEqual(
+                RepakCli().extract(pak, root, _ctx(root, None, located=False)).kind,
+                OutcomeKind.UNAVAILABLE,
+            )
+            for said, kind in (
+                (f"wrong AES key 0x{hexkey}", OutcomeKind.NEEDS_KEY),
+                (f"Encrypted index, key {hexkey.upper()}", OutcomeKind.NEEDS_KEY),
+                (f"disk full while writing ({hexkey})", OutcomeKind.FAILED),
+            ):
+                run = lambda argv, s=said, **k: SimpleNamespace(  # noqa: E731
+                    ok=False, stderr=s, stdout="", returncode=1
+                )
+                ctx = _ctx(root, run)
+                ctx.options = {"aes_key": "0x" + hexkey}
+                out = RepakCli().extract(pak, root / "o", ctx)
+                self.assertEqual(out.kind, kind, said)
+                self.assertNotIn(hexkey, out.error.lower())  # never shown back
+            self.assertEqual(RetocLegacy().argv(Path("g.utoc"), Path("d"))[0], "to-legacy")
+            self.assertEqual(RetocUnpack().argv(Path("g.utoc"), Path("d"))[0], "unpack")
+
+    def test_patch_paks_use_the_games_version_and_count_what_was_packed(self) -> None:
+
+        from viwo.contracts.types import OutcomeKind
+        from viwo.plugins.unreal.pak import REPAK_VERSIONS, RepakPatch
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            src = root / "edit.uasset"
+            src.write_bytes(b"edited")
+            members = {"Game/Content/Hero.uasset": src, "../escape.uasset": src}
+            for version in (3, 8, 11):
+                pak = make_pak(root / f"v{version}.pak", version=version)
+                seen = []
+                out = RepakPatch().pack(pak, members, _ctx(root, _tool(seen=seen)))
+                self.assertEqual(seen[0][seen[0].index("--version") + 1], REPAK_VERSIONS[version])
+                self.assertEqual(seen[0][-1], str(root / f"v{version}_P.pak"))
+                self.assertEqual(out.files, 1)  # the unsafe member was never packed
+                self.assertEqual(out.notes, ())
+            (root / "v8.sig").write_bytes(b"sig")
+            fail = _tool(ok=False, stderr="locked")
+            self.assertEqual(
+                RepakPatch().pack(pak, members, _ctx(root, fail)).kind, OutcomeKind.FAILED
+            )
+            ok = _tool()
+            signed = RepakPatch().pack(root / "v8.pak", members, _ctx(root, ok))
+            self.assertIn("signed game", signed.notes[0])
+            missing = RepakPatch().pack(pak, members, _ctx(root, None, located=False))
+            self.assertEqual(missing.kind, OutcomeKind.UNAVAILABLE)
+            with open(root / "short.pak", "wb") as fh:
+                fh.write(b"\0" * 8)
+            from viwo.plugins.unreal.pak import PakInfo, key_opens
+
+            self.assertFalse(key_opens(root / "short.pak", PakInfo(8, 1 << 20, 16, True), KEY))
+
+
+class KeyPropertyTests(unittest.TestCase):
+    def test_any_spelling_of_a_key_parses_to_it_and_nothing_else_does(self) -> None:
+        import base64
+        import random
+
+        from viwo.plugins.unreal.keys import parse_key
+
+        rng = random.Random(9)
+        for _ in range(200):
+            key = rng.randbytes(32)
+            for text in (
+                key.hex(),
+                "0x" + key.hex().upper(),
+                base64.b64encode(key).decode().rstrip("="),
+            ):
+                self.assertEqual(parse_key(f"  {text} "), key)
+            short = rng.randbytes(rng.choice([0, 16, 31, 33]))
+            self.assertIsNone(parse_key(short.hex()))
+            self.assertIsNone(parse_key("not a key !" * rng.randint(1, 4)))
+
+    def test_every_reason_a_key_is_missing_is_said(self) -> None:
+        from types import SimpleNamespace
+
+        from viwo.plugins.unreal.keys import ENCRYPTED, UTOC_FLAGS, resolve_key
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            utoc = root / "g.utoc"
+            utoc.write_bytes(bytes(UTOC_FLAGS) + bytes([ENCRYPTED]) + bytes(20))
+            plain = root / "plain.utoc"
+            plain.write_bytes(bytes(UTOC_FLAGS + 21))
+            ctx = SimpleNamespace(options={}, game_root=root, log=lambda *a, **k: None)
+            self.assertEqual(resolve_key(plain, ctx), ("", ""))  # nothing to unlock
+            self.assertIn("give the AES key", resolve_key(utoc, ctx)[1])  # no pak to verify on
+            make_pak(root / "g.pak", KEY)
+            ctx.options = {"find_key": False}
+            self.assertIn("give the AES key", resolve_key(utoc, ctx)[1])
+            ctx.options = {}
+            self.assertIn("no key in the game's executables", resolve_key(utoc, ctx)[1])
+            key_exe(root / "Game.exe", KEY)
+            self.assertEqual(resolve_key(utoc, ctx), (KEY.hex(), ""))  # found and verified
+            ctx.options = {"aes_key": "0x12"}
+            self.assertIn("32 bytes", resolve_key(utoc, ctx)[1])
+
+
 class UnrealPipelineTests(unittest.TestCase):
     def setUp(self) -> None:
         self._tmp = tempfile.TemporaryDirectory()

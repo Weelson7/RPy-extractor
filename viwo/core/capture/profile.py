@@ -80,7 +80,7 @@ def text(rep: dict) -> str:
 
 def profile(rt, req, cancel=None) -> dict:
     """Sample the process (req.pid or req.name) for req.seconds."""
-    from .runtime import _enabled, resolve_pid, runtime_dir, stamp
+    from .runtime import _enabled, resolve_pid, run_dir
 
     _enabled(rt)
     pid = resolve_pid(rt, req.pid, req.name)
@@ -91,7 +91,7 @@ def profile(rt, req, cancel=None) -> dict:
     if not samples:
         raise ViwoError("failed", f"no sample of process {pid}: it exited or refused access")
     rep = report(samples, modules)
-    out = runtime_dir(req.workspace, "profile", f"{pid}-{stamp()}")
+    out = run_dir(req.workspace, "profile", pid)
     (out / "hotspots.json").write_text(json.dumps(rep, indent=2), encoding="utf-8")
     (out / "hotspots.txt").write_text(text(rep), encoding="utf-8")
     top = rep["hotspots"][0]

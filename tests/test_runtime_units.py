@@ -185,6 +185,95 @@ class EntryAndSystemTests(unittest.TestCase):
                 self.assertEqual(POST["/api/indexes/update"](app, {})["tag"], "v1.0.0")
 
 
+class DynamicRunTests(unittest.TestCase):
+    """trace, dump, profile and agent waits over a faked OS layer: what ran follows the request,
+    and every way it ends is named."""
+
+    def rt(self, root: Path):
+        return runtime(root, "[startup]\nfeatures = extraction, capture\n")
+
+    def test_trace_runs_every_function_and_counts_the_log(self) -> None:
+        from viwo.core.capture.runtime import RuntimeRequest, trace
+
+        rng = random.Random(3)
+        with tempfile.TemporaryDirectory() as tmp:
+            rt = self.rt(Path(tmp))
+            for _ in range(5):
+                funcs = tuple(
+                    rng.sample(["CreateFileW", "ReadFile", "send", "Nt*"], rng.randint(1, 4))
+                )
+                lines = rng.randint(0, 20)
+                seen = []
+
+                def run(argv, cwd=None, timeout=None, cancel=None, env=None, lines=lines):
+                    seen.append((argv, env))
+                    Path(argv[argv.index("-o") + 1]).write_text("event\n" * lines)
+                    return SimpleNamespace(ok=True, stderr="", stdout="")
+
+                with mock.patch.object(rt.os.process, "run", run):
+                    done = trace(rt, RuntimeRequest(Path(tmp) / "ws", pid=42, functions=funcs))
+                argv, env = seen[0]
+                self.assertEqual(
+                    [argv[i + 1] for i, a in enumerate(argv) if a == "-i"], list(funcs)
+                )
+                self.assertIn("third_party", env["PYTHONPATH"])  # Frida from the pinned folder
+                self.assertEqual((done["pid"], done["events"]), (42, lines))
+            folders = sorted((Path(tmp) / "ws" / ".runtime" / "trace").iterdir())
+            self.assertEqual(len(folders), 5)  # one fresh folder per run, even within a second
+            quiet = SimpleNamespace(ok=False, stderr="frida: unable to attach", stdout="")
+            with mock.patch.object(rt.os.process, "run", return_value=quiet):
+                with self.assertRaises(ViwoError) as err:
+                    trace(rt, RuntimeRequest(Path(tmp) / "ws", pid=42))
+            self.assertIn("unable to attach", err.exception.hint)
+
+    def test_dump_and_profile_name_why_they_could_not(self) -> None:
+        from viwo.core.capture.profile import exports, profile
+        from viwo.core.capture.runtime import RuntimeRequest, dump, resolve_pid
+
+        with tempfile.TemporaryDirectory() as tmp:
+            rt = self.rt(Path(tmp))
+            with mock.patch.object(rt.os, "pids_of", return_value=[77]):
+                self.assertEqual(resolve_pid(rt, 0, "Game.exe"), 77)
+            with mock.patch.object(rt.os, "dump_process", side_effect=OSError("access denied")):
+                with self.assertRaisesRegex(ViwoError, "access denied"):
+                    dump(rt, Path(tmp) / "ws", 5)
+            req = RuntimeRequest(Path(tmp) / "ws", pid=5, seconds=0.1)
+            for effect, why in ((OSError("perf missing"), "perf missing"), (None, "no sample")):
+                kw = {"side_effect": effect} if effect else {"return_value": ([], [])}
+                with mock.patch.object(rt.os, "sample_threads", **kw):
+                    with self.assertRaisesRegex(ViwoError, why):
+                        profile(rt, req)
+            plain = Path(tmp) / "not.dll"
+            plain.write_bytes(b"MZ" + bytes(400))  # a PE stub without an export table
+            self.assertEqual(exports(plain), [])
+
+    def test_agent_waits_report_progress_and_stop_on_cancel(self) -> None:
+        from viwo.core.capture import agents
+        from viwo.core.capture.runtime import RuntimeRequest
+
+        with tempfile.TemporaryDirectory() as tmp:
+            rt = self.rt(Path(tmp))
+            with self.assertRaises(ViwoError) as err:
+                agents.agent_for(rt, Path(tmp))  # a folder with no engine agent
+            self.assertEqual(err.exception.code, "unavailable")
+            said, polls = [], []
+            agent = SimpleNamespace(backend_id="fake-agent", finished=lambda c, e: len(polls) > 3)
+            child = SimpleNamespace(alive=lambda: polls.append(1) or True)
+            ctx = SimpleNamespace(
+                cancel=SimpleNamespace(cancelled=False), log=lambda m, **k: said.append(m)
+            )
+            req = RuntimeRequest(Path(tmp), timeout=30)
+            with (
+                mock.patch.object(agents, "REPORT_EVERY", 0),
+                mock.patch.object(agents.time, "sleep"),
+            ):
+                self.assertTrue(agents._wait(agent, Path(tmp), Path(tmp), child, req, ctx))
+                self.assertTrue(any("Waiting for fake-agent" in m for m in said))
+                ctx.cancel.cancelled = True
+                never = SimpleNamespace(backend_id="slow", finished=lambda c, e: False)
+                self.assertFalse(agents._wait(never, Path(tmp), Path(tmp), child, req, ctx))
+
+
 class AnalyzerFailureTests(unittest.TestCase):
     def test_a_timeout_is_named_as_one(self) -> None:
         from viwo.core.analysis._process import failed

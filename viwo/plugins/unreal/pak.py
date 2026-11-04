@@ -167,7 +167,7 @@ class RepakPatch(Packer):
             return Outcome(OutcomeKind.UNAVAILABLE, error=REPAK.hint)
         ctx.scratch.mkdir(parents=True, exist_ok=True)
         root = Path(tempfile.mkdtemp(prefix="pak-", dir=ctx.scratch))  # one per pack call
-        stage_members(members, root)
+        staged = stage_members(members, root)  # unsafe names are skipped, not counted
         version = REPAK_VERSIONS.get(info.version if info else 8, "V8B")
         argv = [
             *tool.argv_prefix,
@@ -187,4 +187,4 @@ class RepakPatch(Packer):
             if list(container.parent.glob("*.sig"))
             else ()
         )
-        return Outcome(OutcomeKind.OK, len(members), notes=notes)
+        return Outcome(OutcomeKind.OK, len(staged), notes=notes)

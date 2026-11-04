@@ -4,6 +4,18 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.6.12 (2026-11-04)
+- Fix: every dump, trace and profile run gets a new folder and every recording a new WAV. Two
+  runs on one process within one second shared `<pid>-<stamp>`, and a trace that wrote nothing
+  reported the earlier run's log as its own; two recordings in one second overwrote each other.
+- Fix: an Unreal patch pak counts the members it packed (an unsafe member name was skipped but
+  counted).
+- Property tests: the round-trip edit set over random provenance maps and user actions (every
+  edit in the set or named with its reason); pak footers fuzzed; unpack failures classified
+  (key or not) and the AES key never shown back; patch paks take the game's pak version; AES
+  key spellings round-trip and every reason a key is missing is said; trace, dump, profile and
+  agent waits over a faked OS layer.
+
 ## 1.6.11 (2026-11-04)
 - Fix: `POST /api/open-folder` and the merger's `workingDir` take absolute paths only (a
   relative merger folder that existed beside the server was used as the merger's source).

@@ -37,6 +37,8 @@ handoffs (11.2) start from 12 ANALYSIS and are gated by the `analysis` switch.
 | handoff (D3) | `handoff.memory` / `cheatengine-gui` | Cheat Engine 7.6 | Continue in Cheat Engine with a ViWo table that attaches to the game | - |
 
 A name matching several running processes answers `needs_decision` (give `--pid`).
+Every dump, trace and profile run writes a new `<pid>-<stamp>` folder (`_1`, `_2`... for runs in
+the same second) and every recording a new WAV: a run never reads or overwrites an earlier run's.
 
 ## 11.3 Runtime agents
 
