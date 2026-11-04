@@ -33,7 +33,7 @@ SLOTS = (SlotDefinition("patch.bytes", "patch", "core", "viwo-patcher"),)
 class Patcher(Backend):
     """patch.bytes (doc 18.8): ViWo's own byte writer; `patch.sig` is its signature() below.
     The writing itself is core (viwo/core/patchsets.py); this backend owns the tools it uses,
-    so preflight, 05 SYSTEM and `viwo install` see them."""
+    so preflight, SYSTEM and `viwo install` see them."""
 
     backend_id, license, isolation = "viwo-patcher", "MIT", "inprocess"
     families = frozenset({"patch"})

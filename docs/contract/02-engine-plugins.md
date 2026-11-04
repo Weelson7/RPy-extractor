@@ -152,7 +152,7 @@ Nothing is hardcoded (`viwo/core/wiring/registry.py`, guide in `docs/plugins.md`
 
 A drop-in runs inside ViWo with the user's permissions. Loading validates the manifest, the
 contract major and the conformance checks (2.9); a failure disables only that plugin and is listed
-in the startup problems (`viwo info`, 05 SYSTEM).
+in the startup problems (`viwo info`, SYSTEM).
 
 ## 2.9 Plugin conformance (`viwo/core/wiring/conformance.py`, `tests/test_conformance_kit.py`)
 

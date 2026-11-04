@@ -1,4 +1,5 @@
 // 06.C RENDER: transition / end / overlay / output settings, build as a "merge" job, results.
+import { code } from "../registry.js";
 import { api } from "../api.js";
 import { h, fill, btn, panel, badge, errorBox, toast, toastErr, busy, emit, logLine, openBtn } from "../ui.js";
 import { jobProgress } from "../progress.js";
@@ -32,7 +33,7 @@ export function outputPanel(context) {
   el.why = h("span", { class: "ab-why" });
   el.bar = h("div", { class: "actionbar" }, el.sum, el.why, el.build);
   renderForm();
-  return panel("06.C", "VIDEO SETTINGS", null, el.form, el.prog.el, el.results);
+  return panel(`${code("merger")}.C`, "VIDEO SETTINGS", null, el.form, el.prog.el, el.results);
 }
 
 export const actionBar = () => el.bar;

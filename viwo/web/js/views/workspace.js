@@ -1,4 +1,4 @@
-// 02 WORKSPACE: extension groups (kept / trashed), group actions, retain-selected, clear trash.
+// WORKSPACE: extension groups (kept / trashed), group actions, retain-selected, clear trash.
 import { api } from "../api.js";
 import { h, btn, panel, badge, viewHead, empty, errorBox, toast, toastErr, confirmBox, busy, fmtNum, bus, emit, stat, goBtn, openBtn } from "../ui.js";
 import { withSkeleton } from "../progress.js";
@@ -12,11 +12,11 @@ function mount(root) {
   el.retain = btn("KEEP ONLY SELECTED", retain, "primary");
   el.clear = btn("CLEAR TRASH", clearTrash, "danger");
   root.append(
-    viewHead("02", "WORKSPACE", "Your extracted files, grouped by file type. Trash a whole type you do not need; it stays recoverable until you delete it or clear the trash.",
+    viewHead(code("workspace"), "WORKSPACE", "Your extracted files, grouped by file type. Trash a whole type you do not need; it stays recoverable until you delete it or clear the trash.",
       btn("REFRESH", (e) => busy(e.currentTarget, load), "ghost"),
       btn("OPEN FOLDER", () => (bus.ws?.path ? openBtn(bus.ws.path).click() : toast("No workspace yet.", "warn")), "ghost")),
     el.totals,
-    el.panel = panel("02.A", "FILE TYPES", h("div", { class: "row" }, el.retain, el.clear), el.body));
+    el.panel = panel(`${code("workspace")}.A`, "FILE TYPES", h("div", { class: "row" }, el.retain, el.clear), el.body));
   bus.addEventListener("workspace", (e) => { if (e.detail?.switched) S.status = null; if (!root.hidden) load(); });
 }
 
@@ -45,7 +45,7 @@ function render() {
   el.clear.disabled = !st.totalTrashed;
   if (!exts.length) {
     el.body.replaceChildren(empty("WORKSPACE EMPTY", "Nothing extracted here yet. Extract a game, or use SWITCH (top right) to open another workspace.",
-      goBtn("#extract", "GO TO 01 EXTRACT")));
+      goBtn("#extract", "GO TO EXTRACT")));
     return;
   }
   el.body.replaceChildren(h("table", { class: "tbl groups" },
@@ -66,15 +66,19 @@ function row(ext) {
   const toggle = (e) => { e.target.checked ? S.selected.add(ext) : S.selected.delete(ext); render(); };
   return h("tr", { class: S.selected.has(ext) ? "sel" : "" },
     h("td", { class: "chk" }, h("input", { type: "checkbox", "aria-label": `Select .${ext}`, checked: S.selected.has(ext), onchange: toggle })),
-    h("td", {}, h("b", { class: "mono ext-name" }, `.${ext}`)),
+    h("td", {}, h("b", { class: "mono ext-name" }, ext === "noext" ? "(no extension)" : `.${ext}`)),
     h("td", { class: "mono num" }, fmtNum(kept)),
     h("td", { class: "mono num" }, fmtNum(trashed)),
     h("td", {}, state),
     h("td", {}, h("div", { class: "actions" },
+      kept && bus.ws?.path ? openBtn(folderOf(ext), "OPEN", "sm ghost") : null,
       btn("TRASH", (e) => groupAction(e, "trash", ext), "sm ghost", { disabled: !kept, "aria-label": `Trash all .${ext}` }),
       btn("RESTORE", (e) => groupAction(e, "restore", ext), "sm ghost", { disabled: !trashed, "aria-label": `Restore all .${ext}` }),
       btn("DELETE", (e) => groupAction(e, "delete", ext), "sm danger", { disabled: !trashed, "aria-label": `Delete trashed .${ext} forever` }))));
 }
+
+/** The type's folder in the workspace (`<workspace>/<ext>`), with the workspace's own separator. */
+const folderOf = (ext) => `${bus.ws.path}${bus.ws.path.includes("\\") ? "\\" : "/"}${ext}`;
 
 async function groupAction(e, action, ext) {
   if (action === "delete" && !(await confirmBox("DELETE TRASHED GROUP",
@@ -111,8 +115,8 @@ async function clearTrash() {
   emit("workspace");
 }
 
-import { registerView } from "../registry.js";
+import { registerView, code } from "../registry.js";
 
 const VIEW = { mount, show: load };
-registerView({ id: "workspace", arm: "static", order: 30, num: "02", title: "WORKSPACE", subtitle: "your files, by type", ...VIEW });
+registerView({ id: "workspace", arm: "static", order: 30, title: "WORKSPACE", subtitle: "your files, by type", ...VIEW });
 export default VIEW;

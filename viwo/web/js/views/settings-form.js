@@ -1,14 +1,14 @@
-// Form renderers for 11 SETTINGS: switches, plugin toggles, tool paths, options, slots.
+// Form renderers for SETTINGS: switches, plugin toggles, tool paths, options, slots.
 import { api } from "../api.js";
 import { h, add, badge, browseBtn, toggle } from "../ui.js";
 import { slotText } from "./system.js";
 
 const FEATURES = [
-  ["extraction", "EXTRACTION", "01 EXTRACT, 07 SURVEY, 09 PATCHED COPY"],
-  ["sorting", "SORTING", "02 WORKSPACE, 03 SORT, 08 CLEANUP"],
-  ["merger", "MERGER", "06 MERGER (needs ffmpeg)"],
-  ["capture", "RUNTIME CAPTURE (OPT-IN)", "10 CAPTURE: runs on any game; anti-cheat and online titles only produce warnings; you are responsible"],
-  ["analysis", "STATIC ANALYSIS (OPT-IN)", "12 ANALYSIS: Ghidra on a copy of the game's code; off by default because its tools are large (about 800 MB); you are responsible for having the right to analyse"],
+  ["extraction", "EXTRACTION", "EXTRACT, SURVEY, PATCHED COPY"],
+  ["sorting", "SORTING", "WORKSPACE, SORT, CLEANUP"],
+  ["merger", "MERGER", "MERGER (needs ffmpeg)"],
+  ["capture", "RUNTIME CAPTURE (OPT-IN)", "CAPTURE: runs on any game; anti-cheat and online titles only produce warnings; you are responsible"],
+  ["analysis", "STATIC ANALYSIS (OPT-IN)", "ANALYSIS: Ghidra on a copy of the game's code; off by default because its tools are large (about 800 MB); you are responsible for having the right to analyse"],
 ];
 const STARTUP = [
   ["auto_install", "AUTO-INSTALL TOOLS", "missing pinned tools are downloaded into third_party/ at startup"],
@@ -51,7 +51,7 @@ export function toolsForm(tools, touch) {
       const input = h("input", { class: "input mono grow", id, value: tools[dep] || "", placeholder: "auto", spellcheck: "false",
         oninput: () => { tools[dep] = input.value.trim(); touch(); } });
       const browse = browseBtn(input, (path) => { tools[dep] = path; touch(); }, (p) => api.browseFile(p).then((r) => r.path));
-      return h("div", { class: "kv" }, h("label", { class: "lbl", for: id }, dep.toUpperCase()), input, h("div", { class: "row" }, browse));
+      return h("div", { class: "kv" }, h("label", { class: "lbl", for: id }, dep.toUpperCase()), h("div", { class: "row" }, input, browse));
     }),
   ];
 }
@@ -71,7 +71,7 @@ export function optionsForm(options, plugins, touch) {
   const withOptions = plugins.filter((p) => p.options.some((o) => o.kind !== "secret"));
   if (!withOptions.length) return h("p", { class: "dim" }, "No loaded plugin has options that can live in the ini (secrets never do: they are asked per run).");
   return [
-    h("p", { class: "note first" }, "Defaults for loaded plugins. Secrets (keys, passwords) are never stored here; 01 EXTRACT asks for them per run."),
+    h("p", { class: "note first" }, "Defaults for loaded plugins. Secrets (keys, passwords) are never stored here; EXTRACT asks for them per run."),
     withOptions.map((p) => h("div", { class: "optgroup" }, h("h4", { class: "sub-h" }, `// ${p.name.toUpperCase()}`),
       p.options.filter((o) => o.kind !== "secret").map((o) => optionInput(p.id, o, options, touch)))),
   ];
@@ -80,7 +80,7 @@ export function optionsForm(options, plugins, touch) {
 export function slotsTable(slots, overrides) {
   const rows = Object.values(slots || {});
   return [
-    h("p", { class: "note first" }, "Which tool is main and spare for each format. Read-only here: change them under [slots] in startup.ini, or install tools in 05 SYSTEM."),
+    h("p", { class: "note first" }, "Which tool is main and spare for each format. Read-only here: change them under [slots] in startup.ini, or install tools in SYSTEM."),
     h("table", { class: "tbl slots" },
       h("thead", {}, h("tr", {}, ["FORMAT", "MAIN", "SPARE", "STATE"].map((c) => h("th", {}, c)))),
       h("tbody", {}, rows.map((s) => h("tr", {},

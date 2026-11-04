@@ -1,4 +1,4 @@
-// 06 MERGER: pick candidates (numbered frame/clip groups), tune loops + conflict order, render MP4s.
+// MERGER: pick candidates (numbered frame/clip groups), tune loops + conflict order, render MP4s.
 import { api } from "../api.js";
 import { h, fill, btn, panel, badge, viewHead, empty, errorBox, busy, fmtNum, bus, goBtn } from "../ui.js";
 import { outputPanel, applyState, refreshBar, actionBar } from "./merger-output.js";
@@ -18,12 +18,12 @@ function mount(root) {
   el.timeline = h("div", { class: "tline" });
   el.selCount = h("span", { class: "mono dim" });
   root.append(
-    viewHead("06", "MERGER", "Turn numbered frames and clips (01_walk.png, 02_walk.png…) from the workspace into MP4 videos: one video per group you tick.",
+    viewHead(code("merger"), "MERGER", "Turn numbered frames and clips (01_walk.png, 02_walk.png…) from the workspace into MP4 videos: one video per group you tick.",
       btn("REFRESH", (e) => busy(e.currentTarget, load), "ghost")),
     el.banner,
     h("div", { class: "merge-grid" },
-      panel("06.A", "GROUPS", el.count, el.filters, el.list),
-      h("div", { class: "col" }, panel("06.B", "TIMELINE", el.selCount, el.timeline),
+      panel(`${code("merger")}.A`, "GROUPS", el.count, el.filters, el.list),
+      h("div", { class: "col" }, panel(`${code("merger")}.B`, "TIMELINE", el.selCount, el.timeline),
         outputPanel({ specs, stats, pattern: () => S.pattern }))),
     actionBar());
   bus.addEventListener("workspace", () => { S.sel.clear(); S.offset = 0; if (!root.hidden) load(); });
@@ -35,8 +35,8 @@ async function load() {
     fill(el.banner,
       S.st.encoder ? null : h("div", { class: "alert", "data-kind": "err", role: "alert" }, h("b", {}, "FFMPEG NOT INSTALLED // BUILD DISABLED"),
         h("p", {}, "The merger needs ffmpeg (with ffprobe) to make videos. You can still pick groups; BUILD unlocks once ffmpeg is found."),
-        h("p", { class: "next" }, h("b", {}, "NEXT"), "Install ffmpeg with one click in 05 SYSTEM (pinned build, into third_party/), then press REFRESH here. ",
-          h("a", { href: "#system" }, "Open 05 SYSTEM →"))),
+        h("p", { class: "next" }, h("b", {}, "NEXT"), "Install ffmpeg with one click in SYSTEM (pinned build, into third_party/), then press REFRESH here. ",
+          h("a", { href: "#system" }, "Open SYSTEM →"))),
       h("div", { class: "kv" }, h("span", { class: "lbl" }, "SOURCE"), h("code", { class: "mono path" }, S.st.workingDir)),
       h("div", { class: "kv" }, h("span", { class: "lbl" }, "OUTPUT"), h("code", { class: "mono path" }, S.st.mergerDir)));
   } catch (err) {
@@ -78,7 +78,7 @@ function renderList() {
   const rows = visible();
   if (!rows.length) {
     fill(el.list, empty(S.files ? "NO MATCH" : "NOTHING TO MERGE", S.files ? "No candidate matches these filters."
-      : "This workspace has no images or videos yet. Extract a game, or use SWITCH (top right) to open another workspace.", S.files ? null : goBtn("#extract", "GO TO 01 EXTRACT")));
+      : "This workspace has no images or videos yet. Extract a game, or use SWITCH (top right) to open another workspace.", S.files ? null : goBtn("#extract", "GO TO EXTRACT")));
     return;
   }
   fill(el.list, rows.map((c) => h("label", { class: `cand ${S.sel.has(c.name) ? "on" : ""}` },
@@ -168,8 +168,8 @@ function conflictList(spec, index, focusAt = -1) {
   return ol;
 }
 
-import { registerView } from "../registry.js";
+import { registerView, code } from "../registry.js";
 
 const VIEW = { mount, show: load };
-registerView({ id: "merger", arm: "static", order: 60, num: "06", title: "MERGER", subtitle: "frames → video", ...VIEW });
+registerView({ id: "merger", arm: "static", order: 60, title: "MERGER", subtitle: "frames → video", ...VIEW });
 export default VIEW;

@@ -64,6 +64,9 @@ report.checks.views = VIEWS;
 // the arms: the rail lists one arm's views, a global view (strip) keeps the arm
 const railNow = () => evaluate("[...document.querySelectorAll('#mods a')].map((a) => a.dataset.view)");
 report.checks.arms = { static: await railNow(), strip: await evaluate("[...document.querySelectorAll('#strip a')].map((a) => a.dataset.view)") };
+// the tab codes are computed: the rail's and the strip's, and the view heads they open
+report.checks.codes = { static: await evaluate("[...document.querySelectorAll('#mods a b')].map((b) => b.textContent)"),
+  strip: await evaluate("[...document.querySelectorAll('#strip a b')].map((b) => b.textContent)") };
 await evaluate("location.hash = '#capture'"); await sleep(300);
 report.checks.arms.dynamic = await railNow();
 await evaluate("location.hash = '#jobs'"); await sleep(300);
@@ -81,23 +84,23 @@ for (const v of VIEWS) {
   await shot(`view-${v}`);
 }
 
-// toast position: bottom right of the viewport
+// toast position: top right, under the top bar (never over an action bar)
 step = "toast";
 await evaluate("import('./js/ui.js').then((m) => { m.toast('smoke toast', 'ok'); return true; })");
 await sleep(300);
-report.checks.toast = await evaluate("(() => { const t = document.querySelector('#toasts .toast'); if (!t) return null; const r = t.getBoundingClientRect(); return { bottomGap: window.innerHeight - r.bottom, rightGap: window.innerWidth - r.right, text: t.textContent }; })()");
+report.checks.toast = await evaluate("(() => { const t = document.querySelector('#toasts .toast'); if (!t) return null; const r = t.getBoundingClientRect(); return { topGap: r.top - document.querySelector('.topbar').getBoundingClientRect().bottom, rightGap: window.innerWidth - r.right, text: t.textContent }; })()");
 
-// 05 SYSTEM: gap between 05.A and the grid below
+// SYSTEM: gap between its first panel and the grid below
 step = "system";
 await evaluate("location.hash = '#system'");
 await sleep(1500);
-report.checks.systemGap = await evaluate("(() => { const a = document.querySelector('#view-system [data-panel=\"05.A\"]'); const g = a && a.nextElementSibling; if (!a || !g) return null; return g.getBoundingClientRect().top - a.getBoundingClientRect().bottom; })()");
+report.checks.systemGap = await evaluate("(() => { const a = document.querySelector('#view-system .panel'); const g = a && a.nextElementSibling; if (!a || !g) return null; return g.getBoundingClientRect().top - a.getBoundingClientRect().bottom; })()");
 
-// 11 SETTINGS: slots table fills its column; theme switch; no null text
+// SETTINGS: slots table fills its column; theme switch; no null text
 step = "settings";
 await evaluate("location.hash = '#settings'");
-await waitFor("Boolean(document.querySelector('#view-settings [data-panel=\"11.E\"] table'))", 15000);
-report.checks.slotsTable = await evaluate("(() => { const p = document.querySelector('#view-settings [data-panel=\"11.E\"]'); const t = p && p.querySelector('table'); if (!t) return null; const body = p.querySelector('.panel-b'); return { table: t.getBoundingClientRect().width, column: body.getBoundingClientRect().width }; })()");
+await waitFor("Boolean([...document.querySelectorAll('#view-settings .panel')].find((p) => p.querySelector('h3')?.textContent.startsWith('FORMATS'))?.querySelector('table'))", 15000);
+report.checks.slotsTable = await evaluate("(() => { const p = [...document.querySelectorAll('#view-settings .panel')].find((p) => p.querySelector('h3')?.textContent.startsWith('FORMATS')); const t = p && p.querySelector('table'); if (!t) return null; const body = p.querySelector('.panel-b'); return { table: t.getBoundingClientRect().width, column: body.getBoundingClientRect().width }; })()");
 report.checks.settingsNull = await nullText("settings");
 const before = await evaluate("({ theme: document.documentElement.dataset.theme, href: document.querySelector('#theme-link').getAttribute('href') })");
 await evaluate("(() => { const b = [...document.querySelectorAll('#view-settings [data-role=\"theme\"] button')].find((x) => x.dataset.value === 'plain'); if (b) b.click(); return Boolean(b); })()");
@@ -108,7 +111,7 @@ await shot("theme-plain");
 await evaluate("(() => { const b = [...document.querySelectorAll('#view-settings [data-role=\"theme\"] button')].find((x) => x.dataset.value === 'wormhole'); if (b) b.click(); return Boolean(b); })()");
 await sleep(300);
 
-// 01 EXTRACT: detect percent format, options panel, skipped stage after a real extraction
+// EXTRACT: detect percent format, options panel, skipped stage after a real extraction
 step = "extract";
 await evaluate("location.hash = '#extract'");
 await sleep(600);
@@ -122,13 +125,13 @@ await sleep(600);
 report.checks.rail = await evaluate("[...document.querySelectorAll('#view-extract .rail-stages li')].map((li) => ({ s: li.dataset.s, label: li.querySelector('span').textContent, note: (li.querySelector('.rail-note') || {}).textContent || '', noteVisible: Boolean(li.querySelector('.rail-note') && li.querySelector('.rail-note').getBoundingClientRect().height > 0) }))");
 await shot("extract-done");
 
-// 03 SORT: type filters carry workspace-wide counts
+// SORT: type filters carry workspace-wide counts
 step = "sort";
 await evaluate("location.hash = '#sort'");
 await waitFor("document.querySelectorAll('#view-sort .tfilter button').length > 0", 15000);
 report.checks.sortFilters = await evaluate("[...document.querySelectorAll('#view-sort .tfilter button')].map((b) => b.textContent.replace(/\\s+/g, ' ').trim())");
 
-// 08 CLEANUP: the scan runs as a visible job
+// CLEANUP: the scan runs as a visible job
 step = "cleanup";
 await evaluate("location.hash = '#cleanup'");
 await sleep(800);

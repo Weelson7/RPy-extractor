@@ -1,4 +1,4 @@
-// 11 SETTINGS: the startup ini as a form (features, plugins, tool paths, options, slots).
+// SETTINGS: the startup ini as a form (features, plugins, tool paths, options, slots).
 // APPLY writes only what changed and reloads the runtime: no restart.
 import { api } from "../api.js";
 import { h, fill, btn, panel, viewHead, toast, toastErr, busy, emit, errorBox } from "../ui.js";
@@ -22,11 +22,11 @@ function mount(root) {
   el.apply = btn("APPLY + RELOAD", (e) => busy(e.currentTarget, apply), "primary lg");
   el.revert = btn("REVERT", (e) => busy(e.currentTarget, load), "ghost");
   root.append(
-    viewHead("11", "SETTINGS", "Everything here is written to startup.ini and applied by reloading ViWo's tool bindings: no restart, no ini editing.",
+    viewHead(code("settings"), "SETTINGS", "Everything here is written to startup.ini and applied by reloading ViWo's tool bindings: no restart, no ini editing.",
       btn("RELOAD FORM", (e) => busy(e.currentTarget, load), "ghost")),
     h("div", { class: "grid2" },
-      h("div", { class: "col" }, panel("11.A", "FEATURES + STARTUP", null, el.features), panel("11.B", "ENGINE PLUGINS", null, el.plugins), panel("11.D", "PLUGIN OPTIONS", null, el.options)),
-      h("div", { class: "col" }, panel("11.C", "TOOL PATHS", null, el.tools), panel("11.E", "FORMATS (SLOTS)", null, el.slots))),
+      h("div", { class: "col" }, panel(`${code("settings")}.A`, "FEATURES + STARTUP", null, el.features), panel(`${code("settings")}.B`, "ENGINE PLUGINS", null, el.plugins), panel(`${code("settings")}.D`, "PLUGIN OPTIONS", null, el.options)),
+      h("div", { class: "col" }, panel(`${code("settings")}.C`, "TOOL PATHS", null, el.tools), panel(`${code("settings")}.E`, "FORMATS (SLOTS)", null, el.slots))),
     h("div", { class: "actionbar" }, el.sum, el.why, el.revert, el.apply));
 }
 
@@ -112,8 +112,8 @@ async function apply() {
   }
 }
 
-import { registerView } from "../registry.js";
+import { registerView, code } from "../registry.js";
 
 const VIEW = { mount, show: load };
-registerView({ id: "settings", arm: "global", order: 30, num: "11", title: "SETTINGS", subtitle: "plugins, features, tools", ...VIEW });
+registerView({ id: "settings", arm: "global", order: 30, title: "SETTINGS", subtitle: "plugins, features, tools", ...VIEW });
 export default VIEW;

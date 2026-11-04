@@ -1,4 +1,5 @@
 // 01.F RESULT: counts, alarms, per-backend and per-plugin tables for one /api/extract response.
+import { code } from "../registry.js";
 import { api } from "../api.js";
 import { h, fill, panel, badge, errorBox, fmtNum, stat, goBtn, openBtn, toolLink } from "../ui.js";
 import { stateBadge } from "./jobs.js";
@@ -46,7 +47,7 @@ export function renderResult(host, res) {
   const other = warnings.filter((w) => !w.includes(ALARM));
   const plugins = r.plugins || [];
   const status = alarms.length ? badge("ALARM", "err") : other.length ? badge(`${other.length} WARNINGS`, "warn") : badge("CHECKS OK", "ok");
-  host.replaceChildren(panel("01.F", "RESULT", status,
+  host.replaceChildren(panel(`${code("extract")}.F`, "RESULT", status,
     alarms.length ? alarm(alarms) : null,
     h("div", { class: "stats" },
       stat("COPIED", fmtNum(r.copiedFiles), "files to workspace"),
@@ -56,8 +57,8 @@ export function renderResult(host, res) {
       stat("MODE", String(r.mode || "?").toUpperCase(), `extractor ${res.extractorType || r.extractorType || "?"}`)),
     extChips(r.copiedByExt),
     pathRow("WORKSPACE", res.assetPath),
-    h("div", { class: "row next-row" }, h("span", { class: "lbl" }, "NEXT"), goBtn("#workspace", "02 BROWSE BY TYPE →", "sm"),
-      goBtn("#sort", "03 SORT →", "sm"), goBtn("#cleanup", "08 CLEAN UP →", "sm"), goBtn("#merger", "06 MAKE A VIDEO →", "sm ghost")),
+    h("div", { class: "row next-row" }, h("span", { class: "lbl" }, "NEXT"), goBtn("#workspace", `${code("workspace")} BROWSE BY TYPE →`, "sm"),
+      goBtn("#sort", `${code("sort")} SORT →`, "sm"), goBtn("#cleanup", `${code("cleanup")} CLEAN UP →`, "sm"), goBtn("#merger", `${code("merger")} MAKE A VIDEO →`, "sm ghost")),
     other.length ? h("div", { class: "alert", "data-kind": "warn" }, h("b", {}, "WARNINGS"), h("ul", {}, other.map((w) => h("li", {}, w)))) : null,
     [...warnings, ...plugins.flatMap((p) => [p.error, ...(p.warnings || [])])].some((w) => /unavailable|install/i.test(w || ""))
       ? toolLink("Some files were skipped because an optional tool is not installed.") : null,
@@ -76,7 +77,7 @@ const NEXT = {
 };
 
 export function renderFailure(host, err) {
-  host.replaceChildren(panel("01.F", "RESULT", badge(err.code === "cancelled" ? "CANCELLED" : "FAILED", err.code === "cancelled" ? "warn" : "err"),
+  host.replaceChildren(panel(`${code("extract")}.F`, "RESULT", badge(err.code === "cancelled" ? "CANCELLED" : "FAILED", err.code === "cancelled" ? "warn" : "err"),
     errorBox(err, err.code === "cancelled" ? "EXTRACTION" : "EXTRACTION FAILED", NEXT[err.code])));
 }
 
@@ -92,7 +93,7 @@ function lastRun(job) {
     job.error ? errorBox(job.error, "RUN FAILED") : h("div", { class: "stats" },
       stat("COPIED", fmtNum(r.copiedFiles)), stat("SCANNED", fmtNum(r.scannedFiles)),
       stat("ARCHIVES", `${fmtNum(r.archivesExtracted)}/${fmtNum(r.archivesFound)}`), stat("WARNINGS", fmtNum(r.checks?.warnings?.length || 0))),
-    ws ? pathRow("WORKSPACE", ws, job.state === "succeeded" ? goBtn("#sort", "03 SORT →", "sm") : null) : null);
+    ws ? pathRow("WORKSPACE", ws, job.state === "succeeded" ? goBtn("#sort", `${code("sort")} SORT →`, "sm") : null) : null);
 }
 
 /** Idle LIVE FEED: how it works (drawn at once, so nothing jumps), then the last extract job when it loads. */

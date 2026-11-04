@@ -35,7 +35,7 @@ SLOTS = (SlotDefinition("capture.gpu", "capture", "core", "renderdoc"),)
 
 def backends() -> list:
     """RenderDoc serves capture.gpu; Frida and the loopback recorder serve no slot (one tool
-    each, nothing to fail over to) and are listed for their dependencies (preflight, 05 SYSTEM)."""
+    each, nothing to fail over to) and are listed for their dependencies (preflight, SYSTEM)."""
     return [FridaTrace(), LoopbackRecorder(), RenderDocCapture()]
 
 

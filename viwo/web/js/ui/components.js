@@ -54,7 +54,9 @@ export function empty(title, text, ...actions) {
 }
 
 /** Alert block: kind = err | warn | info. */
-export const alert = (kind, title, ...body) => h("div", { class: "alert", "data-kind": kind, role: kind === "err" ? "alert" : null }, h("b", {}, title), body);
+/** A notice: the title, then each text part as its own paragraph (never run into the title). */
+export const alert = (kind, title, ...body) => h("div", { class: "alert", "data-kind": kind, role: kind === "err" ? "alert" : null }, h("b", {}, title),
+  body.map((part) => (typeof part === "string" ? h("p", {}, part) : part)));
 
 /** Definition-style pair: LABEL value [extras]. */
 export const kv = (label, value, ...extras) => h("div", { class: "kv" }, h("span", { class: "lbl" }, label), value, extras.length ? h("div", { class: "row" }, extras) : null);
@@ -111,6 +113,6 @@ export function rail(stages, extra = {}) {
 /** Safety strip: [[headline, detail], ...] — what a tool will never do. */
 export const assure = (points) => h("ul", { class: "assure" }, points.map(([b, t]) => h("li", {}, h("b", {}, b), h("span", {}, t))));
 
-/** Pointer to 05 SYSTEM wherever a feature depends on an optional tool. */
+/** Pointer to SYSTEM wherever a feature depends on an optional tool. */
 export const toolLink = (text = "Some of this needs an optional tool.") =>
-  h("p", { class: "note" }, `${text} `, h("a", { href: "#system" }, "See 05 SYSTEM for what to install →"));
+  h("p", { class: "note" }, `${text} `, h("a", { href: "#system" }, "See SYSTEM for what to install →"));

@@ -384,7 +384,7 @@ kbd { border: 1px solid var(--line); background: var(--bg-2); color: var(--text)
 .land-sum { color: var(--text); }
 .land-foot { font-size: 11px; letter-spacing: 0.18em; color: var(--dim); }
 @keyframes lout { to { opacity: 0; transform: scale(1.02); filter: brightness(1.4); } }
-/* ---------- 10 CAPTURE, 11 SETTINGS, 05.E MAINTENANCE ---------- */
+/* ---------- CAPTURE, SETTINGS, 05.E MAINTENANCE ---------- */
 .warnlist li { border-left: 2px solid var(--amber); background: rgba(255, 179, 64, 0.08); font-size: 13px; }
 .confirm-row { border: 1px solid var(--line); background: var(--bg-2); }
 .confirm-row input { accent-color: var(--red); }

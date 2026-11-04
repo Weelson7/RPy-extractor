@@ -1,4 +1,4 @@
-"""10 CAPTURE: file picker, the warnings before a capture, and the capture itself as a job."""
+"""CAPTURE: file picker, the warnings before a capture, and the capture itself as a job."""
 
 from __future__ import annotations
 

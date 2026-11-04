@@ -1,4 +1,5 @@
 // 05.E MAINTENANCE: update check (only on click), diagnostics bundle, indexes update job.
+import { code } from "../registry.js";
 import { api } from "../api.js";
 import { h, fill, btn, panel, badge, busy, toast, toastErr, openBtn, errorBox } from "../ui.js";
 import { jobProgress } from "../progress.js";
@@ -68,7 +69,7 @@ export function maintenancePanel() {
   el.idx = h("div", {});
   el.progHost = h("div", { class: "install-prog", hidden: true });
   el.idxBtn = btn("UPDATE INDEXES", (e) => busy(e.currentTarget, updateIndexes), "");
-  return panel("05.E", "MAINTENANCE", null,
+  return panel(`${code("system")}.E`, "MAINTENANCE", null,
     h("div", { class: "maint" },
       h("div", { class: "maint-row" }, btn("CHECK FOR UPDATES", (e) => busy(e.currentTarget, checkUpdates), ""), h("span", { class: "small dim" }, "latest ViWo and indexes releases on GitHub"), el.updates),
       h("div", { class: "maint-row" }, btn("DIAGNOSTICS BUNDLE", (e) => busy(e.currentTarget, diag), ""), h("span", { class: "small dim" }, "zip of logs, run records and tool versions for a bug report"), el.diag),

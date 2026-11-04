@@ -18,7 +18,7 @@ def require(rt, feature: str, what: str, more: str = "") -> None:
     """A capability switch ([startup] features): when off, the request is refused with the way
     to switch it on (never a judgement: the switch is the user's)."""
     if feature not in rt.config.features:
-        hint = f"add {feature} to [startup] features in the ini (11 SETTINGS){more}"
+        hint = f"add {feature} to [startup] features in the ini (SETTINGS){more}"
         raise ViwoError("refused", f"{what} is off", hint=hint)
 
 

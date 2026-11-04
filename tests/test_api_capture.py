@@ -1,4 +1,4 @@
-"""L6: 10 CAPTURE API: warnings (never a block), confirmation, the capture job, file picker."""
+"""L6: CAPTURE API: warnings (never a block), confirmation, the capture job, file picker."""
 
 from __future__ import annotations
 

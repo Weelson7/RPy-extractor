@@ -34,7 +34,7 @@ Backend
 SlotBinding { slot_id, main, spare, promoted, source: default|ini, reasons }
 ```
 
-A backend may serve no slot and exist only to declare a dependency so preflight, 05 SYSTEM and
+A backend may serve no slot and exist only to declare a dependency so preflight, SYSTEM and
 `viwo install` see it: `frida-trace` (`viwo trace`) and `soundcard-loopback` (`viwo record`),
 each the one tool for its job.
 
@@ -50,7 +50,7 @@ Binding at boot:
    problem for that entry only; the default is used.
 2. A default spare whose plugin is switched off is simply absent.
 3. If the main is available it stays main; if not and the spare is, the spare is **promoted**
-   (shown in `viwo slots` and 05 SYSTEM); if neither is, the slot is **unbound** and stages that
+   (shown in `viwo slots` and SYSTEM); if neither is, the slot is **unbound** and stages that
    need it report `unavailable` with the install hint. The app does not crash.
 
 **Never silent (owner's rule):** when the spare runs, the outcome carries `fallback` ("<main>

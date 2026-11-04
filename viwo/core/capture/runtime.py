@@ -144,7 +144,7 @@ def trace(rt, req: RuntimeRequest, cancel=None) -> dict:
 
 
 class FridaTrace(Backend):
-    """Owns the Frida dependency so preflight, 05 SYSTEM and `viwo install` see it. It serves no
+    """Owns the Frida dependency so preflight, SYSTEM and `viwo install` see it. It serves no
     slot: trace() above is the one way to run frida-trace (a separate process); there is no
     other tracer to bind or fail over to."""
 

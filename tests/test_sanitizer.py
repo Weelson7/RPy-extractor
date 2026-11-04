@@ -133,7 +133,7 @@ class SanitizerTests(unittest.TestCase):
             undone = POST["/api/sanitizer/undo"](app, {"undoToken": done["undoToken"]})
             self.assertEqual(undone["restored"], 1)
             kinds = [app.jobs.get(r["jobId"]).kind for r in (plan, done, undone)]
-            self.assertEqual(kinds, ["cleanup"] * 3)  # visible in 04 JOBS and the chips
+            self.assertEqual(kinds, ["cleanup"] * 3)  # visible in JOBS and the chips
             lines = [e.message for e in app.jobs.get(plan["jobId"]).events]
             self.assertTrue(any(m.startswith("Scanning files: ") for m in lines), lines)
             self.assertTrue(any(m.startswith("Hashing files: ") for m in lines), lines)

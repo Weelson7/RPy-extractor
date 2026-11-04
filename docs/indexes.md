@@ -56,7 +56,7 @@ the split it packs the submodule checkout the same way.
   major opens a new line; older lines keep receiving data fixes.
 - `viwo install --game` never updates the index itself. Once the folder is a submodule, ViWo
   pins the commit it ships with and `git submodule update --remote indexes` updates it.
-- `viwo indexes update` (and 05 SYSTEM > UPDATE INDEXES) fetches the newest release of the
+- `viwo indexes update` (and SYSTEM > UPDATE INDEXES) fetches the newest release of the
   matching tag line over HTTPS with a checksum, for installs without git (see below).
 
 ## Release convention of `vidya_wormhole_indexes` (what `viwo indexes update` expects)

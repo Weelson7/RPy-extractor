@@ -30,6 +30,21 @@ export function registerPanel(viewId, panel, { override = false } = {}) {
 }
 
 export const views = () => [...VIEWS.values()].sort(byOrder);
+
+/**
+ * A view's tab code, computed from its arm and its place in it (never written by a view):
+ * S0, S1… in STATIC, D0… in DYNAMIC, P0… in PATCHING (the arm home is 0), 00, 01… for the global
+ * strip (SYSTEM, JOBS, SETTINGS). Add-on views and reordering renumber everything by themselves.
+ */
+export function code(id) {
+  const v = VIEWS.get(id);
+  if (!v) return "";
+  const i = armViews(v.arm).findIndex((x) => x.id === id);
+  return v.arm === "global" ? String(i).padStart(2, "0") : `${v.arm[0].toUpperCase()}${i}`;
+}
+
+/** "S7 ANALYSIS": how prose names a tab, from the live numbering. */
+export const tab = (id) => (VIEWS.get(id) ? `${code(id)} ${VIEWS.get(id).title}` : id.toUpperCase());
 export const view = (id) => VIEWS.get(id) || null;
 export const armViews = (arm) => views().filter((v) => v.arm === arm);
 export const panels = (viewId) => [...(PANELS.get(viewId)?.values() || [])].sort(byOrder);

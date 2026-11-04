@@ -1,4 +1,4 @@
-// 07 SURVEY: read-only coverage check of one game or a whole library — what ViWo can pull, and what stays locked.
+// SURVEY: read-only coverage check of one game or a whole library — what ViWo can pull, and what stays locked.
 import { api } from "../api.js";
 import { h, fill, btn, panel, badge, viewHead, empty, errorBox, toast, toastErr, pref, logLine, fmtBytes, fmtNum, emit, bus, stat, browseBtn } from "../ui.js";
 import { setGame } from "../game.js";
@@ -13,7 +13,7 @@ function mount(root) {
     value: pref("surveyPath") || pref("gamePath") || "", spellcheck: "false", onkeydown: (e) => e.key === "Enter" && run(), oninput: bar });
   el.deep = h("button", { type: "button", class: "pick tgl", "aria-describedby": "survey-deep-note", onclick: () => setDeep(!S.deep) }, "DEEP");
   el.prog = jobProgress("survey", { logClass: "mini", onStatus: (text) => { if (S.running && text) el.sum.textContent = text; } });
-  el.progPanel = panel("07.B", "SURVEY RUN", null, el.prog.el);
+  el.progPanel = panel(`${code("survey")}.B`, "SURVEY RUN", null, el.prog.el);
   el.progPanel.hidden = true;
   el.summary = h("div", { class: "sv-sum" });
   el.reports = h("div", {});
@@ -23,14 +23,14 @@ function mount(root) {
   el.run = btn("SURVEY", () => run(), "primary lg");
   el.cancel = btn("CANCEL", cancelJob, "ghost", { hidden: true });
   root.append(
-    viewHead("07", "SURVEY", "What can ViWo pull? Survey one game or a folder of games: every file is sorted by what extraction would do with it. Read-only — nothing is copied or written."),
-    panel("07.A", "GAME OR LIBRARY FOLDER", badge("READ-ONLY", "ok"),
+    viewHead(code("survey"), "SURVEY", "What can ViWo pull? Survey one game or a folder of games: every file is sorted by what extraction would do with it. Read-only — nothing is copied or written."),
+    panel(`${code("survey")}.A`, "GAME OR LIBRARY FOLDER", badge("READ-ONLY", "ok"),
       h("label", { class: "lbl", for: "survey-path" }, "FOLDER"),
       h("div", { class: "row" }, el.path, browseBtn(el.path, bar)),
       h("div", { class: "row policy" }, h("span", { class: "lbl" }, "DEPTH"), el.deep,
         h("span", { class: "dim", id: "survey-deep-note" }, "also try the carver on unknown files — slower")),
       h("p", { class: "note" }, "A folder that looks like a game is surveyed as one game; otherwise each sub-folder is one game.")),
-    el.progPanel, el.summary, el.cards, panel("07.D", "SURVEY REPORTS", btn("REFRESH", () => listReports(), "sm ghost"), el.reports),
+    el.progPanel, el.summary, el.cards, panel(`${code("survey")}.D`, "SURVEY REPORTS", btn("REFRESH", () => listReports(), "sm ghost"), el.reports),
     h("div", { class: "actionbar" }, el.sum, el.why, el.cancel, el.run));
   setDeep(S.deep);
   renderIdle();
@@ -83,7 +83,7 @@ async function cancelJob() {
 }
 
 function renderIdle() {
-  fill(el.cards, panel("07.C", "HOW TO READ A SURVEY", null,
+  fill(el.cards, panel(`${code("survey")}.C`, "HOW TO READ A SURVEY", null,
     empty("NO SURVEY YET", "Pick a game or library folder above and press SURVEY (bottom right). Each game gets a card, worst coverage first."),
     h("h4", { class: "sub-h" }, "// CATEGORIES"), categoryKey(),
     h("p", { class: "note" }, "Coverage = asset + container + engine + carvable, as a share of data bytes (code and tiny files excluded).")));
@@ -143,8 +143,8 @@ function render() {
     : empty("NO GAMES FOUND", "This folder holds no sub-folders or files to survey. Pick the game's own folder, or the folder that holds your games."));
 }
 
-import { registerView } from "../registry.js";
+import { registerView, code } from "../registry.js";
 
 const VIEW = { mount };
-registerView({ id: "survey", arm: "static", order: 10, num: "07", title: "SURVEY", subtitle: "what can ViWo pull?", ...VIEW });
+registerView({ id: "survey", arm: "static", order: 10, title: "SURVEY", subtitle: "what can ViWo pull?", ...VIEW });
 export default VIEW;

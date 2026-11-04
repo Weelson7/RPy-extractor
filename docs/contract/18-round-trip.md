@@ -2,7 +2,7 @@
 
 Turning edits into something that runs. Every write goes into a **patched copy**: a full copy of
 the game folder marked by a `.viwo-patched/` folder; the game folder is only read. CLI arm
-`viwo patching`: `repack`, `patch`, `mod`. UI: 09 PATCHED COPY, 14 PATCHES + MODS.
+`viwo patching`: `repack`, `patch`, `mod`. UI: PATCHED COPY, PATCHES + MODS.
 
 ## 18.1 Round trip
 

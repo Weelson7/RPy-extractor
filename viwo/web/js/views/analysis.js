@@ -1,10 +1,11 @@
-// 12 ANALYSIS: the binaries a game offers (proposed by the plugins), one headless analysis per
+// ANALYSIS: the binaries a game offers (proposed by the plugins), one headless analysis per
 // target into the workspace's .analysis/, and "continue in <tool>" handoffs (doc 6, 8.3a).
 import { api } from "../api.js";
 import { h, fill, btn, panel, badge, viewHead, toast, toastErr, pref, busy, bus, emit, browseBtn, errorBox, logLine, assure, table, alert, kv, confirmBox } from "../ui.js";
 import { setGame, followGame } from "../game.js";
+import { featureOff } from "../feature.js";
 import { jobProgress, withSkeleton } from "../progress.js";
-import { registerView } from "../registry.js";
+import { registerView, code } from "../registry.js";
 
 const S = { targets: null, enabled: false, running: false, ws: "", key: "" };
 const el = {};
@@ -17,33 +18,33 @@ function mount(root) {
   el.opts = h("textarea", { class: "input mono", id: "an-opts", rows: "4", spellcheck: "false", value: pref("anOpts") || "",
     placeholder: "start=export:decode\nargs=hex:00112233,4,0x5a\ndump=arg0:4", oninput: (e) => pref("anOpts", e.target.value) });
   el.prog = jobProgress("analyze", { logClass: "mini", onStatus: (t) => { if (S.running && t) el.sum.textContent = t; } });
-  el.progPanel = panel("12.C", "RUN", null, el.prog.el);
+  el.progPanel = panel(`${code("analysis")}.C`, "RUN", null, el.prog.el);
   el.progPanel.hidden = true;
   el.result = h("div", {});
   el.sum = h("div", { class: "ab-sum mono" });
   el.why = h("span", { class: "ab-why" });
   el.cancel = btn("CANCEL", cancelJob, "ghost", { hidden: true });
   followGame(el.game);
+  S.ws = bus.ws?.path || ""; // before the note is built: the workspace may be known already
   root.append(
-    viewHead("12", "ANALYSIS", "Static analysis of the game's code: the plugins propose the binaries, Ghidra analyses a copy headless into the workspace, and CONTINUE IN GHIDRA opens the same project in the GUI. Nothing runs the game."),
+    viewHead(code("analysis"), "ANALYSIS", "Static analysis of the game's code: the plugins propose the binaries, Ghidra analyses a copy headless into the workspace, and CONTINUE IN GHIDRA opens the same project in the GUI. Nothing runs the game."),
     assure([["READ-ONLY", "the binary is copied first; the game folder is never handed to a tool"],
       ["YOUR RESPONSIBILITY", "you have the right to analyse what you analyse; ViWo refuses nothing and judges nothing"],
       ["INTO THE WORKSPACE", "projects and exports land under .analysis/ and travel with the workspace"]]),
     h("div", { class: "grid2" },
       h("div", { class: "col" },
-        panel("12.A", "GAME", badge("READ-ONLY SOURCE", "ok"),
+        panel(`${code("analysis")}.A`, "GAME", badge("READ-ONLY SOURCE", "ok"),
           h("label", { class: "lbl", for: "an-game" }, "GAME FOLDER"),
           h("div", { class: "row" }, el.game, browseBtn(el.game, (p) => { setGame(p); list(); }), btn("LIST TARGETS", (e) => busy(e.currentTarget, list), "primary")),
           h("p", { class: "note" }, "Results go to the active workspace: ", (el.wsNote = h("code", { class: "mono" }, S.ws || "—")), ".")),
-        panel("12.B", "TARGETS", null, el.targets),
+        panel(`${code("analysis")}.B`, "TARGETS", null, el.targets),
         diffPanel(),
-        panel("12.E", "ROUTINE OPTIONS (EMULATE / SOLVE)", null,
+        panel(`${code("analysis")}.E`, "ROUTINE OPTIONS (EMULATE / SOLVE)", null,
           h("label", { class: "lbl", for: "an-opts" }, "ONE KEY=VALUE PER LINE: START, ARGS, DUMP, MAX_INSNS; FIND, AVOID FOR SOLVE"),
           el.opts, h("p", { class: "note" }, "Unicorn runs one isolated routine of the binary; angr solves the inputs that reach FIND. Both run as their own process."))),
       h("div", { class: "col" }, el.progPanel, el.result)),
     h("div", { class: "actionbar" }, el.sum, el.why, el.cancel));
   bus.addEventListener("wspath", (e) => { S.ws = e.detail.path || ""; el.wsNote.textContent = S.ws || "—"; bar(); });
-  S.ws = bus.ws?.path || "";
   renderTargets();
   bar();
 }
@@ -61,14 +62,14 @@ async function list() {
   bar();
 }
 
-/** 12.F VERSION DIFF: two Ghidra exports of one binary (an older and a newer game build). */
+/** VERSION DIFF: two Ghidra exports of one binary (an older and a newer game build). */
 function diffPanel() {
   const folder = (id, key) => h("input", { class: "input mono grow", id, placeholder: ".analysis/ghidra-headless/<key>", value: pref(key) || "",
     spellcheck: "false", oninput: (e) => pref(key, e.target.value.trim()) });
   el.diffOld = folder("an-diff-old", "anDiffOld");
   el.diffNew = folder("an-diff-new", "anDiffNew");
   el.diffOut = h("div", {});
-  return panel("12.F", "VERSION DIFF", null,
+  return panel(`${code("analysis")}.F`, "VERSION DIFF", null,
     h("label", { class: "lbl", for: "an-diff-old" }, "OLDER BUILD (ITS GHIDRA EXPORT FOLDER)"), h("div", { class: "row" }, el.diffOld, browseBtn(el.diffOld, (p) => pref("anDiffOld", p))),
     h("label", { class: "lbl", for: "an-diff-new" }, "NEWER BUILD"), h("div", { class: "row" }, el.diffNew, browseBtn(el.diffNew, (p) => pref("anDiffNew", p))),
     h("div", { class: "row" }, btn("COMPARE", (e) => busy(e.currentTarget, runDiff), "")), el.diffOut);
@@ -84,7 +85,7 @@ async function runDiff() {
 
 function renderTargets() {
   if (!S.targets) return fill(el.targets, h("p", { class: "dim" }, "Enter the game folder, then LIST TARGETS: every plugin names the binaries it knows (the player executable, IL2CPP metadata, managed assemblies, script bytecode)."));
-  if (!S.enabled) fill(el.targets, alert("warn", "ANALYSIS IS OFF", "Switch it on in 11 SETTINGS (feature `analysis`). It stays off by default because its tools are large (Ghidra and a JDK, about 800 MB), not because anyone judges what you analyse."));
+  if (!S.enabled) fill(el.targets, featureOff("ANALYSIS IS OFF", "It stays off by default because its tools are large (Ghidra and a JDK, about 800 MB), not because anyone judges what you analyse.", "analysis", list));
   else fill(el.targets);
   if (!S.targets.length) return el.targets.append(h("p", { class: "dim" }, "No target proposed for this folder."));
   const rows = S.targets.map((t) => ({
@@ -100,7 +101,7 @@ function renderTargets() {
 
 function bar() {
   el.sum.textContent = S.running ? `analysing ${S.key}…` : `${S.targets ? S.targets.length : 0} target(s) → ${S.ws ? S.ws.split(/[\\/]/).pop() : "workspace"}`;
-  el.why.textContent = S.running ? "" : (S.targets && !S.enabled ? "analysis is off (11 SETTINGS)" : "");
+  el.why.textContent = S.running ? "" : (S.targets && !S.enabled ? "analysis is off (SETTINGS)" : "");
   el.cancel.hidden = !S.running;
 }
 
@@ -121,13 +122,13 @@ async function run(t, slot = "") {
     const options = Object.fromEntries(el.opts.value.split("\n").map((l) => l.trim()).filter((l) => l.includes("=")).map((l) => [l.slice(0, l.indexOf("=")).trim(), l.slice(l.indexOf("=") + 1).trim()]));
     const res = await api.analyze({ gamePath: el.game.value.trim(), targetKey: t.key, slot, options });
     await el.prog.finish("ok", `${res.artifacts.length} ARTIFACT(S) · ${res.backend}`);
-    fill(el.result, panel("12.D", "RESULT", btn("OPEN FOLDER", () => api.openFolder(res.outputDir).catch(toastErr), "sm ghost"),
+    fill(el.result, panel(`${code("analysis")}.D`, "RESULT", btn("OPEN FOLDER", () => api.openFolder(res.outputDir).catch(toastErr), "sm ghost"),
       kv("TARGET", res.target.label), kv("BACKEND", res.backend), kv("NOTES", (res.notes || []).join("; ") || "-"), res.fallback ? kv("FALLBACK", res.fallback) : null, kv("OUTPUT", h("code", { class: "mono" }, res.outputDir)),
       h("ul", { class: "plain mono small" }, res.artifacts.map((a) => h("li", {}, a)))));
     toast(`Analysis done: ${res.artifacts.length} artifact(s).`, "ok");
   } catch (err) {
     await el.prog.finish(err.code === "cancelled" ? "cancel" : "fail", err.code === "cancelled" ? "ANALYSIS CANCELLED" : "ANALYSIS FAILED");
-    fill(el.result, errorBox(err, "ANALYSIS FAILED", err.code === "refused" ? "Switch the feature on in 11 SETTINGS." : err.code === "unavailable" ? "Install the tool in 05 SYSTEM (Ghidra + JDK)." : ""));
+    fill(el.result, errorBox(err, "ANALYSIS FAILED", err.code === "refused" ? "Switch the feature on in SETTINGS." : err.code === "unavailable" ? "Install the tool in SYSTEM (Ghidra + JDK)." : ""));
     toastErr(err, "Analysis failed: ");
   } finally { S.running = false; renderTargets(); bar(); emit("jobs"); }
 }
@@ -144,5 +145,5 @@ async function open(t, hd, confirm = false) {
 }
 
 const VIEW = { mount, show: bar };
-registerView({ id: "analysis", arm: "static", order: 70, num: "12", title: "ANALYSIS", subtitle: "code, headless and in Ghidra", ...VIEW });
+registerView({ id: "analysis", arm: "static", order: 70, title: "ANALYSIS", subtitle: "code, headless and in Ghidra", ...VIEW });
 export default VIEW;

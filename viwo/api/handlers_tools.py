@@ -58,7 +58,7 @@ def sanitize_handler(op: str) -> Callable[[App, dict], dict]:
     def handler(app: App, d: dict) -> dict:
         folder = app.workspace  # read once: the workspace can be switched meanwhile
 
-        def run(sink, cancel) -> dict:  # a "cleanup" job: visible in 04 JOBS and the chips
+        def run(sink, cancel) -> dict:  # a "cleanup" job: visible in JOBS and the chips
             if op == "plan":
                 opts = {k: d.get(k) for k in ("path", "offset", "limit")}
                 opts["recipe"], opts["rules"] = d.get("recipeId"), collect_rules(app.rt)

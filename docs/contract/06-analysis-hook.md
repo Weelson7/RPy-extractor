@@ -9,7 +9,7 @@ one readable file inside an extraction is a DECODE slot instead (`decode.rpyc`, 
 Switch: `analysis` in `[startup] features` (off by default; a capability switch because the
 tools are large, not a gate). Off, a run is refused with the hint to enable it; listing targets
 works either way. Entry points: `viwo analyze`, `viwo diff`, `GET /api/analysis/targets`,
-`POST /api/analysis/run|open|diff`, 12 ANALYSIS.
+`POST /api/analysis/run|open|diff`, ANALYSIS.
 
 ## 6.1 Targets and analyzers
 
@@ -28,7 +28,7 @@ Analyzer (HOW; a backend in an analysis.* slot)
 
 The kind picks the slot: `analysis.<first word of the kind>` (`native_binary` ->
 `analysis.native`). A target also lists `extras`: the other bound analyzers that accept its
-kind (`viwo analyze --slot analysis.protector`, one button per extra in 12 ANALYSIS).
+kind (`viwo analyze --slot analysis.protector`, one button per extra in ANALYSIS).
 
 | Plugin | Targets |
 |--------|---------|
@@ -93,7 +93,7 @@ to the dynamic arm (doc 11.2).
 - The project lives beside the workspace in `<workspace>.ghidra/<key>/` (Ghidra refuses project
   paths containing a dot folder); the GUI handoff opens it by starting the JVM directly, so the
   window is a tracked child.
-- Ghidra is pinned `on_demand`: installed by `viwo install ghidra` or 05 SYSTEM, never by the
+- Ghidra is pinned `on_demand`: installed by `viwo install ghidra` or SYSTEM, never by the
   startup preflight. First-run prompts (user agreement, tips) are pre-answered without
   overwriting a user's own choice.
 - Timeout: `viwo analyze --timeout` (default 4 h); cancel kills the tree.

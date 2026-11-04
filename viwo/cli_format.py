@@ -49,9 +49,7 @@ def slots(data: dict) -> str:
                 f"{d['location'] or d['hint']}"
             )
         lines.append("")
-        lines.append(
-            "missing tools: `viwo install --all` (pinned, checksums verified) or 05 SYSTEM"
-        )
+        lines.append("missing tools: `viwo install --all` (pinned, checksums verified) or SYSTEM")
     return "\n".join(lines)
 
 

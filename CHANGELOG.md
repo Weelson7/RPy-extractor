@@ -4,6 +4,28 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.12.0 (2026-11-04)
+- UI numbering is computed, never written (owner): `S0`… STATIC, `D0`… DYNAMIC, `P0`…
+  PATCHING (each arm's home is 0), `00`, `01`, `02` for SYSTEM, JOBS, SETTINGS, from the arm and
+  the place in it, so plugin views renumber everything by themselves. Panels are lettered A, B,
+  C… in reading order over the visible ones. Home steps and NEXT buttons show the code of the
+  tab they open; every message names a tab by its title only.
+- UX pass from frames captured at the owner's window and zoom, and on a real extraction (DDLC):
+  - the top bar no longer drops chips: OS and PLUGINS moved to SYSTEM, the game and workspace
+    paths shorten first; FORMATS opens SYSTEM at its formats list (`#system@formats`, kept in
+    place while the tables load);
+  - toasts sit at the top right, no longer over the action bar's button;
+  - ANALYSIS and CAPTURE named "–" as the active workspace although one was open;
+  - an off feature (ANALYSIS, RUNTIME CAPTURE) says so with a TURN ON button that writes it to
+    startup.ini at once; a notice's text no longer runs into its title;
+  - a two-column view with nothing on the right yet uses the whole width; field labels have
+    room above them; SETTINGS tool paths have BROWSE beside the field;
+  - WORKSPACE: OPEN per file type, "(no extension)" for `noext`; SORT opens on what can be
+    previewed (images, audio, video, text first); JOBS opens the latest job; PATCHED COPY
+    proposes a target beside the workspace (`<data>/patched/<game>`);
+  - SYSTEM says what every tool serves from the server's own data (the slots it backs, else
+    its arm), not from a hand-kept list.
+
 ## 1.11.1 (2026-11-04)
 - Fix: a plugin's decoders ran on every game. `decode.cr2w` claims `.json`, `.mesh`, `.ent` and
   the other CR2W suffixes, so with WolvenKit installed an RPG Maker MV game's data JSON or a

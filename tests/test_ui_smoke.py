@@ -103,7 +103,9 @@ class UiSmokeTests(unittest.TestCase):
 
     def setUp(self) -> None:
         if self.report is None:
-            self.fail(f"smoke script failed:\n{self.run.stdout[-1500:]}\n{self.run.stderr[-3000:]}")
+            self.fail(
+                f"smoke script failed:\n{self.proc.stdout[-1500:]}\n{self.proc.stderr[-3000:]}"
+            )
 
     def test_landing_then_every_view_without_console_errors(self) -> None:
         r = self.report
@@ -125,11 +127,16 @@ class UiSmokeTests(unittest.TestCase):
             (a["patching"], a["patchingHash"]), (["patching", "repack", "patches"], "#patching")
         )
 
-    def test_toast_sits_at_the_bottom_right(self) -> None:
+    def test_toast_sits_at_the_top_right_under_the_bar(self) -> None:
         t = self.report["checks"]["toast"]
         self.assertIsNotNone(t)
-        self.assertLessEqual(t["bottomGap"], 40, t)
+        self.assertTrue(0 <= t["topGap"] <= 40, t)  # clear of every action bar at the bottom
         self.assertLessEqual(t["rightGap"], 40, t)
+
+    def test_tab_codes_are_computed_from_the_arm_and_position(self) -> None:
+        codes = self.report["checks"]["codes"]
+        self.assertEqual(codes["static"], [f"S{i}" for i in range(len(codes["static"]))])
+        self.assertEqual([c.split()[0] for c in codes["strip"]], ["00", "01", "02"])
 
     def test_system_gap_and_settings_table(self) -> None:
         c = self.report["checks"]

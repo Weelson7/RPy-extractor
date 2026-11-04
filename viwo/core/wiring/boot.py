@@ -45,8 +45,17 @@ class Runtime:
         return dict(self.config.options.get(owner, {}))
 
     def dependency_report(self) -> list[dict]:
-        """v1 /api/dependencies items plus slot/backend detail (doc 4.2)."""
-        items = []
+        """v1 /api/dependencies items plus slot/backend detail (doc 4.2): `uses` names what each
+        tool serves, the slots it backs, else its backends' families (analysis, runtime…)."""
+        items, uses = [], {}
+        backs = {}
+        for sid, slot in self.slots.items():
+            for bid in (slot.default_main, slot.default_spare):
+                backs.setdefault(bid, set()).add(sid)
+        for backend in self.backends.values():
+            for spec in backend.dependencies():
+                served = backs.get(backend.backend_id) or set(backend.families)
+                uses.setdefault(spec.dep_id, set()).update(served)
         for backend in self.backends.values():
             for spec in backend.dependencies():
                 found = self.os.tools.locate(spec)
@@ -65,7 +74,7 @@ class Runtime:
                         "onDemand": thirdparty.on_demand(spec.dep_id),
                     }
                 )
-        unique = {item["id"]: item for item in items}
+        unique = {item["id"]: {**item, "uses": sorted(uses.get(item["id"], ()))} for item in items}
         return sorted(unique.values(), key=lambda i: (i["category"], i["id"]))
 
     def info(self) -> dict:

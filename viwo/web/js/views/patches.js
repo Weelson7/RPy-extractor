@@ -1,4 +1,4 @@
-// 14 PATCHES (patching arm): T1 patch sets (byte, RVA and AOB patches, assembly) checked against
+// PATCHES (patching arm): T1 patch sets (byte, RVA and AOB patches, assembly) checked against
 // the game and written into a marked patched copy; T2 mods packed from a copy, checked against a
 // game version (the update check) and applied in load order. The game folder is only read.
 import { api } from "../api.js";
@@ -22,18 +22,18 @@ function mount(root) {
   el.progHost = h("div", {});
   el.result = h("div", {});
   root.append(
-    viewHead("14", "PATCHES + MODS", "Byte, RVA and AOB patches (assembly through Keystone) into a marked patched copy; a copy's changes packed as a mod, checked against another game version and applied with others in load order."),
+    viewHead(code("patches"), "PATCHES + MODS", "Byte, RVA and AOB patches (assembly through Keystone) into a marked patched copy; a copy's changes packed as a mod, checked against another game version and applied with others in load order."),
     assure([["GAME FOLDER READ-ONLY", "patches and mods only ever write a marked patched copy"],
       ["READ BACK", "every patch is re-read after writing; the whole file is compared"],
       ["UPDATE CHECK", "a mod's AOB patches are searched in the new version before it is applied"]]),
-    h("label", { class: "lbl", for: "pt-game" }, "GAME FOLDER (THE STRIP'S GAME)"), h("div", { class: "row" }, el.game, browseBtn(el.game, setGame)),
+    h("label", { class: "lbl", for: "pt-game" }, "GAME FOLDER (THE TOP BAR'S GAME)"), h("div", { class: "row" }, el.game, browseBtn(el.game, setGame)),
     h("div", { class: "grid2" },
       h("div", { class: "col" },
-        panel("14.A", "PATCH SET (T1)", badge("PATCHED COPY", "ok"),
+        panel(`${code("patches")}.A`, "PATCH SET (T1)", badge("PATCHED COPY", "ok"),
           h("label", { class: "lbl", for: "pt-set" }, "PATCH SET FILE"), h("div", { class: "row" }, el.set, pickFile(el.set, "patchSet")),
           h("label", { class: "lbl", for: "pt-out" }, "PATCHED COPY (AN EXISTING ONE IS PATCHED IN PLACE)"), h("div", { class: "row" }, el.out, browseBtn(el.out, (p) => pref("patchOut", p))),
           h("div", { class: "row" }, btn("CHECK", () => patch(true), ""), btn("APPLY", () => patch(false), "primary"))),
-        panel("14.B", "MOD PACKAGE (T2)", seg([["check", "CHECK"], ["pack", "PACK"], ["apply", "APPLY"]], S.action, (v) => { S.action = v; pref("modAction", v); }, { class: "seg sm" }),
+        panel(`${code("patches")}.B`, "MOD PACKAGE (T2)", seg([["check", "CHECK"], ["pack", "PACK"], ["apply", "APPLY"]], S.action, (v) => { S.action = v; pref("modAction", v); }, { class: "seg sm" }),
           h("label", { class: "lbl", for: "pt-mods" }, "MOD ZIP(S)"), h("div", { class: "row" }, el.mods, pickFile(el.mods, "modZips")),
           h("label", { class: "lbl", for: "pt-copy" }, "PATCHED COPY (PACK: THE SOURCE; APPLY: THE TARGET)"), h("div", { class: "row" }, el.copy, browseBtn(el.copy, (p) => pref("modCopy", p))),
           h("label", { class: "lbl", for: "pt-name" }, "NAME"), h("div", { class: "row" }, el.name),
@@ -45,7 +45,7 @@ function mount(root) {
 function report(title, res, ok) {
   const rows = Object.values(res).find((v) => Array.isArray(v) && v.length && typeof v[0] === "object") || [];
   const cols = rows.length ? Object.keys(rows[0]).filter((k) => typeof rows[0][k] !== "object").slice(0, 6) : [];
-  return panel("14.D", title, h("div", { class: "row" }, badge(ok ? "OK" : "SEE BELOW", ok ? "ok" : "warn"), openBtn(res.copy || res.out || res.target || "")),
+  return panel(`${code("patches")}.D`, title, h("div", { class: "row" }, badge(ok ? "OK" : "SEE BELOW", ok ? "ok" : "warn"), openBtn(res.copy || res.out || res.target || "")),
     Object.entries(res).filter(([k, v]) => k !== "success" && v !== null && typeof v !== "object").map(([k, v]) => kv(k.toUpperCase(), h("span", { class: "mono" }, String(v)))),
     cols.length ? table(cols.map((c) => ({ key: c, label: c.toUpperCase() })),
       rows.map((r) => Object.fromEntries(cols.map((c) => [c, String(r[c] ?? "")])))) : null);
@@ -56,7 +56,7 @@ async function job(kind, call, title) {
   if (!el.game.value.trim()) return toast("Enter the game folder first.", "warn");
   S.running = true;
   const prog = jobProgress(kind, { logClass: "mini" });
-  fill(el.progHost, panel("14.C", "RUN", null, prog.el));
+  fill(el.progHost, panel(`${code("patches")}.C`, "RUN", null, prog.el));
   fill(el.result);
   await prog.start();
   try {
@@ -80,8 +80,8 @@ const mod = () => job("mod", () => api.mod({ action: S.action, gamePath: el.game
   mods: el.mods.value.split(",").map((m) => m.trim()).filter(Boolean), mod: el.mods.value.split(",")[0].trim(), name: el.name.value.trim() }),
 `MOD ${S.action.toUpperCase()}`);
 
-import { registerView } from "../registry.js";
+import { registerView, code } from "../registry.js";
 
 const VIEW = { mount };
-registerView({ id: "patches", arm: "patching", order: 20, num: "14", title: "PATCHES + MODS", subtitle: "patch sets, mod packages", ...VIEW });
+registerView({ id: "patches", arm: "patching", order: 20, title: "PATCHES + MODS", subtitle: "patch sets, mod packages", ...VIEW });
 export default VIEW;

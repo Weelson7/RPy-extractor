@@ -1,4 +1,4 @@
-// 07 SURVEY cards: one game's engine, coverage meter, category bar + legend, unknown blobs, missing tools.
+// SURVEY cards: one game's engine, coverage meter, category bar + legend, unknown blobs, missing tools.
 import { h, btn, panel, badge, meter, stackBar, stagger, fmtBytes, fmtNum, pad } from "../ui.js";
 
 /** Category -> [label, what it means]. Order = stacked bar order (covered first). */
@@ -51,7 +51,7 @@ function unknownBlock(list, deep, onDeep) {
 
 const missingBlock = (tools) => (tools?.length ? h("div", { class: "alert", "data-kind": "warn" }, h("b", {}, "OPTIONAL TOOLS NOT INSTALLED · WOULD COVER MORE"),
   h("ul", { class: "mono" }, tools.map((t) => h("li", {}, t))),
-  h("p", {}, h("a", { href: "#system" }, "Install them in 05 SYSTEM (one click) →"), " then survey again.")) : null);
+  h("p", {}, h("a", { href: "#system" }, "Install them in SYSTEM (one click) →"), " then survey again.")) : null);
 
 export function gameCard(g, i, { deep, onExtract, onDeep }) {
   const name = g.path.split(/[\\/]/).filter(Boolean).pop() || g.path;

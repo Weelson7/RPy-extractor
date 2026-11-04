@@ -1,7 +1,8 @@
-"""L3: one-by-one sorting (03 SORT) as a property: any sequence of keep, trash and rename, undone
+"""L3: one-by-one sorting (SORT) as a property: any sequence of keep, trash and rename, undone
 step by step, gives back the exact workspace it started from (names and bytes); a rename over
 an existing file or to an illegal name is refused; an undo with nothing left, or of a file that
-is gone, is named; previews never show binary data as text."""
+is gone, is named; previews never show binary data as text; the queue opens on what can be
+previewed (images, audio, video, text) and keeps path order within each kind."""
 
 from __future__ import annotations
 
@@ -22,6 +23,33 @@ def _tree(ws: Path) -> dict[str, str]:
         for p in ws.rglob("*")
         if p.is_file() and not p.relative_to(ws).parts[0].startswith(".")
     }
+
+
+class QueueOrderTests(unittest.TestCase):
+    def test_previewable_files_come_first_and_every_file_once(self) -> None:
+        from viwo.core.media import media_type
+
+        rng = random.Random(4)
+        exts = [".png", ".ogg", ".mp4", ".txt", ".bin", ".rpyc", ".dds", ".wav", ""]
+        for _ in range(10):
+            with tempfile.TemporaryDirectory() as tmp:
+                ws = Path(tmp)
+                made = set()
+                for i in range(rng.randint(1, 40)):
+                    rel = Path(f"g{rng.randint(0, 3)}") / f"f{i}{rng.choice(exts)}"
+                    (ws / rel).parent.mkdir(parents=True, exist_ok=True)
+                    (ws / rel).write_bytes(b"x")
+                    made.add(rel.as_posix())
+                (ws / ".extraction_metadata").mkdir()
+                (ws / ".extraction_metadata" / "run.json").write_text("{}")  # never queued
+                window = sorting.list_window(ws, 0, 1000)["assets"]
+                paths = [a["path"] for a in window]
+                self.assertEqual(sorted(paths), sorted(made))
+                ranks = [sorting.RANK.get(media_type(Path(p).suffix.lower()), 4) for p in paths]
+                self.assertEqual(ranks, sorted(ranks))
+                for rank in set(ranks):
+                    group = [p for p, r in zip(paths, ranks) if r == rank]
+                    self.assertEqual(group, sorted(group, key=lambda x: Path(ws / x)))
 
 
 class SortSequenceTests(unittest.TestCase):

@@ -1,4 +1,4 @@
-// 08 CLEANUP: asset sanitizer, phase 1. Scan (read-only), tick findings, apply moves/renames, undo.
+// CLEANUP: asset sanitizer, phase 1. Scan (read-only), tick findings, apply moves/renames, undo.
 import { api } from "../api.js";
 import { h, fill, btn, panel, badge, viewHead, assure, empty, errorBox, toast, toastErr, confirmBox, pref, fmtNum, bus, emit, stat, goBtn } from "../ui.js";
 import { jobProgress } from "../progress.js";
@@ -29,13 +29,13 @@ function mount(root) {
   el.why = h("span", { class: "ab-why" });
   el.apply = btn("APPLY SELECTED", apply, "primary lg");
   root.append(
-    viewHead("08", "CLEANUP", "Find empty files, engine junk, mislabeled extensions and exact duplicates in the active workspace. Scan first; only the findings you tick are applied."),
-    assure([["NOTHING IS DELETED", "trashed files move to the workspace trash — see 02 WORKSPACE"],
+    viewHead(code("cleanup"), "CLEANUP", "Find empty files, engine junk, mislabeled extensions and exact duplicates in the active workspace. Scan first; only the findings you tick are applied."),
+    assure([["NOTHING IS DELETED", "trashed files move to the workspace trash — see WORKSPACE"],
       ["NOTHING LOSSY", "no file content is rewritten: only moves and renames"],
       ["UNDO", "every apply is journaled and can be reversed"]]),
     h("div", { class: "tool-grid" },
-      h("div", { class: "col" }, panel("08.A", "SCAN", el.scan, el.recipe, el.stats, el.progHost, ruleKey()), el.done),
-      panel("08.B", "FINDINGS", el.count, el.find)),
+      h("div", { class: "col" }, panel(`${code("cleanup")}.A`, "SCAN", el.scan, el.recipe, el.stats, el.progHost, ruleKey()), el.done),
+      panel(`${code("cleanup")}.B`, "FINDINGS", el.count, el.find)),
     h("div", { class: "actionbar" }, el.sum, el.why, el.apply));
   loadRecipe();
   bus.addEventListener("wspath", (e) => switchTo(e.detail.path || ""));
@@ -114,7 +114,7 @@ function render() {
   el.count.textContent = S.plan ? `${fmtNum(f.length)} FINDING(S)` : "";
   fill(el.find, S.err ? errorBox(S.err, "SCAN FAILED", S.err.code === "busy" ? "A job is writing to this workspace. Scan again once it has finished." : "")
     : !S.plan ? idle() : !f.length ? (S.plan.scanned ? empty("WORKSPACE IS CLEAN", `${fmtNum(S.plan.scanned)} files scanned. Nothing to clean.`,
-      goBtn("#sort", "03 SORT →"), goBtn("#merger", "06 MAKE A VIDEO →", "ghost")) : noFiles())
+      goBtn("#sort", `${code("sort")} SORT →`), goBtn("#merger", `${code("merger")} MAKE A VIDEO →`, "ghost")) : noFiles())
       : groups(f));
   renderDone();
   sync();
@@ -139,7 +139,7 @@ function sync() {
   bar();
 }
 
-const noFiles = () => empty("WORKSPACE EMPTY", "Nothing to clean yet. Extract a game into this workspace first.", goBtn("#extract", "GO TO 01 EXTRACT"));
+const noFiles = () => empty("WORKSPACE EMPTY", "Nothing to clean yet. Extract a game into this workspace first.", goBtn("#extract", "GO TO EXTRACT"));
 
 const idle = () => (S.files === 0 ? noFiles() : empty("NO SCAN YET",
   "ViWo reads every workspace file (read-only) and lists what could be cleaned. Nothing changes until you press APPLY SELECTED.", btn("SCAN NOW", () => scan(), "primary")));
@@ -254,18 +254,18 @@ function renderDone() {
   const d = S.done;
   if (!d) return fill(el.done);
   const trash = d.moved.filter((m) => m.a === "trash").length;
-  fill(el.done, panel("08.C", "LAST CLEANUP", badge("UNDO AVAILABLE", "ok"),
+  fill(el.done, panel(`${code("cleanup")}.C`, "LAST CLEANUP", badge("UNDO AVAILABLE", "ok"),
     h("div", { class: "stats" }, stat("APPLIED", fmtNum(d.applied), new Date(d.at).toLocaleTimeString()),
       stat("TO TRASH", fmtNum(trash), "recoverable"), stat("RENAMED", fmtNum(d.moved.length - trash)), stat("FAILED", fmtNum(d.failed.length))),
     h("ol", { class: "moved mono" }, d.moved.map((m) => h("li", {}, h("b", {}, m.a === "trash" ? "TRASH" : "RENAME"), h("span", { title: m.p }, m.p),
       h("i", {}, m.a === "trash" ? "→ workspace trash" : `→ ${m.to}`))), d.more ? h("li", { class: "dim" }, `+${fmtNum(d.more)} more`) : null),
     d.failed.length ? h("div", { class: "alert", "data-kind": "warn" }, h("b", {}, "NOT APPLIED"), h("ul", {}, d.failed.map((x) => h("li", {}, x)))) : null,
-    h("div", { class: "row" }, btn("UNDO THIS CLEANUP", undo, "primary"), goBtn("#workspace", "SEE TRASH IN 02 WORKSPACE →", "ghost")),
+    h("div", { class: "row" }, btn("UNDO THIS CLEANUP", undo, "primary"), goBtn("#workspace", "SEE TRASH IN WORKSPACE →", "ghost")),
     h("p", { class: "note" }, "UNDO stays available until your next SCAN.")));
 }
 
-import { registerView } from "../registry.js";
+import { registerView, code } from "../registry.js";
 
 const VIEW = { mount, show };
-registerView({ id: "cleanup", arm: "static", order: 50, num: "08", title: "CLEANUP", subtitle: "junk, dupes, misnamed", ...VIEW });
+registerView({ id: "cleanup", arm: "static", order: 50, title: "CLEANUP", subtitle: "junk, dupes, misnamed", ...VIEW });
 export default VIEW;

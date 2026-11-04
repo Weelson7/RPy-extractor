@@ -1,4 +1,4 @@
-// 03 SORT: keyboard-first triage of workspace assets with a large preview stage.
+// SORT: keyboard-first triage of workspace assets with a large preview stage.
 import { api } from "../api.js";
 import { h, fill, btn, panel, meter, viewHead, empty, errorBox, toast, toastErr, promptBox, modal, fmtBytes, fmtNum, pad, bus, emit, goBtn } from "../ui.js";
 import { audioStage } from "./sort-audio.js";
@@ -22,11 +22,11 @@ function mount(root) {
     h("div", { class: "acts-main" }, btn("← TRASH", trash, "danger"), btn("KEEP →", keep, "primary")),
     h("div", { class: "acts-sub" }, btn("UNDO", undo, "ghost undo"), btn("RENAME", rename, "ghost"), btn("SAVE REMAINING…", saveRemaining, "ghost")));
   root.append(
-    viewHead("03", "SORT", "Go through your files one at a time. KEEP marks a file as reviewed; TRASH moves it to the workspace trash (CTRL+Z undoes it).",
+    viewHead(code("sort"), "SORT", "Go through your files one at a time. KEEP marks a file as reviewed; TRASH moves it to the workspace trash (CTRL+Z undoes it).",
       h("ul", { class: "legend", "aria-label": "Keyboard shortcuts" }, KEYS.map(([k, v]) => h("li", {}, h("kbd", {}, k), v)))),
     h("div", { class: "sort-grid" },
-      panel("03.A", "QUEUE", el.pager, el.filters, el.list, el.review),
-      panel("03.B", "PREVIEW", el.meta, el.stage, el.acts)));
+      panel(`${code("sort")}.A`, "QUEUE", el.pager, el.filters, el.list, el.review),
+      panel(`${code("sort")}.B`, "PREVIEW", el.meta, el.stage, el.acts)));
   document.addEventListener("keydown", onKey);
   bus.addEventListener("workspace", () => { S.loaded = false; S.kept.clear(); S.trashed = 0; S.done = []; });
 }
@@ -127,7 +127,7 @@ async function preview() {
       : S.total ? empty("NOTHING ON THIS PAGE", "Go back a page to keep sorting.")
         : empty(S.trashed ? "ALL SORTED" : "QUEUE EMPTY", S.trashed ? "Every file has been kept or trashed. Review the trash, or clean up duplicates next."
           : "No files in this workspace yet. Extract a game first.",
-        S.trashed ? [goBtn("#workspace", "02 REVIEW TRASH →"), goBtn("#cleanup", "08 CLEAN UP →", "ghost")] : goBtn("#extract", "GO TO 01 EXTRACT")));
+        S.trashed ? [goBtn("#workspace", `${code("workspace")} REVIEW TRASH →`), goBtn("#cleanup", `${code("cleanup")} CLEAN UP →`, "ghost")] : goBtn("#extract", "GO TO EXTRACT")));
     return;
   }
   el.meta.replaceChildren(h("span", { class: "mono" }, `${pad(S.offset + S.idx + 1, 4)} / ${pad(S.total, 4)}`),
@@ -171,7 +171,7 @@ function keep() {
     S.done.push({ kind: "keep", path: a.path });
     const last = shown().pop() === S.idx && S.offset + S.items.length >= S.total;
     renderList();
-    if (last) toast("That was the last file.", "ok", "Next: review the trash in 02 WORKSPACE, or run 08 CLEANUP.");
+    if (last) toast("That was the last file.", "ok", "Next: review the trash in WORKSPACE, or run CLEANUP.");
     else move(1);
   });
 }
@@ -260,8 +260,8 @@ function onKey(e) {
   fn();
 }
 
-import { registerView } from "../registry.js";
+import { registerView, code } from "../registry.js";
 
 const VIEW = { mount, show: () => load(S.loaded) };
-registerView({ id: "sort", arm: "static", order: 40, num: "03", title: "SORT", subtitle: "keep or trash, one by one", ...VIEW });
+registerView({ id: "sort", arm: "static", order: 40, title: "SORT", subtitle: "keep or trash, one by one", ...VIEW });
 export default VIEW;

@@ -1,4 +1,4 @@
-// 10 CAPTURE: frames from a running game through RenderDoc. Pick game + executable, read the
+// CAPTURE: frames from a running game through RenderDoc. Pick game + executable, read the
 // warnings (information, never a block), confirm once, run as a job, see what came out.
 import { api } from "../api.js";
 import { h, fill, btn, panel, badge, viewHead, toast, toastErr, pref, busy, bus, emit, browseBtn, errorBox, logLine, assure } from "../ui.js";
@@ -20,7 +20,7 @@ function mount(root) {
   el.before = h("div", {});
   el.checkBtn = btn("CHECK", (e) => busy(e.currentTarget, check), "");
   el.prog = jobProgress("capture", { logClass: "mini", onStatus: (t) => { if (S.running && t) el.sum.textContent = t; } });
-  el.progPanel = panel("10.C", "RUN", null, el.prog.el);
+  el.progPanel = panel(`${code("capture")}.C`, "RUN", null, el.prog.el);
   el.progPanel.hidden = true;
   el.result = h("div", {});
   el.sum = h("div", { class: "ab-sum mono" });
@@ -28,18 +28,18 @@ function mount(root) {
   el.run = btn("LAUNCH + CAPTURE", run, "primary lg");
   el.cancel = btn("CANCEL", cancelJob, "ghost", { hidden: true });
   followGame(el.game);
+  S.ws = bus.ws?.path || ""; // before the note is built: the workspace may be known already
   root.append(
-    viewHead("10", "CAPTURE", "Run the game under RenderDoc: after the delay one frame is captured and the game is stopped, nothing to press (set 0 to take captures yourself with F12 and quit when done). Every texture and shader of every capture lands in the workspace, and ViWo says which ones static extraction had missed."),
+    viewHead(code("capture"), "CAPTURE", "Run the game under RenderDoc: after the delay one frame is captured and the game is stopped, nothing to press (set 0 to take captures yourself with F12 and quit when done). Every texture and shader of every capture lands in the workspace, and ViWo says which ones static extraction had missed."),
     assure([["ANY GAME", "anti-cheat and online titles only produce warnings; you decide, you are responsible"],
       ["GAME FOLDER RESTORED", "anything the capture agent writes next to the game is journaled and put back"],
       ["INTO THE WORKSPACE", "captures are harvested to PNG and collected like extracted files"]]),
     h("div", { class: "grid2" },
-      h("div", { class: "col" }, targetPanel(), panel("10.B", "BEFORE YOU START", el.checkBtn, el.before)),
+      h("div", { class: "col" }, targetPanel(), panel(`${code("capture")}.B`, "BEFORE YOU START", el.checkBtn, el.before)),
       h("div", { class: "col" }, el.progPanel, el.result)),
     h("div", { class: "actionbar" }, el.sum, el.why, el.cancel, el.run));
   bus.addEventListener("wspath", (e) => { S.ws = e.detail.path || ""; if (el.wsNote) el.wsNote.textContent = S.ws || "—"; bar(); });
   bus.addEventListener("preflight", () => { S.info = null; renderBefore(); bar(); });
-  S.ws = bus.ws?.path || "";
   renderBefore();
   bar();
 }
@@ -47,7 +47,7 @@ function mount(root) {
 function targetPanel() {
   const browseGame = browseBtn(el.game, (path) => { setGame(path); check(); });
   const browseExe = browseBtn(el.exe, (path) => { pref("capExe", path); bar(); }, (p) => api.browseFile(p || el.game.value.trim()).then((r) => r.path));
-  return panel("10.A", "TARGET", badge("READ-ONLY SOURCE", "ok"),
+  return panel(`${code("capture")}.A`, "TARGET", badge("READ-ONLY SOURCE", "ok"),
     h("label", { class: "lbl", for: "cap-game" }, "GAME FOLDER"),
     h("div", { class: "row" }, el.game, browseGame),
     h("label", { class: "lbl", for: "cap-exe" }, "EXECUTABLE TO LAUNCH (INSIDE THAT FOLDER)"),
@@ -76,7 +76,7 @@ async function check() {
 }
 
 function renderBefore() {
-  fill(el.before, S.info ? beforeYouStart(S.info, S.confirmed, (v) => { S.confirmed = v; bar(); })
+  fill(el.before, S.info ? beforeYouStart(S.info, S.confirmed, (v) => { S.confirmed = v; bar(); }, check)
     : h("p", { class: "dim" }, "Enter the game folder, then CHECK: ViWo lists what you should know about this game (anti-cheat, online play, sensitive plugins) and asks for one confirmation. Nothing here blocks you."));
 }
 
@@ -86,8 +86,8 @@ function blocker() {
   if (!el.game.value.trim()) return "enter the game folder";
   if (!el.exe.value.trim()) return "pick the executable";
   if (!S.info || S.infoFor !== el.game.value.trim()) return "press CHECK";
-  if (!S.info.enabled) return "capture is off (11 SETTINGS)";
-  if (!S.info.backend) return "RenderDoc not installed (05 SYSTEM)";
+  if (!S.info.enabled) return "capture is off (SETTINGS)";
+  if (!S.info.backend) return "RenderDoc not installed (SYSTEM)";
   if (!S.confirmed) return "confirm first";
   return "";
 }
@@ -138,8 +138,8 @@ async function run() {
   }
 }
 
-import { registerView } from "../registry.js";
+import { registerView, code } from "../registry.js";
 
 const VIEW = { mount, show: bar };
-registerView({ id: "capture", arm: "dynamic", order: 10, num: "10", title: "CAPTURE", subtitle: "frames from a running game", ...VIEW });
+registerView({ id: "capture", arm: "dynamic", order: 10, title: "CAPTURE", subtitle: "frames from a running game", ...VIEW });
 export default VIEW;

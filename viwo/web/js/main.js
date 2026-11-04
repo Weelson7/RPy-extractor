@@ -3,7 +3,7 @@
 import { api, hasToken } from "./api.js";
 import * as ui from "./ui.js";
 import { h, $, fill, pref, logLine, bus, emit, toastErr, seg } from "./ui.js";
-import { ARMS, views, view, armViews, loadPluginModules, addonPanels } from "./registry.js";
+import { ARMS, views, view, armViews, loadPluginModules, addonPanels, code } from "./registry.js";
 import { currentGame, pickGame } from "./game.js";
 import "./views/home.js";
 import { setTheme } from "./theme.js";
@@ -28,15 +28,15 @@ import { KIND } from "./views/jobs.js";
 const scroll = {};
 const state = { arm: "", chips: "", current: "", distro: null, dockOpen: pref("dock") === "1", logCount: -1, lastLog: "" };
 
-const link = (v, i) => h("a", { href: `#${v.id}`, "data-view": v.id, title: `${v.title} — ${v.subtitle}` },
-  h("b", {}, v.num || String(i + 1).padStart(2, "0")), h("span", {}, v.title, h("small", {}, v.subtitle)));
+const link = (v) => h("a", { href: `#${v.id}`, "data-view": v.id, title: `${v.title} — ${v.subtitle}` },
+  h("b", {}, code(v.id)), h("span", {}, v.title, h("small", {}, v.subtitle)));
 
 /** The arm switch, the global strip and one section per registered view (core and add-ons). */
 function buildShell() {
   state.armSeg = seg(ARMS.map((a) => [a.id, a.title]), "", (id) => { location.hash = `#${id}`; }, { "aria-label": "Arms" });
   fill($("#arms"), state.armSeg);
   fill($("#strip"), armViews("global").map((v) => h("a", { class: "chip", href: `#${v.id}`, "data-view": v.id, title: v.subtitle },
-    h("i", {}), h("b", {}, v.title))));
+    h("i", {}), h("b", {}, `${code(v.id)} ${v.title}`))));
   fill($("#main"), views().map((v) => h("section", { class: "view", id: `view-${v.id}`, hidden: true })));
 }
 
@@ -45,15 +45,46 @@ function showArm(arm) {
   if (arm === state.arm) return;
   state.arm = arm;
   state.armSeg.set(arm);
-  fill($("#mods"), armViews(arm).map((v, i) => h("li", {}, link(v, i))));
+  fill($("#mods"), armViews(arm).map((v) => h("li", {}, link(v))));
 }
 
+/**
+ * Panel codes are live like the tab codes: the visible panels of a view are lettered A, B, C… in
+ * reading order, again whenever one appears, hides or comes from a plugin.
+ */
+function letterPanels(el, id) {
+  [...el.querySelectorAll(".panel")].filter((p) => !p.closest("[hidden]")).forEach((p, i) => {
+    const idx = p.querySelector(":scope > .panel-h > .idx");
+    const value = `${code(id)}.${String.fromCharCode(65 + (i % 26))}`;
+    if (idx && idx.textContent !== value) idx.textContent = value;
+    if (p.dataset.panel !== value) p.dataset.panel = value;
+  });
+}
+
+const titled = (el, word) => [...el.querySelectorAll(".panel")].find((p) =>
+  p.querySelector(".panel-h h3")?.textContent.toLowerCase().startsWith(word));
+
+/** Scroll to a panel and stay on it while the view's data loads (tables above it grow), until
+ * the user scrolls or 4 s pass. */
+function jump(el, word) {
+  const go = () => titled(el, word)?.scrollIntoView({ block: "start" });
+  const watch = new ResizeObserver(go);
+  const stop = () => watch.disconnect();
+  watch.observe(el);
+  $("#main").addEventListener("wheel", stop, { once: true });
+  $("#main").addEventListener("keydown", stop, { once: true });
+  setTimeout(stop, 4000);
+  go();
+}
+
+/** `#view` opens a view; `#view@word` opens it at the panel whose title starts with that word. */
 function route() {
-  const want = location.hash.slice(1);
+  const [want, anchor] = location.hash.slice(1).split("@");
   const id = view(want) ? want : ARMS[0].id;
+  if (anchor) setTimeout(() => jump($(`#view-${id}`), anchor.toLowerCase()), 0);
   const arm = view(id).arm;
   showArm(arm === "global" ? state.arm || ARMS[0].id : arm);
-  if (state.current === id) return;
+  if (state.current === id) return anchor && history.replaceState(null, "", `#${id}`);
   if (state.current) {
     scroll[state.current] = $("#main").scrollTop;
     view(state.current).hide?.();
@@ -65,15 +96,20 @@ function route() {
     view(id).mount(el);
     el.append(...addonPanels(id, { root: el, api, ui })); // plugin panels, after the view's own
     el.dataset.mounted = "1";
+    letterPanels(el, id);
+    let queued = 0; // one pass per frame however fast a log streams in
+    new MutationObserver(() => { queued ||= requestAnimationFrame(() => { queued = 0; letterPanels(el, id); }); })
+      .observe(el, { childList: true, subtree: true, attributes: true, attributeFilter: ["hidden"] });
   }
   el.hidden = false;
-  $("#main").scrollTop = scroll[id] || 0;
+  $("#main").scrollTop = anchor ? 0 : scroll[id] || 0;
   view(id).show?.();
   document.querySelectorAll("#mods a, #strip a").forEach((a) => {
     if (a.dataset.view === id) a.setAttribute("aria-current", "page");
     else a.removeAttribute("aria-current");
   });
   document.title = `${view(id).title} // ViWo`;
+  if (anchor) history.replaceState(null, "", `#${id}`); // the anchor is a jump, not a place
   pref("view", id);
 }
 
@@ -88,11 +124,9 @@ function renderChips(jobList) {
   const sig = JSON.stringify([d && d.os, bound, running.map((j) => j.kind), Boolean(jobList)]);
   if (sig === state.chips) return; // the strip is a live region: re-render only on change
   state.chips = sig;
-  fill($("#status-chips"),
-    chip("OS", d ? String(d.os).toUpperCase() : "…", d ? "ok" : ""),
-    chip("PLUGINS", d ? String(d.plugins.length) : "…", d ? "ok" : ""),
-    Object.assign(chip("FORMATS", d ? `${bound}/${slots.length} READY` : "…", d && bound === slots.length ? "ok" : "", "#system"), {
-      title: "Formats ViWo can handle right now. The rest need an optional tool: ViWo skips those formats until it is installed. Click for 05 SYSTEM." }),
+  fill($("#status-chips"), // OS and plugin counts live in SYSTEM: the strip keeps what changes
+    Object.assign(chip("FORMATS", d ? `${bound}/${slots.length} READY` : "…", d && bound === slots.length ? "ok" : "", "#system@formats"), {
+      title: "Formats ViWo can handle right now. The rest need an optional tool: ViWo skips those formats until it is installed. Click for the format list in SYSTEM." }),
     running.length
       ? chip("RUNNING", `${(KIND[running[0].kind]?.[0] || running[0].kind).toUpperCase()}${running.length > 1 ? ` +${running.length - 1}` : ""}`, "live", "#jobs")
       : chip("JOB", jobList ? "IDLE" : "…", "", "#jobs"));

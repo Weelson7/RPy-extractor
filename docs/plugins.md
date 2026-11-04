@@ -10,7 +10,7 @@ three places, and known by the id in its manifest:
 | Installed package | the `viwo.plugins` entry-point group (`pip install` a plugin package) | same as drop-ins |
 
 `generic` is always on. A broken plugin disables only itself; the reason appears in the startup
-notes (`viwo info`, 05 SYSTEM > STARTUP NOTES). The registry lives in
+notes (`viwo info`, SYSTEM > STARTUP NOTES). The registry lives in
 `viwo/core/wiring/registry.py`.
 
 ## Built-ins
@@ -151,5 +151,5 @@ export default function install({ registry, api, ui }) {
   Use only components from `ui`: styling belongs to the theme layer, never to add-on code.
 - Trust: a UI module runs in the page with the API token. Load only what you trust.
 
-`examples/plugins/hello/` shows both: `viwo hello-list` and `ui.js` (a panel in 05 SYSTEM and a
+`examples/plugins/hello/` shows both: `viwo hello-list` and `ui.js` (a panel in SYSTEM and a
 HELLO view), with `ui/hello.css` as an extra asset.

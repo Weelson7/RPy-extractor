@@ -1,4 +1,4 @@
-// 05 SYSTEM: optional tools by engine (what each enables, INSTALL buttons), formats (slots), plugins, startup ini and notes.
+// SYSTEM: optional tools by engine (what each enables, INSTALL buttons), formats (slots), plugins, startup ini and notes.
 import { api } from "../api.js";
 import { h, fill, btn, panel, badge, viewHead, errorBox, busy, fmtNum, stat, toast, toastErr, emit, bus } from "../ui.js";
 import { withSkeleton, jobProgress } from "../progress.js";
@@ -6,10 +6,10 @@ import { maintenancePanel } from "./system-maint.js";
 
 /** Tool id -> what it enables, in plain words. */
 const ENABLES = {
-  ffmpeg: "06 MERGER videos, and decoding game images, audio and video",
-  ffprobe: "06 MERGER (reads clip lengths); ships with ffmpeg",
-  ghidra: "12 ANALYSIS: static analysis of game code, headless and Continue in Ghidra (570 MB, on demand)",
-  jdk: "12 ANALYSIS: the Java runtime Ghidra needs (205 MB, on demand)",
+  ffmpeg: "MERGER videos, and decoding game images, audio and video",
+  ffprobe: "MERGER (reads clip lengths); ships with ffmpeg",
+  ghidra: "ANALYSIS: static analysis of game code, headless and Continue in Ghidra (570 MB, on demand)",
+  jdk: "ANALYSIS: the Java runtime Ghidra needs (205 MB, on demand)",
   py7zr: "opening .7z archives",
   sevenzip: "opening .7z, .rar and .unitypackage files",
   unrar: "opening .rar archives",
@@ -27,17 +27,24 @@ const ENABLES = {
   retoc: "Unreal Engine 5 IoStore files (.utoc/.ucas)",
   lz4: "Skyrim Special Edition .bsa archives (LZ4-compressed entries)",
   unrpyc: "Ren'Py scripts: .rpyc compiled files back to readable .rpy",
+  "frida-tools": "RUNTIME: trace the running game's API calls",
+  soundcard: "RUNTIME: record the game's sound from the system output",
 };
 const NAMES = { upak: ".pak", unity: "Unity bundles", rpgmaker: "RPG Maker files", bms: "QuickBMS archives", utoc: ".utoc/.ucas" };
-const FIXED = { "carve.signatures": "find files hidden inside unknown data", "capture.gpu": "runtime GPU capture", "media.encode": "encode MP4 videos (06 MERGER)" };
+const FIXED = { "carve.signatures": "find files hidden inside unknown data", "capture.gpu": "runtime GPU capture", "media.encode": "encode MP4 videos (MERGER)" };
 
 /** Slot id -> plain words: unarchive.pck -> "open .pck archives". */
 export function slotText(id) {
   const [verb, what] = String(id).split(".");
   const obj = NAMES[what] || `.${what}`;
   return FIXED[id] || { unarchive: `open ${obj} archives`, pack: `patched copies: ${obj}`, export: `export ${what} assets`,
-    decode: `decode game ${what}` }[verb] || id;
+    decode: `decode game ${what}`, analysis: `ANALYSIS: ${what}`, handoff: `continue in a desktop tool (${what})`,
+    runtime: `RUNTIME: the ${what} agent`, patch: "PATCH SETS: bytes and assembly", media: `media ${what}` }[verb] || id;
 }
+
+/** What a tool serves, from the server (slots it backs, else its families), in plain words. */
+const FAMILY = { analysis: "ANALYSIS (static arm)", handoff: "ANALYSIS: continue in a desktop tool", runtime: "RUNTIME (dynamic arm)" };
+const usesText = (uses) => (uses || []).map((u) => FAMILY[u] || (u.includes(".") ? slotText(u) : u)).join(", ");
 
 const el = {};
 const S = { busy: false };
@@ -54,13 +61,13 @@ function mount(root) {
   el.all = btn("INSTALL ALL MISSING", (e) => busy(e.currentTarget, installAll), "primary");
   el.recheck = btn("RE-CHECK", (e) => busy(e.currentTarget, recheck), "ghost");
   root.append(
-    viewHead("05", "SYSTEM", "What this ViWo install can do. Missing tools install themselves into third_party/ (pinned versions, checksums verified); nothing is installed anywhere else.",
+    viewHead(code("system"), "SYSTEM", "What this ViWo install can do. Missing tools install themselves into third_party/ (pinned versions, checksums verified); nothing is installed anywhere else.",
       btn("REFRESH", (e) => busy(e.currentTarget, load), "ghost")),
     el.stats,
-    panel("05.A", "OPTIONAL TOOLS BY ENGINE", h("div", { class: "row" }, el.recheck, el.all), el.progHost, el.tools),
+    panel(`${code("system")}.A`, "OPTIONAL TOOLS BY ENGINE", h("div", { class: "row" }, el.recheck, el.all), el.progHost, el.tools),
     h("div", { class: "grid2 sys" },
-      h("div", { class: "col" }, panel("05.B", "FORMATS (BACKEND SLOTS)", null, el.slots)),
-      h("div", { class: "col" }, panel("05.C", "ENGINE PLUGINS", null, el.plugins), panel("05.D", "STARTUP", null, el.startup), maintenancePanel())));
+      h("div", { class: "col" }, panel(`${code("system")}.B`, "FORMATS (BACKEND SLOTS)", null, el.slots)),
+      h("div", { class: "col" }, panel(`${code("system")}.C`, "ENGINE PLUGINS", null, el.plugins), panel(`${code("system")}.D`, "STARTUP", null, el.startup), maintenancePanel())));
   bus.addEventListener("preflight", () => { if (!el.root.hidden) load(); }); // the landing or an install changed the bindings
 }
 
@@ -105,7 +112,7 @@ async function runJob(kind, work, label) {
     toastErr(err, "INSTALL FAILED: ");
   } finally {
     lock(false);
-    emit("preflight"); // 05 SYSTEM (through the bus), the top-bar chips and 01 EXTRACT re-read the bindings
+    emit("preflight"); // SYSTEM (through the bus), the top-bar chips and EXTRACT re-read the bindings
   }
 }
 
@@ -131,7 +138,7 @@ function toolRow(d) {
     : h("span", { class: "small" }, d.hint);
   return h("tr", {},
     h("td", {}, h("b", {}, d.label), d.version ? h("small", { class: "mono dim block" }, d.version) : null),
-    h("td", { class: "small" }, ENABLES[d.id] || d.category),
+    h("td", { class: "small" }, ENABLES[d.id] || usesText(d.uses) || d.category),
     h("td", {}, d.available ? badge("INSTALLED", "ok") : badge(d.installable ? "NOT INSTALLED" : "MANUAL", d.installable ? "warn" : "mute")),
     h("td", {}, how));
 }
@@ -182,8 +189,8 @@ function startup(d) {
       h("ul", { class: "problems mono" }, d.problems.map((p) => h("li", {}, p)))] : h("p", { class: "ok-text" }, "No startup notes."));
 }
 
-import { registerView } from "../registry.js";
+import { registerView, code } from "../registry.js";
 
 const VIEW = { mount, show: load };
-registerView({ id: "system", arm: "global", order: 10, num: "05", title: "SYSTEM", subtitle: "tools and formats", ...VIEW });
+registerView({ id: "system", arm: "global", order: 10, title: "SYSTEM", subtitle: "tools and formats", ...VIEW });
 export default VIEW;

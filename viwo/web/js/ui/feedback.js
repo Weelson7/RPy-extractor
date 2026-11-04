@@ -9,14 +9,14 @@ export const ERRORS = {
   http: ["Unexpected server reply", "Reload the page. If it keeps happening, check the terminal ViWo runs in."],
   invalid_request: ["Check your input", "A path or option is not valid. Correct it and try again."],
   not_found: ["Not found", "The file or folder is gone, or the path has a typo. Check it, or refresh this view."],
-  busy: ["Workspace busy", "Another job is using this workspace. Wait for it to finish, then try again.", ["#jobs", "04 JOBS"]],
-  unavailable: ["Tool not installed", "A tool this needs is missing. Install it with one click in 05 SYSTEM, then try again.", ["#system", "05 SYSTEM"]],
-  needs_key: ["Encryption key needed", "These files are encrypted. Enter the key under ENGINE OPTIONS, then run again.", ["#extract", "01 EXTRACT"]],
+  busy: ["Workspace busy", "Another job is using this workspace. Wait for it to finish, then try again.", ["#jobs", "JOBS"]],
+  unavailable: ["Tool not installed", "A tool this needs is missing. Install it with one click in SYSTEM, then try again.", ["#system", "SYSTEM"]],
+  needs_key: ["Encryption key needed", "These files are encrypted. Enter the key under ENGINE OPTIONS, then run again.", ["#extract", "EXTRACT"]],
   needs_decision: ["Your choice is needed", "Answer the question ViWo asked, then run again."],
-  failed: ["It did not work", "The message above says why. The full log is in 04 JOBS.", ["#jobs", "04 JOBS"]],
+  failed: ["It did not work", "The message above says why. The full log is in JOBS.", ["#jobs", "JOBS"]],
   cancelled: ["Cancelled", "Stopped on request. Run it again whenever you are ready."],
   refused: ["Refused for safety", "ViWo only writes into an empty folder or one it created, never into a game folder. Pick another folder."],
-  internal: ["Something broke inside ViWo", "This is a bug, not your mistake. 04 JOBS has the details; please report it.", ["#jobs", "04 JOBS"]],
+  internal: ["Something broke inside ViWo", "This is a bug, not your mistake. JOBS has the details; please report it.", ["#jobs", "JOBS"]],
 };
 const errInfo = (err) => ERRORS[err?.code] || ["Something went wrong", "Try again. The activity console at the bottom has details."];
 

@@ -1,7 +1,8 @@
-// 09 PATCHED COPY: round trip. Plan the edit set, pick a target, build + verify a patched copy of the game.
+// PATCHED COPY: round trip. Plan the edit set, pick a target, build + verify a patched copy of the game.
 import { api } from "../api.js";
 import { h, fill, btn, panel, badge, viewHead, assure, toast, toastErr, busy, pref, logLine, fmtNum, bus, emit, stat, browseBtn } from "../ui.js";
 import { jobProgress, withSkeleton } from "../progress.js";
+import { currentGame } from "../game.js";
 import { planCard, issueList, howTo, noExtraction, noEdits, resultBody, failure, SHORT } from "./repack-plan.js";
 
 const S = { plan: null, err: null, running: false, ws: null, files: null };
@@ -14,7 +15,7 @@ function mount(root) {
   el.stats = h("div", { class: "stats" });
   el.plan = h("div", {});
   el.prog = jobProgress("repack", { logClass: "mini", onStatus: (text) => { if (S.running && text) el.sum.textContent = text; } });
-  el.progPanel = panel("09.C", "BUILD", null, el.prog.el);
+  el.progPanel = panel(`${code("repack")}.C`, "BUILD", null, el.prog.el);
   el.progPanel.hidden = true;
   el.result = h("div", {});
   el.sum = h("div", { class: "ab-sum mono" });
@@ -22,30 +23,39 @@ function mount(root) {
   el.build = btn("BUILD PATCHED COPY", build, "primary lg");
   el.cancel = btn("CANCEL", cancelJob, "ghost", { hidden: true });
   root.append(
-    viewHead("09", "PATCHED COPY", "Put the files you edited in the workspace back into the game, as a separate patched copy. Each patched container is re-extracted to verify your edits."),
+    viewHead(code("repack"), "PATCHED COPY", "Put the files you edited in the workspace back into the game, as a separate patched copy. Each patched container is re-extracted to verify your edits."),
     assure([["ORIGINAL GAME NEVER MODIFIED", "it is only read; the copy goes to a folder you choose"],
       ["EDITS = CHANGED FILES", "workspace files whose content changed since extraction"],
       ["VERIFIED", "every patched container is unpacked again and compared"]]),
     h("div", { class: "grid2" },
-      h("div", { class: "col" }, panel("09.A", "EDIT SET + STRATEGY", el.planBtn, el.stats, el.plan)),
+      h("div", { class: "col" }, panel(`${code("repack")}.A`, "EDIT SET + STRATEGY", el.planBtn, el.stats, el.plan)),
       h("div", { class: "col" }, targetPanel(), el.progPanel, el.result)),
     h("div", { class: "actionbar" }, el.sum, el.why, el.cancel, el.build));
   bus.addEventListener("wspath", (e) => switchTo(e.detail.path || ""));
+  bus.addEventListener("game", () => { if (!pref(`repackOut:${S.ws}`)) { el.target.value = suggested(S.ws); bar(); } });
   switchTo(bus.ws?.path || "");
 }
 
 function targetPanel() {
   const browse = browseBtn(el.target, (path) => { pref(`repackOut:${S.ws}`, path); bar(); });
-  return panel("09.B", "TARGET FOLDER", badge("NEW COPY", "ok"),
+  return panel(`${code("repack")}.B`, "TARGET FOLDER", badge("NEW COPY", "ok"),
     h("label", { class: "lbl", for: "repack-target" }, "PATCHED COPY GOES TO"),
     h("div", { class: "row" }, el.target, browse),
     h("p", { class: "note" }, "Use an empty folder, or a patched copy ViWo made earlier (it is replaced). Never inside the game folder: the original stays exactly as it is."));
 }
 
+/** A ready target beside the workspace (`<data>/patched/<game>`), so BUILD needs no folder hunt. */
+function suggested(ws) {
+  const game = currentGame().split(/[\\/]/).filter(Boolean).pop();
+  if (!ws || !game) return "";
+  const sep = ws.includes("\\") ? "\\" : "/";
+  return [...ws.split(/[\\/]/).slice(0, -1), "patched", game].join(sep);
+}
+
 function switchTo(path) {
   if (path === S.ws) return;
   Object.assign(S, { ws: path, plan: null, err: null, files: null });
-  el.target.value = pref(`repackOut:${path}`) || "";
+  el.target.value = pref(`repackOut:${path}`) || suggested(path);
   fill(el.result);
   el.progPanel.hidden = true;
   show();
@@ -130,15 +140,15 @@ async function build() {
     render();
     if (!res.results) {
       await el.prog.finish("ok", "NOTHING TO PATCH");
-      fill(el.result, panel("09.D", "RESULT", badge("NO CHANGES", "mute"), h("p", { class: "note" }, "No edit could be written back, so no copy was made. The skipped list in 09.A says why.")));
+      fill(el.result, panel(`${code("repack")}.D`, "RESULT", badge("NO CHANGES", "mute"), h("p", { class: "note" }, "No edit could be written back, so no copy was made. The skipped list in 09.A says why.")));
     } else {
       await el.prog.finish(res.verified ? "ok" : "fail", res.verified ? "PATCHED COPY READY · VERIFIED" : "COPY BUILT · NOT VERIFIED");
-      fill(el.result, panel("09.D", "RESULT", badge(res.verified ? "VERIFIED ✓" : "NOT VERIFIED ✕", res.verified ? "ok" : "err"), resultBody(res)));
+      fill(el.result, panel(`${code("repack")}.D`, "RESULT", badge(res.verified ? "VERIFIED ✓" : "NOT VERIFIED ✕", res.verified ? "ok" : "err"), resultBody(res)));
       toast(res.verified ? "Patched copy ready and verified." : "Patched copy built, but some edits did not verify.", res.verified ? "ok" : "warn", res.target);
     }
   } catch (err) {
     await el.prog.finish(err.code === "cancelled" ? "cancel" : "fail", err.code === "cancelled" ? "BUILD CANCELLED" : SHORT[err.code] || "BUILD FAILED");
-    fill(el.result, panel("09.D", "RESULT", badge(err.code === "cancelled" ? "CANCELLED" : "FAILED", err.code === "cancelled" ? "warn" : "err"), failure(err)));
+    fill(el.result, panel(`${code("repack")}.D`, "RESULT", badge(err.code === "cancelled" ? "CANCELLED" : "FAILED", err.code === "cancelled" ? "warn" : "err"), failure(err)));
     toastErr(err, "Patched copy failed: ");
   } finally {
     S.running = false;
@@ -148,8 +158,8 @@ async function build() {
   if (el.result.firstElementChild) el.result.firstElementChild.dataset.reveal = "1";
 }
 
-import { registerView } from "../registry.js";
+import { registerView, code } from "../registry.js";
 
 const VIEW = { mount, show };
-registerView({ id: "repack", arm: "patching", order: 10, num: "09", title: "PATCHED COPY", subtitle: "your edits → the game", ...VIEW });
+registerView({ id: "repack", arm: "patching", order: 10, title: "PATCHED COPY", subtitle: "your edits → the game", ...VIEW });
 export default VIEW;

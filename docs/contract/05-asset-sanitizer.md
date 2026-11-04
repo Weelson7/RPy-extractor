@@ -3,7 +3,7 @@
 Extracted assets come out messy: empty files, engine junk, wrong extensions, duplicates. The
 sanitizer finds them and applies only what the user accepts, with a journal for undo
 (`viwo/core/sanitizer.py`, `viwo/core/sanitizer_rules.py`). It is a tool over a workspace, never
-a stage of an extraction. CLI `viwo sanitize`; UI 08 CLEANUP, run as a job of kind `cleanup`.
+a stage of an extraction. CLI `viwo sanitize`; UI CLEANUP, run as a job of kind `cleanup`.
 
 ## 5.1 Scope
 

@@ -28,7 +28,7 @@ dependency of their own. `on_demand` entries (Ghidra, angr) are installed only w
 
 - `viwo install ID...`, `viwo install --all` (everything missing that can be installed),
   `viwo install --game SLUG [--game-version V]` (what an index entry needs, doc 13 and
-  `docs/indexes.md`), 05 SYSTEM (INSTALL, INSTALL ALL MISSING), and the startup preflight when
+  `docs/indexes.md`), SYSTEM (INSTALL, INSTALL ALL MISSING), and the startup preflight when
   `auto_install = on` (the default; never `on_demand` entries).
 - Download over HTTPS with `User-Agent: ViWo/<version>`, retried when a slow link ends early,
   checked against the pinned size and sha256 before use; a mismatch is refused (`refused:
@@ -69,11 +69,11 @@ it (`python tools/notices.py`; a test keeps it current).
 4. Nothing asks the user anything during install or on a tool's first run: no installer, no
    elevation, no UAC; first-run dialogs are pre-answered off screen (owner's rule).
 5. The startup preflight is a job with one event per check and install (`Checking <tool>
-   (i/N): found <version>`, `Downloading <file>, KB: x / y`); the landing screen and 05 SYSTEM
+   (i/N): found <version>`, `Downloading <file>, KB: x / y`); the landing screen and SYSTEM
    show it.
 
 ## 10.5 Updates
 
-`GET /api/updates` (05 SYSTEM > CHECK FOR UPDATES; never called automatically) reports the latest
+`GET /api/updates` (SYSTEM > CHECK FOR UPDATES; never called automatically) reports the latest
 ViWo release and the installed and latest per-game indexes. `viwo indexes update` fetches the
 newest indexes release (`docs/indexes.md`). Tool pins change only with a ViWo version.

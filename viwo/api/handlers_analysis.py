@@ -1,4 +1,4 @@
-"""12 ANALYSIS (doc 6.6): the targets a game offers, one analyzer run as a job of kind
+"""ANALYSIS (doc 6.6): the targets a game offers, one analyzer run as a job of kind
 "analyze", and the "continue in <tool>" handoff (doc 8.3a)."""
 
 from __future__ import annotations

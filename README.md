@@ -72,7 +72,7 @@ files anything can open.
 | `viwo trace --name <image> --workspace <ws> [--functions ...]` | API calls through Frida |
 | `viwo record --workspace <ws> [--seconds S]` | the game's sound from the system output, to WAV |
 
-Continue in x64dbg and Continue in Cheat Engine open from `viwo analyze --open` and 12 ANALYSIS.
+Continue in x64dbg and Continue in Cheat Engine open from `viwo analyze --open` and ANALYSIS.
 
 **Patching: you change its content**, always in a marked patched copy.
 
@@ -104,7 +104,7 @@ viwo install --game skyrim-se    # what a per-game index entry needs
 ```
 
 A path in `[tools]` of `startup.ini` wins over `third_party/`, which wins over `PATH`. Every tool
-is optional: a missing one disables only what needs it, and `viwo slots` / 05 SYSTEM say what to
+is optional: a missing one disables only what needs it, and `viwo slots` / SYSTEM say what to
 install. Data goes to `viwo-data/` next to `startup.ini`. A portable Windows build
 (`viwo.exe`, no Python needed) ships with each release.
 
@@ -113,8 +113,8 @@ install. Data goes to `viwo-data/` next to `startup.ini`. A portable Windows bui
 Plain HTML and ES modules served by `viwo serve` on `127.0.0.1:8081`, with a per-start token.
 The top bar holds SYSTEM (tools, install, diagnostics, updates), JOBS, SETTINGS, the shared game
 selector and the workspace. The rail shows one arm at a time, each opening on its end-to-end
-path: STATIC (07 SURVEY, 01 EXTRACT, 02 WORKSPACE, 03 SORT, 08 CLEANUP, 06 MERGER, 12 ANALYSIS),
-DYNAMIC (10 CAPTURE, 13 RUNTIME), PATCHING (09 PATCHED COPY, 14 PATCHES + MODS). Two themes
+path: STATIC (SURVEY, EXTRACT, WORKSPACE, SORT, CLEANUP, MERGER, ANALYSIS),
+DYNAMIC (CAPTURE, RUNTIME), PATCHING (PATCHED COPY, PATCHES + MODS). Two themes
 (`wormhole`, `plain`). Details: [docs/ui.md](docs/ui.md).
 
 ## Configuration

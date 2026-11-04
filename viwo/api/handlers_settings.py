@@ -1,4 +1,4 @@
-"""11 SETTINGS: read the startup ini as a form and write it back; applied by reloading."""
+"""SETTINGS: read the startup ini as a form and write it back; applied by reloading."""
 
 from __future__ import annotations
 

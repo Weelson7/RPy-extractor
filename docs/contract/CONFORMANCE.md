@@ -144,7 +144,7 @@ declarative (Kaitai) plugins; the indexes repository split.
 | 6.2 A2 `analysis.python`, `.gdscript` | implemented | `plugins/renpy/decompile.py` `UnrpycAnalyzer`, `plugins/godot/gdscript.py` |
 | 6.2 A3 `analysis.protector` | implemented | `core/analysis/identify.py` `DetectItEasy` |
 | 6.2 A3 signatures | implemented | Ghidra FID inside the headless analysis; no separate slot |
-| 6.2 A3 version diff | implemented | `core/analysis/diff.py`, `viwo diff`, `POST /api/analysis/diff`, 12.F VERSION DIFF in 12 ANALYSIS |
+| 6.2 A3 version diff | implemented | `core/analysis/diff.py`, `viwo diff`, `POST /api/analysis/diff`, 12.F VERSION DIFF in ANALYSIS |
 | 6.2 A4 `analysis.emulate`, `analysis.symbolic` workers | implemented | `core/analysis/emulate.py`, `core/workers.py`, `data/workers/emulate.py`, `data/workers/symbolic.py` |
 | 6.2 `record.json` per run, output emptied before rerun | implemented | `core/analysis/__init__.py` `analyze` |
 | 6.3 handoffs per kind | implemented | `core/analysis/__init__.py` `handoffs_for`, `open_in` |
@@ -188,7 +188,7 @@ declarative (Kaitai) plugins; the indexes repository split.
 | 9.5 `[slot_policy]` | open | - |
 | 9.5 `[hooks]` lifecycle hooks | open | - |
 | 9.5 `--plugin <id>=on\|off`, `--slot` CLI overrides | open | - |
-| 9.6 `/api/distro`, 11 SETTINGS writes and reloads | implemented | `api/routes.py`, `core/wiring/settings.py`, `api/app.py` `reload` |
+| 9.6 `/api/distro`, SETTINGS writes and reloads | implemented | `api/routes.py`, `core/wiring/settings.py`, `api/app.py` `reload` |
 
 ## 10 Pinned tools
 
@@ -196,7 +196,7 @@ declarative (Kaitai) plugins; the indexes repository split.
 |------|-------|-----------------|
 | 10.1 pin file: tools, python, workers, on_demand, hidden | implemented | `data/tools.json`, `core/thirdparty.py` |
 | 10.1 hash-locked Python pins | implemented | `data/locks/`, `tools/pin_python.py`, `core/thirdparty.py` `pip_install` |
-| 10.2 install paths: CLI, 05 SYSTEM, preflight | implemented | `cli_extra.py`, `api/handlers_tools.py`, `core/preflight.py` |
+| 10.2 install paths: CLI, SYSTEM, preflight | implemented | `cli_extra.py`, `api/handlers_tools.py`, `core/preflight.py` |
 | 10.2 HTTPS, size and sha256, retries, safe unpack, busy folder, antivirus hint | implemented | `core/thirdparty.py` |
 | 10.2 worker install into a fresh folder | implemented | `core/workers.py` |
 | 10.3 every pin listed | implemented | `data/tools.json`; `THIRD_PARTY_NOTICES.md` (`tools/notices.py`, `tests/test_diag.py`) |
@@ -234,7 +234,7 @@ declarative (Kaitai) plugins; the indexes repository split.
 | 12.2 runtime facade | implemented | `core/wiring/boot.py` `Runtime` |
 | 12.3 jobs, states, events, bounded history | implemented | `core/jobs.py` |
 | 12.3 job kinds | implemented | `api/handlers_jobs.py` `KINDS`, `api/handlers.py` (merge), `api/handlers_system.py` (indexes) |
-| 12.3 04 JOBS view links each kind to its view | implemented | `web/js/views/jobs.js` `KIND`: patch and mod to 14, the runtime kinds to 13 |
+| 12.3 JOBS view links each kind to its view | implemented | `web/js/views/jobs.js` `KIND`: patch and mod to 14, the runtime kinds to 13 |
 | 12.3 run records, replay | implemented | `core/records.py`, `cli.py` |
 | 12.3 workspace lock for writing jobs, `busy` | implemented | `core/workspace.py`, `api/app.py` `locked_job` |
 | 12.3b envelope and codes | implemented | `contracts/errors.py` |

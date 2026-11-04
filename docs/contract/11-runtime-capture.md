@@ -3,7 +3,7 @@
 Work that runs or attaches to the game: GPU frame capture, runtime agents, memory dumps, API
 traces, audio loopback, and the debugger and memory-editor handoffs (`viwo/core/capture/`,
 `viwo/contracts/runtime.py`, `viwo/cli_dynamic.py`, `viwo/api/handlers_capture.py`). CLI arm
-`viwo dynamic`: `capture`, `dump`, `trace`, `agent`, `record`. UI: 10 CAPTURE, 13 RUNTIME.
+`viwo dynamic`: `capture`, `dump`, `trace`, `agent`, `record`. UI: CAPTURE, RUNTIME.
 
 ## 11.1 Model: warnings and one opt-in, no gate (D22)
 
@@ -12,7 +12,7 @@ the user switches it on; what it knows about a game is said as warnings.
 
 | Step | Applies to | Result |
 |------|------------|--------|
-| `capture` in `[startup] features` (11 SETTINGS) | capture, dump, trace, agent, record | off by default; off answers `refused` with the hint to enable it |
+| `capture` in `[startup] features` (SETTINGS) | capture, dump, trace, agent, record | off by default; off answers `refused` with the hint to enable it |
 | confirmation once per game folder (`--confirm`, the UI checkbox; remembered in `viwo-data/capture/confirmed.json`) | capture | without it: `needs_decision` with the confirmation text (exit 2) |
 | anti-cheat markers in the game folder, an anti-cheat service running, a title on the online/competitive list, a `tos_sensitive` plugin detected, the network reachable | capture | warnings in the result and the log; never a refusal |
 
@@ -21,7 +21,7 @@ request), used only to word the warnings. `POST /api/capture/warnings` returns t
 capture. The executable must be a file inside the game folder (the warnings cover that folder).
 
 ViWo authors no anti-cheat evasion and no copy-protection defeat. The debugger and memory
-handoffs (11.2) start from 12 ANALYSIS and are gated by the `analysis` switch.
+handoffs (11.2) start from ANALYSIS and are gated by the `analysis` switch.
 
 ## 11.2 What ships
 
@@ -79,7 +79,7 @@ launched game and warns when the network is reachable. DataTool and BepInEx decl
 ## 11.7 Rung D4
 
 Shipped: CPU profiling (`profile.sample`, `viwo profile --pid|--name --seconds --workspace`,
-`/api/runtime/profile`, 13 RUNTIME). The OS layer samples every thread's instruction pointer
+`/api/runtime/profile`, RUNTIME). The OS layer samples every thread's instruction pointer
 (`sample_threads`: Windows SuspendThread + GetThreadContext about every millisecond, no
 administrator rights; Linux `perf record`, which needs perf_event_paranoid <= 1); each sample is
 placed in its module and named after the nearest export below it. `.runtime/profile/<pid>-<time>/`

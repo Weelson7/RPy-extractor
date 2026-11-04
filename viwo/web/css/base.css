@@ -27,12 +27,12 @@ h2, h3, h4 { margin: 0; }
 .chips { display: flex; gap: 8px; min-width: 0; overflow: hidden; }
 .chip { --c: 6px; display: inline-flex; align-items: center; gap: 7px; height: 26px; padding: 0 11px; flex: none; }
 .chip i { width: 6px; height: 6px; }
-.ws-path { margin-left: auto; display: flex; align-items: center; gap: 10px; min-width: 0; max-width: min(36%, 560px); height: 32px; padding: 0 4px 0 12px; cursor: pointer; }
+.ws-path { margin-left: auto; display: flex; align-items: center; gap: 10px; min-width: 120px; max-width: min(26%, 520px); height: 32px; padding: 0 4px 0 12px; cursor: pointer; }
 .ws-edit { flex: none; padding: 3px 8px; }
 .ws-path .lbl { margin: 0; flex: none; }
 .ws-path .mono { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; direction: rtl; text-align: left; }
 .ws-path + .ws-path { margin-left: 0; }
-.strip { flex: none; }
+.strip, #status-chips { flex: none; } /* the game and workspace paths shorten first; chips never vanish */
 .arms { padding: 0 12px 14px; }
 .arms .seg { display: flex; }
 .arms .seg button { flex: 1 1 0; min-width: 0; padding: 6px 2px; }
@@ -58,6 +58,8 @@ main { grid-area: main; min-width: 0; overflow: auto; padding: 22px 28px 28px; s
 .panel-b { padding: 14px 18px 18px; }
 .sub-h { margin: 18px 0 8px; }
 .grid2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 18px; align-items: start; }
+/* a right column with nothing to show yet (no run, no result) gives the left one the width */
+.grid2:not(:has(> .col:last-child > .panel:not([hidden]))) { grid-template-columns: minmax(0, 1fr); }
 .col { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
 #view-extract .grid2 { grid-template-columns: minmax(0, 5fr) minmax(0, 6fr); }
 .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-width: 0; }
@@ -65,6 +67,7 @@ main { grid-area: main; min-width: 0; overflow: auto; padding: 22px 28px 28px; s
 .note { margin: 10px 0 0; }
 .lbl { display: block; margin-bottom: 6px; }
 .row .lbl { margin: 0; }
+.row + .lbl, .input + .lbl, textarea + .lbl { margin-top: 16px; } /* a label starts a new field, not the end of the last */
 /* ---------- controls ---------- */
 .btn { --c: 8px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; padding: 0 16px; white-space: nowrap; cursor: pointer; }
 .btn.sm { --c: 6px; height: 26px; padding: 0 10px; }
@@ -154,7 +157,7 @@ main > .alert { margin-bottom: 18px; }
 .empty b { display: block; }
 .empty p { margin: 6px auto 0; max-width: 46ch; }
 .empty .row { justify-content: center; margin-top: 14px; }
-.toasts { pointer-events: none; position: fixed; right: 22px; bottom: 118px; z-index: 120; display: flex; flex-direction: column; gap: 8px; width: min(400px, calc(100vw - 44px)); }
+.toasts { pointer-events: none; position: fixed; right: 22px; top: calc(var(--top) + 14px); /* under the top bar: never over the action bar and its buttons */ z-index: 120; display: flex; flex-direction: column; gap: 8px; width: min(400px, calc(100vw - 44px)); }
 .toast { --c: 9px; display: grid; grid-template-columns: auto 1fr; gap: 2px 12px; padding: 11px 16px; }
 .toast small { grid-column: 2; }
 .backdrop { position: fixed; inset: 0; z-index: 130; display: grid; place-items: center; padding: 16px; }
@@ -405,7 +408,7 @@ span.fpath { cursor: default; }
 }
 .install-prog { margin-bottom: 14px; }
 .log.feed.short { height: 170px; }
-/* ---------- 10 CAPTURE, 11 SETTINGS, 05.E MAINTENANCE ---------- */
+/* ---------- CAPTURE, SETTINGS, 05.E MAINTENANCE ---------- */
 .warnlist { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 8px; }
 .warnlist li { padding: 8px 10px; }
 .confirm-row { display: flex; align-items: flex-start; gap: 10px; margin: 14px 0 6px; padding: 10px 12px; }
@@ -437,7 +440,7 @@ main { padding: 18px 20px 24px; }
 /* nav collapses to its numbers; names stay readable to screen readers and as tooltips */
 :root { --rail: 64px; }
 .brand { display: flex; justify-content: center; padding: 0; }
-.brand .word, .brand .sub, .rail-foot, #status-chips .chip:nth-child(-n+2) { display: none; }
+.brand .word, .brand .sub, .rail-foot { display: none; }
 .arms { padding: 0 6px 10px; }
 .arms .seg { flex-direction: column; }
 .path-steps li { grid-template-columns: 2.5em minmax(0, 1fr) auto; }
@@ -447,8 +450,7 @@ main { padding: 18px 20px 24px; }
 .mods a span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .tool-grid, .jobs-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); }
 }
-/* ---------- post-1.0 fixes: toasts bottom right, system gap, slot tables, skipped stages ---------- */
-.toasts { bottom: 22px; }
+/* ---------- post-1.0 fixes: system gap, slot tables, skipped stages ---------- */
 .view > .panel + .grid2, .view > .panel + .tool-grid { margin-top: 18px; }
 .panel-b > .tbl { width: 100%; table-layout: auto; }
 .rail-stages [data-s="skip"] i::after { content: "–"; }

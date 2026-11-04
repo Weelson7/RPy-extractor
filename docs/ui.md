@@ -45,7 +45,7 @@ Rules for views (the lint fails otherwise):
   contain layout declarations (`display`, `grid-template*`, `position`).
 - Shipped themes: `wormhole` (the red terminal HUD) and `plain` (neutral, high contrast, no
   motion). The active theme is `<html data-theme>` and the `#theme-link` stylesheet; the user
-  picks it in 11 SETTINGS > APPEARANCE (a browser preference, `pref("theme")`, not an ini key).
+  picks it in SETTINGS > APPEARANCE (a browser preference, `pref("theme")`, not an ini key).
 
 To write a theme: copy `themes/plain.css`, change the `:root` tokens first (that alone restyles
 everything), then override component skins (`.panel`, `.btn`, `.badge[data-kind="ok"]`...).
@@ -70,12 +70,19 @@ preference (`gamePath`): views read it, write it through `setGame` and follow th
 ```js
 import { registerView, registerPanel } from "./registry.js";
 registerView({ id: "mygame", arm: "static", order: 75, title: "MY GAME", subtitle: "what it does", mount(root) {...}, show() {...}, hide() {...} });
-registerPanel("system", { id: "mygame-status", order: 10, render: (ctx) => panel("05.X", "MY GAME", null, ...) });
+registerPanel("system", { id: "mygame-status", order: 10, render: (ctx) => panel("", "MY GAME", null, ...) });
 ```
 
 - `main.js` builds one `<section id="view-<id>">` per registered view and the rail of the
-  current arm, sorted by `order` within the arm (`num` is the number shown; it defaults to the
-  position). A view without `arm` joins `static`. A view that registers an existing id must pass
+  current arm, sorted by `order` within the arm. A view without `arm` joins `static`.
+- Codes are computed, never written: `code(id)` in `registry.js` gives `S0`, `S1`… in STATIC,
+  `D0`… in DYNAMIC, `P0`… in PATCHING (the arm home is 0) and `00`, `01`, `02` for the global
+  views (SYSTEM, JOBS, SETTINGS), from the arm and the place in it at render time; an add-on view
+  or a new `order` renumbers everything. The visible panels of a view are lettered A, B, C… in
+  reading order (again when one appears, hides or comes from a plugin), so `<code>.<letter>` is
+  always current. Prose names a tab by its title only ("SYSTEM"), never by a number.
+- `#<view>@<word>` opens a view at the panel whose title starts with that word and stays on it
+  while the view loads (the FORMATS chip opens `#system@formats`). A view that registers an existing id must pass
   `{ override: true }`; the same holds for panels.
 - Views that accept panels call `addonPanels(viewId, ctx)` at mount and append the result.
 - Plugin UI modules: the server lists them at `GET /api/ui-modules` as `{modules: [{plugin,
@@ -90,8 +97,8 @@ registerPanel("system", { id: "mygame-status", order: 10, render: (ctx) => panel
   every theme.
 - `tests/test_ui_smoke.py` (L6): starts a server with a temp workspace and a synthetic game,
   drives a headless browser through `tests/ui/smoke.mjs`, and asserts zero console errors on
-  every view, no literal null text, the toast at the bottom right, the 05 SYSTEM gap, the 11.E
+  every view, no literal null text, the toast at the top right under the bar, the computed tab codes, the SYSTEM gap, the SETTINGS formats
   table width, the theme switch, detect percentages without zero padding, the visible "skipped"
-  rail stage after an extraction, workspace-wide type counts in 03 SORT, and the cleanup scan as
+  rail stage after an extraction, workspace-wide type counts in SORT, and the cleanup scan as
   a visible job. Skipped when no Chromium or Node is found; `VIWO_UI=0` disables it;
   `VIWO_UI_OUT=<folder>` keeps the screenshots.

@@ -354,7 +354,7 @@ for f in [Path(v) for k, v in pairs if k == "--decompile"]:
 
 class AnalysisApiTests(_AnalysisFixture):
     def test_the_api_answers_what_the_core_answers(self) -> None:
-        """12 ANALYSIS over HTTP handlers: the targets are the core's, each with its bound
+        """ANALYSIS over HTTP handlers: the targets are the core's, each with its bound
         analyzer; a run is a job that writes what analyze() writes; every bad request is named."""
         from viwo.api.app import App
         from viwo.api.handlers_analysis import ANALYSIS_GET, ANALYSIS_POST

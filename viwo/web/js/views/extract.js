@@ -1,4 +1,4 @@
-// 01 EXTRACT: target, detection, mode, plugin options, filter, run + live feed.
+// EXTRACT: target, detection, mode, plugin options, filter, run + live feed.
 import { api } from "../api.js";
 import { h, fill, btn, panel, badge, meter, viewHead, toast, toastErr, pref, logLine, emit, modal, errorBox, pct, fmtNum, bus, browseBtn } from "../ui.js";
 import { setGame, followGame } from "../game.js";
@@ -31,7 +31,7 @@ function mount(root) {
   el.cancel = btn("CANCEL JOB", cancelJob, "ghost", { hidden: true });
   followGame(el.path);
   root.append(
-    viewHead("01", "EXTRACT", "Pull assets from a game folder into a ViWo workspace. The game folder is opened read-only and never modified."),
+    viewHead(code("extract"), "EXTRACT", "Pull assets from a game folder into a ViWo workspace. The game folder is opened read-only and never modified."),
     h("div", { class: "grid2" },
       h("div", { class: "col" }, targetPanel(), detectPanel(), modePanel(), runPanel()),
       h("div", { class: "col" }, feedPanel(), el.result)),
@@ -45,7 +45,7 @@ function mount(root) {
 
 function targetPanel() {
   const browse = browseBtn(el.path, (path) => { setGame(path); detect(); });
-  return panel("01.A", "TARGET GAME FOLDER", badge("READ-ONLY SOURCE", "ok"),
+  return panel(`${code("extract")}.A`, "TARGET GAME FOLDER", badge("READ-ONLY SOURCE", "ok"),
     h("label", { class: "lbl", for: "game-path" }, "GAME FOLDER PATH"),
     h("div", { class: "row" }, el.path, browse),
     h("p", { class: "note" }, "ViWo copies assets out into its workspace. Nothing inside this folder is written, moved or deleted."));
@@ -54,7 +54,7 @@ function targetPanel() {
 function detectPanel() {
   el.detectBtn = btn("DETECT ENGINE", detect, "");
   el.detect.append(h("p", { class: "dim" }, "Pick a game folder, then DETECT ENGINE (or press Enter in the path) to see which engine it uses."));
-  return panel("01.B", "DETECT", el.detectBtn, el.detect);
+  return panel(`${code("extract")}.B`, "DETECT", el.detectBtn, el.detect);
 }
 
 async function detect() {
@@ -75,7 +75,7 @@ async function detect() {
   } finally { el.detectBtn.disabled = false; }
 }
 
-/** Formats the picked plugins handle that need a tool which is not installed (links to 05 SYSTEM). */
+/** Formats the picked plugins handle that need a tool which is not installed (links to SYSTEM). */
 function missingTools() {
   const slots = bus.distro?.slots || {};
   const gaps = pluginsInPlay().flatMap((p) => p.slots.filter((s) => slots[s] && !slots[s].main).map((s) => [p.name, s]));
@@ -84,7 +84,7 @@ function missingTools() {
   return h("div", { class: "alert", "data-kind": "warn" }, h("b", {}, "OPTIONAL TOOLS NOT INSTALLED"),
     h("p", {}, `${gaps.map(([n, s]) => `${n}: ${slotText(s)}`).join(" · ")}. Extraction still runs and copies everything else.`),
     h("ul", { class: "small" }, how.map((x) => h("li", {}, x))),
-    h("p", {}, h("a", { href: "#system" }, "Open 05 SYSTEM to install them (one click) →")));
+    h("p", {}, h("a", { href: "#system" }, "Open SYSTEM to install them (one click) →")));
 }
 
 function renderDetect() {
@@ -106,7 +106,7 @@ function modePanel() {
   el.seg = h("div", { class: "seg", role: "group", "aria-label": "Extraction mode" },
     ["auto", "single", "mixed"].map((m) => h("button", { type: "button", "data-mode": m, onclick: () => { S.mode = m; renderMode(); } }, m.toUpperCase())));
   renderMode();
-  return panel("01.C", "MODE", el.seg, el.mode, el.options);
+  return panel(`${code("extract")}.C`, "MODE", el.seg, el.mode, el.options);
 }
 
 function chips(ids, isOn, onPick, role) {
@@ -180,7 +180,7 @@ function runPanel() {
   el.carveNote = h("span", { class: "dim" });
   renderCarve();
   const presets = Object.entries(PRESETS).map(([k, v]) => btn(k, () => addExts(v), "sm ghost"));
-  return panel("01.D", "FILTER + OUTPUT", null,
+  return panel(`${code("extract")}.D`, "FILTER + OUTPUT", null,
     h("label", { class: "lbl", for: "ext-filter" }, "EXTENSION FILTER (OPTIONAL)"),
     h("div", { class: "row" }, el.exts, btn("CLEAR", () => { el.exts.value = ""; }, "sm ghost")),
     h("div", { class: "row presets" }, h("span", { class: "dim" }, "ADD"), presets),
@@ -233,7 +233,7 @@ function buildPayload(onExisting) {
 }
 
 function feedPanel() {
-  return panel("01.E", "LIVE FEED", null, el.idle, el.prog.el);
+  return panel(`${code("extract")}.E`, "LIVE FEED", null, el.idle, el.prog.el);
 }
 
 function renderIdleFeed() {
@@ -307,7 +307,7 @@ function reveal() {
   el.result.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
 }
 
-/** 07 SURVEY hands over a game folder: fill it in and detect straight away. */
+/** SURVEY hands over a game folder: fill it in and detect straight away. */
 function show() {
   if (!bus.gamePath) return;
   el.path.value = bus.gamePath;
@@ -326,8 +326,8 @@ async function loadPlugins() {
   }
 }
 
-import { registerView } from "../registry.js";
+import { registerView, code } from "../registry.js";
 
 const VIEW = { mount, show };
-registerView({ id: "extract", arm: "static", order: 20, num: "01", title: "EXTRACT", subtitle: "pull assets from a game", ...VIEW });
+registerView({ id: "extract", arm: "static", order: 20, title: "EXTRACT", subtitle: "pull assets from a game", ...VIEW });
 export default VIEW;

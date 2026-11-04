@@ -26,7 +26,7 @@ RATE = 48000
 
 
 class LoopbackRecorder(Backend):
-    """Owns the soundcard dependency (preflight, 05 SYSTEM, `viwo install`). It serves no slot:
+    """Owns the soundcard dependency (preflight, SYSTEM, `viwo install`). It serves no slot:
     record() below is the one loopback recorder, with nothing to bind or fail over to."""
 
     backend_id, license, isolation = "soundcard-loopback", "BSD-3-Clause", "inprocess"

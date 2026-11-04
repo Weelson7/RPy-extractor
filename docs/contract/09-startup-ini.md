@@ -103,7 +103,7 @@ The web UI's landing screen runs the same preflight as a job (kind `preflight`).
 
 - `GET /api/distro`: the effective ini with sources, the bindings (main, spare, promoted,
   unbound) and the problems.
-- 11 SETTINGS edits features, startup switches, plugins, tool paths, options and slots, writes
+- SETTINGS edits features, startup switches, plugins, tool paths, options and slots, writes
   `startup.ini` key by key (`viwo/core/wiring/settings.py`) and applies the change by reloading
   the runtime (`App.reload()`); a running job finishes on the bindings it started with. No
   restart.

@@ -1,4 +1,4 @@
-// 04 JOBS: job registry with state badges, detail, live event stream and cancel.
+// JOBS: job registry with state badges, detail, live event stream and cancel.
 import { api } from "../api.js";
 import { h, fill, btn, panel, badge, viewHead, empty, errorBox, toast, toastErr, logLine, fmtNum, emit, goBtn } from "../ui.js";
 
@@ -23,11 +23,11 @@ function mount(root) {
   el.cancel = btn("CANCEL JOB", cancel, "danger", { hidden: true });
   el.count = h("span", { class: "mono dim" });
   root.append(
-    viewHead("04", "JOBS", "Every extraction, survey, merger build, patched copy and tool install runs as a job. Pick one to read its log and result.",
+    viewHead(code("jobs"), "JOBS", "Every extraction, survey, merger build, patched copy and tool install runs as a job. Pick one to read its log and result.",
       btn("REFRESH", () => refresh(), "ghost")),
     h("div", { class: "jobs-grid" },
-      panel("04.A", "JOB REGISTRY", el.count, el.list),
-      panel("04.B", "JOB DETAIL", el.cancel, el.head, h("h4", { class: "sub-h" }, "// LOG"), el.events)));
+      panel(`${code("jobs")}.A`, "JOB REGISTRY", el.count, el.list),
+      panel(`${code("jobs")}.B`, "JOB DETAIL", el.cancel, el.head, h("h4", { class: "sub-h" }, "// LOG"), el.events)));
   renderDetailEmpty();
 }
 
@@ -42,6 +42,7 @@ async function refresh() {
   S.busy = true;
   try {
     S.list = (await api.jobs()).slice().reverse();
+    if (!S.sel && S.list.length) return pick(S.list[0].id); // the latest job opens by itself
     renderList();
     if (S.sel) await refreshDetail();
   } catch (err) {
@@ -55,7 +56,7 @@ function renderList() {
   el.count.textContent = `${S.list.length} TOTAL`;
   if (!S.list.length) {
     el.list.replaceChildren(empty("NO JOBS YET", "Jobs appear here when you extract, survey, build a merger video or a patched copy.",
-      goBtn("#extract", "GO TO 01 EXTRACT")));
+      goBtn("#extract", "GO TO EXTRACT")));
     return;
   }
   el.list.replaceChildren(...S.list.map((j) => h("button", {
@@ -124,8 +125,8 @@ function hide() {
   clearInterval(S.timer);
 }
 
-import { registerView } from "../registry.js";
+import { registerView, code } from "../registry.js";
 
 const VIEW = { mount, show, hide };
-registerView({ id: "jobs", arm: "global", order: 20, num: "04", title: "JOBS", subtitle: "runs and their logs", ...VIEW });
+registerView({ id: "jobs", arm: "global", order: 20, title: "JOBS", subtitle: "runs and their logs", ...VIEW });
 export default VIEW;

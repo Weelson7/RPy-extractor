@@ -37,12 +37,18 @@ def resolve(workspace: Path, encoded: str) -> Path:
     return path
 
 
+RANK = {"image": 0, "audio": 1, "video": 2, "text": 3}  # what shows a preview comes first
+
+
 def asset_files(workspace: Path) -> list[Path]:
-    return sorted(
+    """The sort queue: previewable files first (images, audio, video, text), then the rest, each
+    in path order, so a session opens on something to look at rather than on raw blobs."""
+    files = (
         p
         for p in workspace.rglob("*")
         if p.is_file() and not ws.is_reserved(p.relative_to(workspace).parts[0])
     )
+    return sorted(files, key=lambda p: (RANK.get(media_type(p.suffix.lower()), 4), p))
 
 
 def list_window(workspace: Path, offset: int, limit: int) -> dict:

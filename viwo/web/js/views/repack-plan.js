@@ -1,4 +1,4 @@
-// 09 PATCHED COPY rendering: per-container strategy in plain words, first-run states, build result cards.
+// PATCHED COPY rendering: per-container strategy in plain words, first-run states, build result cards.
 import { h, btn, badge, empty, errorBox, fmtNum, stat, goBtn, openBtn, toolLink } from "../ui.js";
 
 const base = (p) => String(p).split(/[\\/]/).pop();
@@ -50,7 +50,7 @@ const STEPS = [["01", "EDIT", "open files in the workspace with your own tools (
 export const howTo = () => h("ol", { class: "how" }, STEPS.map(([n, t, d]) => h("li", {}, h("b", { class: "mono" }, n), h("span", {}, t), h("small", {}, d))));
 
 export const noExtraction = (err) => [empty("NO EXTRACTION IN THIS WORKSPACE", "A patched copy starts from an extraction: ViWo needs to know which game the files came from. Extract a game into this workspace first.",
-  goBtn("#extract", "GO TO 01 EXTRACT")), err ? h("p", { class: "dim small" }, err.message) : null];
+  goBtn("#extract", "GO TO EXTRACT")), err ? h("p", { class: "dim small" }, err.message) : null];
 
 export function noEdits(wsPath, replan) {
   return [empty("NO EDITS YET", "Every workspace file still matches what extraction wrote, so there is nothing to put back. Edit a file, save it, then plan again.",

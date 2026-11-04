@@ -93,12 +93,12 @@ export async function runLanding() {
   await poll();
   if (report) {
     t.stage = "READY"; t.pct = 100; t.frac = "";
-    const failed = report.failed?.length ? `, ${report.failed.length} could not be installed (see 05 SYSTEM)` : "";
+    const failed = report.failed?.length ? `, ${report.failed.length} could not be installed (see SYSTEM)` : "";
     const inst = report.installed.length ? `, ${report.installed.length} installed just now` : "";
     el.sum.textContent = (report.ready >= report.total ? `All ${report.total} tools ready` : `${report.ready}/${report.total} tools ready`) + inst + failed + ".";
   } else {
     t.stage = "CHECK FAILED"; t.pct = 100;
-    el.sum.textContent = `The startup check did not finish: ${failure?.message || "unknown error"}. ViWo still runs; 05 SYSTEM shows what is missing.`;
+    el.sum.textContent = `The startup check did not finish: ${failure?.message || "unknown error"}. ViWo still runs; SYSTEM shows what is missing.`;
     root.dataset.state = "bad";
   }
   paint();
