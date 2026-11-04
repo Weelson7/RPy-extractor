@@ -4,6 +4,15 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.6.7 (2026-11-04)
+- Property tests: merger builds over random candidate sets with the encoder faked (one output
+  per candidate, every failure named, partial flagged, settings clamped, long graphs to a file,
+  overlay and refusals); the Windows OS layer (produced file names always legal, the long-path
+  form exactly past the limit, PowerShell lists quote any path, Defender exclusions leave the
+  user's own alone and say why when skipped, a failed dump leaves no file); the shared OS base
+  (output lines in order whatever the relay does, timeout and cancel kill and say so, GUI
+  children tracked and reaped, the locator's search order, pickers without a display).
+
 ## 1.6.6 (2026-11-04)
 - Fix: no API request can name the server's own folder. An empty or relative game, folder,
   executable, patch set, mod, copy or workspace path resolved against the server's working

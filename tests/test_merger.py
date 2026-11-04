@@ -6,11 +6,12 @@ import shutil
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from tests.helpers import make_png, runtime
 from viwo.contracts import ViwoError
 from viwo.core.merger import media
-from viwo.core.merger.build import build
+from viwo.core.merger.build import Settings, build
 from viwo.core.merger.ffmpeg import Timeline, filtergraph
 
 
@@ -125,6 +126,108 @@ class MergerBuildTests(unittest.TestCase):
             with self.assertRaises(ViwoError) as err:
                 build(rt, work, root / "out", bad)
             self.assertIn("crossfade", err.exception.message)
+
+
+class FakeEncodeTests(unittest.TestCase):
+    """Builds over random frame sets with the encoder faked: what is built, what failed and
+    why, and the command ffmpeg would get, all follow from the request."""
+
+    def setUp(self) -> None:
+        from types import SimpleNamespace
+
+        self._tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self._tmp.name)
+        self.work = self.root / "ws"
+        self.rt = runtime(self.root)
+        self.calls, self.fail = [], False
+
+        def run(argv, timeout=None):
+            self.calls.append(argv)
+            if not self.fail:
+                Path(argv[-1]).write_bytes(b"mp4")
+            return SimpleNamespace(ok=not self.fail, stderr="encoder broke", stdout="")
+
+        tool = SimpleNamespace(argv_prefix=("ffmpeg",), path="ffmpeg")
+        bound = SimpleNamespace(bound=True, main="ffmpeg", spare="")
+        for patcher in (
+            mock.patch.object(self.rt.os.tools, "locate", return_value=tool),
+            mock.patch.dict(self.rt.bindings, {"media.encode": bound}),
+            mock.patch.object(self.rt.os.process, "run", run),
+        ):
+            patcher.start()
+            self.addCleanup(patcher.stop)
+
+    def tearDown(self) -> None:
+        self._tmp.cleanup()
+
+    def test_one_output_per_candidate_and_every_failure_named(self) -> None:
+        import random
+
+        rng = random.Random(7)
+        names = ["hero", "bg", "intro", "end"]
+        for name in names:
+            for i in range(1, rng.randint(2, 4)):
+                make_png(self.work / f"{i:02d}_{name}.png")
+        for _ in range(12):
+            picked = rng.sample([*names, "ghost"], rng.randint(1, 4))  # ghost: no such frames
+            specs = [{"name": n} for n in picked]
+            payload = {"selectedCandidates": specs, "diapoDelay": 0.5, "outputName": "reel.mp4"}
+            out = build(self.rt, self.work, self.root / "out", payload)
+            real = [n for n in picked if n != "ghost"]
+            if not real:
+                self.assertFalse(out["success"])
+                self.assertEqual([f["candidateName"] for f in out["failures"]], picked)
+                continue
+            self.assertEqual([o["candidateName"] for o in out["outputs"]], real)
+            self.assertEqual(
+                [o["outputName"] for o in out["outputs"]], [f"reel_{n}.mp4" for n in real]
+            )
+            self.assertEqual(out.get("partial", False), "ghost" in picked)
+            self.assertEqual("outputPath" in out, len(real) == 1)
+
+    def test_the_command_settings_and_refusals(self) -> None:
+        import random
+
+        rng = random.Random(2)
+        for i in range(30):  # junk settings never escape their ranges
+            junk = lambda: rng.choice([None, "x", -5, 0, 0.1, 3, 99, "2.5", [1]])  # noqa: E731
+            s = Settings.from_payload(
+                {"diapoDelay": junk(), "fadeCrossTime": junk(), "overlayVolume": junk()}
+            )
+            self.assertGreaterEqual(s.delay, 0.2)
+            self.assertGreaterEqual(s.cross, 0.05)
+            self.assertTrue(0.0 <= s.volume <= 1.0)
+        for n in range(3):
+            make_png(self.work / f"f{n}.png")
+        (self.work / "notes.txt").write_text("x")
+        sound = self.root / "music.ogg"
+        sound.write_bytes(b"OggS")
+        rels = [f"f{n}.png" for n in range(3)]
+        build(
+            self.rt, self.work, self.root / "o", {"selectedPaths": rels, "overlaySound": str(sound)}
+        )
+        self.assertIn(str(sound.resolve()), self.calls[-1])  # the overlay loops under the video
+        with mock.patch.object(type(self.rt.os.process), "max_command_length", 40):
+            build(self.rt, self.work, self.root / "o", {"selectedPaths": rels})
+        self.assertIn("-filter_complex_script", self.calls[-1])  # long graphs go to a file
+        refusals = (
+            ({"selectedPaths": []}, "invalid_request"),
+            ({"selectedPaths": ["notes.txt"]}, "invalid_request"),
+            ({"selectedPaths": ["gone.png"]}, "not_found"),
+            ({"selectedPaths": rels, "overlaySound": str(self.root / "x.png")}, "invalid_request"),
+        )
+        for payload, code in refusals:
+            with self.assertRaises(ViwoError) as err:
+                build(self.rt, self.work, self.root / "o", payload)
+            self.assertEqual(err.exception.code, code, payload)
+        self.fail = True
+        with self.assertRaises(ViwoError) as err:
+            build(self.rt, self.work, self.root / "o", {"selectedPaths": rels})
+        self.assertIn("encoder broke", err.exception.message)
+        with mock.patch.object(self.rt.os.tools, "locate", return_value=None):
+            with self.assertRaises(ViwoError) as err:
+                build(self.rt, self.work, self.root / "o", {"selectedPaths": rels})
+        self.assertEqual(err.exception.code, "unavailable")
 
 
 if __name__ == "__main__":
