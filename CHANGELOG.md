@@ -4,6 +4,20 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.6.4 (2026-11-04)
+- The completeness contract (owner): ViWo gets everything out of every game, decoded, with the
+  three arms on every engine (doc 16.0c, with the per-engine table of what is decoded today and
+  what is open; CONFORMANCE row 16.0c, HANDOFF item 7).
+- Never silent in text mode, as a property over real runs: unpack, survey, sanitize (plan,
+  apply, undo), repack (plan, build), slots --check, config check/generate, install, replay,
+  diag and indexes update say in text what the --json envelope carries, with the same exit code.
+- An extraction replays into the same files whatever the mode and extension filter; a replay
+  without its secret is refused and names the option to pass.
+- The server: every UI file is served byte for byte, index.html carries the token and is never
+  cached, nothing outside viwo/web is served; malformed bodies and a crashing route answer and
+  the server keeps serving; `viwo serve` ends with its own code for strict preflight (4), a port
+  in use (2) and Ctrl+C (0).
+
 ## 1.6.3 (2026-11-04)
 - Coverage work (owner's target 98 % line / 95 % branch per file): child processes are measured
   (`[tool.coverage.run] patch = ["subprocess"]`, CI combines); property tests for `viwo slots

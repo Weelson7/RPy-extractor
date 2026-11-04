@@ -11,13 +11,13 @@ top-level folder. Update a row in the commit that changes its state.
 |-------|------|
 | implemented | 165 |
 | partial | 5 |
-| open | 15 |
-| total | 185 |
+| open | 16 |
+| total | 186 |
 
 **Partial**, by cause: no built-in plugin keeps an inventory (0.4, 2.2); no built-in plugin
 ships sanitizer rules (5.1); no pinned QuickBMS script in the indexes (16.0b); coverage per file (17.5).
 
-**Open:** rung D4 (`hook.inject`, `hook.overlay`, `net.*`); sanitizer phases
+**Open:** the completeness contract per engine (16.0c); rung D4 (`hook.inject`, `hook.overlay`, `net.*`); sanitizer phases
 2-3; `[slot_policy]`; `[hooks]`; `--plugin`/`--slot` CLI overrides; `memory_image` targets;
 `keys.*` slots; asset converters for round trip; Unreal asset export and the engines of 13.7;
 declarative (Kaitai) plugins; the indexes repository split.
@@ -277,6 +277,7 @@ declarative (Kaitai) plugins; the indexes repository split.
 |------|-------|-----------------|
 | 16.0b rungs 1-5, 7 | implemented | doc 16.0b |
 | 16.0b rung 6 QuickBMS | partial | the bridge works; no index entry carries a pinned script |
+| 16.0c everything decoded, all three arms per engine | open | the open column of doc 16.0c |
 | 16.2b A1-A4, D1-D3, T1-T2 | implemented | doc 16.2b |
 | 16.2b D4 | open | see 11.7 |
 | indexes repository split and first release | open | `docs/indexes.md` |
@@ -291,7 +292,7 @@ declarative (Kaitai) plugins; the indexes repository split.
 | 17.3 safety catalogue | implemented | tests named in 17.3 |
 | 17.4b operator rules | implemented | `plugins/overwatch`, `sqc/04-extraction-per-engine.md` OPERATOR checks |
 | 17.5 CI cost rule, coverage floors | implemented | `.github/workflows/ci.yml`, `tools/coverage_check.py` |
-| 17.5 98 % line / 95 % branch per file | partial | 84.9 % line, 73.2 % branch at 1.6.0 |
+| 17.5 98 % line / 95 % branch per file | partial | 86.1 % line, 74.2 % branch at 1.6.2 (child processes counted) |
 
 ## 18 Patching arm (rungs T1-T2)
 

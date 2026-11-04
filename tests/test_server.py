@@ -10,8 +10,9 @@ import tempfile
 import threading
 import time
 import unittest
-from contextlib import redirect_stderr
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
+from unittest import mock
 
 from tests.helpers import make_game, write_ini
 from viwo.api import app as app_module
@@ -194,6 +195,132 @@ class ServerTests(unittest.TestCase):
         self.assertEqual(self.call("GET", "/api/nope")[0], 404)
         status, deps = self.call("GET", "/api/dependencies")
         self.assertIn("ffmpeg", {d["id"] for d in deps["dependencies"]})
+
+    def raw(self, method: str, path: str, body: bytes = b"", **headers: str):
+        base = {"Host": f"127.0.0.1:{self.port}", "X-VIWO-Token": Handler.token, **headers}
+        conn = http.client.HTTPConnection("127.0.0.1", self.port, timeout=30)
+        conn.request(method, path, body=body or None, headers=base)
+        resp = conn.getresponse()
+        data = resp.read()
+        conn.close()
+        return resp, data
+
+    def test_every_ui_file_is_served_as_is_and_nothing_else(self) -> None:
+        """index.html carries this server's token and is never cached; every other UI file comes
+        back byte for byte; nothing outside viwo/web is ever served."""
+        from viwo.api.server import WEB_ROOT
+
+        resp, html = self.raw("GET", "/")
+        self.assertEqual(resp.status, 200)
+        self.assertIn(f'content="{Handler.token}"'.encode(), html)
+        self.assertEqual(resp.getheader("Cache-Control"), "no-store")
+        for file in sorted(p for p in WEB_ROOT.rglob("*") if p.is_file()):
+            rel = file.relative_to(WEB_ROOT).as_posix()
+            if rel == "index.html" or "__pycache__" in rel:
+                continue
+            resp, body = self.raw("GET", "/" + rel, **{"X-VIWO-Token": ""})  # no token needed
+            self.assertEqual((resp.status, body), (200, file.read_bytes()), rel)
+            self.assertEqual(resp.getheader("Cache-Control"), "no-cache")
+        outsides = ("/../pyproject.toml", "/%2e%2e/viwo/cli.py", "/nope.js", "/js/")
+        for outside in (*outsides, "/plugins/nope/ui.js"):
+            self.assertEqual(self.raw("GET", outside)[0].status, 404, outside)
+        self.assertEqual(self.raw("GET", "/", Host="evil.example")[0].status, 403)
+        self.assertEqual(self.raw("HEAD", "/preview/x", Host="evil.example")[0].status, 404)
+
+    def test_malformed_bodies_and_a_crashing_route_never_stop_the_server(self) -> None:
+        from viwo.api import handlers
+
+        post = {"Content-Type": "application/json"}
+        self.assertEqual(self.raw("POST", "/api/logs/clear", b"{not json", **post)[0].status, 400)
+        bad_len = {**post, "Content-Length": "abc"}
+        self.assertEqual(self.raw("POST", "/api/logs/clear", b"{}", **bad_len)[0].status, 413)
+        self.assertEqual(self.call("POST", "/api/logs/clear", [1, 2])[0], 200)  # not an object
+        boom = mock.Mock(side_effect=RuntimeError("boom"))
+        with mock.patch.dict(handlers.GET, {"/api/logs": boom}):
+            status, body = self.call("GET", "/api/logs")
+        self.assertEqual((status, body["code"]), (500, "internal"))
+        self.assertTrue(any("RuntimeError: boom" in line for line in self.app.logs()))
+        self.assertEqual(self.call("GET", "/api/logs")[0], 200)  # still serving
+
+
+class ServeTests(unittest.TestCase):
+    """viwo serve: every way it ends says why, with its own exit code."""
+
+    def _app(self, strict: bool = False):
+        with tempfile.TemporaryDirectory() as tmp:
+            rt = boot(write_ini(Path(tmp)))
+        rt.config = mock.Mock(wraps=rt.config, strict_preflight=strict)
+        app = mock.Mock(rt=rt, workspace=Path("ws"))
+        app.server.host, app.server.port = "127.0.0.1", 8123
+        app.rt.problems = ["a problem"]
+        return app
+
+    def test_strict_preflight_port_in_use_and_a_clean_stop(self) -> None:
+        from viwo.api import server
+
+        out = io.StringIO()
+        app = self._app(strict=True)
+        with (
+            mock.patch.object(server, "get_app", return_value=app),
+            mock.patch.object(server, "strict_check", return_value=["unarchive.x: none"]),
+            redirect_stdout(out),
+        ):
+            self.assertEqual(server.serve(browser=False), 4)
+        self.assertIn("unarchive.x: none", out.getvalue())
+        app = self._app()
+        with (
+            mock.patch.object(server, "get_app", return_value=app),
+            mock.patch.object(server, "make_server", side_effect=OSError("in use")),
+            redirect_stdout(out),
+        ):
+            self.assertEqual(server.serve(port=8123, browser=False), 2)
+        self.assertIn("127.0.0.1:8123", out.getvalue())
+        httpd = mock.Mock(server_address=("127.0.0.1", 8123))
+        httpd.serve_forever.side_effect = KeyboardInterrupt
+        with (
+            mock.patch.object(server, "get_app", return_value=app),
+            mock.patch.object(server, "make_server", return_value=httpd),
+            mock.patch.object(server.threading, "Timer") as timer,
+            redirect_stdout(out),
+        ):
+            self.assertEqual(server.serve(), 0)
+            self.assertEqual(server.serve(browser=False), 0)
+        self.assertEqual(httpd.shutdown.call_count, 2)
+        timer.assert_called_once()  # the browser opens on the served URL, only when asked
+        self.assertIn("http://127.0.0.1:8123/", out.getvalue())
+        logged = " ".join(str(c) for c in app.log.call_args_list)
+        self.assertIn("a problem", logged)  # boot notes reach the log
+
+    def test_strict_check_rebinds_after_installing(self) -> None:
+        from viwo.api import server
+        from viwo.core import preflight
+
+        app = self._app()
+        for installed in ([], ["vgmstream"]):
+            app.reload.reset_mock()
+            with (
+                mock.patch.object(preflight, "preflight", return_value={"installed": installed}),
+                mock.patch.object(preflight, "strict_problems", return_value=[]),
+                redirect_stdout(io.StringIO()),
+            ):
+                self.assertEqual(server.strict_check(app), [])
+            self.assertEqual(app.reload.called, bool(installed))
+
+    def test_a_vanished_client_is_quiet_any_other_error_is_reported(self) -> None:
+        from viwo.api import server
+
+        quiet = server.QuietServer.__new__(server.QuietServer)
+        for exc, said in ((ConnectionResetError(), False), (ValueError("x"), True)):
+            with mock.patch.object(server.ThreadingHTTPServer, "handle_error") as base:
+                try:
+                    raise exc
+                except Exception:  # noqa: BLE001
+                    quiet.handle_error(None, ("127.0.0.1", 1))
+            self.assertEqual(base.called, said)
+        src = io.BytesIO(b"abc")
+        dst = io.BytesIO()
+        server._copy(src, dst, 10)  # a short file ends the copy, never loops
+        self.assertEqual(dst.getvalue(), b"abc")
 
 
 if __name__ == "__main__":

@@ -77,8 +77,10 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
    with hot reload (`hook.inject`), the overlay (`hook.overlay`) and own-traffic network tooling
    (`net.*`). The network plaintext capture and the DLL injection loader are the owner's call and
    are not authored by the assistant.
-2. **Coverage** (in progress): owner's target 98 % line / 95 % branch per file; measured 84.9 %
-   line / 73.2 % branch at 1.6.0. The CI floors (`tools/coverage_check.py`) only move up.
+2. **Coverage** (in progress): owner's target 98 % line / 95 % branch per file; measured 86.1 %
+   line / 74.2 % branch at 1.6.2 (child processes counted). Tests are property checks over random
+   inputs, never assertions for their own sake. The CI floors (`tools/coverage_check.py`) only
+   move up.
 3. **CONFORMANCE partials:** built-in plugins keep no inventory and ship no sanitizer rules
    (the hooks work; nothing needs them yet); `core/thirdparty.py` runs `msiexec` (recorded).
 4. **CONFORMANCE opens:** sanitizer phases 2-3, `[slot_policy]`, `[hooks]`, `--plugin`/`--slot`
@@ -88,5 +90,16 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
    (`docs/indexes.md`), publish its first release; add QuickBMS scripts pinned by checksum.
 6. **Not verified on real data:** DataTool on a real Overwatch install (independent operator);
    QuickBMS on a real game archive; the Godot PCK path on a title that ships its data.
-7. **Status PDF:** rebuild with `tools/status_pdf.py` at the end of the open work.
-8. **v2.0.0:** the tag needs the owner's approval: it starts the paid CI and the release workflow.
+7. **Completeness contract (doc 16.0c, owner):** everything out of every game, decoded, all
+   three arms per engine. Work the open column of the 16.0c table engine by engine, Cyberpunk
+   2077 first (it is the demo game); each row is closed only when verified on a real install.
+8. **End of the open work, in this order:** a full audit (and its fixes); a UX/UI review from
+   frames captured of the running UI (headless Edge over DevTools, every view and state), and its
+   fixes; then the presentation, in two parts that replace the status PDF:
+   - a product demo video (MP4, on-screen captions, no voice) on Cyberpunk 2077, the most
+     technically advanced covered game: boot, setup from blank, survey, select, extract, browse
+     the assets, the analysis, runtime and patching arms where they apply;
+   - a technical PDF (built by a `tools/` script from HTML): architecture and the three arms in
+     mermaid diagrams, every view with its screenshot, the specs (contract, conformance, CLI,
+     API, plugins); clear, structured, in depth, the whole UI and every feature.
+9. **v2.0.0:** the tag needs the owner's approval: it starts the paid CI and the release workflow.

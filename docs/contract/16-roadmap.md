@@ -23,6 +23,36 @@ covers which files and flags dense unknown blobs (likely encrypted or compressed
 ViWo authors no DRM defeat, anti-cheat evasion or key brute force (philosophy point 5); keys come
 from the user or the game's own files and are verified (D18).
 
+## 16.0c Completeness contract (owner, 2026-11-04)
+
+ViWo gets **everything** out of every game it covers: every file of the install comes out, and
+every engine format is decoded into a form a person or a standard tool can use (textures to
+DDS/PNG, meshes, rigs and animations to glTF, audio to WAV, video to MP4 or frames, compiled
+scripts decompiled, game databases and localization to JSON/YAML/TSV, everything else to
+readable JSON). On every engine the three arms apply where the engine allows: static (extract,
+decode, analyse its executables and scripts), dynamic (capture, agent, dump, trace, profile,
+record) and patching (repack into its own containers, patch sets, mod packages). A format that
+is not decoded yet is an open row below and is reported in the run (never silent); it is never
+skipped quietly. Decoding uses, in this order of preference: ViWo's own code; the game's own
+libraries (Oodle, Bink), as for Kraken today; a pinned community tool run as a separate process.
+
+| Engine | Comes out and is decoded today | Open (decode, arm) |
+|--------|-------------------------------|--------------------|
+| REDengine 4 (Cyberpunk 2077) | RDAR members with names; Wwise audio to WAV (vgmstream) | CR2W: textures (`.xbm`) to DDS/PNG, meshes/rigs/anims to glTF, the rest to JSON; Bink 2 video through the game's `bink2w64.dll`; `final.redscripts` decompiled; TweakDB to JSON; mod-over-base archive conflicts; Ghidra names from `cyberpunk2077_addresses.json`; runtime agent (Cyber Engine Tweaks); `pack.archive` (RDAR writer, Oodle through the game's DLL) |
+| Unity | textures, audio, text, meshes (OBJ), IL2CPP and managed code | animations, materials, prefabs and scenes (type tree to JSON), video clips, shaders, meshes to glTF |
+| Unreal | pak and IoStore members (`.uasset`) | asset export: textures, meshes, sounds, data tables, localization |
+| Godot | PCK members, resources (GDRE), GDScript | - (verify `.ctex`/`.stex` to PNG without GDRE) |
+| Ren'Py | RPA members, `.rpyc` to `.rpy` | - |
+| RPG Maker | RGSSAD, MV/MZ decrypted assets, data JSON | XP/VX/VX Ace `.rxdata`/`.rvdata2` (Ruby Marshal) to JSON |
+| KiriKiri | unencrypted XP3 entries | TLG images to PNG, PSB/SCN scripts to JSON |
+| Source | VPK members | VTF to PNG, MDL to glTF, BSP maps, VCS shaders |
+| Bethesda | BSA/BA2 members, BA2 textures to DDS | NIF to glTF, ESP/ESM/ESL records to JSON, FUZ/XWM audio to WAV |
+| Age of Empires (genie) | DRS members, SLP to PNG | SMX (Definitive Edition) to PNG |
+| Total War (warscape) | PFH4/PFH5 members | DB tables to TSV/JSON, `.loc` to JSON, RigidModel to glTF |
+| Bannerlord (taleworlds) | TPAC members, textures to DDS | meshes and skeletons to glTF, sounds |
+| Doom, Electron, Overwatch (DataTool) | everything their formats hold | - |
+| GameMaker, the engines of doc 13.7 | loose files and carving only | engine plugins |
+
 ## 16.2b Orchestrator rungs
 
 Each rung is a slot family or a job kind, pinned tools, a UI view and CLI commands, behind a
