@@ -4,6 +4,15 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.6.20 (2026-11-04)
+- Property tests: the round trip plans every edit or names why not (no packer, an unbound pack
+  slot, a plugin that is not loaded), takes the newest extraction run as the game (never a
+  capture record or a damaged one), reports a container behind a link, a failed packer and a
+  crashing verify per container, refuses traversal in loose files, reminds about terms-sensitive
+  plugins and needs a target to build; small core edges: an unknown or foreign OS layer, a patch
+  address outside every section, asm without Keystone or that it cannot assemble, a file with no
+  unique signature, stale antivirus journals, a crashing job, the capture routes' bad input.
+
 ## 1.6.19 (2026-11-04)
 - Property tests: any sequence of one-by-one keep, trash and rename, undone step by step, gives
   back the exact workspace (a refused rename records nothing; an undo with nothing left or of a
