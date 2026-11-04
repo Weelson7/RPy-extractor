@@ -154,17 +154,18 @@ def prepare_copy(rt, game: Path, target: Path, sink=None, stage="copy", reuse=Fa
     return left
 
 
-def _verify(rt, packed: Path, item: PlanItem, ctx) -> list[str]:
+def _verify(rt, packed: Path, item: PlanItem, ctx, untouched: dict) -> list[str]:
     """Re-extract the packed container (18.3 VERIFY): edited members must carry the edited
-    content and every untouched member its original hash; returns the members that do not."""
+    content and every untouched member its original hash; returns the members that do not.
+    An override file holds the edits only (`untouched` is empty: the container keeps the rest)."""
     match = identify(packed, rt.slots.values())
     if match is None:
-        return list(item.members) + list(item.untouched)
+        return list(item.members) + list(untouched)
     dest = Path(tempfile.mkdtemp(dir=ctx.scratch.parent))
     outcome, _ = run_with_failover(
         rt.bindings[match.slot_id], rt.backends, lambda b: b.extract(packed, dest, ctx)
     )
-    expected = {m: sha256(src) for m, src in item.members.items()} | dict(item.untouched)
+    expected = {m: sha256(src) for m, src in item.members.items()} | dict(untouched)
     bad = [
         m
         for m, digest in expected.items()
@@ -210,13 +211,14 @@ def _apply(rt, item: PlanItem, target: Path, ctx) -> dict:
     }
     if not outcome.ok:
         return {**result, "failed": list(item.members), "error": outcome.error}
-    out = rt.backends[used].output_for(container)
+    packer = rt.backends[used]
+    out, untouched = packer.output_for(container), {} if packer.override else item.untouched
     try:  # a packer's own verify must not abort the whole repack
-        own = rt.backends[used].verify(out, item.members, ctx)
+        own = packer.verify(out, item.members, ctx)
         # a backend with its own verifier knows its member naming; the generic re-extraction
         # check (edited content + untouched hashes, 18.3) covers every other container
-        bad = _verify(rt, out, item, ctx) if own is None else list(own)
-        notes = [UNVERIFIED] if own is not None and item.untouched else []
+        bad = _verify(rt, out, item, ctx, untouched) if own is None else list(own)
+        notes = [UNVERIFIED] if own is not None and untouched else []
     except Exception as exc:  # noqa: BLE001 (reported per container)
         bad, notes, result["error"] = list(item.members), [], f"verify failed: {exc}"
     state = "verified" if not bad else f"{len(bad)} member(s) FAILED"

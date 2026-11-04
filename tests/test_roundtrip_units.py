@@ -107,12 +107,40 @@ class ApplyTests(unittest.TestCase):
             self.assertFalse((root / "evil.txt").exists())
             packed = root / "not-a-container.bin"
             packed.write_bytes(b"junk")
-            bad = roundtrip._verify(
-                rt, packed, roundtrip.PlanItem("c", "s", {"m": src}, {"u": "1"}), ctx
-            )
+            item = roundtrip.PlanItem("c", "s", {"m": src}, {"u": "1"})
+            bad = roundtrip._verify(rt, packed, item, ctx, item.untouched)
             self.assertEqual(
                 sorted(bad), ["m", "u"]
             )  # nothing re-extracts: everything is unverified
+
+    def test_an_override_file_is_verified_on_the_edits_alone(self) -> None:
+        """An override (Unreal `_P.pak`, Cyberpunk `archive/pc/mod`) holds the edits only: the
+        untouched members stay in the container it loads over and are not looked for in it."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            rt = runtime(root)
+            target = root / "copy"
+            make_zip(target / "data.zip", {"a.txt": b"a", "b.txt": b"b"})
+            src = root / "edit.txt"
+            src.write_text("edited")
+            ctx = SimpleNamespace(scratch=root / "s" / "x", log=lambda *a, **k: None)
+            (root / "s").mkdir()
+            item = roundtrip.PlanItem("data.zip", "pack.zip", {"a.txt": src}, {"b.txt": "x"})
+            packer = rt.backends[rt.bindings["pack.zip"].main]
+            patch = target / "data_P.zip"
+
+            def pack(container, members, ctx):
+                make_zip(patch, {m: f.read_bytes() for m, f in members.items()})
+                return Outcome(OutcomeKind.OK, len(members))
+
+            for override, failed in ((True, []), (False, ["b.txt"])):
+                with (
+                    mock.patch.object(packer, "pack", side_effect=pack),
+                    mock.patch.object(packer, "output_for", return_value=patch),
+                    mock.patch.object(packer, "override", override),
+                ):
+                    out = roundtrip._apply(rt, item, target, ctx)
+                self.assertEqual(out["failed"], failed)
 
     def test_a_build_needs_a_target(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

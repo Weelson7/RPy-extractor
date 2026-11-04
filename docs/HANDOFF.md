@@ -23,7 +23,7 @@ py -3.13 -m venv .venv; .venv\Scripts\Activate.ps1
 pip install -e ".[unity,sevenzip,renpy,lz4,dev]"
 ruff format viwo tests tools packaging; ruff check viwo tests tools packaging
 python tools/loc_count.py --report
-python -m unittest discover -s tests -t .      # 489 tests, ~10 min on Windows
+python -m unittest discover -s tests -t .      # 496 tests, ~10 min on Windows
 python tools/version.py commit -m "..." [--feature|--major] [--push]
 ```
 
@@ -90,7 +90,8 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
 5. **Indexes:** create the `vidya_wormhole_indexes` repository, split `indexes/` out
    (`docs/indexes.md`), publish its first release; add QuickBMS scripts pinned by checksum.
 6. **Not verified on real data:** DataTool on a real Overwatch install (independent operator);
-   QuickBMS on a real game archive; the Godot PCK path on a title that ships its data.
+   QuickBMS on a real game archive; the Godot PCK path on a title that ships its data; the game loading a
+   `pack.archive` override (`archive/pc/mod/!viwo_*.archive`, ahead of other mods by name).
 7. **Completeness contract (doc 16.0c, owner):** everything out of every game, decoded, all
    three arms per engine. Work the open column of the 16.0c table engine by engine, Cyberpunk
    2077 first (it is the demo game); each row is closed only when verified on a real install.

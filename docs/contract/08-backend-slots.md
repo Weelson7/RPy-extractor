@@ -148,7 +148,7 @@ stored script); `decode.rpyc`
 **Media:** `media.probe` (`ffprobe-probe`, spare `pillow-probe`), `media.encode` (`ffmpeg`).
 
 **Pack (doc 18):** `pack.zip` (`zip-packer`), `pack.rpa` (`rpa-writer`), `pack.pck`
-(`godotpcktool-pack`), `pack.upak` (`repak-patch`, `_P.pak`), `pack.unity` (`unitypy-pack`),
+(`godotpcktool-pack`), `pack.upak` (`repak-patch`, `_P.pak`), `pack.archive` (`wolvenkit-pack`, override archive in `archive/pc/mod`), `pack.unity` (`unitypy-pack`),
 `pack.rpgmaker` (`rpgmv-pack`). **Patch:** `patch.bytes` (`viwo-patcher`, owns the Keystone and
 capstone dependencies).
 

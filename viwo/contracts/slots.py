@@ -135,6 +135,7 @@ class Packer(Backend):
     """Round trip (doc 18): write edited members into the patched copy, never the game."""
 
     families = frozenset({"pack"})
+    override = False  # True: a separate file loaded over the container, which keeps the rest
 
     def output_for(self, container: Path) -> Path:
         """The file this packer writes for a container (itself when rebuilt in place)."""

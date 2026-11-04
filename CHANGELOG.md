@@ -4,6 +4,20 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.10.0 (2026-11-04)
+- Completeness contract (doc 16.0c), patching arm on Cyberpunk 2077: `repack` packs edited
+  members into an override archive, `archive/pc/mod/!viwo_<archive>.archive` in the patched copy,
+  through WolvenKit's console (new `pack.archive` slot, `wolvenkit-pack`). The game loads it over
+  its own archives; the name sorts before other mods, so ViWo's edits come first. A member known
+  only by its hash keeps that hash. The packer reads the archive back through the game's Oodle and
+  compares every edited member. Verified: a texture of a real mod archive edited, packed by
+  WolvenKit 9.1.0 and read back byte for byte.
+- Fix: an Unreal repack of a pak with members left as they were reported those members as
+  FAILED: the `_P.pak` override holds the edits only and the verify looked for every member in
+  it. A packer now says it writes an override (`Packer.override`); its file is verified on the
+  edits, and the untouched members stay in the pak it loads over (reproduced with the real repak
+  on a two-member pak).
+
 ## 1.9.0 (2026-11-04)
 - Completeness contract (doc 16.0c): Cyberpunk 2077's game scripts are decompiled. The new
   `decode.redscripts` slot (`redscript-decompile`) runs redscript's console (pinned `redscript`

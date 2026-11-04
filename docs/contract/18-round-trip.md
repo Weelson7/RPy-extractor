@@ -21,7 +21,8 @@ game folder --extract--> workspace --user edits files--> edit set
 - **Edit set:** workspace files whose hash differs from their provenance hash (modified), plus
   files placed under `<workspace>/_added/<game-relative path>` (added, written as loose files).
   Deletions are not part of an edit set.
-- **Mod strategy:** **override** (loose files in the copy; Unreal `*_P.pak` patch paks) or
+- **Mod strategy:** **override** (loose files in the copy; Unreal `*_P.pak` patch paks; Cyberpunk 2077
+  `archive/pc/mod/!viwo_<archive>.archive`) or
   **rebuild** (the container rewritten with its edited members: RPA, PCK, Unity files, zip,
   RPG Maker MV).
 
@@ -34,7 +35,7 @@ game folder --extract--> workspace --user edits files--> edit set
 | PLAN | per container: override or the owning plugin's `pack_slot()`; shown before anything is written (`--plan`, the 09 view) |
 | COPY | copy the game folder to the target; the target must be empty or already a patched copy; a file the OS refuses to read is left out and named |
 | PACK | `pack.*` slots write inside the copy only |
-| VERIFY | re-extract each packed container through its `unarchive.*` slot: edited members carry the edited hash, untouched members their original hash. A packer with its own `verify` (Unity, RPG Maker MV: no unarchive route back) checks the edited members only and the report says "untouched members were not re-verified" |
+| VERIFY | re-extract each packed container through its `unarchive.*` slot: edited members carry the edited hash, untouched members their original hash. A packer with its own `verify` (Unity, RPG Maker MV: no unarchive route back) checks the edited members only and the report says "untouched members were not re-verified". An override packer (`override = True`: Unreal `_P.pak`, Cyberpunk `pack.archive`) writes a separate file holding the edits only; it is verified on the edits, the untouched members stay in the container it loads over |
 | REPORT | `<copy>/.viwo-patched/report.json`: plan, edits, backends, verification, warnings; a changed game folder is a warning |
 
 CLI `viwo repack WORKSPACE --plan | --out DIR`; API `POST /api/repack` (`plan: true` answers the
@@ -46,7 +47,11 @@ plan, otherwise a job). The game is the one recorded in the workspace's run reco
 (`godotpcktool-pack`; encrypted PCKs need the key), `pack.upak` (`repak-patch`, `_P.pak`;
 signed paks may refuse to load: reported, not bypassed), `pack.unity` (`unitypy-pack`, same-format
 replacement of TextAsset and Texture2D data), `pack.rpgmaker` (`rpgmv-pack`), `pack.zip`
-(`zip-packer`). Overwatch has no packer.
+(`zip-packer`), `pack.archive` (`wolvenkit-pack`, redengine: WolvenKit's console packs the edited
+members into `archive/pc/mod/!viwo_<archive>.archive`, which the game loads over its own archives
+and, by its name, before other mods; a member known only by its hash keeps it; the packer reads
+the archive back through the game's Oodle and compares every edited member). Overwatch has no
+packer.
 
 ## 18.5 Packer interface
 

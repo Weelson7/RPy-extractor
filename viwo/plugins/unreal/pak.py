@@ -157,6 +157,7 @@ class RepakPatch(Packer):
     )
 
     requires = (REPAK,)
+    override = True
 
     def output_for(self, container: Path) -> Path:
         return container.with_name(f"{container.stem}_P.pak")

@@ -21,6 +21,8 @@ from viwo.contracts.workspace import count_files
 from .export import SLOT as CR2W_SLOT
 from .export import WolvenKitExport
 from .names import CP77_HASHES, Names
+from .pack import SLOT as PACK_SLOT
+from .pack import WolvenKitPack
 from .rdar import Archive, Oodle
 from .scripts import SLOT as SCRIPTS_SLOT
 from .scripts import RedscriptDecompile
@@ -113,7 +115,11 @@ class RedenginePlugin(EnginePlugin):
             ),
             CR2W_SLOT,
             SCRIPTS_SLOT,
+            PACK_SLOT,
         )
 
+    def pack_slot(self, unarchive_slot: str) -> str:
+        return "pack.archive" if unarchive_slot == "unarchive.archive" else ""
+
     def backends(self):
-        return (RdarBuiltin(), WolvenKitExport(), RedscriptDecompile())
+        return (RdarBuiltin(), WolvenKitExport(), RedscriptDecompile(), WolvenKitPack())
