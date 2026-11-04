@@ -46,6 +46,7 @@ class Run:
     detections: dict[str, DetectionResult] = field(default_factory=dict)
     logs: list[str] = field(default_factory=list)
     probe: FolderProbe | None = None  # the shared index (doc 2.3), built once by DETECT
+    chosen: tuple[str, ...] = ()  # the plugins selected for this game
 
     def emit(self, event: ProgressEvent) -> None:
         self.logs.append(event.legacy_line())
@@ -103,6 +104,7 @@ def _select(run: Run) -> tuple[str, ...]:
     priorities = {pid: p.manifest.priority for pid, p in rt.plugins.items()}
     chosen = select_plugins(run.request, list(run.detections.values()), priorities)
     run.log(f"Selected plugin(s): {', '.join(chosen)}", "detect")
+    run.chosen = tuple(chosen)
     return chosen
 
 

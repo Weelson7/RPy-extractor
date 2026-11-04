@@ -194,8 +194,9 @@ def decoders() -> list:
 
 
 def _wanted(run, options: dict) -> dict[str, str]:
-    """suffix -> bound decode slot: core slots (video opt-in) and plugin-owned decompilers
-    (switched by the plugin's `decompile` option, default on)."""
+    """suffix -> bound decode slot: core slots (video opt-in) and the decoders of the plugins
+    chosen for this game (switched by the plugin's `decompile` option, default on): a `.mesh` or
+    `.json` of another engine never reaches a Cyberpunk decoder."""
     rt, wanted = run.rt, {}
     video = option_bool(options, "decode_video")
     for sid, slot in rt.slots.items():
@@ -204,6 +205,8 @@ def _wanted(run, options: dict) -> dict[str, str]:
         if sid in ("decode.video", "decode.bink2") and not video:
             continue
         if slot.owner != "core":
+            if slot.owner not in getattr(run, "chosen", ()):
+                continue
             if not option_bool(run.ctx(slot.owner).options, "decompile", True):
                 continue
         wanted.update(dict.fromkeys(slot.suffixes, sid))

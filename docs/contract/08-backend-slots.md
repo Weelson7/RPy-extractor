@@ -171,7 +171,7 @@ capstone dependencies).
 | UNPACK | Unarchiver | `unarchive.*` whose suffix, magic or identifier matches |
 | EXPORT | Exporter | the plugin's `export_slot()` |
 | CARVE | Carver | `carve.signatures` |
-| COLLECT / DECODE | Decoder | `decode.*` by suffix |
+| COLLECT / DECODE | Decoder | `decode.*` by suffix: core slots on every game, a plugin's slots only when that plugin was chosen for the game |
 | VERIFY | `EnginePlugin.verify_report` | - |
 | merger | Prober, MediaEncoder | `media.probe`, `media.encode` |
 | repack | Packer | the plugin's `pack_slot(unarchive slot)` |

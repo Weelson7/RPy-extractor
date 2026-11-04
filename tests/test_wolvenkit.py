@@ -169,6 +169,22 @@ class PipelineTests(unittest.TestCase):
         result = extract(runtime(root, body), request, "j", events.append, CancelToken())
         return result, events
 
+    def test_another_engines_files_never_reach_wolvenkit(self) -> None:
+        """`.json` and `.mesh` are CR2W suffixes too: only a Cyberpunk run decodes them."""
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            game = root / "other"
+            (game / "data").mkdir(parents=True)
+            (game / "data" / "Actors.json").write_text("[]")
+            (game / "data" / "hero.mesh").write_bytes(b"OGRE mesh")
+            body = f"[tools]\nwolvenkit = {fake_wolvenkit(root)}\n"
+            events = []
+            request = ExtractionRequest(str(game), str(root / "ws"))
+            result = extract(runtime(root, body), request, "j", events.append, CancelToken())
+            self.assertFalse([e for e in events if "WolvenKit" in e.message])
+            self.assertFalse([w for w in result.warnings if "cr2w" in w])
+            self.assertFalse((root / "ws" / "json" / "Actors.json.json").exists())
+
     def test_a_clean_batch_warns_nothing(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             texture = {0x1234: [cr2w("CBitmapTexture"), b"pixels"]}

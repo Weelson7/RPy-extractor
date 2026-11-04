@@ -4,6 +4,13 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.11.1 (2026-11-04)
+- Fix: a plugin's decoders ran on every game. `decode.cr2w` claims `.json`, `.mesh`, `.ent` and
+  the other CR2W suffixes, so with WolvenKit installed an RPG Maker MV game's data JSON or a
+  Unity game's meshes were handed to WolvenKit and reported as failures. A plugin's decode
+  slots now apply only when that plugin was chosen for the game (core decoders, such as audio
+  and images, still run everywhere).
+
 ## 1.11.0 (2026-11-04)
 - Completeness contract (doc 16.0c): every Cyberpunk 2077 extraction reports the installed mods'
   conflicts from the archive indexes alone: how many members of the game's archives the mods
