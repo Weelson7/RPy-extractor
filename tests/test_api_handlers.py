@@ -154,7 +154,9 @@ class CurationRouteTests(unittest.TestCase):
             listed = POST["/api/media-merger/list"](
                 app, {"workingDir": "ws", "allowedExts": ["png"]}
             )
-            self.assertEqual(listed["workingDir"], str(ws))  # a relative dir is the workspace
+            self.assertEqual(listed["code"], "not_found")  # a relative dir is refused, not swapped
+            listed = POST["/api/media-merger/list"](app, {"allowedExts": ["png"]})
+            self.assertEqual(listed["workingDir"], str(ws))  # none given: the workspace
             state = GET["/api/media-merger/state"](app, {})
             self.assertEqual(state["workingDir"], str(ws))
 

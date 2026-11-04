@@ -89,7 +89,17 @@ def preflight(rt, sink=None, cancel=None) -> dict:
     """Checks, then (auto_install = on, the default) installs everything missing that can be."""
     tell(sink, f"Loaded {len(rt.plugins)} engine plugins, {len(rt.slots)} formats", "boot")
     items = check(rt, sink)
-    missing = [i for i in items if not i["available"] and i["installable"] and not i["onDemand"]]
+    home = thirdparty.home_of(rt.config)
+
+    def stale(item: dict) -> bool:  # a Python pin present at another version: installed again
+        return (
+            item["kind"] == "python"
+            and item["available"]
+            and thirdparty.python_stale(item["id"], home)
+        )
+
+    wanted = [i for i in items if not i["available"] or stale(i)]
+    missing = [i for i in wanted if i["installable"] and not i["onDemand"]]
     todo = missing if rt.config.auto_install else []
     installed, failed = _install_missing(rt, todo, sink, cancel)
     ready = sum(1 for i in items if i["available"]) + len(installed)

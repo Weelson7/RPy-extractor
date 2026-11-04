@@ -106,6 +106,12 @@ def precheck(folder: Path, policy: OnExisting, default: Path | None = None) -> N
             f"{folder} has files and was not created by ViWo",
             hint="choose an empty folder or a ViWo workspace",
         )
+    if not ws.has_marker(folder) and policy is OnExisting.REPLACE:  # the default, unclaimed
+        raise ViwoError(
+            "refused",
+            f"{folder} holds files ViWo did not write: replace would delete them",
+            hint="new: a fresh folder next to it; or empty the folder yourself",
+        )
     if policy is OnExisting.ASK:
         raise ViwoError(
             "needs_decision",

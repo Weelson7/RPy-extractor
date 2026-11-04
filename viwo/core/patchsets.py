@@ -135,6 +135,8 @@ def write(target: Path, patch: dict, result: dict) -> bool:
     other byte is what it was (doc 18.8 VERIFY)."""
     where, new = result["offset"], bytes.fromhex(result["new"])
     path = _file(target, patch)
+    if path is None:  # the copy step could not copy it (an antivirus hold): this patch fails
+        return False
     before = path.read_bytes()
     with open(path, "r+b") as fh:
         fh.seek(where)
@@ -152,6 +154,9 @@ def export(game: Path, patch_set: dict, report: dict, folder: Path, name: str) -
     for patch, r in zip(patch_set["patches"], report["results"]):
         lines.append(f"{r['file']} {r['offset']:#x}: {r['old']} -> {r['new']}")
         path = _file(game, patch)
+        if path is None:
+            lines.append("  no AOB: the file is not in this folder")
+            continue
         try:
             pattern, at = signature(path.read_bytes(), r["offset"])
         except ViwoError as exc:

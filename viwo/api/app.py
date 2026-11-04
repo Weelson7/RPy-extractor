@@ -8,6 +8,7 @@ from collections import deque
 from pathlib import Path
 from typing import Any, Callable, Mapping
 
+from viwo.contracts import workspace as ws
 from viwo.contracts.errors import ViwoError
 from viwo.contracts.pipeline import (
     CarveMode,
@@ -100,18 +101,41 @@ class App:
             return {**failure(job.error), "jobId": job.job_id}
         return {**job.result, "jobId": job.job_id}
 
-    def locked(self, fn: Callable[[], dict], folder: Path | None = None) -> dict:
-        """A curation call under the workspace lock: busy while a job writes there."""
+    def locked(
+        self, fn: Callable[[], dict], folder: Path | None = None, writes: bool = True
+    ) -> dict:
+        """A call under the workspace lock: busy while a job writes there. One that writes
+        into a foreign folder (a game folder, or the user's own, opened as the workspace) is
+        refused: nothing there is trashed, deleted or renamed. A read-only call into a
+        foreign folder runs without the lock, so nothing is written there."""
         target = folder or self.workspace
         try:
+            if _foreign(target):
+                if writes:
+                    raise ViwoError(
+                        "refused",
+                        f"{target} is not a ViWo workspace: nothing in it is moved or deleted",
+                        hint="extract a game into it first, or open a workspace ViWo made",
+                    )
+                return fn()
             with workspace_lock(target):
                 return fn()
         except ViwoError as exc:
             return failure(exc)
+        except OSError as exc:  # a read-only or vanished folder: said, not a 500
+            return failure(ViwoError("failed", f"{target}: {exc.strerror or exc}"))
 
-    def locked_job(self, kind: str, folder: Path, fn: Callable[..., dict]) -> dict:
+    def locked_job(self, kind: str, folder: Path, fn: Callable[..., dict], writes: bool = True):
         """fn(sink, cancel) runs as a job under the workspace lock."""
-        return self.locked(lambda: self.job(kind, lambda jid, s, c: fn(s, c)), folder)
+        return self.locked(lambda: self.job(kind, lambda jid, s, c: fn(s, c)), folder, writes)
+
+
+def _foreign(folder: Path) -> bool:
+    """A folder with files of its own that neither ViWo workspace nor ViWo patched copy marks:
+    a game folder, or the user's. An empty or ViWo-only folder is not foreign."""
+    if not folder.is_dir() or ws.has_marker(folder) or (folder / ".viwo-patched").is_dir():
+        return False
+    return any(not ws.is_reserved(p.name) for p in folder.iterdir())
 
 
 _STATE: dict[str, App] = {}

@@ -201,12 +201,21 @@ def merger_state(app: App, q: dict) -> dict:
 
 
 def _workdir(app: App, d: dict) -> Path:
-    raw = path_param(d, "workingDir")  # absolute only: never the server's own folder
-    return raw.resolve() if raw is not None and raw.is_dir() else app.workspace
+    """The folder asked for (absolute, existing), or the workspace when none was given; a
+    mistyped one is said, never swapped for the workspace."""
+    if not str(d.get("workingDir", "") or "").strip():
+        return app.workspace
+    raw = path_param(d, "workingDir")
+    if raw is None or not raw.is_dir():
+        raise ViwoError("not_found", f"no such folder: {d.get('workingDir')}")
+    return raw.resolve()
 
 
 def merger_list(app: App, d: dict) -> dict:
-    folder = _workdir(app, d)
+    try:
+        folder = _workdir(app, d)
+    except ViwoError as exc:
+        return failure(exc)
     pattern = str(d.get("namingPattern", media.PATTERNS[0])).lower()
     pattern = pattern if pattern in media.PATTERNS else media.PATTERNS[0]
     raw = d.get("allowedExts")
@@ -237,9 +246,17 @@ def merger_list(app: App, d: dict) -> dict:
 
 
 def merger_build(app: App, d: dict) -> dict:
-    folder = _workdir(app, d)
+    """Reads the folder, writes the video to [server] merged; only trashAfterBuild writes into
+    the folder, and that needs a ViWo workspace."""
+    try:
+        folder = _workdir(app, d)
+    except ViwoError as exc:
+        return failure(exc)
     return app.locked_job(
-        "merge", folder, lambda sink, cancel: build(app.rt, folder, app.server.merged, d, sink)
+        "merge",
+        folder,
+        lambda sink, cancel: build(app.rt, folder, app.server.merged, d, sink),
+        writes=bool(d.get("trashAfterBuild")),
     )
 
 

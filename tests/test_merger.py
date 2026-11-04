@@ -168,11 +168,11 @@ class FakeEncodeTests(unittest.TestCase):
         for name in names:
             for i in range(1, rng.randint(2, 4)):
                 make_png(self.work / f"{i:02d}_{name}.png")
-        for _ in range(12):
+        for _ in range(12):  # noqa: B007  (the round names its output folder)
             picked = rng.sample([*names, "ghost"], rng.randint(1, 4))  # ghost: no such frames
             specs = [{"name": n} for n in picked]
             payload = {"selectedCandidates": specs, "diapoDelay": 0.5, "outputName": "reel.mp4"}
-            out = build(self.rt, self.work, self.root / "out", payload)
+            out = build(self.rt, self.work, self.root / f"out{_}", payload)  # earlier videos stay
             real = [n for n in picked if n != "ghost"]
             if not real:
                 self.assertFalse(out["success"])

@@ -26,6 +26,9 @@ def make_workspace(root: Path) -> Path:
     ):
         (ws / rel).parent.mkdir(parents=True, exist_ok=True)
         (ws / rel).write_text(rel)
+    from viwo.core.workspace import claim
+
+    claim(ws)  # a ViWo workspace: curation is refused anywhere else
     return ws
 
 

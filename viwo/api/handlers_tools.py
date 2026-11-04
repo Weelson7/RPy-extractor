@@ -70,25 +70,28 @@ def sanitize_handler(op: str) -> Callable[[App, dict], dict]:
             token = str(d.get("undoToken", ""))
             return {"success": True, **sanitizer.undo(folder, token, sink, cancel)}
 
-        return app.locked_job("cleanup", folder, run)
+        return app.locked_job("cleanup", folder, run, writes=op != "plan")
 
     return handler
 
 
 def repack_workspace(app: App, d: dict) -> dict:
     """Round trip of the active workspace: plan (plan=true) or build a patched copy (job)."""
-    out, folder = str(d.get("out", "")).strip(), app.workspace
+    folder = app.workspace
     if d.get("plan"):
         return app.locked(
-            lambda: {"success": True, **repack(app.rt, folder, None, apply=False)}, folder
+            lambda: {"success": True, **repack(app.rt, folder, None, apply=False)}, folder, False
         )
-    if not out:
-        return failure(ViwoError("invalid_request", "Choose a target folder for the patched copy"))
+    out = path_param(d, "out")  # absolute only (doc 4.1 rule 6): never the server's own folder
+    if out is None:
+        return failure(
+            ViwoError("invalid_request", "Choose an absolute target folder for the patched copy")
+        )
 
     def run(sink, cancel) -> dict:
-        return {"success": True, **repack(app.rt, folder, Path(out), sink, cancel)}
+        return {"success": True, **repack(app.rt, folder, out, sink, cancel)}
 
-    return app.locked_job("repack", folder, run)
+    return app.locked_job("repack", folder, run, writes=False)
 
 
 def apply_patch_set(app: App, d: dict) -> dict:

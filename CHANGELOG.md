@@ -4,6 +4,25 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.15.4 (2026-11-04)
+Second audit (writes, the API, installs; an independent review, every finding verified):
+- Fix: a game folder (or any folder of the user's) opened as the workspace could be curated:
+  KEEP ONLY SELECTED moved the game's folders to a `.trash` inside it and CLEAR TRASH deleted
+  them; cleanup could rename game files. Every write into a folder that is neither a ViWo
+  workspace nor a patched copy is now refused, and read-only calls there take no lock.
+- Fix: "replace" could delete the game being extracted when the game sat inside the workspace,
+  and could clear a default workspace folder holding the user's files. Both are refused.
+- Fix: a merger build wrote a lock into the folder it read (a game folder, or a read-only one
+  that answered 500); a mistyped working folder silently became the workspace; two candidates
+  whose names reduce alike overwrote one video. Outputs now take a free name, a wrong folder is
+  said, and a read-only error is named.
+- Fix: repack and the analysis diff took relative paths (doc 4.1 rule 6); now absolute only.
+- Fix: Python pins installed with `--upgrade`, and a pin bumped after a ViWo install is
+  installed again (a marker records what ViWo installed; packages found elsewhere are left).
+- Fix: a patch whose file the copy step could not copy failed the whole job; it now fails alone.
+- Fix: on a LAN bind every peer could read the API token from the page; it goes to this
+  machine, or to a LAN peer with the `?key=` link `viwo serve` prints (doc 4.1 rule 1).
+
 ## 1.15.3 (2026-11-04)
 Audit of the 1.7-1.15 work (an independent review, every finding verified and fixed):
 - Unity: the MonoBehaviour layout generator reached only the first group of files; later

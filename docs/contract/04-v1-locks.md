@@ -43,8 +43,11 @@ description, capabilities, options, slots, dependencies, error, loaded.
 **Security model** (`tests/test_server.py`):
 
 1. **Per-start token:** generated at startup, injected into the served `index.html` as `<meta
-   name="viwo-token">`; every `/api/*` request sends it as `X-VIWO-Token` (compared in constant
-   time). Missing or wrong: 403.
+   name="viwo-token">` for a peer on this machine only; a LAN peer (a server bound to a LAN
+   address on purpose) gets it through the `?key=` link `viwo serve` prints, never by asking.
+   Every `/api/*` request sends it as `X-VIWO-Token` (compared in constant time). Missing or
+   wrong: 403. A refused request is answered before the connection closes (`Connection: close`,
+   what the client sent is taken in), never reset.
 2. **JSON only:** a POST without `Content-Type: application/json` gets 415; a body over 16 MiB
    or a malformed length gets 413.
 3. **Host check:** the Host header must name this machine (`127.0.0.1`, `localhost`, `[::1]`, or
@@ -57,6 +60,12 @@ description, capabilities, options, slots, dependencies, error, loaded.
    in a request is absolute (`api/app.py` `path_param`, `existing`); "" or a relative path, which
    would name the server's own folder, is refused as `not_found` / `invalid_request`
    (`tests/test_api_routes.py`).
+7. **Curation needs an owned folder:** a call that trashes, deletes, renames or cleans up inside
+   the workspace (`api/app.py` `locked`) is refused when the folder holds files and is neither
+   a ViWo workspace (marker) nor a ViWo patched copy: a game folder or the user's own folder
+   opened as the workspace is never curated. A read-only call there takes no lock (writes
+   nothing). An extraction refuses a game inside its workspace, and "replace" never clears a
+   folder ViWo did not write (`tests/test_audit_guards.py`).
 
 ## 4.2 `/api/dependencies` item
 

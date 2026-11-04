@@ -233,7 +233,7 @@ def pip_install(dep_id: str, target: Path, runner) -> None:
             f"no hash lock for {dep_id} on {PLATFORM} with Python {sys.version.split()[0]}",
             hint="tools/pin_python.py writes it (or says the pin has no build for this Python)",
         )
-    argv = [sys.executable, "-m", "pip", "install", "--disable-pip-version-check"]
+    argv = [sys.executable, "-m", "pip", "install", "--disable-pip-version-check", "--upgrade"]
     argv += ["--require-hashes", "--no-deps", "--target", str(target), "-r", str(lock)]
     result = runner.run(argv, timeout=3600)
     if not result.ok:
@@ -242,8 +242,29 @@ def pip_install(dep_id: str, target: Path, runner) -> None:
         )
 
 
+PINS = ".viwo-pins.json"  # dep id -> the pin installed (a bump or a broken install reinstalls)
+
+
+def installed_pins(home: Path) -> dict[str, str]:
+    try:
+        return json.loads((python_dir(home) / PINS).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def python_stale(dep_id: str, home: Path) -> bool:
+    """A Python pin ViWo installed at another version than tools.json pins now (a pin bump):
+    the startup check installs it again, over what is there (--upgrade). A package found
+    elsewhere (a venv, the system) is the user's and is left alone."""
+    pin, recorded = manifest()["python"].get(dep_id), installed_pins(home).get(dep_id)
+    return bool(pin and recorded and recorded != pin)
+
+
 def install_python(dep_id: str, home: Path, runner) -> str:
     pin = manifest()["python"][dep_id]
     pip_install(dep_id, python_dir(home), runner)
+    pins = {**installed_pins(home), dep_id: pin}
+    python_dir(home).mkdir(parents=True, exist_ok=True)
+    (python_dir(home) / PINS).write_text(json.dumps(pins, indent=1), encoding="utf-8")
     activate(home)
     return pin

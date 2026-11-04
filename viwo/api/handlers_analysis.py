@@ -18,7 +18,7 @@ from viwo.core.analysis import (
 )
 from viwo.core.workspace import claim
 
-from .app import App, existing, failure
+from .app import App, existing, failure, path_param
 
 
 def _game(d: dict) -> Path | dict:
@@ -80,7 +80,9 @@ def diff_analyses(app: App, d: dict) -> dict:
     <workspace>/.analysis/diff/<old>--<new>/ (quick: no job)."""
     from viwo.core.analysis import diff
 
-    old, new = Path(str(d.get("old", ""))), Path(str(d.get("new", "")))
+    old, new = path_param(d, "old"), path_param(d, "new")  # absolute only (doc 4.1 rule 6)
+    if old is None or new is None:
+        return failure(ViwoError("invalid_request", "give both analysis folders as absolute paths"))
     try:
         report = diff.diff(old, new)
     except ViwoError as exc:

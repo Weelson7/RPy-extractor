@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from viwo.contracts import workspace as ws
 from viwo.contracts.errors import ViwoError
 from viwo.contracts.types import ProgressEvent
 from viwo.core.context import core_context
@@ -144,7 +145,7 @@ def build_one(tg: Target, rels: list[str], s: Settings, name: str) -> dict:
     timeline = _timeline(rt, files, s, overlay, _probe_ctx(rt, workdir, sink))
     graph, video, audio, total = filtergraph(timeline)
     outdir.mkdir(parents=True, exist_ok=True)
-    target = outdir / output_name(name, rt.os.fs)
+    target = ws.next_free(outdir / output_name(name, rt.os.fs))  # never over an earlier video
     argv = _argv(list(tool.argv_prefix), files, timeline, overlay)
     tail = ["-map", f"[{video}]", "-map", f"[{audio}]", *ENCODE, "-t", f"{total:.3f}", str(target)]
     with tempfile.TemporaryDirectory(dir=rt.temp_root) as tmp:

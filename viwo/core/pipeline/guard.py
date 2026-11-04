@@ -13,6 +13,8 @@ Snapshot = dict[str, tuple[int, int]]
 
 
 def refuse_writes_inside(game: Path, **targets: Path) -> None:
+    """Refuse a target inside the game, and one that holds the game: a workspace or copy that
+    contains the game would have it in its groups, which "replace" clears."""
     root = game.resolve()
     for label, target in targets.items():
         resolved = target.resolve()
@@ -21,6 +23,12 @@ def refuse_writes_inside(game: Path, **targets: Path) -> None:
                 "refused",
                 f"the {label} ({target}) is inside the game folder",
                 hint="choose a location outside the game; ViWo never writes there",
+            )
+        if label != "temp_folder" and resolved in root.parents:
+            raise ViwoError(
+                "refused",
+                f"the game folder ({game}) is inside the {label} ({target})",
+                hint="choose a workspace that does not hold the game",
             )
 
 

@@ -144,7 +144,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._preview(url.path[len("/preview/") :])
         if plugin_assets.serve(self, path):  # plugin UI add-ons: /plugins/<id>/ui.js
             return
-        self._static(path)
+        self._static(path, parse_qs(url.query).get("key", [""])[0])
 
     def do_POST(self) -> None:
         path = unquote(urlparse(self.path).path)
@@ -207,14 +207,18 @@ class Handler(BaseHTTPRequestHandler):
                 handle.seek(start)
                 _copy(handle, self.wfile, end - start + 1)
 
-    def _static(self, path: str) -> None:
+    def _static(self, path: str, key: str = "") -> None:
+        """The page carries the API token for this machine only; a LAN peer (a server bound to
+        a LAN address on purpose) gets it with the `?key=` link `viwo serve` prints."""
         rel = (path.lstrip("/") or "index.html") + (
             "index.html" if path.endswith("/") and path != "/" else ""
         )
         target = (WEB_ROOT / rel).resolve()
         if WEB_ROOT.resolve() not in target.parents or not target.is_file():
             return self.send_error(404)
-        self.send_file(target, html_token=target.name == "index.html")
+        local = _loopback(str(self.client_address[0]))
+        keyed = bool(key) and hmac.compare_digest(key, self.token)
+        self.send_file(target, html_token=target.name == "index.html" and (local or keyed))
 
 
 def _copy(src, dst, remaining: int) -> None:
@@ -278,6 +282,10 @@ def serve(
     for problem in app.rt.problems:
         app.log(f"[SERVER] note: {problem}")
     print(f"ViWo // Vidya Wormhole -> {url}", flush=True)
+    if app.server.host.lower() not in WILDCARD_OR_LOOPBACK:  # reachable from the LAN on purpose
+        print(
+            f"From another machine: {url}?key={Handler.token}  (keep this link private)", flush=True
+        )
     print(f"Workspace: {app.workspace}   (Ctrl+C stops the server)", flush=True)
     if browser:
         threading.Timer(0.6, webbrowser.open, [url]).start()
