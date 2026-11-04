@@ -4,6 +4,16 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.6.17 (2026-11-04)
+- Property tests: any RPA-2.0/3.0 archive (any key, prefixed chunks, byte or text names) reads
+  back byte for byte and a repack keeps every member and carries every edit, a malformed index
+  is named; a [slots] entry never binds a backend that cannot serve the slot and every bad entry
+  is named; the 7-Zip, unrar and py7zr backends name a password, a failure and a missing tool;
+  unsafe zip names are counted in a note; RPG Maker MV media decrypts with the game's key or
+  one recovered from its images and repacks to what the game reads; the settings routes name an
+  unreadable ini and a broken plugin; the unrpa and unrpyc processes name a run that wrote
+  nothing.
+
 ## 1.6.16 (2026-11-04)
 - Property tests for the Unity exporters' sources: containers found by name or by signature
   behind a custom header (a file an antivirus holds is skipped), the game's cache folders only
