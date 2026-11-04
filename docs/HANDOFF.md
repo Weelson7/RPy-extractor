@@ -23,7 +23,7 @@ py -3.13 -m venv .venv; .venv\Scripts\Activate.ps1
 pip install -e ".[unity,sevenzip,renpy,lz4,dev]"
 ruff format viwo tests tools packaging; ruff check viwo tests tools packaging
 python tools/loc_count.py --report
-python -m unittest discover -s tests -t .      # 528 tests, ~20 min on Windows
+python -m unittest discover -s tests -t .      # 529 tests, ~18 min on Windows
 python tools/version.py commit -m "..." [--feature|--major] [--push]
 ```
 
@@ -85,19 +85,34 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
 3. **CONFORMANCE partials:** built-in plugins keep no inventory and ship no sanitizer rules
    (the hooks work; nothing needs them yet); `core/thirdparty.py` runs `msiexec` (recorded).
 4. **CONFORMANCE opens:** sanitizer phases 2-3, `[slot_policy]`, `[hooks]`, `--plugin`/`--slot`
-   overrides, `memory_image` targets, round-trip converters, Unreal asset export and the engines
-   of doc 13.7, Kaitai plugins.
+   overrides, `memory_image` targets, round-trip converters, the engines of doc 13.7, Kaitai
+   plugins.
 5. **Indexes:** create the `vidya_wormhole_indexes` repository, split `indexes/` out
    (`docs/indexes.md`), publish its first release; add QuickBMS scripts pinned by checksum.
 6. **Not verified on real data:** DataTool on a real Overwatch install (independent operator);
    QuickBMS on a real game archive; the Godot PCK path on a title that ships its data; the game loading a
    `pack.archive` override (`archive/pc/mod/!viwo_*.archive`, ahead of other mods by name).
 7. **Completeness contract (doc 16.0c, owner):** everything out of every game, decoded, all
-   three arms per engine. Work the open column of the 16.0c table engine by engine, Cyberpunk
-   2077 first (it is the demo game); each row is closed only when verified on a real install.
-8. **End of the open work, in this order:** a full audit (and its fixes); a UX/UI review from
-   frames captured of the running UI (headless Edge over DevTools, every view and state), and its
-   fixes; then the presentation, in two parts that replace the status PDF:
+   three arms per engine; every capability valid for all games of its engine (owner: no
+   overfitting to one game). Work the open column of the 16.0c table by reach; a row closes only
+   when verified on a real install. Verifiable here: Cyberpunk 2077, two Unity IL2CPP games,
+   two Unity Mono test games, a UE5.1 test game, Rome II, Bannerlord, AoE II HD, Ren'Py, RPG
+   Maker MV; no Godot game with data, no Source, Bethesda, KiriKiri-with-TLG or RPG Maker XP/VX.
+   Findings kept for the open rows:
+   - Unity IL2CPP MonoBehaviour fields: UnityPy's TypeTreeGenerator recovers almost nothing on
+     Unity 2022.3/6 IL2CPP (12/64,657 on Schedule I; "failed to load il2cpp" on Unity 6); the
+     Cpp2IL stand-in route (`load_local_dll_folder` on Cpp2IL's dummy assemblies) is untested.
+   - Unreal models are UEFormat (`.uemodel`, Blender importer); glTF needs another exporter.
+   - REDengine TweakDB: a reader prototype works (flats: per type `<QIII>` header (hash
+     FNV-1a64 of the type name, values, keys, offset); values then keys `<QI>`; arrays and string
+     lengths are the engine's packed int; records `<QI>` id and Murmur3 seed 0x5EEDBA5E of the
+     class name, whose names are in the game's exe as `gamedata<Name>_Record`); names from
+     WolvenKit's `tweakdbstr.kark` (Kraken); 164 MB JSON in 11 s on 2.x. Not shipped (one game).
+   - Total War schema install on first use (today: `viwo install rpfm-schema-<game>`).
+8. **End of the open work, in this order:** a full audit (and its fixes); then the
+   presentation, in two parts that replace the status PDF. (The UX/UI review from frames of the
+   running UI at the owner's window and zoom, and on a real extraction, was done at 1.12.0; it
+   is repeated for the demo.)
    - a product demo video (MP4, on-screen captions, no voice) on Cyberpunk 2077, the most
      technically advanced covered game: boot, setup from blank, survey, select, extract, browse
      the assets, the analysis, runtime and patching arms where they apply;

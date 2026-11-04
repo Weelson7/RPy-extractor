@@ -4,6 +4,13 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.15.2 (2026-11-04)
+- Tests: the mixed-mode pairwise test runs every plugin alone and 13 groups of six that cover
+  every pair of the 17 plugins (a covering design, checked by its own test), instead of all 136
+  pairs one by one: 257 s to 50 s with the same pairwise property.
+- HANDOFF: the completeness findings kept for the open rows (Unity IL2CPP fields, Unreal glTF,
+  REDengine TweakDB), the games this machine can verify, and the UX/UI review done at 1.12.0.
+
 ## 1.15.1 (2026-11-04)
 - Fix: vgmstream (`decode.audio`) wrote nothing: its `?f` output wildcard is the whole input
   path, so `<dest>/?f_?s.wav` named a file inside a folder that does not exist, and the audio

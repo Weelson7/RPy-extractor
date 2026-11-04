@@ -58,9 +58,31 @@ def make_mixed_game(root: Path) -> Path:
     return game
 
 
+def covering(items: list[str], size: int = 6) -> list[tuple[str, ...]]:
+    """Groups of `size` in which every pair of items meets at least once (greedy, fixed order):
+    the pairwise property for a fraction of the runs every pair on its own would cost."""
+    left = set(itertools.combinations(items, 2))
+    groups = []
+    while left:
+        group = list(min(left))
+        while len(group) < min(size, len(items)):
+            gain = lambda c: sum(tuple(sorted((c, g))) in left for g in group)  # noqa: E731
+            group.append(
+                max((c for c in items if c not in group), key=lambda c: (gain(c), -items.index(c)))
+            )
+        groups.append(tuple(sorted(group, key=items.index)))
+        left -= set(itertools.combinations(groups[-1], 2))
+    return groups
+
+
 class MixedPairwiseTests(unittest.TestCase):
+    def test_the_groups_cover_every_pair(self) -> None:
+        groups = covering(list(PLUGINS))
+        met = {pair for g in groups for pair in itertools.combinations(sorted(g), 2)}
+        self.assertEqual(met, {tuple(sorted(p)) for p in itertools.combinations(PLUGINS, 2)})
+
     def test_pairs_and_singles(self) -> None:
-        combos = [(p,) for p in PLUGINS] + list(itertools.combinations(PLUGINS, 2))
+        combos = [(p,) for p in PLUGINS] + covering(list(PLUGINS))
         with (
             tempfile.TemporaryDirectory() as tmp,
             mock.patch.dict(sys.modules, {"UnityPy": fake_unitypy()}),
