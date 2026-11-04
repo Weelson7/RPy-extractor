@@ -198,7 +198,7 @@ function bar() {
   const f = S.plan?.findings || [];
   const sel = [...S.sel].map((i) => f[i]).filter(Boolean);
   const n = (a) => sel.filter((x) => x.action === a).length;
-  el.sum.textContent = S.applied.size && !sel.length ? `${S.applied.size} APPLIED · undo in 08.C · ${f.length - S.applied.size} finding(s) left as is`
+  el.sum.textContent = S.applied.size && !sel.length ? `${S.applied.size} APPLIED · undo in LAST CLEANUP · ${f.length - S.applied.size} finding(s) left as is`
     : S.plan ? `${sel.length} SELECTED · ${n("trash")} → workspace trash · ${n("rename")} rename · ${f.length - sel.length} left as is`
     : `${(S.ws || "").split(/[\\/]/).pop() || "workspace"} · scan to list findings`;
   el.why.textContent = S.busy ? "working…" : !S.plan ? "scan first" : !sel.length ? "tick findings to apply" : "";

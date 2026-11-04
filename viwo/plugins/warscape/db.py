@@ -92,6 +92,8 @@ def header(data: bytes) -> tuple[int, int, int]:
 
 def rows(data: bytes, fields: list[tuple[str, str]]) -> list[dict]:
     _version, count, at = header(data)
+    if count > len(data) or (count and not fields):  # a row takes at least a byte
+        raise ValueError(f"{count} row(s) cannot fit in {len(data)} byte(s)")
     out = []
     for _ in range(count):
         row = {}

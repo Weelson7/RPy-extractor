@@ -91,7 +91,7 @@ export const SHORT = { refused: "TARGET REFUSED", busy: "WORKSPACE BUSY", not_fo
 
 const NEXT = {
   refused: "Use an empty folder, or a patched copy ViWo made earlier (it is replaced). Never a folder inside the game.",
-  invalid_request: "Choose a target folder for the patched copy in 09.B.",
+  invalid_request: "Choose a target folder for the patched copy in TARGET FOLDER.",
 };
 
 export const failure = (err) => errorBox(err, SHORT[err.code] || "PATCHED COPY FAILED", NEXT[err.code]);

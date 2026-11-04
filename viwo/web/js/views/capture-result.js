@@ -1,4 +1,4 @@
-// 10.B BEFORE YOU START and 10.D RESULT renderers for the capture view.
+// BEFORE YOU START and RESULT renderers for the capture view.
 import { code } from "../registry.js";
 import { featureOff } from "../feature.js";
 import { h, panel, badge, stat, fmtNum, goBtn, errorBox } from "../ui.js";
@@ -52,7 +52,7 @@ export function renderResult(res) {
 
 export function renderFailure(err) {
   const next = {
-    needs_decision: "Tick the confirmation in 10.B, then launch again.",
+    needs_decision: "Tick the confirmation in BEFORE YOU START, then launch again.",
     refused: "The executable must be a file inside the game folder, and the workspace must be empty or one ViWo made.",
     unavailable: "Install RenderDoc from SYSTEM (one click), then try again.",
     failed: "No capture was taken, or the game did not start: press F12 in the game before quitting it.",

@@ -24,6 +24,17 @@ HASHED = re.compile(r"^([0-9a-f]{16})(\.[^/]+)$")
 PREFIX = "!viwo_"  # mods load in name order and the first one wins: ViWo's edits come first
 
 
+def mods_folder(container: Path) -> Path | None:
+    """Where the game loads an override of this archive from: `archive/pc/<folder>/x.archive`
+    and REDmod's `mods/<name>/archives/x.archive` both -> `<game>/archive/pc/mod`."""
+    up = [p.name.lower() for p in container.parents][:4] + ["", "", "", ""]
+    if up[1:3] == ["pc", "archive"]:
+        return container.parents[1] / "mod"
+    if up[0] == "archives" and up[2] == "mods":
+        return container.parents[3] / "archive" / "pc" / "mod"
+    return None
+
+
 def member_hash(member: str) -> int:
     hashed = HASHED.match(member)
     if hashed:
@@ -52,13 +63,17 @@ class WolvenKitPack(Packer):
     override = True
 
     def output_for(self, container: Path) -> Path:
-        mods = container.parent.parent / "mod"  # archive/pc/content -> archive/pc/mod
-        return mods / f"{PREFIX}{container.stem}.archive"
+        mods = mods_folder(container)
+        folder = mods if mods is not None else container.parent  # refused by pack()
+        return folder / f"{PREFIX}{container.stem}.archive"
 
     def pack(self, container, members, ctx) -> Outcome:
         tool = ctx.os.tools.locate(WOLVENKIT)
         if tool is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=WOLVENKIT.hint)
+        if mods_folder(container) is None:
+            why = "not under archive/pc/<folder>/ or mods/<name>/archives/: no override loads"
+            return Outcome(OutcomeKind.FAILED, error=f"{container.name}: {why}")
         ctx.scratch.mkdir(parents=True, exist_ok=True)
         out = self.output_for(container)
         root = Path(tempfile.mkdtemp(prefix="rdar-", dir=ctx.scratch)) / out.stem  # its name

@@ -101,13 +101,16 @@ class SettingsTests(unittest.TestCase):
 
 
 class DecodeTests(unittest.TestCase):
-    def ctx(self, tmp: Path, run, located: bool = True):
-        tool = SimpleNamespace(argv_prefix=("wk",), path=str(tmp / "WolvenKit.CLI.dll"))
+    def ctx(self, tmp: Path, run, located: bool = True, home: str = "third_party"):
+        where = tmp / home / "wolvenkit"
+        where.mkdir(parents=True, exist_ok=True)
+        tool = SimpleNamespace(argv_prefix=("wk",), path=str(where / "WolvenKit.CLI.dll"))
         host = SimpleNamespace(
             tools=SimpleNamespace(locate=lambda s: tool if located else None),
             process=SimpleNamespace(run=run),
         )
-        return SimpleNamespace(os=host, game_root=tmp, cancel=None)
+        self.logs = []
+        return SimpleNamespace(os=host, game_root=tmp, cancel=None, log=self.logs.append)
 
     def test_every_failure_is_counted_and_an_empty_run_fails(self) -> None:
         rng = random.Random(5)
@@ -153,7 +156,11 @@ class DecodeTests(unittest.TestCase):
                 root / "a.xbm", root / "o", self.ctx(root, lambda *a, **k: crash)
             )
             self.assertEqual((out.kind, out.error), (OutcomeKind.FAILED, "Unhandled exception"))
-            self.assertTrue((root / "appsettings.json").is_file())  # written off screen
+            self.assertTrue((root / "third_party" / "wolvenkit" / "appsettings.json").is_file())
+            mine = self.ctx(root, lambda *a, **k: crash, home="MyTools")  # the user's own install
+            WolvenKitExport().decode(root / "a.xbm", root / "o", mine)
+            self.assertFalse((root / "MyTools" / "wolvenkit" / "appsettings.json").exists())
+            self.assertIn("settings left as they are", self.logs[0])
 
 
 class PipelineTests(unittest.TestCase):

@@ -1,4 +1,4 @@
-// 06.C RENDER: transition / end / overlay / output settings, build as a "merge" job, results.
+// RENDER: transition / end / overlay / output settings, build as a "merge" job, results.
 import { code } from "../registry.js";
 import { api } from "../api.js";
 import { h, fill, btn, panel, badge, errorBox, toast, toastErr, busy, emit, logLine, openBtn } from "../ui.js";

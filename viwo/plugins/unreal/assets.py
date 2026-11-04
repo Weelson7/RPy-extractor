@@ -112,6 +112,8 @@ class UasExport(Exporter):
                 on_line=ctx.tool_output("export", mask=key),
             )
             text = result.stdout + result.stderr
+            if key:  # the key is on that command line: whatever the tool echoes is masked
+                text = text.replace(key, "<secret>").replace(key.upper(), "<secret>")
             if not result.ok:
                 said = f"{mode}: {text.strip()[-200:] or f'exit {result.returncode}'}"
                 return failed, need, Outcome(OutcomeKind.FAILED, error=said)

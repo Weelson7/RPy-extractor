@@ -113,6 +113,9 @@ class TableTests(unittest.TestCase):
                 db.read_table(broken, {5: new})
         with self.assertRaises(ValueError):
             db.read_table(table([("x", "Boolean")], [{"x": True}]), {0: [("x", "ColourRGB")]})
+        bomb = db.VERSIONED + struct.pack("<i", 1) + bytes([1]) + struct.pack("<I", 0xFFFFFFFF)
+        with self.assertRaises(ValueError):  # 4 billion empty rows are refused, not built
+            db.read_table(bomb, {1: []})
 
     def test_the_schema_leaves_localised_fields_out(self) -> None:
         text = ron(

@@ -58,7 +58,10 @@ class WolvenKitExport(Decoder):
         tool = ctx.os.tools.locate(WOLVENKIT)
         if tool is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=WOLVENKIT.hint)
-        quiet_settings(Path(tool.path).parent)
+        if "third_party" in Path(tool.path).parts:  # ViWo's own copy, never the user's install
+            quiet_settings(Path(tool.path).parent)
+        else:
+            ctx.log("WolvenKit settings left as they are (not ViWo's copy): textures may be DDS")
         dest.mkdir(parents=True, exist_ok=True)
         said, failed = "", 0
         for command in commands(paths, ctx.game_root):

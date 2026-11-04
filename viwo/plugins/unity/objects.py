@@ -47,13 +47,28 @@ def media(ctx, kind: str, data, obj, name: str) -> Path | None:
     return target
 
 
+def _json(entry: dict) -> str:
+    """One entry as JSON text that UTF-8 can hold: a string UnityPy kept as escaped bytes (a
+    lone surrogate) is written with JSON escapes instead of breaking the file."""
+    text = json.dumps(entry, default=_plain, ensure_ascii=False)
+    try:
+        text.encode("utf-8")
+    except UnicodeEncodeError:
+        text = json.dumps(entry, default=_plain, ensure_ascii=True)
+    return text
+
+
 class Dump:
     """One JSON array per serialized file, written as the objects come (a scene holds hundreds
-    of thousands): `data/<file>.objects.json`. Counts what had no layout."""
+    of thousands): `data/<file>.objects.json`. Handles are closed after every group (release)
+    and reopened to append, so thousands of bundles never exhaust the descriptors. Counts what
+    had no layout."""
 
     def __init__(self, staging: Path) -> None:
         self.folder = staging / "data"
-        self.files: dict[str, object] = {}
+        self.paths: dict[str, Path] = {}  # serialized file -> its JSON
+        self.counts: dict[str, int] = {}
+        self.open: dict[str, object] = {}
         self.written = 0
         self.no_layout: dict[str, int] = {}
 
@@ -64,23 +79,35 @@ class Dump:
         except Exception as exc:  # noqa: BLE001  (a stripped layout, or damage: listed, counted)
             self.no_layout[kind] = self.no_layout.get(kind, 0) + 1
             entry = {"path_id": obj.path_id, "type": kind, "unread": str(exc)[:160]}
-        fh = self.files.get(source)
-        if fh is None:
-            self.folder.mkdir(parents=True, exist_ok=True)
-            fh = open(ws.next_free(self.folder / f"{source}.objects.json"), "w", encoding="utf-8")
-            fh.write("[\n")
-            self.files[source] = fh
-        else:
-            fh.write(",\n")
-        fh.write(json.dumps(entry, default=_plain, ensure_ascii=False))
+        text = _json(entry)  # made before anything is written: a failure leaves the file whole
+        fh = self._handle(source)
+        fh.write(("[\n" if not self.counts[source] else ",\n") + text)
+        self.counts[source] += 1
         self.written += 1
+
+    def _handle(self, source: str):
+        if source in self.open:
+            return self.open[source]
+        if source not in self.paths:
+            self.folder.mkdir(parents=True, exist_ok=True)
+            self.paths[source] = ws.next_free(self.folder / f"{source}.objects.json")
+            self.counts[source] = 0
+        self.open[source] = open(self.paths[source], "a", encoding="utf-8")
+        return self.open[source]
+
+    def release(self) -> None:
+        """Close what is open (after each group; the next one reopens to append)."""
+        for fh in self.open.values():
+            fh.close()
+        self.open.clear()
 
     def close(self) -> tuple[str, list[str]]:
         """Finish every file: (what was dumped, for the log; the objects without a layout)."""
-        for fh in self.files.values():
-            fh.write("\n]\n")
-            fh.close()
-        summary = f"{self.written} object(s) as JSON in {len(self.files)} file(s) (data/)"
+        self.release()
+        for path in self.paths.values():
+            with open(path, "a", encoding="utf-8") as fh:
+                fh.write("\n]\n")
+        summary = f"{self.written} object(s) as JSON in {len(self.paths)} file(s) (data/)"
         notes = []
         for kind, n in sorted(self.no_layout.items()):
             mono = kind == "MonoBehaviour"
@@ -89,22 +116,21 @@ class Dump:
         return (summary if self.written else ""), notes
 
 
-def layouts(env, game_root: Path) -> str:
-    """Give UnityPy the MonoBehaviour layouts from the game's managed assemblies (Mono builds),
-    or from stand-in assemblies beside them; "" when set, else why not."""
+def layouts(env, game_root: Path):
+    """(the MonoBehaviour layout generator from the game's managed assemblies, "") once per
+    export, or (None, why not); the caller gives it to every environment it loads."""
     managed = next(iter(sorted(game_root.glob("*_Data/Managed"))), None)
     if managed is None or not any(managed.glob("*.dll")):
-        return "no managed assemblies (IL2CPP): MonoBehaviour fields need Cpp2IL's stand-ins"
+        return None, "no managed assemblies (IL2CPP): MonoBehaviour fields need Cpp2IL's stand-ins"
     try:
         from UnityPy.helpers.TypeTreeGenerator import TypeTreeGenerator
 
         versions = (str(getattr(o.assets_file, "unity_version", "") or "") for o in env.objects)
         version = next((v for v in versions if v and v[0].isdigit()), "")
         if not version:
-            return "MonoBehaviour layouts unavailable: no Unity version in these files"
+            return None, "MonoBehaviour layouts unavailable: no Unity version in these files"
         generator = TypeTreeGenerator(version)
         generator.load_local_dll_folder(str(managed))
     except Exception as exc:  # noqa: BLE001  (the generator is optional; say why it is absent)
-        return f"MonoBehaviour layouts unavailable: {str(exc)[:120]}"
-    env.typetree_generator = generator
-    return ""
+        return None, f"MonoBehaviour layouts unavailable: {str(exc)[:120]}"
+    return generator, ""

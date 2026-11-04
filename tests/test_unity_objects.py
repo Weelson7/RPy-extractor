@@ -117,7 +117,9 @@ class LayoutTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             game = Path(tmp)
             env = SimpleNamespace(objects=[FakeObject(1, "level0")], typetree_generator=None)
-            self.assertIn("IL2CPP", objects.layouts(env, game))
+            generator, why = objects.layouts(env, game)
+            self.assertIsNone(generator)
+            self.assertIn("IL2CPP", why)
             (game / "G_Data" / "Managed").mkdir(parents=True)
             (game / "G_Data" / "Managed" / "Assembly-CSharp.dll").write_bytes(b"MZ")
             loaded = []
@@ -125,19 +127,46 @@ class LayoutTests(unittest.TestCase):
                 side_effect=lambda v: SimpleNamespace(load_local_dll_folder=loaded.append, v=v)
             )
             with mock.patch("UnityPy.helpers.TypeTreeGenerator.TypeTreeGenerator", fake):
-                self.assertEqual(objects.layouts(env, game), "")
-                self.assertEqual(fake.call_args[0][0], "2021.3.1f1")
+                generator, why = objects.layouts(env, game)
+                self.assertEqual((generator.v, why), ("2021.3.1f1", ""))
                 self.assertEqual(Path(loaded[0]).name, "Managed")
-                self.assertIsNotNone(env.typetree_generator)
                 bare = SimpleNamespace(
                     objects=[SimpleNamespace(assets_file=SimpleNamespace(unity_version=""))]
                 )
-                self.assertIn("no Unity version", objects.layouts(bare, game))
+                self.assertIn("no Unity version", objects.layouts(bare, game)[1])
             with mock.patch(
                 "UnityPy.helpers.TypeTreeGenerator.TypeTreeGenerator",
                 side_effect=ImportError("no API"),
             ):
-                self.assertIn("no API", objects.layouts(env, game))
+                self.assertIn("no API", objects.layouts(env, game)[1])
+
+    def test_one_generator_reaches_every_environment(self) -> None:
+        from viwo.plugins.unity import exporters
+
+        envs = [SimpleNamespace(objects=[], typetree_generator=None) for _ in range(3)]
+        shared = {"dump": object()}
+        record = {"dump": shared["dump"], "shared": shared, "files": [], "map": {}}
+        ctx = SimpleNamespace(game_root=Path("."))
+        with mock.patch.object(objects, "layouts", return_value=("GEN", "")) as made:
+            for env in envs:
+                exporters._export_env(ctx, env, "g", record)
+        self.assertEqual(made.call_count, 1)  # looked for once
+        self.assertEqual([e.typetree_generator for e in envs], ["GEN"] * 3)
+
+    def test_a_file_stays_valid_json_across_groups_and_odd_strings(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            dump = objects.Dump(Path(tmp))
+            dump.add(FakeObject(1, "level0", {"m_Name": "a"}), "GameObject")
+            dump.release()  # the group ends: no handle stays open
+            self.assertEqual(dump.open, {})
+            dump.add(FakeObject(2, "level0", {"m_Name": "bad\udcff"}), "GameObject")
+            dump.add(FakeObject(3, "level1", {"m_Name": "é"}), "Transform")
+            dump.close()
+            data = json.loads((Path(tmp) / "data" / "level0.objects.json").read_text("utf-8"))
+            self.assertEqual([d["path_id"] for d in data], [1, 2])
+            self.assertEqual(data[1]["data"]["m_Name"], "bad\udcff")  # kept, escaped
+            other = json.loads((Path(tmp) / "data" / "level1.objects.json").read_text("utf-8"))
+            self.assertEqual(other[0]["data"]["m_Name"], "é")
 
 
 class ExporterTests(unittest.TestCase):

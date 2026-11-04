@@ -159,7 +159,7 @@ function toolGroups(res, names) {
 function slotsTable(d) {
   const rows = Object.values(d.slots || {});
   return [h("p", { class: "note first" }, "A slot is one job ViWo hands to a tool, such as opening .pck archives. READY: a tool is installed. ",
-    "FALLBACK: the preferred tool is missing, a second one is used. NEEDS TOOL: that format is skipped until you install one (see 05.A)."),
+    "FALLBACK: the preferred tool is missing, a second one is used. NEEDS TOOL: that format is skipped until you install one (see OPTIONAL TOOLS BY ENGINE)."),
   h("table", { class: "tbl slots" },
     h("thead", {}, h("tr", {}, ["FORMAT", "TOOL", "STATE"].map((c) => h("th", {}, c)))),
     h("tbody", {}, rows.map((s) => h("tr", {},
@@ -185,7 +185,7 @@ function startup(d) {
     h("div", { class: "kv" }, h("span", { class: "lbl" }, "STARTUP INI"), h("code", { class: "mono path" }, d.ini || "(built-in defaults)")),
     h("div", { class: "kv" }, h("span", { class: "lbl" }, "FEATURES"), h("div", { class: "row" }, (d.features || []).map((f) => badge(f.toUpperCase(), "mute")))),
     h("h4", { class: "sub-h" }, `// STARTUP NOTES (${d.problems.length})`),
-    d.problems.length ? [h("p", { class: "note" }, "Most notes just say an optional tool is not installed; 05.A lists them by engine."),
+    d.problems.length ? [h("p", { class: "note" }, "Most notes just say an optional tool is not installed; OPTIONAL TOOLS BY ENGINE lists them by engine."),
       h("ul", { class: "problems mono" }, d.problems.map((p) => h("li", {}, p)))] : h("p", { class: "ok-text" }, "No startup notes."));
 }
 

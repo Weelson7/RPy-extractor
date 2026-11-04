@@ -127,7 +127,7 @@ const num = (label, value, set, min = 1) => h("label", { class: "nfield" }, h("s
 function renderTimeline() {
   el.selCount.textContent = `${S.sel.size} SELECTED`;
   refreshBar();
-  if (!S.sel.size) return fill(el.timeline, empty("NOTHING TICKED YET", S.total ? "Tick groups in 06.A. Each one becomes its own MP4." : "Groups appear in 06.A once the workspace holds numbered images or clips."));
+  if (!S.sel.size) return fill(el.timeline, empty("NOTHING TICKED YET", S.total ? "Tick groups in GROUPS. Each one becomes its own MP4." : "Groups appear in GROUPS once the workspace holds numbered images or clips."));
   fill(el.timeline, [...S.sel.values()].map(card));
 }
 

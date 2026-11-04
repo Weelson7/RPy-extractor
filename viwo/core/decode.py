@@ -278,7 +278,8 @@ def decode_all(run, workspace: Path, collected) -> None:
     ]
     if empty:  # nothing in them to decode: said once, CLEANUP lists them as empty files
         run.log(f"{len(empty)} empty file(s) not decoded, e.g. {empty[0]}", "decode")
-        todo = [rel for rel in todo if rel not in set(empty)]
+        skip = set(empty)
+        todo = [rel for rel in todo if rel not in skip]
     if not todo:
         return
     run.log(f"Decoding {len(todo)} file(s) into WAV / PNG / MP4 / glTF / JSON / RPY", "decode")

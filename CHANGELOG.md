@@ -4,6 +4,26 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.15.3 (2026-11-04)
+Audit of the 1.7-1.15 work (an independent review, every finding verified and fixed):
+- Unity: the MonoBehaviour layout generator reached only the first group of files; later
+  bundles were counted as "layout not in the build". It is now made once and given to every
+  environment. A string UnityPy kept as escaped bytes broke the whole `.objects.json` (the
+  separator was written before the entry failed); entries are serialised first and such
+  strings written with JSON escapes. Dump files are closed after each group and reopened to
+  append (thousands of bundles no longer exhaust the descriptors), and closed on any error.
+- Unreal: the AES key on UnrealAssetScout's command line is masked in whatever the tool says
+  (it could have reached the run record); retoc's per-container staging folder is removed once
+  the tool ran (a copy across volumes kept every `.ucas` until the run ended).
+- Cyberpunk: an edited REDmod archive (`mods/<name>/archives/`) gets its override in
+  `archive/pc/mod`, where the game loads it; an archive under neither layout is refused with
+  the reason instead of an override the game never reads, or one written outside the copy.
+  WolvenKit's settings are only written into ViWo's own copy, never a user's install.
+- Total War: a DB header whose row count cannot fit in the table is refused (a crafted pack
+  could build billions of empty rows).
+- Decode: the empty-file filter is linear. UI: hints name panels by title (BEFORE YOU START,
+  TARGET FOLDER...), no longer by the fixed codes the live numbering replaced.
+
 ## 1.15.2 (2026-11-04)
 - Tests: the mixed-mode pairwise test runs every plugin alone and 13 groups of six that cover
   every pair of the 17 plugins (a covering design, checked by its own test), instead of all 136

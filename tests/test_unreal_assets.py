@@ -171,6 +171,15 @@ class ExportTests(unittest.TestCase):
         (self.paks / "G-Windows.pak").unlink()
         self.assertIn("no .pak/.utoc", assets.UasExport().export(self.ctx(self.fake())).error)
 
+    def test_the_key_on_the_command_line_never_reaches_the_record(self) -> None:
+        key = "ab" * 32
+        said = f"Unrecognized argument '0x{key}' / 0X{key.upper()}"
+        echo = SimpleNamespace(ok=False, stdout="", stderr=said, returncode=1)
+        with mock.patch.object(assets, "resolve_key", return_value=(key, "")):
+            error = assets.UasExport().export(self.ctx(lambda *a, **k: echo)).error
+        self.assertNotIn(key, error.lower())
+        self.assertIn("<secret>", error)
+
 
 class FixTests(unittest.TestCase):
     def test_an_empty_or_auto_tool_path_means_automatic(self) -> None:
@@ -221,6 +230,33 @@ class FixTests(unittest.TestCase):
             self.assertEqual((again / "global.utoc").read_bytes(), b"global.utoc")  # copied
             (paks / "global.utoc").unlink()
             self.assertEqual(RetocLegacy().input_for(paks / "G.utoc", ctx), paks / "G.utoc")
+
+    def test_the_staging_folder_is_gone_once_retoc_ran(self) -> None:
+        from viwo.plugins.unreal.pak import RetocLegacy
+
+        with tempfile.TemporaryDirectory() as tmp:
+            paks = Path(tmp) / "Paks"
+            paks.mkdir()
+            for name in ("global.utoc", "global.ucas", "G.utoc", "G.ucas"):
+                (paks / name).write_bytes(name.encode())
+            seen = []
+
+            def run(argv, **kwargs):
+                seen.append(Path(argv[-2]))
+                return SimpleNamespace(ok=True, stdout="", stderr="")
+
+            tool = SimpleNamespace(argv_prefix=("retoc",))
+            host = SimpleNamespace(
+                tools=SimpleNamespace(locate=lambda s: tool), process=SimpleNamespace(run=run)
+            )
+            ctx = SimpleNamespace(
+                scratch=Path(tmp) / "scratch", options={}, cancel=None, os=host,
+                tool_output=lambda *a, **k: None,
+            )  # fmt: skip
+            with mock.patch("viwo.plugins.unreal.pak.resolve_key", return_value=("", "")):
+                RetocLegacy().extract(paks / "G.utoc", Path(tmp) / "dest", ctx)
+            self.assertNotEqual(seen[0], paks / "G.utoc")  # it read the staging folder
+            self.assertFalse(seen[0].exists())  # gone once the tool ran
 
     def test_the_agent_never_copies_a_folder_into_itself(self) -> None:
         from viwo.contracts import ViwoError

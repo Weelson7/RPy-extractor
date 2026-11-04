@@ -177,9 +177,11 @@ def _one(ctx, obj, label: str, record: dict) -> int:
 
 def _export_env(ctx, env, label: str, record: dict) -> tuple[int, list[str]]:
     exported, notes = 0, []
-    shared = record["shared"]  # one per export: the layouts are looked for once
-    if record["dump"] is not None and not shared.get("layouts"):
-        shared["layouts"] = objects.layouts(env, ctx.game_root) or "set"
+    shared = record["shared"]  # one per export: the layouts are looked for once, given to all
+    if record["dump"] is not None and "layouts" not in shared:
+        shared["generator"], shared["layouts"] = objects.layouts(env, ctx.game_root)
+    if shared.get("generator") is not None:
+        env.typetree_generator = shared["generator"]
     for obj in env.objects:
         try:
             exported += _one(ctx, obj, label, record)
@@ -229,20 +231,23 @@ class UnityPyExporter(Exporter):
         if _flag(ctx, "include_cache", False):
             roots += cache_roots(ctx.game_root)
         exported, notes, mapping = 0, [], {}
-        extra = {"dump": objects.Dump(ctx.staging) if _flag(ctx, "objects", True) else None}
-        for root in roots:
-            for files in groups(unity_containers(root)).values():
-                if ctx.cancel.cancelled:
-                    break
-                count, problems = _export_group(ctx, UnityPy, files, mapping, extra)
-                exported, notes = exported + count, notes + problems
-                gc.collect()  # UnityPy keeps file handles until collected; Windows locks them
-        summary, said = extra["dump"].close() if extra["dump"] is not None else ("", [])
+        dump = objects.Dump(ctx.staging) if _flag(ctx, "objects", True) else None
+        extra = {"dump": dump}
+        try:
+            for root in roots:
+                for files in groups(unity_containers(root)).values():
+                    if ctx.cancel.cancelled:
+                        break
+                    count, problems = _export_group(ctx, UnityPy, files, mapping, extra)
+                    exported, notes = exported + count, notes + problems
+                    if dump is not None:
+                        dump.release()  # no handle outlives its group
+                    gc.collect()  # UnityPy keeps file handles until collected; Windows locks them
+        finally:
+            summary, said = dump.close() if dump is not None else ("", [])
         if summary:
             ctx.log(summary, stage="export")
-        if extra.get("layouts") not in (None, "set") and extra["dump"].no_layout.get(
-            "MonoBehaviour"
-        ):
+        if extra.get("layouts") and dump.no_layout.get("MonoBehaviour"):
             said.append(extra["layouts"])  # why those MonoBehaviours have no fields
         notes = said + notes
         ctx.log(f"UnityPy exported {exported} asset(s), {len(notes)} problem(s)", stage="export")

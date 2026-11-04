@@ -140,7 +140,7 @@ async function build() {
     render();
     if (!res.results) {
       await el.prog.finish("ok", "NOTHING TO PATCH");
-      fill(el.result, panel(`${code("repack")}.D`, "RESULT", badge("NO CHANGES", "mute"), h("p", { class: "note" }, "No edit could be written back, so no copy was made. The skipped list in 09.A says why.")));
+      fill(el.result, panel(`${code("repack")}.D`, "RESULT", badge("NO CHANGES", "mute"), h("p", { class: "note" }, "No edit could be written back, so no copy was made. The skipped list in EDIT SET + STRATEGY says why.")));
     } else {
       await el.prog.finish(res.verified ? "ok" : "fail", res.verified ? "PATCHED COPY READY · VERIFIED" : "COPY BUILT · NOT VERIFIED");
       fill(el.result, panel(`${code("repack")}.D`, "RESULT", badge(res.verified ? "VERIFIED ✓" : "NOT VERIFIED ✕", res.verified ? "ok" : "err"), resultBody(res)));

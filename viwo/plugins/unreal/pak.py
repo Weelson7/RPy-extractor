@@ -104,12 +104,17 @@ class _UnrealCli(Unarchiver):
         # it is on the command line of that one process; it is never logged by ViWo (run
         # records store <secret>) and every text the tool prints back is masked below.
         prefix = ["--aes-key", f"0x{key}"] if key else []
-        result = ctx.os.process.run(
-            [*tool.argv_prefix, *prefix, *self.argv(self.input_for(archive, ctx), dest)],
-            timeout=6 * 3600,
-            cancel=ctx.cancel,
-            on_line=ctx.tool_output("unpack", mask=key),
-        )
+        source = self.input_for(archive, ctx)
+        try:
+            result = ctx.os.process.run(
+                [*tool.argv_prefix, *prefix, *self.argv(source, dest)],
+                timeout=6 * 3600,
+                cancel=ctx.cancel,
+                on_line=ctx.tool_output("unpack", mask=key),
+            )
+        finally:
+            if source != archive:  # a staging folder (links or copies): never kept
+                shutil.rmtree(source, ignore_errors=True)
         text = (result.stderr or result.stdout).strip()
         if key:
             text = text.replace(key, "<secret>").replace(key.upper(), "<secret>")

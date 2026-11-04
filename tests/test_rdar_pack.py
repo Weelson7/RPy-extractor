@@ -110,6 +110,17 @@ class UnitTests(unittest.TestCase):
             out = WolvenKitPack().output_for(Path("g/archive/pc") / folder / "basegame_1.archive")
             self.assertEqual(out, Path("g/archive/pc/mod") / f"{PREFIX}basegame_1.archive")
         self.assertLess(PREFIX, "0")  # before every name that starts with a digit or letter
+        redmod = WolvenKitPack().output_for(Path("g/mods/Foo/archives/bar.archive"))
+        self.assertEqual(redmod, Path("g/archive/pc/mod") / f"{PREFIX}bar.archive")
+
+    def test_an_archive_the_game_loads_no_override_for_is_refused(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            stray = root / "copy" / "x.archive"
+            out = WolvenKitPack().pack(stray, {}, ctx(root))
+            self.assertEqual(out.kind, OutcomeKind.FAILED)
+            self.assertIn("no override loads", out.error)
+            self.assertTrue(WolvenKitPack().output_for(stray).is_relative_to(stray.parent))
 
 
 class PackTests(unittest.TestCase):

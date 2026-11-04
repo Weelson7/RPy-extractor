@@ -1,4 +1,4 @@
-// 05.E MAINTENANCE: update check (only on click), diagnostics bundle, indexes update job.
+// MAINTENANCE: update check (only on click), diagnostics bundle, indexes update job.
 import { code } from "../registry.js";
 import { api } from "../api.js";
 import { h, fill, btn, panel, badge, busy, toast, toastErr, openBtn, errorBox } from "../ui.js";

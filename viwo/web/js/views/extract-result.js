@@ -1,4 +1,4 @@
-// 01.F RESULT: counts, alarms, per-backend and per-plugin tables for one /api/extract response.
+// RESULT: counts, alarms, per-backend and per-plugin tables for one /api/extract response.
 import { code } from "../registry.js";
 import { api } from "../api.js";
 import { h, fill, panel, badge, errorBox, fmtNum, stat, goBtn, openBtn, toolLink } from "../ui.js";
