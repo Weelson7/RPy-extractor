@@ -4,6 +4,15 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.16.8 (2026-11-05)
+- Handoff: the state header (version) and the test count brought current.
+
+## 1.16.7 (2026-11-05)
+- Fix: a legacy API handler's refusal (a `ViwoError`) reaches the UI with its own message, code
+  and status instead of a generic 500 "internal error". The dynamic "continue in Cheat Engine /
+  x64dbg" handoffs refuse with "runtime capture is off" when `capture` is off in the feature
+  switches, and the server's catch-all was swallowing that into "internal error".
+
 ## 1.16.6 (2026-11-05)
 - Fix: the analysis arm copied a binary under its original name, and Ghidra's headless refuses a
   name with an apostrophe, a space and more ("Void's Cave.exe": "Please rename", found by the
