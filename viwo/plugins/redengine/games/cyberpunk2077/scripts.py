@@ -7,13 +7,7 @@ from pathlib import Path
 from viwo.contracts.slots import Decoder, SlotDefinition
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 
-REDSCRIPT = DependencySpec(
-    "redscript",
-    "redscript CLI",
-    env_var="VIWO_REDSCRIPT",
-    executables=("redscript-cli",),
-    hint="`viwo install redscript` (MIT, Windows build)",
-)
+REDSCRIPT = DependencySpec.of("redscript")
 SLOT = SlotDefinition(
     "decode.redscripts", "decode", "cyberpunk2077", "redscript-decompile", suffixes=(".redscripts",)
 )

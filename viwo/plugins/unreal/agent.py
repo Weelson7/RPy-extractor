@@ -9,13 +9,7 @@ from viwo.contracts.errors import ViwoError
 from viwo.contracts.runtime import RuntimeAgent
 from viwo.contracts.types import DependencySpec
 
-UE4SS = DependencySpec(
-    "ue4ss",
-    "UE4SS (Unreal runtime agent)",
-    env_var="VIWO_UE4SS",
-    executables=("UE4SS.dll",),
-    hint="install UE4SS (MIT): `viwo install ue4ss`",
-)
+UE4SS = DependencySpec.of("ue4ss")
 MOD = "ViwoDump"
 DONE = "viwo-done.txt"
 OUTPUTS = ("Mappings.usmap", "UE4SS_ObjectDump.txt", "UE4SS.log")

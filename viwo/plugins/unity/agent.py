@@ -10,13 +10,7 @@ from pathlib import Path
 from viwo.contracts.runtime import RuntimeAgent
 from viwo.contracts.types import DependencySpec
 
-BEPINEX = DependencySpec(
-    "bepinex",
-    "BepInEx 6 (Unity IL2CPP runtime agent)",
-    env_var="VIWO_BEPINEX",
-    executables=("winhttp.dll",),
-    hint="install BepInEx: `viwo install bepinex`",
-)
+BEPINEX = DependencySpec.of("bepinex")
 CONFIG = "[Logging.Console]\nEnabled = false\n"
 READY = "Chainloader startup complete"
 

@@ -9,22 +9,8 @@ from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 
 from ._process import failed, run_tool
 
-GHIDRA = DependencySpec(
-    "ghidra",
-    "Ghidra (analyzeHeadless)",
-    env_var="VIWO_GHIDRA",
-    executables=("analyzeHeadless",),
-    install_dirs=("ghidra",),
-    hint="install Ghidra (Apache-2.0): `viwo install ghidra` (with the JDK it needs)",
-)
-JDK = DependencySpec(
-    "jdk",
-    "Java runtime for Ghidra (Temurin 25)",
-    kind="runtime",
-    env_var="VIWO_JDK",
-    executables=("java",),
-    hint="install the JDK: `viwo install jdk`",
-)
+GHIDRA = DependencySpec.of("ghidra")
+JDK = DependencySpec.of("jdk")
 SCRIPTS = Path(__file__).resolve().parents[2] / "data" / "ghidra"
 PROJECT = "viwo"  # project name inside project_dir()
 ARTIFACTS = ("functions.csv", "decompiled.c", "strings.txt", "symbols.tsv")

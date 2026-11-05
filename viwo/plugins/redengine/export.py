@@ -12,13 +12,7 @@ from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 
 from .rdar import CLASSES
 
-WOLVENKIT = DependencySpec(
-    "wolvenkit",
-    "WolvenKit CLI",
-    env_var="VIWO_WOLVENKIT",
-    executables=("WolvenKit.CLI",),
-    hint="`viwo install wolvenkit` (GPL-3.0, run as its own process)",
-)
+WOLVENKIT = DependencySpec.of("wolvenkit")
 SUFFIXES = tuple(sorted({f".{ext}" for ext in CLASSES.values()} | {".cr2w"}))
 SLOT = SlotDefinition("decode.cr2w", "decode", "redengine", "wolvenkit-export", suffixes=SUFFIXES)
 SETTINGS = {

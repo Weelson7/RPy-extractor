@@ -11,17 +11,9 @@ from viwo.contracts.slots import Unarchiver
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 from viwo.contracts.workspace import count_files
 
-SEVENZIP = DependencySpec(
-    "sevenzip",
-    "7-Zip (7z/7za/7zr)",
-    executables=("7z", "7zz", "7za", "7zr"),
-    install_dirs=("7-Zip",),
-    hint="install 7-Zip (Windows) or p7zip-full (Linux)",
-)
-UNRAR = DependencySpec("unrar", "unrar", executables=("unrar",), hint="install unrar")
-PY7ZR = DependencySpec(
-    "py7zr", "py7zr", kind="python", import_name="py7zr", hint="pip install py7zr"
-)
+SEVENZIP = DependencySpec.of("sevenzip")
+UNRAR = DependencySpec.of("unrar")
+PY7ZR = DependencySpec.of("py7zr")
 
 
 # what the stdlib readers raise on damaged bytes besides their own error: a bad name

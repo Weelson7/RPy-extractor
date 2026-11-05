@@ -88,7 +88,6 @@ class Backend(ABC):
 
 class Unarchiver(Backend):
     families = frozenset({"unarchive"})
-    supports_keys = False
 
     @abstractmethod
     def extract(self, archive: Path, dest: Path, ctx: "ExtractionContext") -> Outcome:

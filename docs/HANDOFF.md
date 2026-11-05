@@ -1,6 +1,6 @@
 # Handoff
 
-State at **v1.20.6** (branch `makeover`). History is in [CHANGELOG.md](../CHANGELOG.md); the
+State at **v1.20.7** (branch `makeover`). History is in [CHANGELOG.md](../CHANGELOG.md); the
 design in [docs/contract/](contract/README.md); what is open in
 [CONFORMANCE.md](contract/CONFORMANCE.md) and below.
 
@@ -23,7 +23,7 @@ py -3.13 -m venv .venv; .venv\Scripts\Activate.ps1
 pip install -e ".[unity,sevenzip,renpy,lz4,dev]"
 ruff format viwo tests tools packaging; ruff check viwo tests tools packaging
 python tools/loc_count.py --report
-python -m unittest discover -s tests -t .      # 609 tests, ~25 min on Windows
+python -m unittest discover -s tests -t .      # 611 tests, ~25 min on Windows
 python tools/version.py commit -m "..." [--feature|--major] [--push]
 ```
 
@@ -40,7 +40,7 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
   half-edited module). Make a worktree at a committed version with its own venv, then run the
   pass there:
   ```powershell
-  git worktree add ..\viwo-pass v1.20.6
+  git worktree add ..\viwo-pass v1.20.7
   cd ..\viwo-pass; py -3.13 -m venv .venv; .venv\Scripts\pip install -e ".[unity,sevenzip,renpy,lz4]"
   powershell -File tools\games_pass.ps1 -Source C:\Users\<you>\Games [-Only <folder>,...]
   ```
@@ -141,8 +141,9 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
    - Total War schema install on first use (today: `viwo install rpfm-schema-<game>`).
 8. **End of the open work, in this order:** the full audit is done (fourth audit, 1.20.2, and
    its last open point at 1.20.6: Genie and Warscape detect by their archive signatures); the
-   LoC-reclaim pass is done (1.20.3: web back to its own budget, `viwo` -267, core -112,
-   budgets lowered). Next the presentation, in two parts that replace the status PDF. The
+   LoC-reclaim pass is done (1.20.3 and 1.20.7: web back to its own budget, `viwo` 17,187 ->
+   16,701, the tools' descriptions in `viwo/data/dependencies.json`, unused contract members
+   dropped; API handlers keep answering failure dicts, see CHANGELOG 1.20.7). Next the presentation, in two parts that replace the status PDF. The
    whole of Cyberpunk 2077 (86 GB) cannot be extracted inside the walk (hours, and its
    uncompressed archives come close to the free disk), so the demo runs on the subset the
    games pass already defines (`sqc/ctf.json` `pass-cyberpunk-2077`: seven archives, 6.7 GB)

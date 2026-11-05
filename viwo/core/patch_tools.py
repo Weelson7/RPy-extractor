@@ -10,20 +10,8 @@ from viwo.contracts.errors import ViwoError
 from viwo.contracts.slots import Backend, SlotDefinition
 from viwo.contracts.types import DependencySpec
 
-KEYSTONE = DependencySpec(
-    "keystone",
-    "Keystone assembler (kstool)",
-    env_var="VIWO_KSTOOL",
-    executables=("kstool",),
-    hint="install Keystone (GPL-2, run as a separate process): `viwo install keystone`",
-)
-CAPSTONE = DependencySpec(
-    "capstone",
-    "capstone (disassembler)",
-    kind="python",
-    import_name="capstone",
-    hint="install capstone (BSD) for the disassembly in patch plans: `viwo install capstone`",
-)
+KEYSTONE = DependencySpec.of("keystone")
+CAPSTONE = DependencySpec.of("capstone")
 MACHINES = {0x8664: ("x64", 64), 0x14C: ("x32", 32)}
 SLOTS = (SlotDefinition("patch.bytes", "patch", "core", "viwo-patcher"),)
 

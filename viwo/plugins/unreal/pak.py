@@ -17,20 +17,8 @@ from .keys import resolve_key
 PAK_MAGIC = struct.pack("<I", 0x5A6F12E1)
 UTOC_MAGIC = b"-==--==--==--==-"
 TAIL = 512
-REPAK = DependencySpec(
-    "repak",
-    "repak",
-    env_var="VIWO_REPAK",
-    executables=("repak",),
-    hint="install repak (MIT/Apache-2.0) from trumank/repak",
-)
-RETOC = DependencySpec(
-    "retoc",
-    "retoc",
-    env_var="VIWO_RETOC",
-    executables=("retoc",),
-    hint="install retoc (MIT) from trumank/retoc for UE5 IoStore (.utoc/.ucas)",
-)
+REPAK = DependencySpec.of("repak")
+RETOC = DependencySpec.of("retoc")
 
 
 @dataclass(frozen=True)
@@ -82,7 +70,7 @@ def key_opens(path: Path, info: PakInfo, key: bytes) -> bool:
 
 class _UnrealCli(Unarchiver):
     spec: DependencySpec
-    owner, isolation, supports_keys = "unreal", "subprocess", True
+    owner, isolation = "unreal", "subprocess"
 
     def dependencies(self):
         return (self.spec,)

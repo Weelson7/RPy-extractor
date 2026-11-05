@@ -13,17 +13,8 @@ from viwo.contracts.workspace import count_files
 
 from . import objects
 
-UNITYPY = DependencySpec(
-    "unitypy", "UnityPy", kind="python", import_name="UnityPy", hint="pip install UnityPy"
-)
-ASSETSTUDIO = DependencySpec(
-    "assetstudiomod",
-    "AssetStudioModCLI",
-    env_var="VIWO_ASSETSTUDIOMOD",
-    executables=("AssetStudioModCLI",),
-    install_dirs=("AssetStudioMod",),
-    hint="install AssetStudioModCLI (MIT) from aelurum/AssetStudio",
-)
+UNITYPY = DependencySpec.of("unitypy")
+ASSETSTUDIO = DependencySpec.of("assetstudiomod")
 CONTAINER_NAME = re.compile(
     r"^(globalgamemanagers.*|.*\.assets|level\d+|sharedassets\d+.*|.*\.bundle|data\.unity3d"
     r"|.*\.unity3d|cab-.*|unity default resources|unity_builtin_extra)$",

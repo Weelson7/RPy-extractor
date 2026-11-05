@@ -9,11 +9,7 @@ from viwo.contracts.types import DependencySpec, DetectionResult
 
 from .scripts import SLOT, RedscriptDecompile
 
-CP77_HASHES = DependencySpec(
-    "cp77-hashes",
-    "Cyberpunk 2077 path list (WolvenKit)",
-    hint="`viwo install cp77-hashes` (data from WolvenKit, pinned by commit)",
-)
+CP77_HASHES = DependencySpec.of("cp77-hashes")
 MARKERS = ("redprelauncher.exe", "cyberpunk2077.exe", "redlauncher.exe")
 MANIFEST = PluginManifest(
     "cyberpunk2077",

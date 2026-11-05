@@ -68,7 +68,7 @@ Every result records which backend produced it: `byBackend` (unpack) and
 ## 8.3 Interfaces
 
 ```text
-Unarchiver   (unarchive)    extract(archive, dest, ctx) -> Outcome; supports_keys
+Unarchiver   (unarchive)    extract(archive, dest, ctx) -> Outcome
 Exporter     (export)       export(ctx) -> Outcome                  into ctx.staging
 Carver       (carve)        carve(path, dest, ctx) -> Outcome       never decrypts
 Decoder      (decode)       decode(path, dest, ctx) -> Outcome      viewable copies

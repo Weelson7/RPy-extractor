@@ -14,34 +14,10 @@ from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 from ._process import failed, run_tool
 from .ghidra import JDK, java_env
 
-ILSPY = DependencySpec(
-    "ilspycmd",
-    "ILSpy command line (ilspycmd)",
-    env_var="VIWO_ILSPYCMD",
-    executables=("ilspycmd",),
-    hint="install ilspycmd (MIT): `viwo install ilspycmd`",
-)
-CPP2IL = DependencySpec(
-    "cpp2il",
-    "Cpp2IL (IL2CPP to stub assemblies)",
-    env_var="VIWO_CPP2IL",
-    executables=("Cpp2IL",),
-    hint="install Cpp2IL (MIT): `viwo install cpp2il`",
-)
-UNLUAC = DependencySpec(
-    "unluac",
-    "unluac (Lua bytecode decompiler)",
-    env_var="VIWO_UNLUAC",
-    hint="install unluac (MIT): `viwo install unluac` (it runs on the pinned JDK)",
-)
-DOTNET = DependencySpec(
-    "dotnet",
-    ".NET runtime",
-    kind="runtime",
-    env_var="VIWO_DOTNET",
-    executables=("dotnet",),
-    hint="install the .NET runtime: `viwo install dotnet`",
-)
+ILSPY = DependencySpec.of("ilspycmd")
+CPP2IL = DependencySpec.of("cpp2il")
+UNLUAC = DependencySpec.of("unluac")
+DOTNET = DependencySpec.of("dotnet")
 DEFAULT_TIMEOUT = 3600
 
 

@@ -13,14 +13,7 @@ from viwo.contracts.slots import Match, SlotDefinition, Unarchiver
 from viwo.contracts.types import DependencySpec, DetectionResult, Outcome, OutcomeKind
 from viwo.contracts.workspace import count_files
 
-QUICKBMS = DependencySpec(
-    "quickbms",
-    "QuickBMS",
-    env_var="VIWO_QUICKBMS",
-    executables=("quickbms", "quickbms_4gb_files"),
-    install_dirs=("quickbms",),
-    hint="install QuickBMS (GPL-2.0) and set [options.quickbms] scripts = <folder of .bms>",
-)
+QUICKBMS = DependencySpec.of("quickbms")
 MANIFEST = PluginManifest("quickbms", "QuickBMS scripts", "0.1.0", engine_type="any", priority=-50)
 
 

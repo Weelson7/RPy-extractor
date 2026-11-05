@@ -68,8 +68,7 @@ One locator serves both the status report and the tool calls.
 ## 1.3 Installation is not an OS-layer concern
 
 Pinned downloads live in core (`viwo/core/thirdparty.py`, doc 10). The OS layer never installs,
-never asks for elevation and never runs a package manager. `DependencySpec.packages` names a tool
-in package managers for hints only.
+never asks for elevation and never runs a package manager.
 
 ## 1.4 DesktopShell
 

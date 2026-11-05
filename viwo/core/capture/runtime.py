@@ -19,13 +19,7 @@ from viwo.contracts.workspace import next_free
 
 from .. import thirdparty
 
-FRIDA = DependencySpec(
-    "frida-tools",
-    "Frida (frida-trace)",
-    kind="python",
-    import_name="frida_tools",
-    hint="install Frida: `viwo install frida-tools` (and `frida`)",
-)
+FRIDA = DependencySpec.of("frida-tools")
 
 
 @dataclass(frozen=True)

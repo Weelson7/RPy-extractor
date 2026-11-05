@@ -13,13 +13,7 @@ from viwo.contracts.workspace import next_free
 
 from .runtime import _enabled, runtime_dir, stamp
 
-SOUNDCARD = DependencySpec(
-    "soundcard",
-    "soundcard (audio loopback)",
-    kind="python",
-    import_name="soundcard",
-    hint="install soundcard: `viwo install soundcard`",
-)
+SOUNDCARD = DependencySpec.of("soundcard")
 RATE = 48000
 
 

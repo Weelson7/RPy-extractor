@@ -10,13 +10,7 @@ from viwo.contracts.analysis import AnalysisTarget, Analyzer
 from viwo.contracts.slots import Decoder, SlotDefinition
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 
-UNRPYC = DependencySpec(
-    "unrpyc",
-    "unrpyc (Ren'Py decompiler)",
-    env_var="VIWO_UNRPYC",
-    executables=("unrpyc",),
-    hint="install unrpyc (MIT) from CensoredUsername/unrpyc to turn .rpyc into .rpy",
-)
+UNRPYC = DependencySpec.of("unrpyc")
 RPYC_SLOT = SlotDefinition("decode.rpyc", "decode", "renpy", "unrpyc-cli", suffixes=(".rpyc",))
 ANALYSIS_SLOT = SlotDefinition("analysis.python", "analysis", "renpy", "unrpyc-analyze")
 

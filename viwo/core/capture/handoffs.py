@@ -15,21 +15,8 @@ from ..patch_tools import pe
 
 ATTACH = frozenset({"attach"})  # the slot family: Handoff's interface, run on the live game
 
-X64DBG = DependencySpec(
-    "x64dbg",
-    "x64dbg (debugger)",
-    env_var="VIWO_X64DBG",
-    executables=("x64dbg",),
-    hint="install x64dbg (GPL-3, run as a separate process): `viwo install x64dbg`",
-)
-CHEATENGINE = DependencySpec(
-    "cheatengine",
-    "Cheat Engine",
-    env_var="VIWO_CHEATENGINE",
-    executables=("cheatengine-x86_64",),
-    install_dirs=("Cheat Engine 7.7", "Cheat Engine 7.6", "Cheat Engine 7.5", "Cheat Engine"),
-    hint="install Cheat Engine: `viwo install cheatengine`",
-)
+X64DBG = DependencySpec.of("x64dbg")
+CHEATENGINE = DependencySpec.of("cheatengine")
 TABLE = """<?xml version="1.0" encoding="utf-8"?>
 <CheatTable CheatEngineTableVersion="45">
   <CheatEntries/>

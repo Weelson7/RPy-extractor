@@ -7,20 +7,8 @@ from viwo.contracts.slots import Backend
 from viwo.contracts.types import DependencySpec
 from viwo.core.pipeline.failover import run_with_failover
 
-FFMPEG = DependencySpec(
-    "ffmpeg",
-    "ffmpeg",
-    executables=("ffmpeg",),
-    install_dirs=("ffmpeg", "ffmpeg/bin", "Microsoft/WinGet/Links"),  # winget portable links
-    hint="install ffmpeg (with ffprobe)",
-)
-FFPROBE = DependencySpec(
-    "ffprobe",
-    "ffprobe",
-    executables=("ffprobe",),
-    install_dirs=("ffmpeg", "ffmpeg/bin", "Microsoft/WinGet/Links"),  # winget portable links
-    hint="install ffmpeg (with ffprobe)",
-)
+FFMPEG = DependencySpec.of("ffmpeg")
+FFPROBE = DependencySpec.of("ffprobe")
 VIDEO_CHAIN = (
     "scale=1280:720:force_original_aspect_ratio=decrease,pad=1280:720:(ow-iw)/2:"
     "(oh-ih)/2:color=black,fps=30,format=yuv420p,setsar=1"

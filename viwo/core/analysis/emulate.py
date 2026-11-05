@@ -16,12 +16,8 @@ from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 
 from ._process import failed, run_tool
 
-UNICORN = DependencySpec(
-    "unicorn", "Unicorn emulator (worker)", hint="`viwo install unicorn` (GPL-2.0, own process)"
-)
-ANGR = DependencySpec(
-    "angr", "angr symbolic execution (worker)", hint="`viwo install angr` (BSD-2, own process)"
-)
+UNICORN = DependencySpec.of("unicorn")
+ANGR = DependencySpec.of("angr")
 ARG_KINDS = ("hex", "file", "zeros", "sym")
 
 

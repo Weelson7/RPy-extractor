@@ -18,14 +18,7 @@ from viwo.contracts.slots import Exporter, SlotDefinition
 from viwo.contracts.types import DependencySpec, DetectionResult, Outcome, OutcomeKind
 from viwo.contracts.workspace import count_files
 
-DATATOOL = DependencySpec(
-    "datatool",
-    "DataTool (overtools)",
-    env_var="VIWO_DATATOOL",
-    executables=("DataTool", "DataTool.exe"),
-    install_dirs=("DataTool", "toolchain-release"),
-    hint="install DataTool from overtools/OWLib (MIT)",
-)
+DATATOOL = DependencySpec.of("datatool")
 MODES = "extract-unlocks,extract-general,extract-maps"
 KNOWN_MODES = frozenset(
     MODES.split(",")

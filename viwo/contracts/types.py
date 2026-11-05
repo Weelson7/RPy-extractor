@@ -1,8 +1,11 @@
 """Shared value types (contract doc 2, 4.4, 8). Stdlib only, no app imports."""
 
+import functools
+import json
 import threading
 from dataclasses import dataclass, field
 from enum import Enum
+from pathlib import Path
 from typing import Callable, Mapping
 
 
@@ -69,8 +72,7 @@ class Requirement(str, Enum):
 @dataclass(frozen=True)
 class DependencySpec:
     """A tool a backend needs (doc 2.6). `executables` are bare names (the OS layer adds the
-    suffixes), either one tuple for every OS layer or a mapping `{os_id: names}`. `packages`
-    names the dependency in package managers (informational: ViWo installs from its own pins)."""
+    suffixes), either one tuple for every OS layer or a mapping `{os_id: names}`."""
 
     dep_id: str
     label: str
@@ -81,12 +83,32 @@ class DependencySpec:
     install_dirs: tuple[str, ...] = ()  # folder names searched under known install roots
     env_var: str = ""
     hint: str = ""
-    packages: tuple[tuple[str, str], ...] = ()  # (manager, package), e.g. ("winget", "7zip.7zip")
 
     def executables_for(self, os_id: str) -> tuple[str, ...]:
         if isinstance(self.executables, Mapping):
             return tuple(self.executables.get(os_id, ()))
         return tuple(self.executables)
+
+    @classmethod
+    def of(cls, dep_id: str) -> "DependencySpec":
+        """A tool, package or runtime ViWo's own backends need, as `viwo/data/dependencies.json`
+        describes it (plugins of others may still build their own)."""
+        fields = dict(_known()[dep_id])
+        names = fields.get("executables", ())
+        fields["executables"] = (
+            {os_id: tuple(v) for os_id, v in names.items()}
+            if isinstance(names, dict)
+            else tuple(names)
+        )
+        fields["install_dirs"] = tuple(fields.get("install_dirs", ()))
+        fields["requirement"] = Requirement(fields.get("requirement", "optional"))
+        return cls(dep_id, **fields)
+
+
+@functools.lru_cache(maxsize=1)
+def _known() -> dict:
+    path = Path(__file__).resolve().parent.parent / "data" / "dependencies.json"
+    return json.loads(path.read_text(encoding="utf-8"))
 
 
 @dataclass(frozen=True)

@@ -16,13 +16,7 @@ from viwo.contracts.workspace import count_files
 
 from .keys import resolve_key
 
-UAS = DependencySpec(
-    "uas",
-    "UnrealAssetScout",
-    env_var="VIWO_UAS",
-    executables=("uas",),
-    hint="`viwo install uas` (MIT, Windows build)",
-)
+UAS = DependencySpec.of("uas")
 SLOT = SlotDefinition("export.unreal", "export", "unreal", "uas-export")
 MODES = ("Textures", "Models", "Animations", "Audio", "Json")
 

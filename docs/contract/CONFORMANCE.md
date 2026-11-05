@@ -45,7 +45,7 @@ declarative (Kaitai) plugins; the indexes repository split.
 | Item | State | Where / missing |
 |------|-------|-----------------|
 | 0.2 OS layer, plugin, profile, distro, core, arm | implemented | `os/`, `contracts/plugin.py`, `core/wiring/distros.py`, `cli_arms.py` |
-| 0.2 job, run record, stage, slot, backend, main/spare, promoted, fallback | implemented | `core/jobs.py`, `core/records.py`, `contracts/pipeline.py` `Stage`, `contracts/slots.py` |
+| 0.2 job, run record, stage, slot, backend, main/spare, promoted, fallback | implemented | `core/jobs.py`, `core/records.py`, `core/pipeline/runner.py` `_stages`, `contracts/slots.py` |
 | 0.2 features `extraction`, `sorting`, `merger` | implemented | `core/context.py` `require`: extraction (runner, `viwo unpack`), sorting and merger routes (`api/handlers.py` `gated`); `tests/test_switches.py` |
 | 0.2 features `capture`, `analysis` | implemented | `core/capture/policy.py` `check`, `core/capture/runtime.py` `_enabled`, `core/analysis` `_check_enabled` |
 | 0.2 pinned tool, worker tool, handoff, runtime agent | implemented | `core/thirdparty.py`, `core/workers.py`, `contracts/analysis.py` `Handoff`, `contracts/runtime.py` |
@@ -81,7 +81,7 @@ declarative (Kaitai) plugins; the indexes repository split.
 | 2.3 shared probe, case-preserved paths, cache on size and mtime | implemented | `core/pipeline/probe.py` `FolderProbe` |
 | 2.4 detection result and scale | implemented | `contracts/types.py` `DetectionResult` |
 | 2.5 recursive unpack, depth 10, slot lookup (fallback identifiers last), cancel, member safety, altered names recorded | implemented | `core/pipeline/unpack.py`, `core/pipeline/identify.py`, `contracts/workspace.py` (`Names`, `files`); `tests/test_skips_said.py`, `tests/test_review_fixes.py` |
-| 2.6 dependency spec, per-OS executables | implemented | `contracts/types.py` `DependencySpec` |
+| 2.6 dependency spec, per-OS executables, ViWo's own described once | implemented | `contracts/types.py` `DependencySpec`, `DependencySpec.of`; `data/dependencies.json`; `tests/test_dependencies_data.py` |
 | 2.7 seventeen built-in plugins | implemented | `plugins/*/` |
 | 2.8 built-in scan, drop-ins, entry points, opt-in, override | implemented | `core/wiring/registry.py`, `tests/test_registry.py` |
 | 2.9 conformance checks and sandbox | implemented | `core/wiring/conformance.py`, `tests/test_conformance_kit.py` |
@@ -92,7 +92,7 @@ declarative (Kaitai) plugins; the indexes repository split.
 
 | Item | State | Where / missing |
 |------|-------|-----------------|
-| 3.1 stage order and events | implemented | `core/pipeline/runner.py` `_stages` (the `Stage` enum lists CARVE before EXPORT; the runner exports first) |
+| 3.1 stage order and events | implemented | `core/pipeline/runner.py` `_stages` |
 | 3.1 guard: no workspace or temp inside the game | implemented | `core/pipeline/guard.py` `refuse_writes_inside` |
 | 3.1 wrapper re-detection | implemented | `core/pipeline/export.py` `rewrap`; `tests/test_formats.py::test_engine_inside_an_asar_is_redetected` |
 | 3.1 carve modes and claimed suffixes | implemented | `core/pipeline/carving.py` |

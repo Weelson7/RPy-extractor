@@ -116,11 +116,12 @@ DependencySpec
   executables   (names...) or { os_id: (names...) }    bare names; the OS layer adds suffixes
   install_dirs  folder names searched under the known install roots
   env_var, hint
-  packages      ((manager, package), ...)              informational
 ```
 
 Dependencies belong to the backend that declares them. `/api/dependencies`, `viwo slots` and 05
-SYSTEM combine them; `category` is the owner id.
+SYSTEM combine them; `category` is the owner id. The tools ViWo's own backends need are
+described once, in `viwo/data/dependencies.json` (`DependencySpec.of(id)`; their pins, versions
+and checksums are in `tools.json`, doc 10); a plugin of others builds its own `DependencySpec`.
 
 ## 2.7 Built-in plugins
 

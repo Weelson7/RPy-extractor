@@ -38,14 +38,7 @@ SLOTS = (
 PILLOW = DependencySpec(
     "pillow", "Pillow", kind="python", import_name="PIL", hint="pip install pillow"
 )
-VGMSTREAM = DependencySpec(
-    "vgmstream",
-    "vgmstream-cli",
-    env_var="VIWO_VGMSTREAM",
-    executables=("vgmstream-cli", "vgmstream_cli"),
-    install_dirs=("vgmstream", "vgmstream-cli"),
-    hint="install vgmstream-cli (ISC) to turn game audio (Wwise, FMOD, CRI...) into WAV",
-)
+VGMSTREAM = DependencySpec.of("vgmstream")
 
 
 def _count(dest: Path) -> int:

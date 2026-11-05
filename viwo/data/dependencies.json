@@ -1,0 +1,333 @@
+{
+ "_comment": "Every tool, package or runtime ViWo's backends need (doc 2.6): what DependencySpec.of(id) reads. Pins (versions, downloads, checksums) are in tools.json.",
+ "angr": {
+  "label": "angr symbolic execution (worker)",
+  "hint": "`viwo install angr` (BSD-2, own process)"
+ },
+ "assetstudiomod": {
+  "label": "AssetStudioModCLI",
+  "env_var": "VIWO_ASSETSTUDIOMOD",
+  "executables": [
+   "AssetStudioModCLI"
+  ],
+  "install_dirs": [
+   "AssetStudioMod"
+  ],
+  "hint": "install AssetStudioModCLI (MIT) from aelurum/AssetStudio"
+ },
+ "bepinex": {
+  "label": "BepInEx 6 (Unity IL2CPP runtime agent)",
+  "env_var": "VIWO_BEPINEX",
+  "executables": [
+   "winhttp.dll"
+  ],
+  "hint": "install BepInEx: `viwo install bepinex`"
+ },
+ "capstone": {
+  "label": "capstone (disassembler)",
+  "kind": "python",
+  "import_name": "capstone",
+  "hint": "install capstone (BSD) for the disassembly in patch plans: `viwo install capstone`"
+ },
+ "cheatengine": {
+  "label": "Cheat Engine",
+  "env_var": "VIWO_CHEATENGINE",
+  "executables": [
+   "cheatengine-x86_64"
+  ],
+  "install_dirs": [
+   "Cheat Engine 7.7",
+   "Cheat Engine 7.6",
+   "Cheat Engine 7.5",
+   "Cheat Engine"
+  ],
+  "hint": "install Cheat Engine: `viwo install cheatengine`"
+ },
+ "cp77-hashes": {
+  "label": "Cyberpunk 2077 path list (WolvenKit)",
+  "hint": "`viwo install cp77-hashes` (data from WolvenKit, pinned by commit)"
+ },
+ "cpp2il": {
+  "label": "Cpp2IL (IL2CPP to stub assemblies)",
+  "env_var": "VIWO_CPP2IL",
+  "executables": [
+   "Cpp2IL"
+  ],
+  "hint": "install Cpp2IL (MIT): `viwo install cpp2il`"
+ },
+ "datatool": {
+  "label": "DataTool (overtools)",
+  "env_var": "VIWO_DATATOOL",
+  "executables": [
+   "DataTool",
+   "DataTool.exe"
+  ],
+  "install_dirs": [
+   "DataTool",
+   "toolchain-release"
+  ],
+  "hint": "install DataTool from overtools/OWLib (MIT)"
+ },
+ "die": {
+  "label": "Detect It Easy (diec)",
+  "env_var": "VIWO_DIE",
+  "executables": [
+   "diec"
+  ],
+  "hint": "install Detect It Easy (MIT): `viwo install die`"
+ },
+ "dotnet": {
+  "label": ".NET runtime",
+  "kind": "runtime",
+  "env_var": "VIWO_DOTNET",
+  "executables": [
+   "dotnet"
+  ],
+  "hint": "install the .NET runtime: `viwo install dotnet`"
+ },
+ "ffmpeg": {
+  "label": "ffmpeg",
+  "executables": [
+   "ffmpeg"
+  ],
+  "install_dirs": [
+   "ffmpeg",
+   "ffmpeg/bin",
+   "Microsoft/WinGet/Links"
+  ],
+  "hint": "install ffmpeg (with ffprobe)"
+ },
+ "ffprobe": {
+  "label": "ffprobe",
+  "executables": [
+   "ffprobe"
+  ],
+  "install_dirs": [
+   "ffmpeg",
+   "ffmpeg/bin",
+   "Microsoft/WinGet/Links"
+  ],
+  "hint": "install ffmpeg (with ffprobe)"
+ },
+ "frida-tools": {
+  "label": "Frida (frida-trace)",
+  "kind": "python",
+  "import_name": "frida_tools",
+  "hint": "install Frida: `viwo install frida-tools` (and `frida`)"
+ },
+ "gdre": {
+  "label": "GDRE Tools",
+  "env_var": "VIWO_GDRE",
+  "executables": [
+   "gdre_tools",
+   "gdre_tools.x86_64"
+  ],
+  "install_dirs": [
+   "GDRE Tools",
+   "gdre_tools"
+  ],
+  "hint": "install GDRE Tools (MIT) from GDRETools/gdsdecomp"
+ },
+ "ghidra": {
+  "label": "Ghidra (analyzeHeadless)",
+  "env_var": "VIWO_GHIDRA",
+  "executables": [
+   "analyzeHeadless"
+  ],
+  "install_dirs": [
+   "ghidra"
+  ],
+  "hint": "install Ghidra (Apache-2.0): `viwo install ghidra` (with the JDK it needs)"
+ },
+ "godotpcktool": {
+  "label": "GodotPckTool",
+  "env_var": "VIWO_GODOTPCKTOOL",
+  "executables": [
+   "godotpcktool"
+  ],
+  "hint": "install GodotPckTool (MIT); unencrypted PCKs only"
+ },
+ "ilspycmd": {
+  "label": "ILSpy command line (ilspycmd)",
+  "env_var": "VIWO_ILSPYCMD",
+  "executables": [
+   "ilspycmd"
+  ],
+  "hint": "install ilspycmd (MIT): `viwo install ilspycmd`"
+ },
+ "jdk": {
+  "label": "Java runtime for Ghidra (Temurin 25)",
+  "kind": "runtime",
+  "env_var": "VIWO_JDK",
+  "executables": [
+   "java"
+  ],
+  "hint": "install the JDK: `viwo install jdk`"
+ },
+ "keystone": {
+  "label": "Keystone assembler (kstool)",
+  "env_var": "VIWO_KSTOOL",
+  "executables": [
+   "kstool"
+  ],
+  "hint": "install Keystone (GPL-2, run as a separate process): `viwo install keystone`"
+ },
+ "py7zr": {
+  "label": "py7zr",
+  "kind": "python",
+  "import_name": "py7zr",
+  "hint": "pip install py7zr"
+ },
+ "quickbms": {
+  "label": "QuickBMS",
+  "env_var": "VIWO_QUICKBMS",
+  "executables": [
+   "quickbms",
+   "quickbms_4gb_files"
+  ],
+  "install_dirs": [
+   "quickbms"
+  ],
+  "hint": "install QuickBMS (GPL-2.0) and set [options.quickbms] scripts = <folder of .bms>"
+ },
+ "rdpython": {
+  "label": "Python with RenderDoc's module",
+  "env_var": "VIWO_RDPYTHON",
+  "hint": "set [tools] rdpython = the Python that can import RenderDoc's renderdoc module"
+ },
+ "redscript": {
+  "label": "redscript CLI",
+  "env_var": "VIWO_REDSCRIPT",
+  "executables": [
+   "redscript-cli"
+  ],
+  "hint": "`viwo install redscript` (MIT, Windows build)"
+ },
+ "renderdoccmd": {
+  "label": "renderdoccmd",
+  "env_var": "VIWO_RENDERDOCCMD",
+  "executables": [
+   "renderdoccmd"
+  ],
+  "install_dirs": [
+   "RenderDoc"
+  ],
+  "hint": "install RenderDoc (MIT) for runtime capture"
+ },
+ "repak": {
+  "label": "repak",
+  "env_var": "VIWO_REPAK",
+  "executables": [
+   "repak"
+  ],
+  "hint": "install repak (MIT/Apache-2.0) from trumank/repak"
+ },
+ "retoc": {
+  "label": "retoc",
+  "env_var": "VIWO_RETOC",
+  "executables": [
+   "retoc"
+  ],
+  "hint": "install retoc (MIT) from trumank/retoc for UE5 IoStore (.utoc/.ucas)"
+ },
+ "sevenzip": {
+  "label": "7-Zip (7z/7za/7zr)",
+  "executables": [
+   "7z",
+   "7zz",
+   "7za",
+   "7zr"
+  ],
+  "install_dirs": [
+   "7-Zip"
+  ],
+  "hint": "install 7-Zip (Windows) or p7zip-full (Linux)"
+ },
+ "soundcard": {
+  "label": "soundcard (audio loopback)",
+  "kind": "python",
+  "import_name": "soundcard",
+  "hint": "install soundcard: `viwo install soundcard`"
+ },
+ "uas": {
+  "label": "UnrealAssetScout",
+  "env_var": "VIWO_UAS",
+  "executables": [
+   "uas"
+  ],
+  "hint": "`viwo install uas` (MIT, Windows build)"
+ },
+ "ue4ss": {
+  "label": "UE4SS (Unreal runtime agent)",
+  "env_var": "VIWO_UE4SS",
+  "executables": [
+   "UE4SS.dll"
+  ],
+  "hint": "install UE4SS (MIT): `viwo install ue4ss`"
+ },
+ "unicorn": {
+  "label": "Unicorn emulator (worker)",
+  "hint": "`viwo install unicorn` (GPL-2.0, own process)"
+ },
+ "unitypy": {
+  "label": "UnityPy",
+  "kind": "python",
+  "import_name": "UnityPy",
+  "hint": "pip install UnityPy"
+ },
+ "unluac": {
+  "label": "unluac (Lua bytecode decompiler)",
+  "env_var": "VIWO_UNLUAC",
+  "hint": "install unluac (MIT): `viwo install unluac` (it runs on the pinned JDK)"
+ },
+ "unrar": {
+  "label": "unrar",
+  "executables": [
+   "unrar"
+  ],
+  "hint": "install unrar"
+ },
+ "unrpa": {
+  "label": "unrpa",
+  "kind": "python",
+  "import_name": "unrpa",
+  "hint": "pip install unrpa (GPL-3.0, runs as a separate process)"
+ },
+ "unrpyc": {
+  "label": "unrpyc (Ren'Py decompiler)",
+  "env_var": "VIWO_UNRPYC",
+  "executables": [
+   "unrpyc"
+  ],
+  "hint": "install unrpyc (MIT) from CensoredUsername/unrpyc to turn .rpyc into .rpy"
+ },
+ "vgmstream": {
+  "label": "vgmstream-cli",
+  "env_var": "VIWO_VGMSTREAM",
+  "executables": [
+   "vgmstream-cli",
+   "vgmstream_cli"
+  ],
+  "install_dirs": [
+   "vgmstream",
+   "vgmstream-cli"
+  ],
+  "hint": "install vgmstream-cli (ISC) to turn game audio (Wwise, FMOD, CRI...) into WAV"
+ },
+ "wolvenkit": {
+  "label": "WolvenKit CLI",
+  "env_var": "VIWO_WOLVENKIT",
+  "executables": [
+   "WolvenKit.CLI"
+  ],
+  "hint": "`viwo install wolvenkit` (GPL-3.0, run as its own process)"
+ },
+ "x64dbg": {
+  "label": "x64dbg (debugger)",
+  "env_var": "VIWO_X64DBG",
+  "executables": [
+   "x64dbg"
+  ],
+  "hint": "install x64dbg (GPL-3, run as a separate process): `viwo install x64dbg`"
+ }
+}

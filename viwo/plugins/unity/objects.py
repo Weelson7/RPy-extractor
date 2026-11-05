@@ -12,13 +12,7 @@ from pathlib import Path
 from viwo.contracts import workspace as ws
 from viwo.contracts.types import DependencySpec
 
-CPP2IL = DependencySpec(  # the same tool as the analysis arm's (analysis.il2cpp)
-    "cpp2il",
-    "Cpp2IL (IL2CPP to stub assemblies)",
-    env_var="VIWO_CPP2IL",
-    executables=("Cpp2IL",),
-    hint="install Cpp2IL (MIT): `viwo install cpp2il`",
-)
+CPP2IL = DependencySpec.of("cpp2il")
 
 FONT_EXT = {b"OTTO": ".otf", b"true": ".ttf", b"\x00\x01\x00\x00": ".ttf", b"ttcf": ".ttc"}
 BLOB = 4096  # raw byte fields above this size are summarised, not inlined as hex

@@ -4,6 +4,22 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.7 (2026-11-05)
+Reclaim, with the owner's approval:
+- The tools ViWo's own backends need are described once, in `viwo/data/dependencies.json`
+  (label, kind, executables, install folders, environment variable, hint); a definition is now
+  `DependencySpec.of("x64dbg")` (40 definitions, 39 tools; every spec compared before and after:
+  identical). Pillow and lz4 stay in code (their modules word them differently). A plugin of
+  others still builds its own `DependencySpec`. `viwo` 16,920 -> 16,701 counted lines.
+- Contract members nothing used are gone: the `Stage` enum (the runner's `_stages` is the
+  order), `Unarchiver.supports_keys`, `DependencySpec.packages`. Kept: the OS layer's
+  `long_path`, `case_sensitive` and `python_executable` (implemented and tested; `long_path` is
+  Windows' long-path form, a capability rather than dead code).
+- Not done: letting API handlers raise instead of answering failure dicts (their dicts are what
+  tests, the jobs entry point and other handlers call; about 30 lines against many tests and
+  changed HTTP statuses).
+- Budgets lowered: `viwo` 16,750, `viwo/core` 7,275, `viwo/contracts` 860.
+
 ## 1.20.6 (2026-11-05)
 - Genie and Warscape detect by their archive signatures only (DRS, PFH packs); their title
   executables are no longer evidence (doc 2.10, the fourth audit's last open point). Source's

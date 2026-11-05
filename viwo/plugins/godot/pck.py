@@ -11,21 +11,8 @@ from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 from viwo.contracts.workspace import count_files, stage_members
 
 MAGIC = b"GDPC"
-GDRE = DependencySpec(
-    "gdre",
-    "GDRE Tools",
-    env_var="VIWO_GDRE",
-    executables=("gdre_tools", "gdre_tools.x86_64"),
-    install_dirs=("GDRE Tools", "gdre_tools"),
-    hint="install GDRE Tools (MIT) from GDRETools/gdsdecomp",
-)
-PCKTOOL = DependencySpec(
-    "godotpcktool",
-    "GodotPckTool",
-    env_var="VIWO_GODOTPCKTOOL",
-    executables=("godotpcktool",),
-    hint="install GodotPckTool (MIT); unencrypted PCKs only",
-)
+GDRE = DependencySpec.of("gdre")
+PCKTOOL = DependencySpec.of("godotpcktool")
 
 
 def embedded_chunk(path: Path, tail: bytes) -> tuple[int, int] | None:
@@ -113,7 +100,6 @@ class _PckCli(Unarchiver):
 
 class GdreTools(_PckCli):
     backend_id, license, isolation, spec = "gdre-tools", "MIT", "subprocess", GDRE
-    supports_keys = True
 
     def argv(self, archive: Path, dest: Path, key: str) -> list[str]:
         args = ["--headless", f"--extract={archive}", f"--output={dest}"]

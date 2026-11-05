@@ -12,18 +12,6 @@ CONTRACT_VERSION = "1.2"  # mirrored in viwo/__init__.py (contracts import nothi
 GENERIC_PLUGIN_ID = "generic"
 
 
-class Stage(str, Enum):
-    PREPARE = "prepare"
-    PROBE = "probe"
-    DETECT = "detect"
-    UNPACK = "unpack"
-    EXPORT = "export"
-    CARVE = "carve"
-    COLLECT = "collect"
-    VERIFY = "verify"
-    REPORT = "report"
-
-
 class ExtractionMode(str, Enum):
     AUTO = "auto"
     SINGLE = "single"

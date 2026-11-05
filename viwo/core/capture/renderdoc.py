@@ -7,20 +7,8 @@ from pathlib import Path
 from viwo.contracts.slots import Backend
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 
-RENDERDOCCMD = DependencySpec(
-    "renderdoccmd",
-    "renderdoccmd",
-    env_var="VIWO_RENDERDOCCMD",
-    executables=("renderdoccmd",),
-    install_dirs=("RenderDoc",),
-    hint="install RenderDoc (MIT) for runtime capture",
-)
-RD_PYTHON = DependencySpec(
-    "rdpython",
-    "Python with RenderDoc's module",
-    env_var="VIWO_RDPYTHON",
-    hint="set [tools] rdpython = the Python that can import RenderDoc's renderdoc module",
-)
+RENDERDOCCMD = DependencySpec.of("renderdoccmd")
+RD_PYTHON = DependencySpec.of("rdpython")
 # outside the package: next to this module, `import renderdoc` would find ViWo's own module
 SCRIPTS = Path(__file__).resolve().parent.parent.parent / "data" / "renderdoc"
 HELPER, TRIGGER = SCRIPTS / "rd_harvest.py", SCRIPTS / "rd_trigger.py"

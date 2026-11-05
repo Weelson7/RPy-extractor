@@ -10,13 +10,7 @@ from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 
 from ._process import failed, run_tool
 
-DIE = DependencySpec(
-    "die",
-    "Detect It Easy (diec)",
-    env_var="VIWO_DIE",
-    executables=("diec",),
-    hint="install Detect It Easy (MIT): `viwo install die`",
-)
+DIE = DependencySpec.of("die")
 WRAPPERS = ("protector", "packer", "cryptor", "installer", "sfx", "overlay", "dongle", "joiner")
 DEFAULT_TIMEOUT = 900
 

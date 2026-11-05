@@ -2,7 +2,7 @@
 
 ## 3.1 Stages
 
-`viwo/core/pipeline/runner.py` runs these in order (`contracts/pipeline.py` `Stage` names them).
+`viwo/core/pipeline/runner.py` runs these in order (`_stages`).
 Every stage sends progress events with its stage name and checks the cancel token between files.
 
 | Stage | Owner | What happens |

@@ -15,13 +15,7 @@ from viwo.contracts.slots import Unarchiver
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 from viwo.contracts.workspace import count_files
 
-UNRPA = DependencySpec(
-    "unrpa",
-    "unrpa",
-    kind="python",
-    import_name="unrpa",
-    hint="pip install unrpa (GPL-3.0, runs as a separate process)",
-)
+UNRPA = DependencySpec.of("unrpa")
 
 
 # The only callables an RPA index may reference: building bytes values.

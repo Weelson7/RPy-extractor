@@ -12,7 +12,6 @@ from .pipeline import (
     MixedPolicy,
     OnExisting,
     PluginRun,
-    Stage,
 )
 from .plugin import EnginePlugin, ExtractionContext, GameProbe, PluginManifest, PluginOption
 from .slots import (
