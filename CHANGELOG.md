@@ -4,6 +4,19 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.18.0 (2026-11-05)
+- Workbooks (doc 19.1, the first of the owner's UI capabilities of doc 16.4): step-by-step
+  how-tos for a child tool's own interface, teaching text and never automation. Four ship,
+  checked against the pinned versions: x64dbg "Patch a byte, live and into a file", Ghidra
+  "Find the code that uses a string" and "Patch an instruction and export the program", Cheat
+  Engine "Find a value, change it, find what writes it". The user's own go in
+  `viwo-data/workbooks/` (one with a shipped id replaces it). A broken file is skipped and named;
+  steps written for another version than the pin are marked stale. WORKBOOKS in the global strip
+  (one step at a time, the step reached remembered, the view that opens the tool), HOW TO
+  buttons in ANALYSIS and RUNTIME, `viwo workbook [ID]`, `GET /api/workbooks`.
+- New contract doc 19 (Guides): workbooks, and the open runbooks, workflows and embedded child
+  GUIs; 16.4 points to it.
+
 ## 1.17.0 (2026-11-05)
 - Static and dynamic analysis separated (owner). Continue in x64dbg and Continue in Cheat Engine
   work on the game itself, so they left the static ANALYSIS view for the dynamic arm: RUNTIME,

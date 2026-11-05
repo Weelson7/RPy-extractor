@@ -116,7 +116,7 @@ def capture_command(command) -> None:
 
 
 def tool_commands(command) -> None:
-    """survey, repack, capture, sanitize, config, install, diag, indexes."""
+    """survey, repack, capture, sanitize, config, install, diag, indexes, workbook."""
     cf = command("config", "generate the distro config files, or check config files strictly")
     cf.add_argument("action", choices=["generate", "check"], help="generate distros/ or check")
     cf.add_argument("paths", nargs="*", type=Path, help="check: files; generate: output folder")
@@ -151,6 +151,8 @@ def tool_commands(command) -> None:
     dg.add_argument("--out", type=Path, help="zip path (default: in the logs folder)")
     ix = command("indexes", "per-game indexes: update to the latest release for this version")
     ix.add_argument("action", choices=["update"], help="update: fetch the latest indexes release")
+    wb = command("workbook", "step-by-step how-tos for a child tool's own interface (doc 19.1)")
+    wb.add_argument("id", nargs="?", default="", help="a workbook id (none: list them)")
 
 
 def patch_command(command) -> None:

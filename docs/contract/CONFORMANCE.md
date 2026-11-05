@@ -308,3 +308,15 @@ declarative (Kaitai) plugins; the indexes repository split.
 | 18.8 API | implemented | `POST /api/patch` and job kind `patch` |
 | 18.9 pack, check (adapts), ordered apply, conflicts, duplicate names | implemented | `core/mods.py`; `tests/test_mods.py` |
 | 18.9 API | implemented | `POST /api/mod` and job kind `mod` |
+
+## 19 Guides
+
+| Item | State | Where / missing |
+|------|-------|-----------------|
+| 19.1 workbook files, validation, user override, stale marking | implemented | `core/workbooks.py`, `data/workbooks/` (x64dbg, Ghidra x2, Cheat Engine); `tests/test_workbooks.py` |
+| 19.1 CLI, API, UI | implemented | `viwo workbook`, `GET /api/workbooks`, WORKBOOKS and the HOW TO buttons (`web/js/views/workbooks.js`) |
+| 19.1 overlays over the tool's own window | open | needs 19.4 |
+| 19.1 workbooks from the indexes repository | open | `docs/indexes.md` |
+| 19.2 runbooks | open | - |
+| 19.3 workflows | open | - |
+| 19.4 embedded child GUIs | open | - |

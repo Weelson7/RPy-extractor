@@ -1,0 +1,42 @@
+{
+ "id": "ghidra-find-string-users",
+ "title": "Find the code that uses a string",
+ "tool": "ghidra",
+ "written_for": "12.2",
+ "opens": "handoff.native",
+ "summary": "Start from a text the game shows or logs, find the functions that read it, and read them as C in Ghidra's decompiler.",
+ "steps": [
+  {
+   "title": "Open the program in Ghidra",
+   "text": "In ANALYSIS: LIST TARGETS, ANALYZE the game's executable once (Ghidra headless, into the workspace), then CONTINUE IN GHIDRA. Ghidra opens ViWo's project: double-click the program in the project window to open it in the CodeBrowser.",
+   "expect": "The CodeBrowser shows the Listing in the middle and the Decompiler on the right."
+  },
+  {
+   "title": "List the strings",
+   "text": "Open Window, Defined Strings (or Search, For Strings... to find strings the analysis did not define). Type part of the text in the Filter box at the bottom of the table.",
+   "expect": "A table of matching strings with their addresses."
+  },
+  {
+   "title": "Go to the string",
+   "text": "Double-click the row.",
+   "expect": "The Listing jumps to the string's label and data."
+  },
+  {
+   "title": "Show who uses it",
+   "text": "With the cursor on the string's label in the Listing, open the context menu, References, Show References to Address.",
+   "keys": ["Ctrl+Shift+F"],
+   "expect": "A window lists every instruction that reads the string, each with its function."
+  },
+  {
+   "title": "Read the function",
+   "text": "Double-click a reference. The Decompiler shows its function as C (Window, Decompiler if it is closed). Rename what you understand: put the cursor on a name and press L; Ghidra keeps your names in the project, inside the workspace.",
+   "keys": ["Ctrl+E", "L"],
+   "expect": "The function as C, with the string where it is used."
+  },
+  {
+   "title": "Note the address for a patch",
+   "text": "The Listing's left column shows addresses at Ghidra's image base (Window, Memory Map shows the base). x64dbg and ViWo's patch sets take the module plus an offset: offset = address minus image base. The workbook 'Patch a byte, live and into a file' (x64dbg) and PATCHING, PATCHES + MODS take it from there.",
+   "expect": "The offset of the instruction you want to change."
+  }
+ ]
+}

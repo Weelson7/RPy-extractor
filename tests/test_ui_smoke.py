@@ -133,7 +133,7 @@ class UiSmokeTests(unittest.TestCase):
 
     def test_three_arms_and_the_global_strip(self) -> None:
         a = self.report["checks"]["arms"]
-        self.assertEqual(a["strip"], ["system", "jobs", "settings"])
+        self.assertEqual(a["strip"], ["system", "jobs", "workbooks", "settings"])
         self.assertEqual(a["static"][:3], ["static", "survey", "extract"])
         self.assertEqual(a["dynamic"], ["dynamic", "capture", "runtime"])
         self.assertEqual(a["afterGlobal"], a["dynamic"])  # a strip view keeps the arm
@@ -150,7 +150,7 @@ class UiSmokeTests(unittest.TestCase):
     def test_tab_codes_are_computed_from_the_arm_and_position(self) -> None:
         codes = self.report["checks"]["codes"]
         self.assertEqual(codes["static"], [f"S{i}" for i in range(len(codes["static"]))])
-        self.assertEqual([c.split()[0] for c in codes["strip"]], ["00", "01", "02"])
+        self.assertEqual([c.split()[0] for c in codes["strip"]], ["00", "01", "02", "03"])
 
     def test_system_gap_and_settings_table(self) -> None:
         c = self.report["checks"]

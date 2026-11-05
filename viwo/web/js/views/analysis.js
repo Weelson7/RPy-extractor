@@ -6,6 +6,7 @@ import { setGame, followGame } from "../game.js";
 import { featureOff } from "../feature.js";
 import { jobProgress, withSkeleton } from "../progress.js";
 import { registerView, code } from "../registry.js";
+import { howToBtn } from "./workbooks.js";
 
 const S = { targets: null, enabled: false, running: false, ws: "", key: "" };
 const el = {};
@@ -37,7 +38,7 @@ function mount(root) {
           h("label", { class: "lbl", for: "an-game" }, "GAME FOLDER"),
           h("div", { class: "row" }, el.game, browseBtn(el.game, (p) => { setGame(p); list(); }), btn("LIST TARGETS", (e) => busy(e.currentTarget, list), "primary")),
           h("p", { class: "note" }, "Results go to the active workspace: ", (el.wsNote = h("code", { class: "mono" }, S.ws || "—")), ".")),
-        panel(`${code("analysis")}.B`, "TARGETS", null, el.targets),
+        panel(`${code("analysis")}.B`, "TARGETS", howToBtn("ghidra", "HOW TO: GHIDRA"), el.targets),
         diffPanel(),
         panel(`${code("analysis")}.E`, "ROUTINE OPTIONS (EMULATE / SOLVE)", null,
           h("label", { class: "lbl", for: "an-opts" }, "ONE KEY=VALUE PER LINE: START, ARGS, DUMP, MAX_INSNS; FIND, AVOID FOR SOLVE"),

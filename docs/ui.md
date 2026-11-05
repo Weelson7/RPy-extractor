@@ -61,8 +61,10 @@ Every view declares an `arm`: `static` (the game is not running: survey, extract
 cleanup, merger, analysis), `dynamic` (it runs: capture, runtime), `patching` (you change its
 content: patched copy, patches + mods) or `global`. The rail shows one arm at a time, opening on
 that arm's home (`#static`, `#dynamic`, `#patching`); the arm switch sits above it. The global
-views (SYSTEM, JOBS, SETTINGS) sit in the strip of the top bar with the shared GAME selector and
-the WORKSPACE; opening one keeps the arm you were in. The game selector is one browser
+views (SYSTEM, JOBS, WORKBOOKS, SETTINGS) sit in the strip of the top bar with the shared GAME
+selector and the WORKSPACE; opening one keeps the arm you were in. WORKBOOKS (doc 19.1) shows one
+step at a time and remembers the step reached per workbook (`pref("wb.<id>")`); the HOW TO
+buttons in ANALYSIS and RUNTIME open it on one tool (`pref("wbTool")`, `howToBtn(tool)`). The game selector is one browser
 preference (`gamePath`): views read it, write it through `setGame` and follow the `game` event.
 
 ## Add-ons: views and panels as contributions (`registry.js`)
@@ -76,8 +78,8 @@ registerPanel("system", { id: "mygame-status", order: 10, render: (ctx) => panel
 - `main.js` builds one `<section id="view-<id>">` per registered view and the rail of the
   current arm, sorted by `order` within the arm. A view without `arm` joins `static`.
 - Codes are computed, never written: `code(id)` in `registry.js` gives `S0`, `S1`… in STATIC,
-  `D0`… in DYNAMIC, `P0`… in PATCHING (the arm home is 0) and `00`, `01`, `02` for the global
-  views (SYSTEM, JOBS, SETTINGS), from the arm and the place in it at render time; an add-on view
+  `D0`… in DYNAMIC, `P0`… in PATCHING (the arm home is 0) and `00`, `01`… for the global
+  views (SYSTEM, JOBS, WORKBOOKS, SETTINGS), from the arm and the place in it at render time; an add-on view
   or a new `order` renumbers everything. The visible panels of a view are lettered A, B, C… in
   reading order (again when one appears, hides or comes from a plugin), so `<code>.<letter>` is
   always current. Prose names a tab by its title only ("SYSTEM"), never by a number.

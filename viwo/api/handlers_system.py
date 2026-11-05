@@ -1,4 +1,5 @@
-"""System handlers: diagnostics bundle, update checks (on click only), indexes update job."""
+"""System handlers: diagnostics bundle, update checks (on click only), indexes update job,
+workbooks."""
 
 from __future__ import annotations
 
@@ -45,7 +46,18 @@ def indexes_update(app: App, d: dict) -> dict:
     return app.job("indexes", run)
 
 
-SYSTEM_GET: dict[str, Callable[[App, dict], Any]] = {"/api/updates": check_updates}
+def workbooks(app: App, q: dict) -> dict:
+    """GET /api/workbooks: every workbook (doc 19.1) and the files that could not be used."""
+    from viwo.core.workbooks import load
+
+    books, problems = load(app.rt)
+    return {"success": True, "workbooks": books, "problems": problems}
+
+
+SYSTEM_GET: dict[str, Callable[[App, dict], Any]] = {
+    "/api/updates": check_updates,
+    "/api/workbooks": workbooks,
+}
 SYSTEM_POST: dict[str, Callable[[App, dict], Any]] = {
     "/api/diag": make_diag,
     "/api/indexes/update": indexes_update,

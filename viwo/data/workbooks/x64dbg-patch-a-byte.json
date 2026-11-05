@@ -1,0 +1,45 @@
+{
+ "id": "x64dbg-patch-a-byte",
+ "title": "Patch a byte, live and into a file",
+ "tool": "x64dbg",
+ "written_for": "2026.05.27",
+ "opens": "attach.debug",
+ "summary": "Change one instruction of the running game in x64dbg, see the effect at once, then write the change into a patched executable outside the game folder.",
+ "steps": [
+  {
+   "title": "Open the game in x64dbg",
+   "text": "In RUNTIME, DEBUGGER AND MEMORY: LIST TARGETS, then CONTINUE IN X64DBG on the game's executable (CLI: viwo attach <game> --target <key> --workspace <ws> --confirm). When the game already runs, x64dbg attaches to it; otherwise x64dbg starts the game's own executable.",
+   "expect": "The title bar names the game's executable and its PID; the status bar at the bottom says Paused."
+  },
+  {
+   "title": "Let it reach the game's code",
+   "text": "Started by x64dbg, the game stops first at the system breakpoint (the title says Module: ntdll.dll), then at its entry point: press Run until the title names the game's own module. Attached to a running game, x64dbg stops in a thread of its own: press Run once and the game goes on. Pause stops it again whenever you want to look.",
+   "keys": ["F9", "F12"],
+   "expect": "The status bar says Running, or Paused with the game's module in the title."
+  },
+  {
+   "title": "Go to the address",
+   "text": "In the CPU tab, open Go to and type the address. A module plus an offset (game.exe+1A2B3) survives address randomisation; an absolute address (0x14001A2B3) holds only for this run. From ViWo's Ghidra export: the offset is the Ghidra address minus Ghidra's image base (usually 0x140000000 for a 64-bit program).",
+   "keys": ["Ctrl+G"],
+   "expect": "The disassembly jumps to that line and highlights it."
+  },
+  {
+   "title": "Change the instruction",
+   "text": "With the line selected, press Space (Assemble) and type the new instruction, for example nop, jmp 0x14001A2C0 or cmp eax, 0x40. Keep Fill with NOP's ticked, so a shorter instruction leaves no broken byte behind. To type raw bytes instead, use Binary Edit.",
+   "keys": ["Space", "Ctrl+E"],
+   "expect": "The changed bytes show in red in the disassembly."
+  },
+  {
+   "title": "Try it live",
+   "text": "Press Run and use the game: the change is in the running process's memory and takes effect at once. It is gone when the game restarts.",
+   "keys": ["F9"],
+   "expect": "The game behaves the new way."
+  },
+  {
+   "title": "Keep it: a patched executable",
+   "text": "Open Patches: it lists every changed byte by module. Select the game's module, press Patch File and save under a new name outside the game folder, for example in a ViWo patched copy (PATCHING, PATCHED COPY). ViWo never writes into the game folder; x64dbg would, if you saved over the original. To make the change reproducible after a game update, write it as a ViWo patch set too (PATCHING, PATCHES + MODS): an AOB address finds the bytes again.",
+   "keys": ["Ctrl+P"],
+   "expect": "A new executable that differs from the original only in your bytes."
+  }
+ ]
+}

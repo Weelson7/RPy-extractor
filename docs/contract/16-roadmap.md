@@ -89,14 +89,15 @@ The arm homes of the UI (`viwo/web/js/views/home.js`) show the same rungs as SHI
 
 ## 16.4 UI capabilities (owner, planned 2026-11-05)
 
-Planned web-UI features, in the order the owner wants them, to be introduced later. All of them
-are **OS-agnostic** (Windows and Linux alike): nothing may assume one OS. They build on the
-principle **"what a child can do natively, let it do natively"** — ViWo orchestrates and does not
-reimplement a child tool's capability.
+Web-UI features, in the order the owner wants them; the normative spec is doc 19 (Guides). All
+of them are **OS-agnostic** (Windows and Linux alike): nothing may assume one OS. They build on
+the principle **"what a child can do natively, let it do natively"** — ViWo orchestrates and does
+not reimplement a child tool's capability.
 
-1. **Workbooks** — in the UI, explain how to do something in a child's own interface (a guided,
-   step-by-step how-to for a child tool: e.g. how to patch a byte in x64dbg, how to export a
-   program in Ghidra). Teaching overlays/text, not automation.
+1. **Workbooks** (shipped 1.18.0, doc 19.1) — in the UI, explain how to do something in a
+   child's own interface (a guided, step-by-step how-to for a child tool: e.g. how to patch a
+   byte in x64dbg, how to export a program in Ghidra). Teaching overlays/text, not automation;
+   overlays over the tool's own window wait for item 4.
 2. **Runbooks** — default or saved workflows, editable. A named sequence of steps a user can run,
    tweak and save (ViWo's own actions and/or child steps).
 3. **Workflows** — record what the user does, with pause/continue. On replay, when a step's

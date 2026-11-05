@@ -21,7 +21,7 @@ Code and tests cite sections as "doc N.M"; section numbers are stable.
 | 8 | [08-backend-slots.md](08-backend-slots.md) | slots, backends, failover, handoffs, the slot table |
 | 9 | [09-startup-ini.md](09-startup-ini.md) | the startup ini, distros, boot sequence |
 | 10 | [10-third-party-submodules.md](10-third-party-submodules.md) | pinned third-party tools and their installer |
-| 11 | [11-runtime-capture.md](11-runtime-capture.md) | dynamic arm: capture, agents, dump, trace, record, debugger and memory handoffs |
+| 11 | [11-runtime-capture.md](11-runtime-capture.md) | dynamic arm: capture, agents, dump, trace, record, debugger and memory attach tools |
 | 12 | [12-core-cli-jobs.md](12-core-cli-jobs.md) | headless core, jobs, envelope, CLI |
 | 13 | [13-landscape.md](13-landscape.md) | the tools ViWo wraps and the engines it covers |
 | 14 | [14-prototype.md](14-prototype.md) | product scope and the structural choices behind it |
@@ -29,6 +29,7 @@ Code and tests cite sections as "doc N.M"; section numbers are stable.
 | 16 | [16-roadmap.md](16-roadmap.md) | coverage ladder and the orchestrator rungs: shipped and open |
 | 17 | [17-testing-model.md](17-testing-model.md) | test levels, safety catalogue, fixtures, CI |
 | 18 | [18-round-trip.md](18-round-trip.md) | patching arm: round trip, patch sets, mod packages |
+| 19 | [19-guides.md](19-guides.md) | guides for the child tools: workbooks, runbooks, workflows, embedded GUIs |
 
 ## Scope
 

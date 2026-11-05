@@ -95,6 +95,7 @@ export const api = {
   settings: () => v1("GET", "/api/settings"),
   saveSettings: (changes) => v1("POST", "/api/settings", changes),
   updates: () => v1("GET", "/api/updates"),
+  workbooks: () => v1("GET", "/api/workbooks"),
   diag: () => v1("POST", "/api/diag", {}),
   updateIndexes: () => v1("POST", "/api/indexes/update", {}),
   surveys: () => v1("GET", "/api/surveys"),

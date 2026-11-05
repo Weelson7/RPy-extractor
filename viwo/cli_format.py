@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import textwrap
 from typing import Any
 
 
@@ -162,6 +163,26 @@ def sanitize(data: dict) -> str:
     return "\n".join(lines)
 
 
+def workbook(data: dict) -> str:
+    """The list (id, tool, steps, title), or one workbook's steps to follow in the tool."""
+    if "workbook" not in data:
+        rows = [f"{'ID':<28} {'TOOL':<12} STEPS  TITLE"]
+        for b in data["workbooks"]:
+            mine = " (yours)" if b["source"] == "yours" else ""
+            rows.append(f"{b['id']:<28} {b['tool']:<12} {len(b['steps']):>5}  {b['title']}{mine}")
+        return "\n".join(rows)
+    b, wrap = (
+        data["workbook"],
+        lambda t: textwrap.fill(t, 96, initial_indent="   ", subsequent_indent="   "),
+    )
+    lines = [f"{b['title']} ({b['tool']})", textwrap.fill(b["summary"], 99)]
+    for number, step in enumerate(b["steps"], 1):
+        lines += ["", f"{number}. {step['title']}", wrap(step["text"])]
+        lines += [f"   keys: {', '.join(step['keys'])}"] if step["keys"] else []
+        lines += [wrap(f"you should see: {step['expect']}")] if step["expect"] else []
+    return "\n".join(lines)
+
+
 def generic(data: Any) -> str:
     """Plugin commands without a formatter: readable JSON."""
     return json.dumps(data, indent=2, default=str)
@@ -231,4 +252,5 @@ FORMATTERS: dict[str, Any] = {
     "extract": extraction,
     "replay": extraction,
     "unpack": unpack,
+    "workbook": workbook,
 }

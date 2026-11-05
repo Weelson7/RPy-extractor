@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 STATIC = ("survey", "detect", "extract", "replay", "unpack", "sanitize", "analyze", "diff")
-SYSTEM = ("serve", "info", "slots", "install", "config", "indexes", "diag")
+SYSTEM = ("serve", "info", "slots", "install", "config", "indexes", "diag", "workbook")
 ARMS = {
     "static": ("the game is not running", STATIC),
     "dynamic": (

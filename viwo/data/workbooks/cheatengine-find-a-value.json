@@ -1,0 +1,41 @@
+{
+ "id": "cheatengine-find-a-value",
+ "title": "Find a value, change it, find what writes it",
+ "tool": "cheatengine",
+ "written_for": "7.6",
+ "opens": "attach.memory",
+ "summary": "Find a number the game shows (health, ammo, money) in its memory, change or freeze it, and find the instruction that writes it: the place a lasting patch changes.",
+ "steps": [
+  {
+   "title": "Open Cheat Engine on the game",
+   "text": "In RUNTIME, DEBUGGER AND MEMORY: LIST TARGETS, then CONTINUE IN CHEAT ENGINE, and start the game. ViWo's table attaches to the game's process as soon as it runs.",
+   "expect": "The top of Cheat Engine names the game's process."
+  },
+  {
+   "title": "First scan",
+   "text": "In the game, pick a number you can change and note it. In Cheat Engine: Value Type 4 Bytes, Scan Type Exact Value, type the number, First Scan.",
+   "expect": "A long list of addresses on the left."
+  },
+  {
+   "title": "Narrow it down",
+   "text": "Change the number in the game, type the new number, Next Scan; repeat until a handful of addresses remain. Nothing left? The game may keep it as a Float or Double: New Scan with that Value Type, or Unknown initial value, then Increased value / Decreased value.",
+   "expect": "A few addresses whose value follows the game."
+  },
+  {
+   "title": "Change or freeze it",
+   "text": "Double-click an address to move it to the address list at the bottom. Double-click its Value to type a new one; tick its Active box to freeze it.",
+   "expect": "The game shows the new value."
+  },
+  {
+   "title": "Find what writes it",
+   "text": "Context menu on the address in the list, Find out what writes to this address; accept attaching the debugger, then change the value in the game. The instructions that wrote it appear in the window. That instruction's address is what a lasting patch changes (the x64dbg workbook, or a ViWo patch set).",
+   "expect": "One or more instructions with their addresses and counts."
+  },
+  {
+   "title": "Save your table",
+   "text": "File, Save. ViWo's table sits in the workspace (.runtime/cheatengine-gui/<target>/), so your finds travel with the workspace.",
+   "keys": ["Ctrl+S"],
+   "expect": "The table's file name in the title bar."
+  }
+ ]
+}

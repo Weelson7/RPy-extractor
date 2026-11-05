@@ -1,0 +1,43 @@
+{
+ "id": "ghidra-patch-and-export",
+ "title": "Patch an instruction and export the program",
+ "tool": "ghidra",
+ "written_for": "12.2",
+ "opens": "handoff.native",
+ "summary": "Change an instruction in Ghidra's Listing without running the game, then export the program as an executable with your change, outside the game folder.",
+ "steps": [
+  {
+   "title": "Open the program in Ghidra",
+   "text": "In ANALYSIS: ANALYZE the game's executable once, then CONTINUE IN GHIDRA, and double-click the program in the project window.",
+   "expect": "The CodeBrowser with the Listing and the Decompiler."
+  },
+  {
+   "title": "Go to the instruction",
+   "text": "Open Go To and type the address or a function name.",
+   "keys": ["G"],
+   "expect": "The Listing shows the instruction, highlighted."
+  },
+  {
+   "title": "Patch it",
+   "text": "Context menu on the instruction, Patch Instruction; type the new instruction and press Enter. For raw bytes: Window, Bytes, switch editing on with the pencil button and type the hex.",
+   "keys": ["Ctrl+Shift+G"],
+   "expect": "The Listing shows the new instruction and the Decompiler follows it."
+  },
+  {
+   "title": "Save the project",
+   "text": "File, Save keeps the change in Ghidra's project (beside the workspace); the executable itself is not written yet.",
+   "keys": ["Ctrl+S"],
+   "expect": "The program's tab loses its unsaved mark."
+  },
+  {
+   "title": "Export the patched program",
+   "text": "File, Export Program, Format: Original File; choose an output file outside the game folder. Original File writes the program in its own format with your byte changes; C/C++ would write the decompiled source instead.",
+   "expect": "A summary dialog naming the file written."
+  },
+  {
+   "title": "Run it from a copy",
+   "text": "Put the exported executable into a patched copy of the game (PATCHING, PATCHED COPY makes one) and start it there. The game folder stays as it was.",
+   "expect": "The game runs with your change; the original still runs unchanged."
+  }
+ ]
+}

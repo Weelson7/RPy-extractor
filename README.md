@@ -112,8 +112,9 @@ install. Data goes to `viwo-data/` next to `startup.ini`. A portable Windows bui
 ## Web UI
 
 Plain HTML and ES modules served by `viwo serve` on `127.0.0.1:8081`, with a per-start token.
-The top bar holds SYSTEM (tools, install, diagnostics, updates), JOBS, SETTINGS, the shared game
-selector and the workspace. The rail shows one arm at a time, each opening on its end-to-end
+The top bar holds SYSTEM (tools, install, diagnostics, updates), JOBS, WORKBOOKS (step-by-step
+how-tos for x64dbg, Ghidra and Cheat Engine's own interfaces; `viwo workbook` on the command
+line), SETTINGS, the shared game selector and the workspace. The rail shows one arm at a time, each opening on its end-to-end
 path: STATIC (SURVEY, EXTRACT, WORKSPACE, SORT, CLEANUP, MERGER, ANALYSIS),
 DYNAMIC (CAPTURE, RUNTIME), PATCHING (PATCHED COPY, PATCHES + MODS). Two themes
 (`wormhole`, `plain`). Details: [docs/ui.md](docs/ui.md).

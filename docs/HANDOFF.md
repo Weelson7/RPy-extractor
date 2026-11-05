@@ -1,6 +1,6 @@
 # Handoff
 
-State at **v1.17.0** (branch `makeover`). History is in [CHANGELOG.md](../CHANGELOG.md); the
+State at **v1.18.0** (branch `makeover`). History is in [CHANGELOG.md](../CHANGELOG.md); the
 design in [docs/contract/](contract/README.md); what is open in
 [CONFORMANCE.md](contract/CONFORMANCE.md) and below.
 
@@ -23,7 +23,7 @@ py -3.13 -m venv .venv; .venv\Scripts\Activate.ps1
 pip install -e ".[unity,sevenzip,renpy,lz4,dev]"
 ruff format viwo tests tools packaging; ruff check viwo tests tools packaging
 python tools/loc_count.py --report
-python -m unittest discover -s tests -t .      # 577 tests, ~13 min on Windows
+python -m unittest discover -s tests -t .      # 581 tests, ~18 min on Windows
 python tools/version.py commit -m "..." [--feature|--major] [--push]
 ```
 
@@ -40,7 +40,7 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
   half-edited module). Make a worktree at a committed version with its own venv, then run the
   pass there:
   ```powershell
-  git worktree add ..\viwo-pass v1.17.0
+  git worktree add ..\viwo-pass v1.18.0
   cd ..\viwo-pass; py -3.13 -m venv .venv; .venv\Scripts\pip install -e ".[unity,sevenzip,renpy,lz4]"
   powershell -File tools\games_pass.ps1 -Source C:\Users\<you>\Games [-Only <folder>,...]
   ```
@@ -89,6 +89,13 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
 
 ## Open work
 
+0. **UI capabilities (doc 16.4, spec in doc 19; owner flagged, in this order):** workbooks
+   shipped (1.18.0: four, for x64dbg, Ghidra and Cheat Engine; more tools and topics by reach,
+   e.g. qrenderdoc, WolvenKit); next **runbooks** (19.2: named, editable, saved step sequences of
+   ViWo actions and child steps), then **workflows** (19.3: record with pause/continue, replay
+   that stops only where a step's output differs), then **embedded child GUIs** (19.4: the
+   native windows inside the web surface with faithful input, behind the OS layer, Windows and
+   Linux). Contract first, then API and UI, property tests.
 1. **Rung D4** (partly shipped: CPU profiling, `viwo profile`, 1.6.1): open are the hook loader
    with hot reload (`hook.inject`), the overlay (`hook.overlay`) and own-traffic network tooling
    (`net.*`). The network plaintext capture and the DLL injection loader are the owner's call and

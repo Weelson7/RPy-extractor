@@ -52,6 +52,8 @@ viwo/
     analysis/    static analysis: targets, Ghidra (headless + GUI), managed analyzers, Detect It
                  Easy, emulate/symbolic workers, version diff; nothing here runs the game
     handoff.py   "continue in <tool>": a prepared GUI tool as a tracked child (both arms)
+    workbooks.py step-by-step how-tos for a child tool's own interface (doc 19.1; the files
+                 are in viwo/data/workbooks/, the user's own in viwo-data/workbooks/)
     capture/     dynamic arm: policy (warnings, confirmation), RenderDoc capture and harvest,
                  runtime agents, dump, trace, profile, audio loopback, attach (x64dbg on the
                  game's own process, Cheat Engine)

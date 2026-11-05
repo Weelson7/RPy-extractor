@@ -5,6 +5,7 @@ import { api } from "../api.js";
 import { h, fill, btn, panel, badge, viewHead, kv, toast, toastErr, pref, emit, browseBtn, errorBox, openBtn, assure, busy, table, confirmBox } from "../ui.js";
 import { jobProgress } from "../progress.js";
 import { setGame, gameField } from "../game.js";
+import { howToBtn } from "./workbooks.js";
 
 const S = { running: "" };
 const el = {};
@@ -40,7 +41,8 @@ function mount(root) {
           h("label", { class: "lbl", for: "rt-funcs" }, "FUNCTIONS TO TRACE (FRIDA GLOBS, COMMA-SEPARATED)"), h("div", { class: "row" }, el.funcs),
           h("label", { class: "lbl", for: "rt-secs" }, "SECONDS (TRACE AND RECORDING)"), h("div", { class: "row" }, el.secs),
           h("div", { class: "row" }, el.buttons[1], el.buttons[2], el.buttons[3], el.buttons[4])),
-        panel(`${code("runtime")}.E`, "DEBUGGER AND MEMORY", badge("THE GAME ITSELF", "warn"),
+        panel(`${code("runtime")}.E`, "DEBUGGER AND MEMORY", h("div", { class: "row" }, badge("THE GAME ITSELF", "warn"),
+          howToBtn("x64dbg", "HOW TO: X64DBG"), howToBtn("cheatengine", "HOW TO: CHEAT ENGINE")),
           h("p", { class: "note" }, "x64dbg attaches to the running game (the pid above, else the process of the target's executable) or starts it: a patch made live lands in the real process. Cheat Engine opens a table that attaches as soon as the game runs."),
           h("div", { class: "row" }, btn("LIST TARGETS", (e) => busy(e.currentTarget, listAttach), "")), el.attach)),
       h("div", { class: "col" }, el.progHost, el.result)));
