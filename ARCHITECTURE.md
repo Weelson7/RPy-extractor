@@ -24,7 +24,8 @@ only as separate processes.
 
 ```
 viwo/
-  contracts/   interfaces and value types (stdlib only)
+  contracts/   interfaces and value types (stdlib only); workspace.py (layout, member names
+               and their record), paths.py (walking without following links)
     plugin.py      EnginePlugin, PluginManifest, ExtractionContext, GameProbe, CliCommand
     slots.py       SlotDefinition, Backend, Unarchiver, Exporter, Carver, Decoder, Prober, Packer
     analysis.py    AnalysisTarget, Analyzer, Handoff, LaunchSpec
@@ -69,9 +70,10 @@ viwo/
     thirdparty.py, workers.py, preflight.py   pinned installer, worker tools, startup check
     downloads.py                       verified download, safe unzip/untar, folder swap
     scan_exclusions.py, indexes.py, diag.py   antivirus exclusions, per-game indexes, diagnostics
-  api/         server.py (token, JSON only, Host check, preview), routes.py (envelope routes),
+  api/         server.py (token, JSON only, Host check, preview), peers.py (loopback, token
+               comparison), ranges.py (byte ranges), routes.py (envelope routes),
                handlers*.py (legacy-shaped routes per area), app.py (jobs, locks, payloads),
-               plugin_assets.py (plugin UI modules)
+               recording.py (the workflow recorder), plugin_assets.py (plugin UI modules)
   web/         index.html, css/base.css + css/themes/, js/ (api, registry, game selector,
                progress, ui/ component library, views/ one module per view)
   data/        tools.json (pins), locks/ (hash locks), capture_policy.json, ghidra/ViwoExport.java,

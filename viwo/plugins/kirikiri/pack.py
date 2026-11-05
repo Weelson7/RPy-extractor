@@ -10,6 +10,7 @@ import zlib
 from pathlib import Path
 from types import SimpleNamespace
 
+from viwo.contracts import workspace as ws
 from viwo.contracts.slots import Packer, SlotDefinition
 from viwo.contracts.types import Outcome, OutcomeKind
 
@@ -80,7 +81,11 @@ def _members(archive: Path) -> dict[str, bytes]:
         out = Path(tmp)
         Xp3Builtin().extract(archive, out, SimpleNamespace(cancel=SimpleNamespace(cancelled=False)))
         files = [f for f in out.rglob("*") if f.is_file() and not f.name.startswith(".viwo-")]
-        found = {f.relative_to(out).as_posix(): f.read_bytes() for f in files}
+        names = ws.renamed(out)  # a name Windows cannot hold: its original, from the record
+        found = {}
+        for f in files:
+            rel = f.relative_to(out).as_posix()
+            found[names.get(rel, rel)] = f.read_bytes()
         shutil.rmtree(out, ignore_errors=True)
     return found
 

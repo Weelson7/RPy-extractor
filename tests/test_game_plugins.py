@@ -46,6 +46,16 @@ class DiscoveryTests(unittest.TestCase):
                 self.assertFalse(load_plugin(BUILTIN_PLUGINS[engine]).manifest.engine)
         self.assertEqual(games, {"cyberpunk2077": "redengine", "bannerlord": "taleworlds"})
 
+    def test_a_game_plugin_whose_engine_is_off_is_not_loaded_and_said(self) -> None:
+        from viwo.core.wiring.registry import load_enabled
+
+        for engine, game in (("redengine", "cyberpunk2077"), ("taleworlds", "bannerlord")):
+            plugins, problems = load_enabled({engine: False, game: True})
+            self.assertNotIn(game, plugins)
+            self.assertIn(f"plugin {game} disabled: its engine plugin {engine} is off", problems)
+            plugins, problems = load_enabled({engine: True, game: True})
+            self.assertIn(game, plugins)
+
 
 class SelectionTests(unittest.TestCase):
     def test_a_game_plugin_never_runs_without_its_engine(self) -> None:

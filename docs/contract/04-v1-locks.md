@@ -57,8 +57,11 @@ description, capabilities, options, slots, dependencies, error, loaded.
 4. **Binding:** `[server] host` defaults to `127.0.0.1`; `viwo serve --host` overrides it.
 5. **Path containment:** static files, `/preview/` (relative to the active workspace, byte ranges
    supported) and `/plugins/<id>/ui/<file>` resolve inside their root or answer 404. A preview
-   for a peer that is not this machine needs the token's cookie (`viwo_token`, HttpOnly, set with
-   the page that carries the token); otherwise 403.
+   for a peer that is not this machine needs the preview cookie (`viwo_preview_<port>`, HttpOnly,
+   path `/preview/`, set only with the page a keyed LAN peer loads): a token of its own that
+   grants `/preview/` and never the API (a browser sends a host's cookies to every port);
+   otherwise 403. Tokens are compared as bytes (any text a client sends), a range number longer
+   than 18 digits is ignored (the whole file), and a file locked or gone answers 404.
 6. **Absolute request paths:** a game, executable, folder, patch set, mod, copy or workspace path
    in a request is absolute (`api/app.py` `path_param`, `existing`); "" or a relative path, which
    would name the server's own folder, is refused as `not_found` / `invalid_request`

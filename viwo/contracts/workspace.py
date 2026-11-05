@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-import fnmatch
 import json
-import os
 import re
 from pathlib import Path, PurePosixPath
+
+from .paths import files, inside, link_like, walk  # noqa: F401  (callers use ws.walk, ...)
 
 MARKER = ".viwo-workspace"
 METADATA_DIR = ".extraction_metadata"
@@ -89,32 +89,54 @@ def _writable_part(part: str) -> str:
     return "_" + part if RESERVED.match(part) else part
 
 
+OWN_FILES = {MARKER, EXPORT_MAP, NAMES_FILE}  # ViWo's own: a member never takes these names
+
+
 class Names:
     """Where an unpacker writes each member under dest: writable names; an altered one gets a
     free name and is recorded in NAMES_FILE (altered -> original), so COLLECT gives provenance
-    the original and the round trip writes the member back under it."""
+    the original and the round trip writes the member back under it. Altered too: a name only
+    the case tells from one already written (`Foo.txt`, `foo.txt`: one file on Windows), and a
+    member named like ViWo's own files (an archive cannot plant a names record)."""
 
     def __init__(self, dest: Path) -> None:
-        self.dest, self.altered, self.escapes = dest, {}, 0
+        self.dest, self.altered, self.escapes, self.seen = dest, {}, 0, set()
+        self.folders: dict[str, str] = {}  # lowercased folder path -> its first spelling
+
+    def _spelled(self, rel: PurePosixPath) -> PurePosixPath:
+        """Folders as first written (`B/` and `b/` are one folder on Windows): the record's
+        keys then match the files on disk."""
+        parts = list(rel.parts)
+        for i in range(len(parts) - 1):
+            parts[i] = self.folders.setdefault("/".join(parts[: i + 1]).lower(), parts[i])
+        return PurePosixPath(*parts)
 
     def target(self, name: str) -> Path | None:
         rel = writable(name)
         if rel is None:
             self.escapes += 1
             return None
+        rel = self._spelled(rel)
         original = "/".join(p for p in name.replace("\\", "/").split("/") if p not in ("", "."))
         if not inside(self.dest, self.dest.joinpath(*rel.parts)):  # a link inside dest
             self.escapes += 1
             return None
-        if rel.as_posix() == original and original not in self.altered:
+        plain = rel.as_posix() == original and original not in self.altered
+        if plain and original.lower() not in self.seen and rel.name not in OWN_FILES:
+            self.seen.add(original.lower())
             return self.dest.joinpath(*rel.parts)
         base = path = self.dest.joinpath(*rel.parts)
         index = 1
-        while path.exists() or path.relative_to(self.dest).as_posix() in self.altered:
+        while self._taken(path) or path.name in OWN_FILES:
             path = base.with_name(COLLISION.format(stem=base.stem, index=index, suffix=base.suffix))
             index += 1  # "a?.png" and "a*.png" are both kept
         self.altered[path.relative_to(self.dest).as_posix()] = original
+        self.seen.add(path.relative_to(self.dest).as_posix().lower())
         return path
+
+    def _taken(self, path: Path) -> bool:
+        rel = path.relative_to(self.dest).as_posix()
+        return path.exists() or rel in self.altered or rel.lower() in self.seen
 
     def save(self) -> tuple[str, ...]:
         """Write the record; the notes to return (never silent)."""
@@ -139,53 +161,6 @@ def renamed(folder: Path) -> dict[str, str]:
     except (OSError, ValueError):
         return {}
     return {str(k): str(v) for k, v in data.items()} if isinstance(data, dict) else {}
-
-
-def link_like(path) -> bool:
-    """A symbolic link, a directory junction or another reparse point: never walked into (a
-    junction in a game folder may point anywhere, or back at an ancestor)."""
-    if os.path.islink(path):
-        return True
-    junction = getattr(os.path, "isjunction", None)  # Python 3.12+
-    if junction is not None:
-        return junction(path)
-    try:
-        return bool(getattr(os.lstat(path), "st_file_attributes", 0) & 0x400)  # REPARSE_POINT
-    except OSError:
-        return False
-
-
-def walk(root: Path):
-    """os.walk that never enters a link-like folder (see link_like)."""
-    for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = [d for d in dirnames if not link_like(os.path.join(dirpath, d))]
-        yield dirpath, dirnames, filenames
-
-
-def files(root: Path, pattern: str = "*") -> list[Path]:
-    """Every file under root whose name matches pattern (case-insensitive), sorted; link-like
-    folders are never entered (see walk). The rglob of a game folder, without its junctions."""
-    pattern = pattern.lower()
-    return sorted(
-        Path(dirpath) / name
-        for dirpath, _, names in walk(root)
-        for name in names
-        if fnmatch.fnmatchcase(name.lower(), pattern)
-    )
-
-
-def inside(root: Path, target: Path) -> bool:
-    """True when target (after resolving links) is root or lies under it, and no existing
-    component between them is a symbolic link."""
-    base, path = root.resolve(), target.resolve()
-    if path != base and base not in path.parents:
-        return False
-    probe = target
-    while probe != root and probe != probe.parent:
-        if probe.is_symlink():
-            return False
-        probe = probe.parent
-    return True
 
 
 def member_path(root: Path, rel: str) -> Path | None:

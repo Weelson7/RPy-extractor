@@ -224,7 +224,17 @@ def load_enabled(
         name = plugin_id.removeprefix("custom.")
         if name not in BUILTIN_PLUGINS and name not in external:
             problems.append(f"unknown plugin '{plugin_id}' in [plugins] ignored")
-    return plugins, problems
+    return _without_orphans(plugins, problems), problems
+
+
+def _without_orphans(plugins: dict, problems: list[str]) -> dict:
+    """Doc 2.10: a game plugin never runs alone; one whose engine plugin is off is disabled."""
+    for plugin_id, plugin in list(plugins.items()):
+        engine = plugin.manifest.engine
+        if engine and engine not in plugins:
+            problems.append(f"plugin {plugin_id} disabled: its engine plugin {engine} is off")
+            plugins.pop(plugin_id)
+    return plugins
 
 
 def cli_commands(

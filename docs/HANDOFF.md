@@ -1,6 +1,6 @@
 # Handoff
 
-State at **v1.20.0** (branch `makeover`). History is in [CHANGELOG.md](../CHANGELOG.md); the
+State at **v1.20.2** (branch `makeover`). History is in [CHANGELOG.md](../CHANGELOG.md); the
 design in [docs/contract/](contract/README.md); what is open in
 [CONFORMANCE.md](contract/CONFORMANCE.md) and below.
 
@@ -23,7 +23,7 @@ py -3.13 -m venv .venv; .venv\Scripts\Activate.ps1
 pip install -e ".[unity,sevenzip,renpy,lz4,dev]"
 ruff format viwo tests tools packaging; ruff check viwo tests tools packaging
 python tools/loc_count.py --report
-python -m unittest discover -s tests -t .      # 592 tests, ~20 min on Windows
+python -m unittest discover -s tests -t .      # 600 tests, ~22 min on Windows
 python tools/version.py commit -m "..." [--feature|--major] [--push]
 ```
 
@@ -40,7 +40,7 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
   half-edited module). Make a worktree at a committed version with its own venv, then run the
   pass there:
   ```powershell
-  git worktree add ..\viwo-pass v1.20.0
+  git worktree add ..\viwo-pass v1.20.2
   cd ..\viwo-pass; py -3.13 -m venv .venv; .venv\Scripts\pip install -e ".[unity,sevenzip,renpy,lz4]"
   powershell -File tools\games_pass.ps1 -Source C:\Users\<you>\Games [-Only <folder>,...]
   ```
@@ -138,7 +138,11 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
      class name, whose names are in the game's exe as `gamedata<Name>_Record`); names from
      WolvenKit's `tweakdbstr.kark` (Kraken); 164 MB JSON in 11 s on 2.x. Not shipped (one game).
    - Total War schema install on first use (today: `viwo install rpfm-schema-<game>`).
-8. **End of the open work, in this order:** a full audit (and its fixes); then the
+8. **End of the open work, in this order:** the full audit is done (fourth audit, 1.20.2: the
+   work since 1.15.5, every finding fixed with a property test, see CHANGELOG; open from it:
+   `genie`, `warscape`, `source` still detect by title executables, the per-title data belongs
+   in game plugins, CONFORMANCE 2.10); next the LoC-reclaim pass (`loc_caps.ini` budgets were
+   raised for 1.17-1.20 with their reasons: take them back); then the
    presentation, in two parts that replace the status PDF. (The UX/UI review from frames of the
    running UI at the owner's window and zoom, and on a real extraction, was done at 1.12.0; it
    is repeated for the demo.)

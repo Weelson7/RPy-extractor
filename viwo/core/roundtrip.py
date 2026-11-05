@@ -175,10 +175,13 @@ def _verify(rt, packed: Path, item: PlanItem, ctx, untouched: dict) -> list[str]
         rt.bindings[match.slot_id], rt.backends, lambda b: b.extract(packed, dest, ctx)
     )
     expected = {m: sha256(src) for m, src in item.members.items()} | dict(untouched)
-    bad = [
+    back = {original: dest / altered for altered, original in ws.renamed(dest).items()}
+    bad = [  # a member Windows cannot name is found under its altered name (its record)
         m
         for m, digest in expected.items()
-        if not outcome.ok or not (dest / m).is_file() or sha256(dest / m) != digest
+        if not outcome.ok
+        or not back.get(m, dest / m).is_file()
+        or sha256(back.get(m, dest / m)) != digest
     ]
     shutil.rmtree(dest, ignore_errors=True)
     return bad

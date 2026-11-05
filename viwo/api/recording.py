@@ -40,17 +40,18 @@ class Recording:
     inputs: list[dict] = field(default_factory=list)  # secret inputs, a process id
     warnings: list[str] = field(default_factory=list)
     running: int = 0  # actions started while recording that have not answered yet
-    lock: threading.Lock = field(default_factory=threading.Lock)
 
     def view(self) -> dict:
         shown = [{"title": s["title"], "do": s.get("do", "")} for s in self.steps]
         head = {"title": self.title, "game": self.game, "paused": self.paused, "steps": shown}
         return {**head, "running": self.running, "warnings": list(self.warnings)}
 
-    def add(self, step: dict, answer: dict | None) -> None:
-        with self.lock:
-            self.steps.append(step)
-            self.answers.append(answer)
+    def add(self, step: dict, answer: dict | None) -> None:  # under LOCK
+        self.steps.append(step)
+        self.answers.append(answer)
+
+
+LOCK = threading.Lock()  # the recorder's state: request threads start, stop and add at once
 
 
 def wrap(post: dict[str, Callable[[App, dict], Any]]) -> None:
@@ -63,22 +64,24 @@ def wrap(post: dict[str, Callable[[App, dict], Any]]) -> None:
 
 def _recorded(kind: str, implied: dict, handler):
     def run(app: App, d: dict):
-        rec = app.recording  # taken when the action starts: a pause or stop meanwhile counts
-        live = rec is not None and not rec.paused
-        if live:
-            with rec.lock:
+        with LOCK:  # taken when the action starts: a pause or stop meanwhile counts
+            rec = app.recording
+            live = rec is not None and not rec.paused
+            if live:
                 rec.running += 1
+        step = answer = None
         try:
             answer = handler(app, d)
+            if live and isinstance(answer, dict) and answer.get("success"):
+                seen = {"game": rec.game, "workspace": str(app.workspace)}  # after the action
+                step = workflows.record_step(app.rt, kind, {**d, **implied}, answer, seen, rec)
         finally:
             if live:
-                with rec.lock:
+                with LOCK:  # added before it stops counting: a stop never saves without it
+                    if step is not None:
+                        _foreign_game(rec, step)
+                        rec.add(step, answer)
                     rec.running -= 1
-        if live and isinstance(answer, dict) and answer.get("success"):
-            seen = {"game": rec.game, "workspace": str(app.workspace)}  # after the action
-            step = workflows.record_step(app.rt, kind, {**d, **implied}, answer, seen, rec)
-            _foreign_game(rec, step)
-            rec.add(step, answer)
         return answer
 
     run.recorded = True
@@ -169,7 +172,12 @@ def recording_post(app: App, d: dict) -> dict:
     act = ACTIONS.get(str(d.get("action", "")))
     if act is None:
         return failure(ViwoError("invalid_request", f"action: one of {', '.join(ACTIONS)}"))
-    return safe(lambda: {"success": True, **act(app, d), **recording_get(app, {})})
+
+    def locked() -> dict:  # one at a time: two starts never both win, a stop sees every add
+        with LOCK:
+            return {"success": True, **act(app, d), **recording_get(app, {})}
+
+    return safe(locked)
 
 
 def install(get: dict, post: dict) -> None:

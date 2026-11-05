@@ -131,20 +131,24 @@ class TokenTests(unittest.TestCase):
         from viwo.api import server
 
         sent = []
+
+        def send_file(target, html_token, cookie):
+            sent.append((target.name, html_token, cookie))
+
         handler = SimpleNamespace(
-            token="T0KEN", send_error=lambda code: sent.append(("error", code)),
-            send_file=lambda target, html_token: sent.append((target.name, html_token)),
-        )  # fmt: skip
-        for peer, key, want in (
-            ("127.0.0.1", "", True),
-            ("192.168.1.9", "", False),
-            ("192.168.1.9", "T0KEN", True),
-            ("192.168.1.9", "nope", False),
+            token="T0KEN", send_error=lambda code: sent.append(("error", code)), send_file=send_file
+        )
+        for peer, key, want, cookie in (  # the preview cookie: a keyed LAN peer only
+            ("127.0.0.1", "", True, False),
+            ("127.0.0.1", "T0KEN", True, False),
+            ("192.168.1.9", "", False, False),
+            ("192.168.1.9", "T0KEN", True, True),
+            ("192.168.1.9", "nope", False, False),
         ):
             handler.client_address = (peer, 5000)
             sent.clear()
             server.Handler._static(handler, "/", key)
-            self.assertEqual(sent, [("index.html", want)], (peer, key))
+            self.assertEqual(sent, [("index.html", want, cookie)], (peer, key))
 
 
 if __name__ == "__main__":

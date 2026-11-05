@@ -4,6 +4,44 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.2 (2026-11-05)
+Fourth audit (the work since 1.15.5; two independent reviews, every finding verified, each with
+a property test in `tests/test_audit4.py` or beside its code):
+- Fix: members whose names differ only in case (`Foo.txt`, `foo.txt`, one file on Windows)
+  overwrote each other silently; the second gets a free name and is recorded. A member named
+  like ViWo's own files (`.viwo-names.json`) is altered, so an archive cannot plant a names
+  record; folders keep the spelling they were first written with, so the record matches disk.
+- Fix: a patched copy whose container held a name Windows cannot hold (`what?.js`) was reported
+  not verified: the read-back now follows the names record (round trip, the XP3 patch).
+- Fix: a Doom PWAD in a subfolder could not be packed (the palette was looked for beside it,
+  not at the game root where extraction found it); a PNG saved by an editor without its grAb
+  chunk lost the sprite's offsets (the lump's own are kept); the WAD read-back decodes each new
+  lump as extraction does instead of comparing the encoder with itself.
+- Fix: VTF env maps before 7.5 carry a seventh face; their largest mipmap was read at the
+  wrong offset.
+- Fix: a game plugin whose engine plugin is off is no longer loaded (named in the problems).
+- Bethesda overrides say that Oblivion, Fallout 3 and New Vegas (BSA 103/104) need archive
+  invalidation, and why a member was not written (a name Windows cannot hold as a file, or one
+  leading out of the folder). A REDengine name leading out of the folder, kept by its hash, is
+  no longer counted as skipped.
+- Fix: a feature's background install that failed showed as a succeeded job; each failure is a
+  warning and the job fails, naming them.
+- Fix: dump, trace, profile, agent, record and the attach tools wrote under a game folder (or a
+  folder of the user's) opened as the workspace; they are refused there, and `viwo attach`
+  refuses a workspace inside the game.
+- Fix: a pid or seconds that is not a number (a workflow's `{pid}` input) answered a 500; it is
+  named (`invalid_request`).
+- Fix: the preview cookie carried the API token, and a browser sends a host's cookies to every
+  port: it is now a token of its own, for `/preview/` only, named with the port, set only for a
+  keyed LAN peer. Non-ASCII tokens, keys and cookies, a range number of thousands of digits and
+  a preview file locked or gone answered no response and a traceback: refused, ignored or 404.
+- Fix: two concurrent recording starts both won, and an action ending while a recording was
+  stopped could lose its step; the recorder's state is changed under one lock.
+- Open, recorded in CONFORMANCE (2.10, partial): `genie`, `warscape` and `source` still use
+  title executables as detection evidence; the per-title data moves to game plugins.
+- `contracts/paths.py` (walking without links) and `api/peers.py` (loopback, token comparison)
+  split out to keep their modules under the caps.
+
 ## 1.20.1 (2026-11-05)
 - Doc 19.4 (embedded child GUIs) designed: what faithful embedding must cover, two approaches
   (A: the child's own remote display through pinned tools, recommended, Linux first; B: ViWo's

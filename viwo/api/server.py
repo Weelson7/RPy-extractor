@@ -2,15 +2,14 @@
 
 from __future__ import annotations
 
-import hmac
-import ipaddress
 import json
 import mimetypes
+import os
 import secrets
 import sys
 import threading
 import webbrowser
-from http.cookies import SimpleCookie
+from http.cookies import CookieError, SimpleCookie
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
@@ -21,29 +20,19 @@ from viwo.core.curation.sorting import resolve
 from . import plugin_assets, routes
 from .app import App, failure, get_app
 from .handlers import GET, POST
+from .peers import WILDCARD_OR_LOOPBACK, loopback, same
 from .ranges import ABORTED, _copy, byte_range
 
 WEB_ROOT = Path(__file__).resolve().parent.parent / "web"
 TOKEN_HEADER = "X-VIWO-Token"
-COOKIE = "viwo_token"  # the same token, for media the page loads without headers
+COOKIE = "viwo_preview"  # + the port: a preview-only token for media a LAN peer's page loads
 MAX_BODY = 16 << 20  # JSON requests only; anything bigger is not a ViWo request
-
-
-WILDCARD_OR_LOOPBACK = {"0.0.0.0", "::", "", "127.0.0.1", "localhost", "::1"}
-
-
-def _loopback(peer: str) -> bool:
-    try:
-        address = ipaddress.ip_address(peer)
-    except ValueError:
-        return False
-    mapped = getattr(address, "ipv4_mapped", None)
-    return address.is_loopback or bool(mapped and mapped.is_loopback)
 
 
 class Handler(BaseHTTPRequestHandler):
     app: App
     token = ""
+    preview = ""  # grants /preview/ only: never the API (a cookie reaches every port of a host)
     server_version = "ViWo"
 
     def log_message(self, fmt: str, *args) -> None:  # quiet: the activity log is the record
@@ -57,11 +46,13 @@ class Handler(BaseHTTPRequestHandler):
         bound = self.app.server.host.lower()
         if name not in {"127.0.0.1", "localhost", "[::1]", bound}:
             return False
-        return bound not in WILDCARD_OR_LOOPBACK or _loopback(str(self.client_address[0]))
+        return bound not in WILDCARD_OR_LOOPBACK or loopback(str(self.client_address[0]))
 
     def _token_ok(self) -> bool:
-        sent = str(self.headers.get(TOKEN_HEADER, ""))
-        return bool(self.token) and hmac.compare_digest(sent, self.token)
+        return same(str(self.headers.get(TOKEN_HEADER, "")), self.token)
+
+    def _cookie_name(self) -> str:
+        return f"{COOKIE}_{self.server.server_address[1]}"  # two servers never share it
 
     def send_json(self, payload, status: int = 200) -> None:
         body = json.dumps(payload, default=str).encode("utf-8")
@@ -72,7 +63,7 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def send_file(self, path: Path, html_token: bool = False) -> None:
+    def send_file(self, path: Path, html_token: bool = False, cookie: bool = False) -> None:
         body = path.read_bytes()
         if html_token:
             meta = f'<meta name="viwo-token" content="{self.token}">'
@@ -84,8 +75,11 @@ class Handler(BaseHTTPRequestHandler):
         )
         self.send_header("Content-Length", str(len(body)))
         self.send_header("Cache-Control", "no-store" if html_token else "no-cache")
-        if html_token:  # previews load as <img>/<video>, which send no header: a cookie
-            self.send_header("Set-Cookie", f"{COOKIE}={self.token}; HttpOnly; SameSite=Strict")
+        if cookie:  # a LAN peer's previews load as <img>/<video>, which send no header
+            value = (
+                f"{self._cookie_name()}={self.preview}; HttpOnly; SameSite=Strict; Path=/preview/"
+            )
+            self.send_header("Set-Cookie", value)
         self.end_headers()
         self.wfile.write(body)
 
@@ -164,29 +158,37 @@ class Handler(BaseHTTPRequestHandler):
         self._preview(url.path[len("/preview/") :], head=True)
 
     def _cookie_ok(self) -> bool:
-        """This machine, or a peer that was given the page with the token (its cookie)."""
-        if _loopback(str(self.client_address[0])):
+        """This machine, or a peer that was given the page with the key (its preview cookie)."""
+        if loopback(str(self.client_address[0])):
             return True
-        jar = SimpleCookie(str(self.headers.get("Cookie", "")))
-        sent = jar[COOKIE].value if COOKIE in jar else ""
-        return bool(self.token) and hmac.compare_digest(sent, self.token)
+        try:
+            jar = SimpleCookie(str(self.headers.get("Cookie", "")))
+        except CookieError:
+            return False
+        name = self._cookie_name()
+        return same(jar[name].value if name in jar else "", self.preview)
 
     def _preview(self, rel: str, head: bool = False) -> None:
         """Workspace files, streamed, with single byte ranges so media can seek; a LAN peer
-        needs the token's cookie (the workspace is the user's data)."""
+        needs the preview cookie (the workspace is the user's data). A file locked or gone
+        answers 404 before any header, never a dropped connection."""
         if not self._cookie_ok():
             return self.send_error(403)
         try:
             path = resolve(self.app.workspace, rel)
-        except ViwoError:
+            handle = path.open("rb")
+        except (ViwoError, OSError):
             return self.send_error(404)
         try:
-            self._stream(path, head)
+            with handle:
+                self._stream(handle, path.name, head)
         except ABORTED:
             pass
+        except OSError:  # gone mid-stream: the headers are out, the connection ends
+            self.close_connection = True
 
-    def _stream(self, path: Path, head: bool) -> None:
-        size = path.stat().st_size
+    def _stream(self, handle, name: str, head: bool) -> None:
+        size = os.fstat(handle.fileno()).st_size
         span = byte_range(str(self.headers.get("Range", "")), size)
         if span == (-1, -1):
             self.send_response(416)
@@ -195,7 +197,7 @@ class Handler(BaseHTTPRequestHandler):
         start, end = span or (0, size - 1)
         self.send_response(206 if span else 200)
         self.send_header(
-            "Content-Type", mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+            "Content-Type", mimetypes.guess_type(name)[0] or "application/octet-stream"
         )
         self.send_header("Content-Length", str(max(0, end - start + 1)))
         self.send_header("Accept-Ranges", "bytes")
@@ -204,9 +206,8 @@ class Handler(BaseHTTPRequestHandler):
             self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
         self.end_headers()
         if not head and size:
-            with path.open("rb") as handle:
-                handle.seek(start)
-                _copy(handle, self.wfile, end - start + 1)
+            handle.seek(start)
+            _copy(handle, self.wfile, end - start + 1)
 
     def _static(self, path: str, key: str = "") -> None:
         """The page carries the API token for this machine only; a LAN peer (a server bound to
@@ -217,9 +218,11 @@ class Handler(BaseHTTPRequestHandler):
         target = (WEB_ROOT / rel).resolve()
         if WEB_ROOT.resolve() not in target.parents or not target.is_file():
             return self.send_error(404)
-        local = _loopback(str(self.client_address[0]))
-        keyed = bool(key) and hmac.compare_digest(key, self.token)
-        self.send_file(target, html_token=target.name == "index.html" and (local or keyed))
+        local, page = loopback(str(self.client_address[0])), target.name == "index.html"
+        keyed = same(key, self.token)
+        self.send_file(
+            target, html_token=page and (local or keyed), cookie=page and keyed and not local
+        )
 
 
 class QuietServer(ThreadingHTTPServer):
@@ -232,7 +235,7 @@ class QuietServer(ThreadingHTTPServer):
 
 def make_server(app: App, host: str | None = None, port: int | None = None) -> ThreadingHTTPServer:
     Handler.app = app
-    Handler.token = secrets.token_urlsafe(32)
+    Handler.token, Handler.preview = secrets.token_urlsafe(32), secrets.token_urlsafe(32)
     return QuietServer(
         (host or app.server.host, app.server.port if port is None else port), Handler
     )

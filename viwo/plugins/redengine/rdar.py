@@ -101,7 +101,8 @@ class Archive:
         if main is None:
             return False
         out = out if isinstance(out, ws.Names) else ws.Names(out)  # a folder: its own record
-        target = out.target(name) if name else None  # a name that escapes: kept by its hash
+        named = bool(name) and ws.writable(name) is not None  # an escape: kept by its hash, not
+        target = out.target(name) if named else None  # counted as skipped (it is not)
         if target is None:
             target = out.dest / f"{entry.name_hash:016x}.{extension(main)}"
         target.parent.mkdir(parents=True, exist_ok=True)

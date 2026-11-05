@@ -17,7 +17,7 @@ from types import SimpleNamespace
 from PIL import Image
 
 from tests.test_doom import make_picture, make_sound, make_wad
-from viwo.plugins.doom.pack import WadWriter, members
+from viwo.plugins.doom.pack import WadWriter, members, offsets_of
 from viwo.plugins.doom.wad import WadBuiltin, directory, read
 
 CTX = SimpleNamespace(cancel=SimpleNamespace(cancelled=False), options={})
@@ -82,10 +82,16 @@ class WadRoundTripTests(unittest.TestCase):
                 chosen = rng.sample([n for n in names if (out / n).is_file()], rng.randint(1, 5))
                 for member in chosen:
                     edit(rng, member, out / member)
-                edits = {m: out / m for m in chosen}
-                result = WadWriter().pack(wad, edits, CTX)
+                edits, ctx = (
+                    {m: out / m for m in chosen},
+                    SimpleNamespace(**vars(CTX), game_root=root),
+                )
+                result = WadWriter().pack(wad, edits, ctx)
                 self.assertEqual(result.files, len(chosen), result)
-                self.assertEqual(WadWriter().verify(wad, edits, CTX), [])
+                self.assertEqual(WadWriter().verify(wad, edits, ctx), [])
+                for member in (m for m in chosen if m.startswith("graphics/")):  # Pillow saved
+                    lump = read(wad, directory(wad)[1][members(wad, pal)[member][0]])  # no grAb:
+                    self.assertEqual(offsets_of(lump), (-4, 9), member)  # the lump's offsets kept
                 again = root / "again"
                 again.mkdir()
                 WadBuiltin().extract(wad, again, SimpleNamespace(**vars(CTX), game_root=root))
@@ -93,6 +99,32 @@ class WadRoundTripTests(unittest.TestCase):
                 self.assertEqual(
                     [lump.name for lump in directory(wad)[1]][:3], ["PLAYPAL", "P_START", "PIC1"]
                 )
+
+    def test_a_pwad_in_a_subfolder_and_a_read_back_that_can_fail(self) -> None:
+        """The packer finds the palette where extraction did (the game root's IWAD, not the
+        PWAD's folder), and its read-back decodes the lump: a damaged one is named."""
+        rng = random.Random(17)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            game(root, rng)  # the IWAD with the palette, at the root
+            (root / "mods").mkdir()
+            pwad = make_wad(
+                root / "mods" / "pics.wad",
+                [("P_START", b""), ("PIC9", make_picture()), ("P_END", b"")],
+            )
+            ctx, out = SimpleNamespace(**vars(CTX), game_root=root), root / "out"
+            out.mkdir()
+            WadBuiltin().extract(pwad, out, ctx)
+            shown = [p.relative_to(out).as_posix() for p in out.rglob("*.png")]
+            self.assertEqual(len(shown), 1, list(out.rglob("*")))
+            edit(rng, shown[0], out / shown[0])
+            edits = {shown[0]: out / shown[0]}
+            self.assertEqual(WadWriter().pack(pwad, edits, ctx).files, 1)
+            self.assertEqual(WadWriter().verify(pwad, edits, ctx), [])
+            data = bytearray(pwad.read_bytes())
+            data[12 + 8 + 8 + 3] ^= 0xFF  # a pixel of the written picture, past its header
+            pwad.write_bytes(bytes(data))
+            self.assertEqual(WadWriter().verify(pwad, edits, ctx), shown)
 
     def _check(self, out: Path, again: Path, chosen: list, names: list, pal: bytes) -> None:
         for member in names:

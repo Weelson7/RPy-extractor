@@ -10,7 +10,7 @@ from viwo.core.capture import CaptureRequest, capture, warnings
 from viwo.core.capture.policy import CONFIRMATION, DEFAULT_AUTO
 from viwo.core.workspace import claim
 
-from .app import App, existing, failure, path_param, picked
+from .app import App, existing, failure, foreign, path_param, picked
 
 
 def browse_file(app: App, q: dict) -> dict:
@@ -65,7 +65,12 @@ def runtime_job(app: App, d: dict, kind: str) -> dict:
     .runtime/."""
     from viwo.core.capture.runtime import RuntimeRequest, run
 
-    pid, name = int(d.get("pid") or 0), str(d.get("name", ""))
+    try:
+        _ours(app)
+        pid, seconds = _number(d, "pid", int, 0), _number(d, "seconds", float, 10)
+    except ViwoError as exc:
+        return failure(exc)
+    name = str(d.get("name", ""))
     if kind in ("dump", "trace", "profile") and not pid and not name:
         return failure(ViwoError("invalid_request", "give pid or name"))
     req = RuntimeRequest(
@@ -73,11 +78,36 @@ def runtime_job(app: App, d: dict, kind: str) -> dict:
         pid,
         name,
         tuple(str(f) for f in (d.get("functions") or ["CreateFileW"])),
-        float(d.get("seconds") or 10),
+        seconds,
         path_param(d, "gamePath") or Path(""),
         path_param(d, "exePath") or Path(""),
     )
     return app.job(kind, lambda jid, s, c: {"success": True, **run(app.rt, kind, req, s, c)})
+
+
+def _number(d: dict, key: str, cast, default):
+    """A number from the request (a runbook's input arrives as text); anything else is named,
+    never a 500 (a boolean is not a pid)."""
+    raw = d.get(key)
+    if raw in (None, ""):
+        return default
+    try:
+        if isinstance(raw, bool):
+            raise TypeError(key)
+        return cast(raw)
+    except (TypeError, ValueError) as exc:
+        raise ViwoError("invalid_request", f"{key} must be a number, not {raw!r}") from exc
+
+
+def _ours(app: App) -> None:
+    """Runtime files go under the active workspace's .runtime/: never into a game folder or a
+    folder of the user's opened as the workspace."""
+    if foreign(app.workspace):
+        raise ViwoError(
+            "refused",
+            f"{app.workspace} is not a ViWo workspace: nothing is written into it",
+            hint="extract a game into it first, or open a workspace ViWo made",
+        )
 
 
 def runtime_routes(prefix: str) -> dict[str, Callable[[App, dict], Any]]:
@@ -109,9 +139,10 @@ def run_attach(app: App, d: dict) -> dict:
     if not key:
         return failure(ViwoError("invalid_request", "targetKey is required"))
     try:
-        pid = int(d.get("pid") or 0)
-    except (TypeError, ValueError):
-        return failure(ViwoError("invalid_request", "pid must be a number"))
+        _ours(app)  # the Cheat Engine table is written under the workspace
+        pid = _number(d, "pid", int, 0)
+    except ViwoError as exc:
+        return failure(exc)
     req = AttachRequest(
         game, app.workspace, key, str(d.get("tool", "")), pid, bool(d.get("confirm"))
     )

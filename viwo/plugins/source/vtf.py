@@ -50,7 +50,8 @@ def header(blob: bytes) -> dict:
         for i in range(min(count, 32)):
             tag, offset = struct.unpack_from("<3sxI", blob, 80 + 8 * i)
             image = offset if tag == b"\x30\0\0" else image
-    faces = 6 if flags & ENVMAP else 1
+    (first_frame,) = struct.unpack_from("<H", blob, 26)  # VTFLib: before 7.5 an env map also
+    faces = (7 if minor < 5 and first_frame != 0xFFFF else 6) if flags & ENVMAP else 1  # sphere
     return {"width": width, "height": height, "format": fmt, "mips": mips, "image": image,
             "layers": max(1, frames) * faces * max(1, depth)}  # fmt: skip
 

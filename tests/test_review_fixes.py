@@ -27,16 +27,29 @@ class PreviewCookieTests(unittest.TestCase):
     def test_a_lan_peer_needs_the_cookie_this_machine_does_not(self) -> None:
         from viwo.api import server
 
+        mine = f"{server.COOKIE}_8081"  # the port in the name: another server's is not ours
         for peer, cookie, want in (
             ("127.0.0.1", "", True),
             ("192.168.1.9", "", False),
-            ("192.168.1.9", f"{server.COOKIE}=T0KEN", True),
-            ("192.168.1.9", f"{server.COOKIE}=nope", False),
-            ("192.168.1.9", "other=1; " + f"{server.COOKIE}=T0KEN", True),
+            ("192.168.1.9", f"{mine}=PREV", True),
+            ("192.168.1.9", f"{mine}=nope", False),
+            ("192.168.1.9", f"{mine}=T0KEN", False),  # the API token is never a preview cookie
+            ("192.168.1.9", f"{server.COOKIE}_9999=PREV", False),
+            ("192.168.1.9", "other=1; " + f"{mine}=PREV", True),
+            ("192.168.1.9", f'{mine}="\\351"', False),  # non-ASCII: refused, never a traceback
+            ("192.168.1.9", "\x00;;=", False),
         ):
-            fake = SimpleNamespace(token="T0KEN", client_address=(peer, 1), headers={})
-            fake.headers = {"Cookie": cookie}
+            fake = SimpleNamespace(token="T0KEN", preview="PREV", client_address=(peer, 1))
+            fake.headers, fake.server = (
+                {"Cookie": cookie},
+                SimpleNamespace(server_address=("h", 8081)),
+            )
+            fake._cookie_name = lambda fake=fake: server.Handler._cookie_name(fake)
             self.assertEqual(server.Handler._cookie_ok(fake), want, (peer, cookie))
+        from viwo.api.peers import same
+
+        self.assertFalse(same("\xe9", "T0KEN"))  # a non-ASCII header or key
+        self.assertEqual(server.byte_range("bytes=" + "9" * 5000 + "-", 10), None)  # no crash
 
 
 class MaskTests(unittest.TestCase):

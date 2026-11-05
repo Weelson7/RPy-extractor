@@ -66,18 +66,24 @@ def _indices(png: bytes, pal: bytes) -> tuple[int, int, list[int | None], tuple[
         return cache[key]
 
     pixels = [None if a < 128 else nearest(r, g, b) for r, g, b, a in rgba.getdata()]
-    return rgba.width, rgba.height, pixels, (int(grab[0]), int(grab[1]))
+    return rgba.width, rgba.height, pixels, grab
 
 
-def _grab(png: bytes) -> tuple[int, int]:
-    """The grAb chunk (ZDoom's picture offsets) the unpacker wrote, else (0, 0)."""
+def _grab(png: bytes) -> tuple[int, int] | None:
+    """The grAb chunk (ZDoom's picture offsets) the unpacker wrote; None when an editor
+    dropped it (the original lump's offsets are kept then)."""
     at = 8
     while at + 8 <= len(png):
         size, kind = struct.unpack_from(">I4s", png, at)
         if kind == b"grAb" and size == 8:
             return struct.unpack_from(">ii", png, at + 8)
         at += 12 + size
-    return 0, 0
+    return None
+
+
+def offsets_of(lump: bytes) -> tuple[int, int]:
+    """A Doom picture's own offsets (header bytes 4-8)."""
+    return struct.unpack_from("<hh", lump, 4) if len(lump) >= 8 else (0, 0)
 
 
 def picture(width: int, height: int, pixels: list, offsets: tuple[int, int]) -> bytes:
@@ -119,7 +125,8 @@ def dmx(data: bytes) -> bytes:
     return struct.pack("<HHI", 3, rate, len(body)) + body
 
 
-def encode(how: str, data: bytes, pal: bytes) -> bytes:
+def encode(how: str, data: bytes, pal: bytes, offsets: tuple[int, int] = (0, 0)) -> bytes:
+    """The lump for an edit; a picture without grAb keeps `offsets` (the original lump's)."""
     if how == "raw":
         return data
     if how == "dmx":
@@ -127,7 +134,7 @@ def encode(how: str, data: bytes, pal: bytes) -> bytes:
     width, height, pixels, grab = _indices(data, pal)
     if how == "flat":
         return bytes(0 if p is None else p for p in pixels)
-    return picture(width, height, pixels, grab)
+    return picture(width, height, pixels, tuple(int(v) for v in grab or offsets))
 
 
 def write_wad(path: Path, edits: dict[int, bytes], target: Path) -> None:
@@ -149,13 +156,14 @@ class WadWriter(Packer):
     def pack(self, container: Path, edited: dict[str, Path], ctx) -> Outcome:
         temp = container.with_name(container.name + ".viwo-tmp")
         try:
-            pal = palette(container, container.parent)
-            known = members(container, pal)
-            edits = {
-                known[m][0]: encode(known[m][1], src.read_bytes(), pal)
-                for m, src in edited.items()
-                if m in known
-            }
+            pal = palette(container, Path(ctx.game_root))  # where extraction found it
+            known, (_, entries) = members(container, pal), directory(container)
+            edits = {}
+            for member, src in edited.items():
+                if member in known:
+                    index, how = known[member]
+                    kept = offsets_of(read(container, entries[index]))  # if the PNG lost grAb
+                    edits[index] = encode(how, src.read_bytes(), pal, kept)
             write_wad(container, edits, temp)
             os.replace(temp, container)
         except (OSError, ValueError, struct.error, wave.Error) as exc:
@@ -166,19 +174,41 @@ class WadWriter(Packer):
         return Outcome(OutcomeKind.OK, len(edits), notes=notes)
 
     def verify(self, output: Path, edited: dict[str, Path], ctx) -> list[str]:
-        """Each edited lump decoded again equals the edit as the palette can hold it."""
-        pal = palette(output, output.parent)
+        """Each edited lump decoded again (the unpacker's own decoder) shows the edit as the
+        palette can hold it; a picture also keeps its offsets."""
+        pal = palette(output, Path(ctx.game_root))
         known, (_, entries) = members(output, pal), directory(output)
         bad = []
         for member, src in edited.items():
-            if member not in known:
-                bad.append(member)
-                continue
-            index, how = known[member]
-            written = read(output, entries[index])
-            if written != encode(how, src.read_bytes(), pal):
+            index, how = known.get(member, (-1, ""))
+            written = read(output, entries[index]) if index >= 0 else None
+            if written is None or not _shows(how, written, src.read_bytes(), pal):
                 bad.append(member)
         return sorted(bad)
+
+
+def _rgba(png: bytes) -> tuple[tuple[int, int], list[tuple]]:
+    """A PNG's pixels, every transparent one as (0, 0, 0, 0)."""
+    from PIL import Image
+
+    with Image.open(io.BytesIO(png)) as img:
+        size, data = img.size, list(img.convert("RGBA").getdata())
+    return size, [(r, g, b, 255) if a >= 128 else (0, 0, 0, 0) for r, g, b, a in data]
+
+
+def _shows(how: str, written: bytes, edit: bytes, pal: bytes) -> bool:
+    """The written lump, decoded as extraction decodes it, against the edit mapped to the
+    palette (pixels and, for a picture, offsets; a sound or raw lump byte for byte)."""
+    if how in ("raw", "dmx"):
+        return written == encode(how, edit, pal)
+    shown = (lumps.flat if how == "flat" else lumps.picture)(written, pal)
+    width, height, pixels, grab = _indices(edit, pal)
+    if how == "flat":  # a flat has no transparency: index 0 where the edit had none
+        pixels = [0 if p is None else p for p in pixels]
+    expected = [(0, 0, 0, 0) if p is None else (*pal[p * 3 : p * 3 + 3], 255) for p in pixels]
+    if shown is None or _rgba(shown) != ((width, height), expected):
+        return False
+    return how == "flat" or grab is None or tuple(grab) == offsets_of(written)
 
 
 def decoded(data: bytes, how: str, pal: bytes) -> bytes:

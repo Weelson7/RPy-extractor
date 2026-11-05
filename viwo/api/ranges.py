@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 
-RANGE = re.compile(r"bytes=(\d*)-(\d*)")
+RANGE = re.compile(r"bytes=(\d{0,18})-(\d{0,18})")  # longer is no file: the whole file is sent
 
 # The player seeked away or the tab closed mid-stream: normal, never worth a traceback.
 ABORTED = (BrokenPipeError, ConnectionResetError, ConnectionAbortedError)

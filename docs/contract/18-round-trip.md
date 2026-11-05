@@ -62,11 +62,11 @@ after writing):
 | `pack.asar` | `asar-writer` | app.asar rebuilt, header tree kept, Electron's per-file integrity hashes recomputed; `unpacked` members written to `app.asar.unpacked/` |
 | `pack.vpk` | `vpk-writer` | override: `<mod>/custom/!viwo_<set>.vpk`, a single-file VPK with the edits (the engine loads `custom/` first); the 30 GB set is never rebuilt |
 | `pack.xp3` | `xp3-writer` | override: the next patch archive KiriKiri loads after its own (`patch.xp3`, `patch2.xp3`...; edits of several archives share ViWo's patch; a game's own patch is never rewritten) |
-| `pack.bsa`, `pack.ba2` | `loose-override` | override: loose files in `Data/`, which the engine loads over any archive (Fallout 4 and later need two ini lines: said) |
+| `pack.bsa`, `pack.ba2` | `loose-override` | override: loose files in `Data/`, which the engine loads over any archive (Fallout 4 and later need two ini lines; Oblivion, Fallout 3 and New Vegas, BSA 103/104, need archive invalidation: both said); a member whose name Windows cannot hold as a file is not written, and said |
 | `pack.pack` | `movie-pack` | override: `data/viwo_<pack>.pack`, a pack of type movie Warscape loads over the release packs; PFH4 games; a PFH5/PFH6 game is refused by name until its layout is verified |
 | `pack.rgssad` | `rgssad-writer` | RPG Maker XP/VX (v1) and VX Ace (v3) archives rebuilt, every entry under its own key |
 | `pack.drs` | `drs-writer` | Genie DRS rebuilt, tables and entries in place |
-| `pack.wad` | `wad-writer` | IWAD/PWAD rebuilt, lumps and markers in order; what the unpacker converted is converted back: a PNG to a Doom picture (grAb offsets kept) or a flat through the game's palette, a WAV to DMX sound; read back after the palette mapping |
+| `pack.wad` | `wad-writer` | IWAD/PWAD rebuilt, lumps and markers in order; what the unpacker converted is converted back: a PNG to a Doom picture (grAb offsets kept; a PNG an editor saved without grAb keeps the lump's own) or a flat through the game's palette (the game root's, where extraction found it), a WAV to DMX sound; read back by decoding each new lump as extraction does and comparing it with the edit after the palette mapping |
 
 Not written back yet: TaleWorlds TPAC packages.
 

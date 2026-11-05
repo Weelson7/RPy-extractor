@@ -193,8 +193,8 @@ its runtime frameworks such as Cyber Engine Tweaks). Overwatch stays one plugin 
   live in `viwo/plugins/<engine>/games/<game>/` and are discovered with their engine; a game
   plugin found under another engine, or naming another one, is a discovery problem. A game
   plugin may import its own engine's package, never another plugin.
-- **Selection:** a game plugin never runs alone. A chosen game plugin (SINGLE, MIXED) brings its
-  engine first; the game plugins of the chosen engines whose own detection names their game
+- **Selection:** a game plugin never runs alone: one whose engine plugin is off is not loaded
+  (named in the problems). A chosen game plugin (SINGLE, MIXED) brings its engine first; the game plugins of the chosen engines whose own detection names their game
   (confidence >= 0.5) run after them (`core/pipeline/select.py` `with_games`).
 - **What it supplies:** its own slots and backends (a decoder runs only for the plugins chosen
   for the game, doc 8), options under `[options.<game id>]`, analysis targets, CLI commands; the

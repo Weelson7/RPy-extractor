@@ -7,6 +7,7 @@ from typing import Any, Callable
 
 from viwo.contracts.errors import ViwoError
 from viwo.core.preflight import feature_tools, install
+from viwo.core.steps import tell
 from viwo.core.wiring.boot import DEFAULT_INI
 from viwo.core.wiring.registry import BUILTIN_PLUGINS, load_plugin
 from viwo.core.wiring.settings import read_settings, write_settings
@@ -74,10 +75,14 @@ def _install_job(app: App, tools: list[str]) -> str:
         for dep in tools:
             try:
                 done.append(install(app.rt, dep, sink, cancel)["installed"])
-            except ViwoError as exc:
+            except ViwoError as exc:  # said in the log and the job, never a green job
                 failed.append(f"{dep}: {exc.message}")
+                tell(sink, f"Could not install {dep}: {exc.message}", "install", "warn")
         app.reload()
-        return {"success": not failed, "installed": done, "failed": failed}
+        if failed:
+            installed = f"; installed: {', '.join(done)}" if done else ""
+            raise ViwoError("failed", f"not installed: {'; '.join(failed)}{installed}")
+        return {"success": True, "installed": done, "failed": []}
 
     listener = lambda e: app.log(e.legacy_line())  # noqa: E731
     return app.jobs.submit_with_listener(listener, "install", run, background=True).job_id

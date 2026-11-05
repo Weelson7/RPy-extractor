@@ -111,7 +111,7 @@ class App:
         foreign folder runs without the lock, so nothing is written there."""
         target = folder or self.workspace
         try:
-            if _foreign(target):
+            if foreign(target):
                 if writes:
                     raise ViwoError(
                         "refused",
@@ -131,7 +131,7 @@ class App:
         return self.locked(lambda: self.job(kind, lambda jid, s, c: fn(s, c)), folder, writes)
 
 
-def _foreign(folder: Path) -> bool:
+def foreign(folder: Path) -> bool:
     """A folder with files of its own that neither ViWo workspace nor ViWo patched copy marks:
     a game folder, or the user's. An empty or ViWo-only folder is not foreign."""
     if not folder.is_dir() or ws.has_marker(folder) or (folder / ".viwo-patched").is_dir():
