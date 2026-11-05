@@ -17,6 +17,7 @@ from unittest import mock
 from tests.helpers import make_game, write_ini
 from viwo.api import app as app_module
 from viwo.api.server import Handler, byte_range, make_server
+from viwo.contracts.errors import ViwoError
 from viwo.core.curation.sorting import encode
 from viwo.core.wiring.boot import boot
 
@@ -235,11 +236,12 @@ class ServerTests(unittest.TestCase):
         bad_len = {**post, "Content-Length": "abc"}
         self.assertEqual(self.raw("POST", "/api/logs/clear", b"{}", **bad_len)[0].status, 413)
         self.assertEqual(self.call("POST", "/api/logs/clear", [1, 2])[0], 200)  # not an object
-        boom = mock.Mock(side_effect=RuntimeError("boom"))
-        with mock.patch.dict(handlers.GET, {"/api/logs": boom}):
-            status, body = self.call("GET", "/api/logs")
-        self.assertEqual((status, body["code"]), (500, "internal"))
-        self.assertTrue(any("RuntimeError: boom" in line for line in self.app.logs()))
+        # a RuntimeError is a 500 "internal"; a ViwoError says its own code and status, not a 500
+        cases = [(RuntimeError("x"), 500, "internal"), (ViwoError("refused", ""), 403, "refused")]
+        for err, want_status, want_code in cases:
+            with mock.patch.dict(handlers.GET, {"/api/logs": mock.Mock(side_effect=err)}):
+                status, body = self.call("GET", "/api/logs")
+            self.assertEqual((status, body["code"]), (want_status, want_code))
         self.assertEqual(self.call("GET", "/api/logs")[0], 200)  # still serving
 
 

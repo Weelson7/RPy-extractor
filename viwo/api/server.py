@@ -19,7 +19,7 @@ from viwo.contracts.errors import ViwoError
 from viwo.core.curation.sorting import resolve
 
 from . import plugin_assets, routes
-from .app import App, get_app
+from .app import App, failure, get_app
 from .handlers import GET, POST
 from .ranges import ABORTED, _copy, byte_range
 
@@ -114,6 +114,8 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json(table[path](self.app, arg))
             else:
                 self.send_json({"success": False, "error": f"Unknown route {path}"}, 404)
+        except ViwoError as exc:  # a legacy handler's refusal or bad request is said, not a 500
+            self.send_json(failure(exc), routes.STATUS.get(exc.code, 400))
         except Exception as exc:  # internal errors never crash the server
             self.app.log(f"[ERROR] {self.command} {path}: {type(exc).__name__}: {exc}")
             self.send_json({"success": False, "error": "internal error", "code": "internal"}, 500)
