@@ -145,6 +145,10 @@ class OS(ABC):
         """Undo exclude_from_scan for exactly these folders; False when the host refused."""
         return True
 
+    def memory_bytes(self) -> int:
+        """The machine's physical memory in bytes; 0 when this OS layer cannot tell."""
+        return 0
+
     def pids_of(self, image: str) -> list[int]:
         """Process ids whose image name is `image` (case-insensitive)."""
         return []

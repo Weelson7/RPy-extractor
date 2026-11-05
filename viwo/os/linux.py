@@ -149,3 +149,9 @@ class LinuxOS(HostOS):
 
     def data_home(self) -> Path:
         return Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share")
+
+    def memory_bytes(self) -> int:
+        try:
+            return os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")
+        except (ValueError, OSError, AttributeError):
+            return 0

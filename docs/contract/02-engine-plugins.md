@@ -134,13 +134,13 @@ Detection markers live in each plugin's `detect()`; slot defaults in doc 8.4.
 | godot | `unarchive.pck` (embedded PCK carving), `export.godot`, `pack.pck`, `analysis.gdscript` | `encryption_key` (secret), `recover` (bool) |
 | unreal | `unarchive.upak` (repak, QuickBMS spare), `unarchive.utoc` (retoc), `pack.upak` (`_P.pak`), `runtime.unreal` (UE4SS), `export.unreal` (UnrealAssetScout: textures, models, animations, sounds, JSON; mappings from the agent); AES per D18 | `aes_key` (secret), `find_key` (bool), `usmap` (path), `engine` (string) |
 | doom | `unarchive.wad` (PNG, WAV, MIDI, maps) | `raw_lumps` (bool) |
-| rpgmaker | `unarchive.rgssad`, `export.rpgmaker` (MV/MZ decryption), `pack.rpgmaker` | - |
-| kirikiri | `unarchive.xp3` (unencrypted entries; per-title ciphers reported) | - |
-| electron | `unarchive.asar` (`package.nw` is a zip); wrapper re-detection (doc 3.1) | - |
-| source | `unarchive.vpk` (v1/v2, multi-part, absent parts skipped) | - |
-| bethesda | `unarchive.bsa`, `unarchive.ba2` (textures rebuilt as DDS) | - |
-| genie | `unarchive.drs`, `decode.slp` (SLP sprites to PNG with the game palette) | - |
-| warscape | `unarchive.pack` (Total War PFH4/PFH5), `decode.loc` (localisation to JSON), `export.warscape` (DB tables to JSON with the game's RPFM schema) | - |
+| rpgmaker | `unarchive.rgssad`, `export.rpgmaker` (MV/MZ decryption), `pack.rpgmaker`, `pack.rgssad` | - |
+| kirikiri | `unarchive.xp3` (unencrypted entries; per-title ciphers reported), `pack.xp3` (the next patch archive) | - |
+| electron | `unarchive.asar` (`package.nw` is a zip), `pack.asar`; wrapper re-detection (doc 3.1) | - |
+| source | `unarchive.vpk` (v1/v2, multi-part, absent parts skipped), `pack.vpk` (override VPK in `custom/`) | - |
+| bethesda | `unarchive.bsa`, `unarchive.ba2` (textures rebuilt as DDS), `pack.bsa`/`pack.ba2` (loose files in `Data/`) | - |
+| genie | `unarchive.drs`, `decode.slp` (SLP sprites to PNG with the game palette), `pack.drs` | - |
+| warscape | `unarchive.pack` (Total War PFH4/PFH5), `pack.pack` (a movie pack in `data/`), `decode.loc` (localisation to JSON), `export.warscape` (DB tables to JSON with the game's RPFM schema) | - |
 | redengine | REDengine 4, detected by its RDAR archives: `unarchive.archive` (RDAR; Kraken through the game's Oodle DLL; names from the path list a game plugin supplies), `decode.cr2w` (WolvenKit: textures to PNG, meshes and animations to glTF, every resource to JSON), `pack.archive` (WolvenKit: override archive in `archive/pc/mod`); its verify reports the installed mods' conflicts (`archive/pc/mod` by name, then REDmod `mods/*/archives`; first wins) | - |
 | cyberpunk2077 | game plugin of redengine: the path list `cp77-hashes` (`name_lists`), `decode.redscripts` (redscript: `final.redscripts` to source); detected by the game's executables | `decompile` (bool) |
 | taleworlds | TaleWorlds engine, detected by its TPAC packages: `unarchive.tpac` (textures to DDS) | - |

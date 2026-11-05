@@ -23,14 +23,22 @@ REPORT_EVERY = 30  # seconds between "still waiting" events
 
 
 def agent_for(rt, game: Path) -> RuntimeAgent:
-    """The bound `runtime.<engine>` agent of the best-detected engine."""
+    """The bound `runtime.<plugin>` agent of the plugins that detected this game (a game plugin's
+    before its engine's); a plugin that did not detect the game never lends its agent."""
     found = detect_all(rt, FolderProbe(game))
-    for engine in sorted(found, key=lambda p: -found[p].confidence):
-        binding = rt.bindings.get(f"runtime.{engine}")
+    ranked = sorted(
+        (p for p in found if found[p].confidence >= 0.5 and p != "generic"),
+        key=lambda p: (not rt.plugins[p].manifest.engine, -found[p].confidence),
+    )
+    for plugin in ranked:
+        binding = rt.bindings.get(f"runtime.{plugin}")
         if binding is not None and binding.bound:
             return rt.backends[binding.main]
+    engines = ", ".join(ranked) or "no engine detected"
     raise ViwoError(
-        "unavailable", "no runtime agent for this engine", hint="Unity IL2CPP and Unreal have one"
+        "unavailable",
+        f"no runtime agent for this game ({engines})",
+        hint="Unity (BepInEx) and Unreal (UE4SS) have one",
     )
 
 

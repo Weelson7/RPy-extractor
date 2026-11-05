@@ -120,7 +120,14 @@ class BethesdaPlugin(EnginePlugin):
         return DetectionResult("bethesda", score, evidence, "bethesda")
 
     def slot_definitions(self):
-        return SLOTS
+        from .pack import SLOTS as PACK_SLOTS
+
+        return SLOTS + PACK_SLOTS
+
+    def pack_slot(self, unarchive_slot: str) -> str:
+        return {"unarchive.bsa": "pack.bsa", "unarchive.ba2": "pack.ba2"}.get(unarchive_slot, "")
 
     def backends(self):
-        return (BsaBuiltin(), Ba2Builtin())
+        from .pack import LooseOverride
+
+        return (BsaBuiltin(), Ba2Builtin(), LooseOverride())

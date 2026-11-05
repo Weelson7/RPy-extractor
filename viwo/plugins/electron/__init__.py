@@ -101,7 +101,14 @@ class ElectronPlugin(EnginePlugin):
         return DetectionResult("electron", score, tuple(evidence), "electron")
 
     def slot_definitions(self):
-        return (SLOT,)
+        from .pack import SLOT as PACK_SLOT
+
+        return (SLOT, PACK_SLOT)
+
+    def pack_slot(self, unarchive_slot: str) -> str:
+        return "pack.asar" if unarchive_slot == "unarchive.asar" else ""
 
     def backends(self):
-        return (AsarBuiltin(),)
+        from .pack import AsarWriter
+
+        return (AsarBuiltin(), AsarWriter())

@@ -249,3 +249,17 @@ class WindowsOS(HostOS):
 
     def data_home(self) -> Path:
         return Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local")
+
+    def memory_bytes(self) -> int:
+        import ctypes
+
+        class Status(ctypes.Structure):  # MEMORYSTATUSEX
+            _fields_ = [("length", ctypes.c_ulong), ("load", ctypes.c_ulong)] + [
+                (name, ctypes.c_ulonglong)
+                for name in ("total", "free", "pagefile", "freepage", "virtual", "freevirt", "ext")
+            ]
+
+        status = Status()
+        status.length = ctypes.sizeof(Status)
+        ok = ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status))
+        return int(status.total) if ok else 0

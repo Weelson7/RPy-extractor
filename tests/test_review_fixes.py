@@ -7,6 +7,7 @@ the job table holds under concurrent submits."""
 
 from __future__ import annotations
 
+import os
 import random
 import tempfile
 import threading
@@ -245,6 +246,46 @@ class ExtensionFilterTests(unittest.TestCase):
                 on_disk = {p.parent.name for p in (ws_root / str(case)).rglob("*.*")}
                 self.assertEqual(on_disk, kept)
                 self.assertIn(f"{gone + 2} file(s) of other types left out", lines[0])
+
+
+class GhidraHeapTests(unittest.TestCase):
+    def test_the_heap_follows_the_machine_and_the_users_setting_wins(self) -> None:
+        from viwo.core.analysis import ghidra
+
+        sizes = [ghidra.heap(gb << 30) for gb in range(0, 129, 4)]
+        values = [int(s[:-1]) for s in sizes]
+        self.assertEqual(values, sorted(values))  # more memory never means a smaller heap
+        self.assertTrue(all(2 <= v <= 16 for v in values))
+        self.assertEqual((ghidra.heap(0), ghidra.heap(32 << 30)), ("2G", "16G"))
+        java = SimpleNamespace(path="C:/jdk/bin/java.exe")
+        ctx = SimpleNamespace(
+            os=SimpleNamespace(tools=SimpleNamespace(locate=lambda s: java),
+                               memory_bytes=lambda: 24 << 30)
+        )  # fmt: skip
+        with mock.patch.dict("os.environ", {}, clear=False):
+            for name in ("GHIDRA_MAXMEM", "GHIDRA_HEADLESS_MAXMEM"):
+                os.environ.pop(name, None)
+            self.assertEqual(ghidra.java_env(ctx)["GHIDRA_HEADLESS_MAXMEM"], "12G")
+            os.environ["GHIDRA_MAXMEM"] = "4G"
+            self.assertNotIn("GHIDRA_HEADLESS_MAXMEM", ghidra.java_env(ctx))
+        from viwo.os import select_os
+
+        self.assertGreater(select_os().memory_bytes(), 1 << 30)  # this machine says its memory
+
+
+class AgentChoiceTests(unittest.TestCase):
+    def test_an_engine_that_did_not_detect_the_game_never_lends_its_agent(self) -> None:
+        from tests.test_doom import make_wad
+        from viwo.core.capture.agents import agent_for
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            game = root / "doomish"
+            game.mkdir()
+            make_wad(game / "doom.wad", [("X", b"x")], b"IWAD")  # Doom: no runtime agent
+            with self.assertRaises(ViwoError) as err:
+                agent_for(runtime(root), game)
+            self.assertIn("doom", err.exception.message)  # the engine it found, named
 
 
 class JobTableTests(unittest.TestCase):

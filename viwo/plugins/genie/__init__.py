@@ -14,6 +14,8 @@ from viwo.contracts.slots import SlotDefinition, Unarchiver
 from viwo.contracts.types import DetectionResult, Outcome, OutcomeKind
 from viwo.contracts.workspace import count_files
 
+from .pack import SLOT as PACK_SLOT
+from .pack import DrsWriter
 from .slp import SLP_SLOT, SlpDecoder
 
 MAGIC = b"Copyright (c) 1997 Ensemble Studios."
@@ -35,7 +37,7 @@ def entries(fh):
         raise ValueError("table count out of range")
     specs = [struct.unpack("<4sII", fh.read(12)) for _ in range(tables)]
     for kind, offset, count in specs:
-        raw = kind[1:4][::-1].decode("ascii", "replace")  # from the file: letters only
+        raw = kind[::-1].decode("ascii", "replace")  # " pls" -> slp, "anib" -> bina
         ext = "".join(c for c in raw if c.isascii() and c.isalnum()) or "bin"
         if count > 1 << 20:
             raise ValueError("file count out of range")
@@ -90,7 +92,11 @@ class GeniePlugin(EnginePlugin):
                 magic=(MAGIC,),
             ),
             SLP_SLOT,
+            PACK_SLOT,
         )
 
+    def pack_slot(self, unarchive_slot: str) -> str:
+        return "pack.drs" if unarchive_slot == "unarchive.drs" else ""
+
     def backends(self):
-        return (DrsBuiltin(), SlpDecoder())
+        return (DrsBuiltin(), SlpDecoder(), DrsWriter())

@@ -14,6 +14,7 @@ from tests.test_capture import script
 from viwo.contracts import ViwoError
 from viwo.core.capture.agents import run_agent
 from viwo.core.capture.runtime import RuntimeRequest
+from viwo.plugins.unreal.pak import PAK_MAGIC
 
 FAKE_GAME = """#!{python}
 import re, sys, time
@@ -41,7 +42,8 @@ def unreal_game(root: Path, body: str = FAKE_GAME) -> tuple[Path, Path]:
     win64 = game / "Foo" / "Binaries" / "Win64"
     win64.mkdir(parents=True)
     (game / "Foo" / "Content" / "Paks").mkdir(parents=True)
-    (game / "Foo" / "Content" / "Paks" / "Foo-Windows.pak").write_bytes(b"\0" * 64)
+    pak = b"\0" * 64 + PAK_MAGIC + b"\0" * 40  # the footer magic: an Unreal game to detection
+    (game / "Foo" / "Content" / "Paks" / "Foo-Windows.pak").write_bytes(pak)
     exe = script(win64, "Foo-Win64-Shipping", body.replace("{python}", sys.executable))
     return game, exe
 

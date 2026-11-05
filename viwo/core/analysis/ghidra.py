@@ -40,7 +40,18 @@ def java_env(ctx) -> dict[str, str] | None:
         return None
     home = Path(java.path).resolve().parent.parent
     path = f"{home / 'bin'}{os.pathsep}{os.environ.get('PATH', '')}"
-    return {"JAVA_HOME": str(home), "PATH": path}
+    env = {"JAVA_HOME": str(home), "PATH": path}
+    if not ({"GHIDRA_MAXMEM", "GHIDRA_HEADLESS_MAXMEM"} & set(os.environ)):  # the user's wins
+        memory = getattr(ctx.os, "memory_bytes", lambda: 0)()  # unknown: Ghidra's own 2 GB
+        env["GHIDRA_HEADLESS_MAXMEM"] = heap(memory)
+    return env
+
+
+def heap(memory: int) -> str:
+    """Headless Ghidra's heap: half the machine's memory, 2 to 16 GB (its own default, 2 GB,
+    runs out on a large game executable)."""
+    gigabytes = memory // (2 << 30) if memory else 2
+    return f"{max(2, min(16, gigabytes))}G"
 
 
 def project_dir(staging: Path) -> Path:

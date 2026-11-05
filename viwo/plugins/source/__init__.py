@@ -125,10 +125,17 @@ class SourcePlugin(EnginePlugin):
         return DetectionResult("source", score, evidence, "source")
 
     def slot_definitions(self):
-        return (SLOT,)
+        from .pack import SLOT as PACK_SLOT
+
+        return (SLOT, PACK_SLOT)
+
+    def pack_slot(self, unarchive_slot: str) -> str:
+        return "pack.vpk" if unarchive_slot == "unarchive.vpk" else ""
 
     def backends(self):
-        return (VpkBuiltin(),)
+        from .pack import VpkWriter
+
+        return (VpkBuiltin(), VpkWriter())
 
     def claimed_suffixes(self):
         return (".vpk",)  # numbered parts; _dir.vpk files are identified as containers first

@@ -45,7 +45,9 @@ class Pass:
         start = time.monotonic()
         code, envelope, err = viwo(args)
         ok = code == 0 and bool(envelope and envelope.get("ok"))
-        self.record(name, ok, start, error="" if ok else _why(envelope, err))
+        said = list((envelope or {}).get("warnings") or [])  # what ViWo said (never silent)
+        self.record(name, ok, start, error="" if ok else _why(envelope, err), warnings=said[:60])
+        self.steps[name]["warningCount"] = len(said)
         return envelope.get("data") if ok and envelope else None
 
     def record(self, name: str, ok: bool, start: float, **data) -> None:
@@ -96,8 +98,6 @@ def _extract_summary(data: dict) -> dict:
     out = {k: data.get(k) for k in keep}
     out["plugins"] = [p.get("plugin") or p.get("id") for p in data.get("plugins", [])]
     out["byBackend"] = data.get("byBackend", {})
-    out["warnings"] = data.get("warnings", [])[:60]
-    out["warningCount"] = len(data.get("warnings", []))
     return out
 
 

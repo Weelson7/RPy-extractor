@@ -21,6 +21,8 @@ from .db import GAMES, DbBuiltin
 from .db import SLOT as DB_SLOT
 from .loc import SLOT as LOC_SLOT
 from .loc import LocBuiltin
+from .pack import SLOT as PACK_SLOT
+from .pack import MoviePack
 
 MAGICS = (b"PFH4", b"PFH5", b"PFH6")
 HEADER = 28
@@ -114,10 +116,14 @@ class WarscapePlugin(EnginePlugin):
             ),
             LOC_SLOT,
             DB_SLOT,
+            PACK_SLOT,
         )
 
     def export_slot(self) -> str:
         return "export.warscape"
 
+    def pack_slot(self, unarchive_slot: str) -> str:
+        return "pack.pack" if unarchive_slot == "unarchive.pack" else ""
+
     def backends(self):
-        return (PackBuiltin(), LocBuiltin(), DbBuiltin())
+        return (PackBuiltin(), LocBuiltin(), DbBuiltin(), MoviePack())

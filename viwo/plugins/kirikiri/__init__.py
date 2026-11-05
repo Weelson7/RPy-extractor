@@ -138,7 +138,14 @@ class KiriKiriPlugin(EnginePlugin):
         return DetectionResult("kirikiri", score, evidence, "kirikiri")
 
     def slot_definitions(self):
-        return (SLOT,)
+        from .pack import SLOT as PACK_SLOT
+
+        return (SLOT, PACK_SLOT)
+
+    def pack_slot(self, unarchive_slot: str) -> str:
+        return "pack.xp3" if unarchive_slot == "unarchive.xp3" else ""
 
     def backends(self):
-        return (Xp3Builtin(),)
+        from .pack import Xp3Writer
+
+        return (Xp3Builtin(), Xp3Writer())

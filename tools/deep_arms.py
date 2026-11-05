@@ -18,6 +18,7 @@ from viwo.contracts import workspace as ws
 
 ANALYSIS = ["--features", "extraction,analysis"]
 DYNAMIC = ["--features", "extraction,analysis,capture"]
+NEEDS_INPUT = {"analysis.emulate", "analysis.symbolic"}
 DOS = b"cannot be run in DOS mode"  # in every PE stub: a harmless, universal AOB target
 
 
@@ -31,6 +32,9 @@ def analyses(p, timeout: int) -> None:
         args += ["--timeout", str(timeout)]
         for slot in ["", *[x.get("slot", "") for x in target.get("extras", [])]]:
             name = f"analyze:{key}" + (f":{slot.rsplit('.', 1)[-1]}" if slot else "")
+            if slot in NEEDS_INPUT:  # a routine's address is the user's choice, not the pass's
+                p.steps[name] = {"ok": True, "seconds": 0, "skipped": "needs a routine address"}
+                continue
             data = p.run(name, args + (["--slot", slot] if slot else []))
             if data is not None:
                 p.steps[name]["artifacts"] = len(data.get("artifacts", []))

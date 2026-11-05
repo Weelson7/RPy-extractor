@@ -4,6 +4,24 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.16.3 (2026-11-05)
+The patching arm for the engines ViWo reads itself (from the deep pass: Doom had no packer,
+nor had most of these): `pack.asar` (rebuilt, integrity hashes recomputed), `pack.vpk` (an
+override VPK in `custom/`), `pack.xp3` (the next KiriKiri patch archive), `pack.bsa`/`pack.ba2`
+(loose files in `Data/`), `pack.pack` (a Warscape movie pack; PFH5+ refused by name),
+`pack.rgssad` (XP/VX/VX Ace rebuilt under their keys), `pack.drs` (rebuilt). Each override is
+written where its engine loads changes over its own archives and read back.
+- Fix: a DRS table with a four-letter type (`anib`, AoE's `bina`) lost a letter.
+- Fix: headless Ghidra ran with its 2 GB default heap and died on a large executable
+  (`OutOfMemoryError`, found by the deep pass on a Godot game); it now gets half the machine's
+  memory (2 to 16 GB) unless the user set `GHIDRA_MAXMEM`. The OS layer says the machine's
+  memory (`memory_bytes`).
+- Deep pass: ViWo's own warnings are read from the envelope; emulate/symbolic, which need a
+  routine address, are skipped and said.
+- Fix: `viwo agent` lent Unity's agent (BepInEx) to any game whose engine has none (a Godot game
+  got "a Mono build"); only a plugin that detected the game gives its agent, a game plugin's
+  first, and the error names the engines found.
+
 ## 1.16.2 (2026-11-05)
 - The presentation tooling (`tools/presentation/`): frames of every view driven through
   headless Edge on a real game; the technical PDF (architecture, the three arms and failover in
