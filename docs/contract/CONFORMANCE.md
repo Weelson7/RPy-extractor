@@ -323,4 +323,4 @@ declarative (Kaitai) plugins; the indexes repository split.
 | 19.3 the recorder: start, pause, continue, note, stop (saved as a runbook), discard; every action route recorded | implemented | `api/recording.py`; REC chip and RECORD A WORKFLOW (`web/js/views/recording.js`) |
 | 19.3 portable parameters, secret options as secret inputs never written, expectations and replay that stops where an answer differs | implemented | `core/workflows.py`, `api/handlers_runbooks.py` `run_step`, `cli_guides.py`; `tests/test_workflows.py` |
 | 19.3 recording what is done inside a child tool (today: a note the user writes) | open | needs 19.4 |
-| 19.4 embedded child GUIs | open | - |
+| 19.4 embedded child GUIs | open | designed in 19.4; waits for the owner's decisions (approach, pins, Windows popups, input exposure) |

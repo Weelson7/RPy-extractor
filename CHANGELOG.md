@@ -4,6 +4,12 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.1 (2026-11-05)
+- Doc 19.4 (embedded child GUIs) designed: what faithful embedding must cover, two approaches
+  (A: the child's own remote display through pinned tools, recommended, Linux first; B: ViWo's
+  own capture and input), and the owner's decisions it waits for (approach, pins, Windows
+  popups, the input route's exposure). Nothing is built yet.
+
 ## 1.20.0 (2026-11-05)
 - Workflows (doc 19.3, the third UI capability of doc 16.4): record what you do in ViWo and
   replay it. While a recording runs (RUNBOOKS, RECORD A WORKFLOW; a REC chip in the status strip

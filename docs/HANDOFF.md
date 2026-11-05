@@ -95,9 +95,10 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
    request through the job handlers, edited as JSON; a structured step editor is open);
    workflows shipped (1.20.0: the server records every action route, saved as a runbook with
    expected answers; replay stops where one differs; what is done inside a child tool is a
-   note until 19.4); next **embedded child GUIs** (19.4: the
-   native windows inside the web surface with faithful input, behind the OS layer, Windows and
-   Linux). Contract first, then API and UI, property tests.
+   note until 19.4); next **embedded child GUIs**: designed in doc 19.4 (A: child-native
+   remote display through pinned tools, recommended, Linux first; B: ViWo's own capture and
+   input); it waits for the owner's decisions listed there (approach, pins, Windows popups,
+   the input route's exposure). Contract first, then API and UI, property tests.
 1. **Rung D4** (partly shipped: CPU profiling, `viwo profile`, 1.6.1): open are the hook loader
    with hot reload (`hook.inject`), the overlay (`hook.overlay`) and own-traffic network tooling
    (`net.*`). The network plaintext capture and the DLL injection loader are the owner's call and

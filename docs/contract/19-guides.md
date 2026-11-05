@@ -169,9 +169,33 @@ like any other: edit it, add steps you do, run it from any step.
 Code: `viwo/core/workflows.py` (expectations, portable parameters), `viwo/api/recording.py`
 (the recorder and its route wrapper), `viwo/web/js/views/recording.js`.
 
-## 19.4 Embedded child GUIs (open)
+## 19.4 Embedded child GUIs (open: design, the owner's decisions below)
 
 The child GUIs (x64dbg, Ghidra, Cheat Engine, qrenderdoc) run inside ViWo's web surface instead
 of a separate OS window, each resizable and fullscreen, with the cursor, mouse and keyboard
 forwarded faithfully to the native window: the matching mechanism per OS (X11 or Wayland on
 Linux, the window system on Windows), behind the OS layer. Comes after workflows.
+
+A browser cannot hold a native window, so an embedded child is a remote display of that window:
+its pixels streamed to a canvas, the user's input sent back. What "faithful" has to cover: every
+window the child opens (its popup menus, dialogs and tooltips are separate OS windows), the
+cursor shape, the keyboard as typed (layout, dead keys, shortcuts the browser would take such
+as Ctrl+W), the clipboard both ways, resizing the child with its panel, and fullscreen.
+
+| | A. Child-native remote display (pinned tools) | B. ViWo's own capture and input |
+|---|---|---|
+| Linux | each child on its own virtual display (Xvfb) with a VNC server for it (x11vnc), or one `xpra` session per child (its own HTML5 client); Wayland runs the child under Xwayland on that display | X11 capture (XGetImage/XShm) and XTest input on the child's own Xvfb display |
+| Windows | a VNC server sharing one window (UltraVNC's single-window mode) or the desktop region it covers | Windows.Graphics.Capture or PrintWindow/BitBlt through `ctypes`, SendInput or PostMessage for input |
+| browser side | noVNC (MPL-2.0) through websockify, in the panel | a canvas and a WebSocket of ViWo's own |
+| popups, menus | Linux: complete (the whole display is the child's); Windows: the open risk | Linux: complete; Windows: a desktop-region capture shows them only while the window is visible on the real desktop |
+| cost | GPL tools as separate processes, pinned; their first-run answers off screen | more first-party code, no new pins |
+
+Recommended: A (the child's display, native tools: the principle of this doc), Linux first,
+where a private display gives full fidelity; Windows as a second step once its popup
+behaviour is verified by hand on the four tools.
+
+Decisions needed from the owner before building: A or B; the pins A adds (Xvfb, x11vnc or
+xpra, UltraVNC, noVNC, websockify); whether a desktop-region capture is acceptable on Windows
+(the child stays visible on the real desktop); and the input route's exposure (local only; never
+over the LAN key link by default). Nothing here injects input into anything but the child's own
+window or display.
