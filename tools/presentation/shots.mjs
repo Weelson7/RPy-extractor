@@ -37,6 +37,8 @@ const press = (view, label) => ev(`(() => { const b = [...document.querySelector
 const live = "!!document.querySelector('#status-chips [data-kind=live]')";
 const idle = () => until(`!${live}`);
 const into = (selector) => ev(`document.querySelector(${JSON.stringify(selector)})?.scrollIntoView({ block: "start" })`);
+// a panel by its title: the grid's columns make positional selectors pick the wrong one
+const panelInto = (view, title) => ev(`[...document.querySelectorAll('#view-${view} .panel')].find((p) => p.querySelector('h3')?.textContent === ${JSON.stringify(title)})?.scrollIntoView({ block: "start" })`);
 
 await send("Emulation.setDeviceMetricsOverride", { width: +W, height: +H, deviceScaleFactor: 1, mobile: false });
 await send("Page.navigate", { url: APP });
@@ -91,7 +93,7 @@ await shot("capture", "CAPTURE: GPU frames through RenderDoc, harvested into the
 await go("runtime", 2000);
 await shot("runtime", "RUNTIME: an engine agent in a patched copy, memory dumps, API traces, sound, debugger.",
   "The engine's runtime agent runs in a marked patched copy (UE4SS for Unreal mappings and object dumps, BepInEx for Unity IL2CPP), memory dumps, Frida API traces, the game's sound to WAV, and x64dbg attached to the game's own process (live patching) or Cheat Engine with a ViWo table, as tracked children.");
-await press("runtime", "LIST TARGETS"); await sleep(4000); await into("#view-runtime .panel:last-of-type");
+await press("runtime", "LIST TARGETS"); await sleep(4000); await panelInto("runtime", "DEBUGGER AND MEMORY");
 await shot("runtime-debugger", "DEBUGGER AND MEMORY: x64dbg on the game's own process, Cheat Engine with a table.",
   "The game's executables x64dbg and Cheat Engine can take. x64dbg attaches to the running game (or starts its own executable), so a byte patched live lands in the real process; HOW TO opens the tool's workbook.");
 await go("patching");

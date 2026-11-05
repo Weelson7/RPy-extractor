@@ -9,6 +9,9 @@ const S = { books: [], problems: [], tool: "", sel: "" };
 const el = {};
 /** A workbook's `opens` slot family -> the view whose button opens the tool pre-loaded. */
 const OPENS = { handoff: "analysis", attach: "runtime" };
+/** A tool's name as its users know it (the pin id is the workbook's `tool`). */
+const NAMES = { renderdoccmd: "renderdoc", cheatengine: "cheat engine" };
+const named = (tool) => (NAMES[tool] || tool).toUpperCase();
 
 /** The HOW TO button beside a tool (ANALYSIS, RUNTIME): this view, showing that tool's workbooks. */
 export const howToBtn = (tool, label = "HOW TO") => btn(label, () => { pref("wbTool", tool); location.hash = "#workbooks"; },
@@ -50,12 +53,12 @@ function pickTool(tool) {
 
 function renderList() {
   const tools = [...new Set(S.books.map((b) => b.tool))];
-  fill(el.tools, tools.length > 1 ? seg([["", "ALL"], ...tools.map((t) => [t, t.toUpperCase()])], S.tool, pickTool, { "aria-label": "Tool" }) : null);
+  fill(el.tools, tools.length > 1 ? seg([["", "ALL"], ...tools.map((t) => [t, named(t)])], S.tool, pickTool, { "aria-label": "Tool" }) : null);
   const shown = S.books.filter((b) => !S.tool || b.tool === S.tool);
   el.count.textContent = `${shown.length} OF ${S.books.length}`;
   fill(el.list, shown.length ? shown.map((b) => h("button", {
     type: "button", class: "job", role: "listitem", "data-id": b.id, "aria-current": b.id === S.sel ? "true" : null, onclick: () => renderBook(b),
-  }, h("span", { class: "kind" }, b.title), badge(b.tool.toUpperCase(), b.stale ? "warn" : ""),
+  }, h("span", { class: "kind" }, b.title), badge(named(b.tool), b.stale ? "warn" : ""),
     h("span", { class: "mono dim small" }, `${b.steps.length} steps${b.source === "yours" ? " · yours" : ""}`)))
     : empty("NO WORKBOOK", "None is shipped or saved yet; a JSON file in viwo-data/workbooks/ adds one (doc 19.1)."),
   // never silent: a file that could not be used is named
@@ -71,7 +74,7 @@ function renderBook(b) {
   const step = b.steps[at], last = at === b.steps.length - 1;
   const opener = OPENS[(b.opens || "").split(".")[0]];
   fill(el.book,
-    h("div", { class: "job-h" }, h("b", {}, b.title), badge(b.tool.toUpperCase(), ""), b.source === "yours" ? badge("YOURS", "ok") : null,
+    h("div", { class: "job-h" }, h("b", {}, b.title), badge(named(b.tool), ""), b.source === "yours" ? badge("YOURS", "ok") : null,
       opener ? goBtn(`#${opener}`, `OPEN THE TOOL IN ${tab(opener)} →`, "sm ghost") : null),
     h("p", { class: "dim" }, b.summary),
     b.stale ? alert("warn", "WRITTEN FOR ANOTHER VERSION", `These steps were checked on ${b.tool} ${b.writtenFor}; the pinned ${b.tool} is ${b.pinned}. Menus and keys may differ.`) : null,

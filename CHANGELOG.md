@@ -4,6 +4,14 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.10 (2026-11-05)
+- Presentation: the RUNTIME debugger frame scrolls to the DEBUGGER AND MEMORY panel by its
+  title (a positional selector had matched another panel). The recapture at 1.20.9 came out
+  whole otherwise: 183,621 files from the seven archives, the counter moving through the
+  WolvenKit decode.
+- CAPTURE says the frames are kept (they open in RenderDoc) with their textures; WORKBOOKS
+  names a tool as its users know it (RENDERDOC, CHEAT ENGINE), not by its pin id.
+
 ## 1.20.9 (2026-11-05)
 - Never silent: a batch decoder (WolvenKit's `decode.cr2w`) is called 600 files at a time
   (`decode.PART`), so the "Decoded files" counter moves between calls. On the Cyberpunk demo

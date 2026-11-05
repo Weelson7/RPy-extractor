@@ -34,7 +34,7 @@ function mount(root) {
     viewHead(code("capture"), "CAPTURE", "Run the game under RenderDoc: after the delay one frame is captured and the game is stopped, nothing to press (set 0 to take captures yourself with F12 and quit when done). Every texture and shader of every capture lands in the workspace, and ViWo says which ones static extraction had missed."),
     assure([["ANY GAME", "anti-cheat and online titles only produce warnings; you decide, you are responsible"],
       ["GAME FOLDER RESTORED", "anything the capture agent writes next to the game is journaled and put back"],
-      ["INTO THE WORKSPACE", "captures are harvested to PNG and collected like extracted files"]]),
+      ["INTO THE WORKSPACE", "every frame is kept (it opens in RenderDoc) with its textures as PNG, collected like extracted files"]]),
     h("div", { class: "grid2" },
       h("div", { class: "col" }, targetPanel(), panel(`${code("capture")}.B`, "BEFORE YOU START", el.checkBtn, el.before)),
       h("div", { class: "col" }, el.progPanel, el.result)),

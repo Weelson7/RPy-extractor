@@ -1,6 +1,6 @@
 # Handoff
 
-State at **v1.20.9** (branch `makeover`). History is in [CHANGELOG.md](../CHANGELOG.md); the
+State at **v1.20.10** (branch `makeover`). History is in [CHANGELOG.md](../CHANGELOG.md); the
 design in [docs/contract/](contract/README.md); what is open in
 [CONFORMANCE.md](contract/CONFORMANCE.md) and below.
 
@@ -40,7 +40,7 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
   half-edited module). Make a worktree at a committed version with its own venv, then run the
   pass there:
   ```powershell
-  git worktree add ..\viwo-pass v1.20.9
+  git worktree add ..\viwo-pass v1.20.10
   cd ..\viwo-pass; py -3.13 -m venv .venv; .venv\Scripts\pip install -e ".[unity,sevenzip,renpy,lz4]"
   powershell -File tools\games_pass.ps1 -Source C:\Users\<you>\Games [-Only <folder>,...]
   ```
@@ -153,8 +153,9 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
    which 62,653 CR2W through WolvenKit for about 100 minutes), the walk waits up to four hours
    for it and for every view to finish loading, and `frames.py` cancels and waits for any job
    still running, so no staging is left behind. The first capture (at 1.20.6) ran out of its
-   two hours in the WolvenKit decode, whose counter did not move (fixed at 1.20.9); recapture
-   at 1.20.9 or later.
+   two hours in the WolvenKit decode, whose counter did not move (fixed at 1.20.9); the capture
+   at 1.20.9 came out whole (183,621 files, every view loaded) but for the debugger frame
+   (fixed at 1.20.10); recapture at 1.20.10 or later.
    (The UX/UI review from frames of the running UI at the owner's window and zoom, and on a
    real extraction, was done at 1.12.0; it is repeated for the demo.)
    - a product demo video (MP4, on-screen captions, no voice) on Cyberpunk 2077, the most
