@@ -320,5 +320,7 @@ declarative (Kaitai) plugins; the indexes repository split.
 | 19.2 runbook files, validation, `{name}` values, save and delete of the user's copy | implemented | `core/guides.py`, `core/runbooks.py`, `data/runbooks/` (three); `tests/test_runbooks.py` |
 | 19.2 one step at a time through the job handlers, stop on failure, resume from any step, pause for a step you do | implemented | `api/handlers_runbooks.py`, `cli_guides.py` (`viwo runbook`), `web/js/views/runbooks.js` |
 | 19.2 a structured step editor (today: the runbook as JSON) | open | - |
-| 19.3 workflows | open | - |
+| 19.3 the recorder: start, pause, continue, note, stop (saved as a runbook), discard; every action route recorded | implemented | `api/recording.py`; REC chip and RECORD A WORKFLOW (`web/js/views/recording.js`) |
+| 19.3 portable parameters, secret options as secret inputs never written, expectations and replay that stops where an answer differs | implemented | `core/workflows.py`, `api/handlers_runbooks.py` `run_step`, `cli_guides.py`; `tests/test_workflows.py` |
+| 19.3 recording what is done inside a child tool (today: a note the user writes) | open | needs 19.4 |
 | 19.4 embedded child GUIs | open | - |

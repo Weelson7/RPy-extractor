@@ -57,6 +57,8 @@ viwo/
     workbooks.py step-by-step how-tos for a child tool's own interface (doc 19.1)
     runbooks.py  named step sequences (doc 19.2): rules and the `{name}` values; they run
                  through the API's job handlers (api/handlers_runbooks.py, cli_guides.py)
+    workflows.py recorded runbooks (doc 19.3): portable parameters, secret inputs, the
+                 expected answers a replay compares with; the recorder is api/recording.py
     capture/     dynamic arm: policy (warnings, confirmation), RenderDoc capture and harvest,
                  runtime agents, dump, trace, profile, audio loopback, attach (x64dbg on the
                  game's own process, Cheat Engine)

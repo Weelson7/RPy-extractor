@@ -4,6 +4,24 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.0 (2026-11-05)
+- Workflows (doc 19.3, the third UI capability of doc 16.4): record what you do in ViWo and
+  replay it. While a recording runs (RUNBOOKS, RECORD A WORKFLOW; a REC chip in the status strip
+  whatever view is open), every action route that succeeds adds a step: extract, survey,
+  repack, patch, mod, capture, analysis, cleanup and the runtime kinds; PAUSE / CONTINUE, a
+  note for what you did in a child tool, STOP AND SAVE writes it as your runbook. Each recorded
+  action keeps what it answered (a digest without ids, times and stamps, the game and workspace
+  as `{game}` and `{workspace}`, and the facts that name a change). A replay goes on by itself
+  while every answer is the one recorded and stops where one differs, saying what changed (the
+  UI's DIFFERS: YOUR CALL; the CLI asks at a terminal, else stops with `--from`).
+- A secret plugin option (an AES or PCK key; every option of a plugin ViWo does not know) is
+  never written into a recording: it becomes a secret input asked at each run (the CLI asks
+  without echo), which the UI does not keep. An id an earlier step answered (a cleanup plan's
+  `planId`) is recorded as `{step<N>_<key>}`, so a replayed apply sends its own replay's plan; a
+  process id is never recorded. Capture and the runtime kinds carry no expectation. A recording
+  needs the game; STOP waits for the actions still running; a step naming another game is said.
+  A recorded extract that asked replays with `onExisting: new`. `GET|POST /api/recording`.
+
 ## 1.19.0 (2026-11-05)
 - Runbooks (doc 19.2, the second UI capability of doc 16.4): named, editable, saved sequences
   of steps. An action step is a job kind with its parameters and runs through the handler

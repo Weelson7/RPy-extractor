@@ -67,7 +67,11 @@ shared GAME selector and the WORKSPACE; opening one keeps the arm you were in. W
 the HOW TO buttons in ANALYSIS and RUNTIME open it on one tool (`pref("wbTool")`,
 `howToBtn(tool)`), a runbook step on one workbook (`workbookBtn(id)`). RUNBOOKS (doc 19.2) runs
 one step per request (`/api/runbooks/step`), waits for DONE, CONTINUE on a step you do, keeps
-each runbook's input values (`pref("rb.<id>.<name>")`) and edits a runbook as JSON. The game selector is one browser
+each runbook's input values (`pref("rb.<id>.<name>")`; a secret input's value stays in the page
+only) and edits a runbook as JSON. Its RECORD A WORKFLOW panel (`recording.js`, doc 19.3)
+drives the server's recorder; while it records, the status strip shows a REC chip with the
+steps caught so far, whatever view is open; a replayed step that answers otherwise than
+recorded pauses as DIFFERS: YOUR CALL with what changed. The game selector is one browser
 preference (`gamePath`): views read it, write it through `setGame` and follow the `game` event.
 
 ## Add-ons: views and panels as contributions (`registry.js`)

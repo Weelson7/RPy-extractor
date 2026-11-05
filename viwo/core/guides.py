@@ -53,17 +53,28 @@ def load(rt, kind: str, parse: Parse) -> tuple[list[dict], list[str]]:
     return list(guides.values()), problems
 
 
-def _holder(folder: Path, guide_id: str) -> Path | None:
-    """The user's file that holds this id (the first by name: the one `read` keeps), whatever
-    the file is called."""
+def _raw(folder: Path):
+    """(path, its JSON object) for each of the user's files that parses as an object."""
     for path in sorted(folder.glob("*.json")) if folder.is_dir() else ():
         try:
             raw = json.loads(path.read_text(encoding="utf-8"))
         except (OSError, ValueError):
             continue
-        if isinstance(raw, dict) and raw.get("id") == guide_id and inside(folder, path):
-            return path
-    return None
+        if isinstance(raw, dict):
+            yield path, raw
+
+
+def file_ids(rt, kind: str) -> set[str]:
+    """Every id the user's files hold, usable or not (a new id never overwrites one)."""
+    return {str(raw.get("id")) for _, raw in _raw(user_dir(rt, kind)) if raw.get("id")}
+
+
+def _holder(folder: Path, guide_id: str) -> Path | None:
+    """The user's file that holds this id (the first by name: the one `read` keeps), whatever
+    the file is called."""
+    return next(
+        (p for p, raw in _raw(folder) if raw.get("id") == guide_id and inside(folder, p)), None
+    )
 
 
 def _file(rt, kind: str, guide_id: str) -> tuple[Path, Path]:

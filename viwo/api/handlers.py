@@ -307,13 +307,13 @@ POST: dict[str, Callable[[App, dict], Any]] = {
 from .handlers_analysis import ANALYSIS_GET, ANALYSIS_POST  # noqa: E402
 from .handlers_capture import CAPTURE_GET, CAPTURE_POST  # noqa: E402
 from .handlers_jobs import JOBS_POST  # noqa: E402
-from .handlers_runbooks import RUNBOOKS_GET, RUNBOOKS_POST  # noqa: E402
 from .handlers_settings import SETTINGS_GET, SETTINGS_POST  # noqa: E402
 from .handlers_system import SYSTEM_GET, SYSTEM_POST  # noqa: E402
 from .handlers_tools import TOOL_GET, TOOL_POST  # noqa: E402  (tables merged last)
+from .recording import install  # noqa: E402
 
-for table in (TOOL_GET, CAPTURE_GET, SETTINGS_GET, SYSTEM_GET, ANALYSIS_GET, RUNBOOKS_GET):
+for table in (TOOL_GET, CAPTURE_GET, SETTINGS_GET, SYSTEM_GET, ANALYSIS_GET):
     GET.update(table)
 for table in (TOOL_POST, CAPTURE_POST, SETTINGS_POST, SYSTEM_POST, JOBS_POST, ANALYSIS_POST):
     POST.update(table)
-POST.update(RUNBOOKS_POST)
+install(GET, POST)  # doc 19: runbooks, the recorder, the action routes recorded

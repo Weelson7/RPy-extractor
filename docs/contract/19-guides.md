@@ -9,7 +9,7 @@ does not reimplement what the child does.
 |---|------------|-------|
 | 19.1 | Workbooks: a guided how-to for a child tool's own interface | shipped 1.18.0 |
 | 19.2 | Runbooks: named, editable, saved sequences of steps | shipped 1.19.0 |
-| 19.3 | Workflows: record, pause, continue; replay that stops only where the output differs | open |
+| 19.3 | Workflows: record, pause, continue; replay that stops only where the output differs | shipped 1.20.0 |
 | 19.4 | Embedded child GUIs inside ViWo's web surface, with faithful input forwarding | open |
 
 ## 19.1 Workbooks
@@ -66,10 +66,12 @@ child tool when a workbook says how. Shipped defaults plus the user's own.
 
 ```text
 id       [a-z0-9-]+          title, summary   texts
-inputs   optional [{name, label, default?}]   name [a-z][a-z0-9_]*, not game or workspace
+inputs   optional [{name, label, default?, secret?}]   name [a-z][a-z0-9_]*, not game or
+                                      workspace; a secret one has no default and is never kept
 steps    one or more of
-  {title, do: KIND, with: {params}}   a ViWo action: KIND is a job kind of POST /api/jobs
-                                      (doc 12.5), params its parameters
+  {title, do: KIND, with: {params}, expect?}   a ViWo action: KIND is a job kind of POST
+                                      /api/jobs (doc 12.5), params its parameters; expect: what
+                                      a recording saw (19.3)
   {title, text, workbook?: ID}        a step the user does, then confirms; the workbook (19.1)
                                       says how in the child tool
 ```
@@ -114,11 +116,58 @@ Code: `viwo/core/guides.py` (the files of 19.1 and 19.2), `viwo/core/runbooks.py
 `viwo/data/runbooks/`, `viwo/api/handlers_runbooks.py`, `viwo/cli_guides.py`,
 `viwo/web/js/views/runbooks.js`.
 
-## 19.3 Workflows (open)
+## 19.3 Workflows
 
-ViWo records what the user does, with pause and continue. On replay, a step whose output is
-identical to the recording proceeds to the next by itself; a step whose output differs stops
+ViWo records what the user does, with pause and continue; the recording is saved as a runbook
+whose action steps carry what they answered. On replay, a step whose answer is the same as the
+recording proceeds to the next by itself; a step whose answer differs stops, says what changed
 and asks whether to continue. Meant for repeatable patching across game updates.
+
+**Recording.** One recording at a time, held by the server, so the actions of every view are
+caught: started with a title and the game, which is required (`POST /api/recording {action:
+start, title, game}`),
+then `pause`, `continue`, `note {title, text}` (adds a step you do: what you did in a child
+tool), `stop` (saves) or `discard`; `GET /api/recording` -> `{recording: {title, game, paused,
+steps} | null}`. While it runs and is not paused, every action route that answers success adds
+a step: extract, survey, repack, patch, mod, capture, analysis run, cleanup plan/apply/undo and
+the runtime kinds (dump, trace, profile, agent, record), as `{title, do, with, expect}` with the
+same parameters the route got. Whether an action is recorded is decided when it starts (a
+pause or stop meanwhile does not drop or add it); `stop` is refused (`busy`) while a recorded
+action is still running. A failed action is not added (the recording replays what worked); a
+step that names another game folder than the recording's is kept and said (`warnings`); the
+top bar's REC chip and the RUNBOOKS recording panel show every step it holds.
+
+**Portable parameters.** In the recorded parameters the game folder becomes `{game}` and the
+active workspace `{workspace}`, only where a path ends (`Foobar` is not `{game}bar`); an
+extract recorded with `onExisting` ask is saved with `new` (a replay extracts beside a used
+workspace and never replaces one unless the user chose it). An id or token an earlier step
+answered (a cleanup plan's `planId`, an apply's `undoToken`) becomes `{step<N>_<key>}`: a replay
+sends the one its own step N answered (runners carry every action's top-level answer values
+forward; a step run on its own refuses the missing value, named). A process id is never
+recorded: the image name stays, else `{pid}` becomes an input asked at each run. A secret (a
+plugin option its plugin declares of kind `secret`, as run records mask them, doc 3; every
+option of a plugin this runtime does not know) is never written: it becomes a secret input
+`{secret_<n>}` of the workflow (`inputs: [{name, label, secret: true}]`), asked for at each run
+(the CLI asks at a terminal without echo); the UI does not keep a secret input's value.
+
+**Expectations.** `expect: {digest, facts}` on an action step: the SHA-256 of the answer with
+its volatile parts dropped (keys ending in Id or Token, times, stamps, durations, seconds, event
+counts, `success`, `jobId`, a process id, a survey's numbered report path, a run record, log
+lines, a mod's `made` and `viwo` version, the record `context` with ViWo's version) and the game
+and workspace paths replaced by their `{name}`. Capture and the runtime kinds (dump, trace,
+profile, agent, record) carry no expectation: what a running game does differs on every run,
+so they proceed; `facts` are its scalar values (dotted
+keys, three levels, a list as its length, at most 60) to name what changed. On replay
+(`/api/runbooks/step`, `viwo runbook --run`) a step with `expect` answers `differs: [what
+changed]`, empty when the digest is the same. The UI then pauses on that step (YOUR CALL,
+CONTINUE or STOP); the CLI asks at a terminal and otherwise stops with `--from N+1`.
+
+**Saving.** `stop` writes the recording as the user's runbook (doc 19.2; the id from the title,
+`-2`, `-3`... when taken); an empty recording is refused, named. The saved workflow is a runbook
+like any other: edit it, add steps you do, run it from any step.
+
+Code: `viwo/core/workflows.py` (expectations, portable parameters), `viwo/api/recording.py`
+(the recorder and its route wrapper), `viwo/web/js/views/recording.js`.
 
 ## 19.4 Embedded child GUIs (open)
 

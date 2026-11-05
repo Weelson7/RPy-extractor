@@ -100,7 +100,7 @@ not reimplement a child tool's capability.
    overlays over the tool's own window wait for item 4.
 2. **Runbooks** (shipped 1.19.0, doc 19.2) — default or saved workflows, editable. A named sequence of steps a user can run,
    tweak and save (ViWo's own actions and/or child steps).
-3. **Workflows** — record what the user does, with pause/continue. On replay, when a step's
+3. **Workflows** (shipped 1.20.0, doc 19.3) — record what the user does, with pause/continue. On replay, when a step's
    output is identical it proceeds to the next automatically; when it differs it prompts whether
    to continue, then proceeds if yes, and so on. Useful for automated/repeatable patching.
 4. **Embedded child GUIs** — wrap the child GUIs (x64dbg, Ghidra, Cheat Engine, qrenderdoc, ...)

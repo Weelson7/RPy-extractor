@@ -30,6 +30,7 @@ class App:
         self.jobs = JobRunner()
         self.workspace = server.workspace
         self.history: list[dict] = []
+        self.recording: Any = None  # the workflow being recorded (api/recording.py, doc 19.3)
         self._log: deque[str] = deque(maxlen=2000)
         self._lock = threading.Lock()
         for folder in (server.logs, server.temp, server.workspace, server.merged):

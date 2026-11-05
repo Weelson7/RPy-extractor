@@ -6,10 +6,12 @@ import { h, fill, btn, panel, badge, viewHead, empty, errorBox, pref, toast, toa
 import { registerView, code } from "../registry.js";
 import { gameField, setGame } from "../game.js";
 import { workbookBtn } from "./workbooks.js";
+import { recordingPanel, refreshRecording } from "./recording.js";
 
 const S = { books: [], problems: [], sel: "", state: {}, result: {}, running: false, stop: false, resume: null, editing: false };
 const el = {};
-const STATE = { run: ["RUNNING", "live"], done: ["DONE", "ok"], fail: ["FAILED", "err"], wait: ["YOUR TURN", "warn"] };
+const STATE = { run: ["RUNNING", "live"], done: ["DONE", "ok"], fail: ["FAILED", "err"], wait: ["YOUR TURN", "warn"], differs: ["DIFFERS: YOUR CALL", "warn"] };
+const secrets = {}; // secret input values: this page only, never kept (doc 19.3)
 const TEMPLATE = { id: "my-runbook", title: "My runbook", summary: "What it does.", inputs: [],
   steps: [{ title: "Survey the game", do: "survey", with: { folder: "{game}" } }, { title: "Look at the report", text: "Open SURVEY." }] };
 
@@ -20,7 +22,8 @@ function mount(root) {
   el.game = gameField("rb-game");
   el.new = btn("NEW", () => edit(TEMPLATE), "ghost");
   root.append(
-    viewHead(code("runbooks"), "RUNBOOKS", "Named sequences of steps: ViWo's own actions run as jobs, and the steps you do in a child tool pause the run until you say they are done. Tweak a runbook and save your copy; yours go in viwo-data/runbooks/.", el.new),
+    viewHead(code("runbooks"), "RUNBOOKS", "Named sequences of steps: ViWo's own actions run as jobs, and the steps you do in a child tool pause the run until you say they are done. Tweak a runbook and save your copy; yours go in viwo-data/runbooks/. A recorded workflow is a runbook too.", el.new),
+    recordingPanel((id) => { if (!S.running) { S.sel = id; S.editing = false; show(); } }),
     h("div", { class: "jobs-grid" },
       panel(`${code("runbooks")}.A`, "RUNBOOKS", el.count, el.list),
       panel(`${code("runbooks")}.B`, "RUNBOOK", null, el.book)));
@@ -28,6 +31,7 @@ function mount(root) {
 }
 
 async function show() {
+  refreshRecording();
   if (S.running) return;
   try {
     const res = await api.runbooks();
@@ -56,14 +60,15 @@ function renderList() {
 /** The run's values: the game of the top bar and each input (remembered per runbook). */
 function values(b) {
   const out = { game: el.game.value.trim() };
-  b.inputs.forEach((i) => { out[i.name] = (pref(`rb.${b.id}.${i.name}`) ?? i.default) || ""; });
+  b.inputs.forEach((i) => { out[i.name] = (i.secret ? secrets[`${b.id}.${i.name}`] : pref(`rb.${b.id}.${i.name}`) ?? i.default) || ""; });
   return out;
 }
 
 function inputRow(b, i) {
-  const id = `rb-in-${i.name}`;
-  const field = h("input", { class: "input mono grow", id, value: pref(`rb.${b.id}.${i.name}`) ?? i.default, spellcheck: "false",
-    oninput: (e) => pref(`rb.${b.id}.${i.name}`, e.target.value) });
+  const id = `rb-in-${i.name}`, key = `${b.id}.${i.name}`;
+  const field = i.secret
+    ? h("input", { class: "input mono grow", id, type: "password", autocomplete: "off", value: secrets[key] || "", oninput: (e) => { secrets[key] = e.target.value; } })
+    : h("input", { class: "input mono grow", id, value: pref(`rb.${key}`) ?? i.default, spellcheck: "false", oninput: (e) => pref(`rb.${key}`, e.target.value) });
   return [h("label", { class: "lbl", for: id }, i.label.toUpperCase()), h("div", { class: "row" }, field)];
 }
 
@@ -93,9 +98,12 @@ function stepRow(b, s, i) {
       s.do ? h("span", { class: "mono dim small" }, `${s.do} ${JSON.stringify(s.with)}`) : h("span", {}, s.text),
       s.workbook ? h("div", { class: "row" }, workbookBtn(s.workbook)) : null,
       jobLink(res instanceof Error ? res.payload?.jobId : res?.jobId),
+      res?.differs?.length ? h("ul", { class: "list" }, res.differs.map((d) => h("li", { class: "mono small warn-text" }, `differs from the recording: ${d}`))) : null,
+      s.expect && !res ? h("span", { class: "mono dim small" }, "recorded: a replay stops here only if the answer differs") : null,
       res instanceof Error ? errorBox(res, `STEP ${i + 1} FAILED`, `Fix it, then RUN FROM HERE.`) : answer(res)),
     h("div", { class: "row" }, label ? badge(label, kind) : badge(s.do ? s.do.toUpperCase() : "YOU", s.do ? "" : "mute"),
       S.state[i] === "wait" ? btn("DONE, CONTINUE", () => S.resume?.(true), "sm primary") : null,
+      S.state[i] === "differs" && S.running ? btn("CONTINUE ANYWAY", () => S.resume?.(true), "sm primary") : null,
       S.running ? null : btn("RUN FROM HERE", () => run(i), "sm ghost")));
 }
 
@@ -117,6 +125,7 @@ async function run(from) {
   const b = current();
   if (!b) return;
   Object.assign(S, { running: true, stop: false, state: {}, result: {} });
+  const carry = {}; // what earlier steps of this run answered: a later step names it (doc 19.3)
   renderList();
   renderBook();
   for (let i = from; i < b.steps.length && !S.stop; i++) {
@@ -128,8 +137,16 @@ async function run(from) {
       continue;
     }
     try {
-      S.result[i] = await api.runbookStep({ id: b.id, step: i, values: values(b) });
-      S.state[i] = "done";
+      S.result[i] = await api.runbookStep({ id: b.id, step: i, values: { ...carry, ...values(b) } });
+      Object.entries(S.result[i]).forEach(([k, v]) => {
+        if (/^[A-Za-z][A-Za-z0-9_]*$/.test(k) && (typeof v === "string" || Number.isInteger(v))) carry[`step${i + 1}_${k.toLowerCase()}`] = String(v);
+      });
+      S.state[i] = S.result[i].differs?.length ? "differs" : "done";
+      if (S.state[i] === "differs") { // a workflow step answered otherwise than recorded: your call
+        renderBook();
+        if (S.stop || !(await yourTurn())) break;
+        S.state[i] = "done";
+      }
     } catch (err) {
       S.state[i] = "fail";
       S.result[i] = err;

@@ -451,7 +451,7 @@ main { padding: 18px 20px 24px; }
 .tool-grid, .jobs-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); }
 }
 /* ---------- post-1.0 fixes: system gap, slot tables, skipped stages ---------- */
-.view > .panel + .grid2, .view > .panel + .tool-grid { margin-top: 18px; }
+.view > .panel + .grid2, .view > .panel + .tool-grid, .view > .panel + .jobs-grid { margin-top: 18px; }
 .panel-b > .tbl { width: 100%; table-layout: auto; }
 .rail-stages [data-s="skip"] i::after { content: "–"; }
 .rail-stages .rail-note { display: block; }

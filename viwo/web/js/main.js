@@ -118,12 +118,12 @@ function route() {
 const chip = (label, value, kind = "", href = "") =>
   h(href ? "a" : "span", { class: "chip", "data-kind": kind || null, href: href || null }, h("i", {}), h("b", {}, label), h("span", {}, value));
 
-function renderChips(jobList) {
+function renderChips(jobList, rec = null) {
   const d = state.distro;
   const running = (jobList || []).filter((j) => j.state === "running" || j.state === "queued");
   const slots = d ? Object.values(d.slots || {}) : [];
   const bound = slots.filter((s) => s.main).length;
-  const sig = JSON.stringify([d && d.os, bound, running.map((j) => j.kind), Boolean(jobList)]);
+  const sig = JSON.stringify([d && d.os, bound, running.map((j) => j.kind), Boolean(jobList), rec && [rec.paused, rec.steps.length]]);
   if (sig === state.chips) return; // the strip is a live region: re-render only on change
   state.chips = sig;
   fill($("#status-chips"), // OS and plugin counts live in SYSTEM: the strip keeps what changes
@@ -131,13 +131,15 @@ function renderChips(jobList) {
       title: "Formats ViWo can handle right now. The rest need an optional tool: ViWo skips those formats until it is installed. Click for the format list in SYSTEM." }),
     running.length
       ? chip("RUNNING", `${(KIND[running[0].kind]?.[0] || running[0].kind).toUpperCase()}${running.length > 1 ? ` +${running.length - 1}` : ""}`, "live", "#jobs")
-      : chip("JOB", jobList ? "IDLE" : "…", "", "#jobs"));
+      : chip("JOB", jobList ? "IDLE" : "…", "", "#jobs"),
+    rec ? Object.assign(chip(rec.paused ? "REC PAUSED" : "● REC", `${rec.steps.length} STEPS`, rec.paused ? "" : "live", "#runbooks"),
+      { title: `Recording the workflow "${rec.title}": your actions in every view are added. Stop and save it in RUNBOOKS.` }) : null);
 }
 
 async function pollStatus() {
   try {
     if (!state.distro) bus.distro = state.distro = await api.distro();
-    renderChips(await api.jobs());
+    renderChips(await api.jobs(), (await api.recording().catch(() => ({}))).recording || null);
   } catch (err) {
     state.chips = "";
     fill($("#status-chips"), Object.assign(chip("SERVER", err.code === "offline" ? "OFFLINE" : "ERROR", "err"),
@@ -203,6 +205,7 @@ async function boot() {
   window.addEventListener("hashchange", route);
   bus.addEventListener("workspace", refreshWorkspacePath);
   bus.addEventListener("jobs", pollStatus);
+  bus.addEventListener("recording", pollStatus);
   bus.addEventListener("preflight", () => { state.distro = null; state.chips = ""; pollStatus(); });
   if (!location.hash && pref("view")) location.hash = pref("view");
   route();

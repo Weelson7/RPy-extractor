@@ -11,7 +11,7 @@ from pathlib import Path
 
 from viwo.contracts.errors import ViwoError
 
-from . import guides, workbooks
+from . import guides, workbooks, workflows
 from .guides import text
 
 KIND = "runbooks"
@@ -32,11 +32,13 @@ def names_in(value) -> set[str]:
 def _input(raw) -> dict | str:
     if not isinstance(raw, dict) or not isinstance(raw.get("name"), str):
         return "an input needs a name"
-    name, default = raw["name"], raw.get("default", "")
+    name, default, secret = raw["name"], raw.get("default", ""), raw.get("secret", False)
     if not _NAME.fullmatch(name) or name in RESERVED or not isinstance(default, str):
         return f"input {name!r}: lowercase name (not game or workspace), a text default"
+    if not isinstance(secret, bool) or (secret and default):
+        return f"input {name!r}: secret is true or false, and a secret has no default"
     label = raw["label"] if text(raw.get("label")) else name
-    return {"name": name, "label": label, "default": default}
+    return {"name": name, "label": label, "default": default, "secret": secret}
 
 
 def _step(raw, kinds, books: set[str], names: set[str]) -> dict | str:
@@ -48,10 +50,13 @@ def _step(raw, kinds, books: set[str], names: set[str]) -> dict | str:
             return f"unknown action {raw['do']!r} (one of {', '.join(sorted(kinds))})"
         if not isinstance(params, dict):
             return "with must be an object"
-        unknown = names_in(params) - names
+        unknown = {n for n in names_in(params) - names if not workflows.CARRIED.fullmatch(n)}
         if unknown:
             return f"no value named {', '.join(sorted(unknown))}"
-        return {"title": raw["title"], "do": raw["do"], "with": params}
+        if "expect" in raw and not workflows.valid_expect(raw["expect"]):
+            return "expect: a recording's {digest, facts} (doc 19.3)"
+        step = {"title": raw["title"], "do": raw["do"], "with": params}
+        return {**step, "expect": raw["expect"]} if "expect" in raw else step
     book = raw.get("workbook", "")
     if not text(raw.get("text")) or not isinstance(book, str) or (book and book not in books):
         return "a step you do needs a text (and a workbook that exists)"
@@ -95,9 +100,11 @@ def save(rt, kinds, raw) -> Path:
 
 
 def values_for(book: dict, given: dict, game: str, workspace: Path) -> dict[str, str]:
-    """The run's values: the game, the active workspace, each input (its default when empty)."""
+    """The run's values: the game, the active workspace, each input (its default when empty)
+    and what earlier steps of this run answered (`step<N>_<key>`, doc 19.3)."""
     mine = {i["name"]: str(given.get(i["name"]) or i["default"]) for i in book["inputs"]}
-    return {"game": game, "workspace": str(workspace), **mine}
+    carried = {k: str(v) for k, v in given.items() if workflows.CARRIED.fullmatch(str(k))}
+    return {**carried, "game": game, "workspace": str(workspace), **mine}
 
 
 def resolve(value, values: dict[str, str]):

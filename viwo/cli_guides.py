@@ -3,11 +3,13 @@ step by step through the same handlers as the web UI (so every action keeps its 
 
 from __future__ import annotations
 
+import getpass
 import json
 import sys
 from pathlib import Path
 
 from viwo.contracts.errors import Envelope, ViwoError
+from viwo.core import workflows
 
 
 def workbook(rt, args) -> Envelope:
@@ -57,12 +59,16 @@ def _values(book: dict, pairs: list[str]) -> tuple[dict[str, str], list[str]]:
         for key, _, _ in split
         if key not in known
     ]
-    return {key: value for key, _, value in split if key in known}, said
+    values = {key: value for key, _, value in split if key in known}
+    for i in book["inputs"]:  # a secret is asked, never typed on a command line (doc 19.3)
+        if i.get("secret") and not values.get(i["name"]) and sys.stdin.isatty():
+            values[i["name"]] = getpass.getpass(f"  {i['label']}: ")
+    return values, said
 
 
 def _answer(args, answer: dict) -> dict:
     """What a step's action answered (a plan, a report), shown on stderr and kept."""
-    kept = {k: v for k, v in answer.items() if k not in ("success", "jobId", "step")}
+    kept = {k: v for k, v in answer.items() if k not in ("success", "jobId", "step", "differs")}
     shown = json.dumps(kept, indent=1, default=str)
     _say(args, "  " + (shown if len(shown) < 1500 else shown[:1500] + "\n  ... (all: --json)"))
     return kept
@@ -105,20 +111,35 @@ def _run(rt, book: dict, args) -> tuple[dict, list[str]]:
     app.set_workspace(args.workspace.resolve())
     for index in range(args.start - 1, len(steps)):
         _say(args, f"[RUNBOOK] {index + 1}/{len(steps)} {steps[index]['title']}")
+        why = ""
         if "do" in steps[index]:
             done.append(_action(app, book, index, values, args))
+            values.update(workflows.carried(index, done[-1]["answer"]))  # for later steps
+            if done[-1]["differs"] and not _go_on(args, done[-1]["differs"]):
+                why = f"step {index + 1}'s answer differs from the recording: check it"
         elif not _done_by_you(args, steps[index]):
+            why = f"step {index + 1} is yours: do it"
+        if why:
             stop = {"runbook": book["id"], "done": done, "stoppedAt": index + 1}
-            return stop, [*said, _paused(app, args, index, len(steps))]
+            return stop, [*said, _paused(app, args, why, index + 1 == len(steps), index)]
     return {"runbook": book["id"], "done": done, "stoppedAt": None}, said
 
 
-def _paused(app, args, index: int, total: int) -> str:
-    """What a run that stopped at a step you do says (no --from after the last step)."""
-    if index + 1 == total:
-        return f"step {index + 1} is yours: do it; it is the last step"
-    again = f"--from {index + 2}{_where(app, args.workspace)}"
-    return f"step {index + 1} is yours: do it, then run again with {again}"
+def _paused(app, args, why: str, last: bool, index: int) -> str:
+    """What a stopped run says: how to go on (no --from after the last step)."""
+    if last:
+        return f"{why}; it is the last step"
+    return f"{why}, then run again with --from {index + 2}{_where(app, args.workspace)}"
+
+
+def _go_on(args, differs: list[str]) -> bool:
+    """A workflow step answered otherwise than recorded (doc 19.3): said; a terminal asks."""
+    for line in differs:
+        _say(args, f"  differs: {line}")
+    if not sys.stdin.isatty():
+        return False
+    reply = input("  the answer differs from the recording: continue? [y/N] ")
+    return reply.strip().lower() in ("y", "yes")
 
 
 def _action(app, book: dict, index: int, values: dict, args) -> dict:
@@ -134,4 +155,5 @@ def _action(app, book: dict, index: int, values: dict, args) -> dict:
         again = f"then --from {index + 1}{_where(app, args.workspace)}"
         hint = f"{answer['hint']}; {again}" if answer.get("hint") else again
         raise ViwoError(answer.get("code") or "failed", message, hint=hint)
-    return {"step": index + 1, "jobId": answer.get("jobId", ""), "answer": _answer(args, answer)}
+    entry = {"step": index + 1, "jobId": answer.get("jobId", ""), "answer": _answer(args, answer)}
+    return {**entry, "differs": answer.get("differs", [])}

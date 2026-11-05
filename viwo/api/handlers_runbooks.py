@@ -6,7 +6,7 @@ from __future__ import annotations
 from typing import Any, Callable
 
 from viwo.contracts.errors import ViwoError
-from viwo.core import runbooks
+from viwo.core import runbooks, workflows
 from viwo.core.guides import delete
 
 from .app import App, failure, safe
@@ -33,7 +33,11 @@ def run_step(app: App, book: dict, index: int, values: dict) -> dict:
     step, game = book["steps"][index], str(values.get("game") or "")
     params = runbooks.resolve(step["with"], runbooks.values_for(book, values, game, app.workspace))
     app.log(f"[RUNBOOK] {book['id']} step {index + 1}/{len(book['steps'])}: {step['title']}")
-    return {**submit(app, {"kind": step["do"], "params": params}), "step": index}
+    answer = {**submit(app, {"kind": step["do"], "params": params}), "step": index}
+    if answer.get("success") and "expect" in step:  # a workflow's step (doc 19.3): as recorded?
+        seen = {"game": game, "workspace": str(app.workspace)}  # after the action, as recorded
+        answer["differs"] = workflows.compare(step["expect"], answer, seen)
+    return answer
 
 
 def step_route(app: App, d: dict) -> dict:
