@@ -115,9 +115,10 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
    two Unity Mono test games, a UE5.1 test game, Rome II, Bannerlord, AoE II HD, Ren'Py, RPG
    Maker MV; no Godot game with data, no Source, Bethesda, KiriKiri-with-TLG or RPG Maker XP/VX.
    Findings kept for the open rows:
-   - Unity IL2CPP MonoBehaviour fields: UnityPy's TypeTreeGenerator recovers almost nothing on
-     Unity 2022.3/6 IL2CPP (12/64,657 on Schedule I; "failed to load il2cpp" on Unity 6); the
-     Cpp2IL stand-in route (`load_local_dll_folder` on Cpp2IL's dummy assemblies) is untested.
+   - Unity IL2CPP MonoBehaviour fields: the export feeds Cpp2IL's stand-in assemblies to
+     UnityPy's TypeTreeGenerator (1.16.5): 270 of 745 MonoBehaviours of Schedule I's
+     resources.assets come out with their fields (6 without); the rest fail inside the native
+     generator ("Object reference not set", generic and nested types).
    - Unreal models are UEFormat (`.uemodel`, Blender importer); glTF needs another exporter.
    - REDengine TweakDB: a reader prototype works (flats: per type `<QIII>` header (hash
      FNV-1a64 of the type name, values, keys, offset); values then keys `<QI>`; arrays and string

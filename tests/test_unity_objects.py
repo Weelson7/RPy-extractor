@@ -140,6 +140,40 @@ class LayoutTests(unittest.TestCase):
             ):
                 self.assertIn("no API", objects.layouts(env, game)[1])
 
+    def test_an_il2cpp_build_gets_cpp2il_stand_ins_once_and_every_gap_is_said(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            game = Path(tmp) / "game"
+            game.mkdir()
+            (game / "GameAssembly.dll").write_bytes(b"MZ")
+            runs = []
+
+            def run(argv, **kw):
+                runs.append(argv)
+                out = Path(argv[argv.index("--output-to") + 1])
+                out.mkdir(parents=True, exist_ok=True)
+                if writes:
+                    (out / "Assembly-CSharp.dll").write_bytes(b"MZ")
+                return SimpleNamespace(stdout="", stderr="Cpp2IL: no metadata found")
+
+            def ctx(tool):
+                return SimpleNamespace(
+                    os=SimpleNamespace(
+                        tools=SimpleNamespace(locate=lambda s: tool),
+                        process=SimpleNamespace(run=run),
+                    ),
+                    scratch=Path(tmp) / "scratch", cancel=None, log=lambda *a, **k: None,
+                )  # fmt: skip
+
+            tool = SimpleNamespace(argv_prefix=("Cpp2IL",))
+            self.assertIn("viwo install cpp2il", objects.assemblies(game, ctx(None))[1])
+            writes = False
+            self.assertIn("no metadata found", objects.assemblies(game, ctx(tool))[1])
+            writes = True
+            folder, why = objects.assemblies(game, ctx(tool))
+            self.assertEqual((folder.name, why), ("cpp2il-standins", ""))
+            self.assertIn(str(game), runs[-1])  # the game is read, the stand-ins land in scratch
+            self.assertTrue(folder.is_relative_to(Path(tmp) / "scratch"))
+
     def test_one_generator_reaches_every_environment(self) -> None:
         from viwo.plugins.unity import exporters
 

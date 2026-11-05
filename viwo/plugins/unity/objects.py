@@ -2,7 +2,9 @@
 formats, and every other object (scenes, prefabs, materials, animations, game objects and their
 components, MonoBehaviour data) as JSON from its type tree, one file per serialized file. A
 MonoBehaviour whose script layout the build stripped is listed with its script and counted; the
-layouts come from the game's managed assemblies when they ship (Mono) or are given."""
+layouts come from the game's managed assemblies when they ship (Mono), else (IL2CPP) from the
+stand-in assemblies Cpp2IL rebuilds from GameAssembly and the metadata (a separate process, MIT),
+once per export, into the run's scratch folder."""
 
 from __future__ import annotations
 
@@ -10,6 +12,15 @@ import json
 from pathlib import Path
 
 from viwo.contracts import workspace as ws
+from viwo.contracts.types import DependencySpec
+
+CPP2IL = DependencySpec(  # the same tool as the analysis arm's (analysis.il2cpp)
+    "cpp2il",
+    "Cpp2IL (IL2CPP to stub assemblies)",
+    env_var="VIWO_CPP2IL",
+    executables=("Cpp2IL",),
+    hint="install Cpp2IL (MIT): `viwo install cpp2il`",
+)
 
 FONT_EXT = {b"OTTO": ".otf", b"true": ".ttf", b"\x00\x01\x00\x00": ".ttf", b"ttcf": ".ttc"}
 BLOB = 4096  # raw byte fields above this size are summarised, not inlined as hex
@@ -116,12 +127,32 @@ class Dump:
         return (summary if self.written else ""), notes
 
 
-def layouts(env, game_root: Path):
-    """(the MonoBehaviour layout generator from the game's managed assemblies, "") once per
-    export, or (None, why not); the caller gives it to every environment it loads."""
+def assemblies(game_root: Path, ctx) -> tuple[Path | None, str]:
+    """(the folder of assemblies that describe the game's scripts, "") or (None, why not)."""
     managed = next(iter(sorted(game_root.glob("*_Data/Managed"))), None)
-    if managed is None or not any(managed.glob("*.dll")):
-        return None, "no managed assemblies (IL2CPP): MonoBehaviour fields need Cpp2IL's stand-ins"
+    if managed is not None and any(managed.glob("*.dll")):
+        return managed, ""
+    if not any(game_root.glob("GameAssembly.*")):
+        return None, "MonoBehaviour layouts unavailable: no managed assemblies and no IL2CPP build"
+    tool = ctx.os.tools.locate(CPP2IL) if ctx is not None else None
+    if tool is None:
+        return None, f"IL2CPP: MonoBehaviour fields need Cpp2IL's stand-ins ({CPP2IL.hint})"
+    out = Path(ctx.scratch) / "cpp2il-standins"
+    argv = [*tool.argv_prefix, "--game-path", str(game_root), "--output-as", "dummydll"]
+    ctx.log("Cpp2IL: stand-in assemblies for the MonoBehaviour layouts (IL2CPP)", stage="export")
+    result = ctx.os.process.run([*argv, "--output-to", str(out)], timeout=1800, cancel=ctx.cancel)
+    if not any(out.glob("*.dll")):
+        why = (result.stderr or result.stdout or "").strip().splitlines()[-1:] or ["no output"]
+        return None, f"IL2CPP: Cpp2IL wrote no stand-in assemblies ({why[0][:120]})"
+    return out, ""
+
+
+def layouts(env, game_root: Path, ctx=None):
+    """(the MonoBehaviour layout generator, "") once per export, or (None, why not); the
+    caller gives it to every environment it loads."""
+    folder, why = assemblies(game_root, ctx)
+    if folder is None:
+        return None, why
     try:
         from UnityPy.helpers.TypeTreeGenerator import TypeTreeGenerator
 
@@ -130,7 +161,7 @@ def layouts(env, game_root: Path):
         if not version:
             return None, "MonoBehaviour layouts unavailable: no Unity version in these files"
         generator = TypeTreeGenerator(version)
-        generator.load_local_dll_folder(str(managed))
+        generator.load_local_dll_folder(str(folder))
     except Exception as exc:  # noqa: BLE001  (the generator is optional; say why it is absent)
         return None, f"MonoBehaviour layouts unavailable: {str(exc)[:120]}"
     return generator, ""

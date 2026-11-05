@@ -179,7 +179,7 @@ def _export_env(ctx, env, label: str, record: dict) -> tuple[int, list[str]]:
     exported, notes = 0, []
     shared = record["shared"]  # one per export: the layouts are looked for once, given to all
     if record["dump"] is not None and "layouts" not in shared:
-        shared["generator"], shared["layouts"] = objects.layouts(env, ctx.game_root)
+        shared["generator"], shared["layouts"] = objects.layouts(env, ctx.game_root, ctx)
     if shared.get("generator") is not None:
         env.typetree_generator = shared["generator"]
     for obj in env.objects:

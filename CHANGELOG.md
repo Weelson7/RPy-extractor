@@ -4,6 +4,12 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.16.5 (2026-11-05)
+- Unity IL2CPP builds: MonoBehaviour data comes out with its fields. The export runs Cpp2IL
+  (pinned, its own process) once to rebuild stand-in assemblies from GameAssembly and the
+  metadata, and gives them to UnityPy's layout generator; on Schedule I's resources.assets 270
+  of 745 MonoBehaviours carry their fields (6 before). A missing Cpp2IL or an empty run is said.
+
 ## 1.16.4 (2026-11-05)
 - `pack.wad`: Doom WADs are written back (found missing by the deep pass on Freedoom): edited
   pictures and flats go back through the game's palette (grAb offsets kept), sounds to DMX, every
