@@ -184,7 +184,10 @@ The kit runs over the built-ins, `examples/plugins/hello/` and every folder in
 
 Plugins are per engine, and each engine has game plugins: what one title adds on top of its
 engine (owner's decision). An engine plugin keeps only what holds for every game on that engine
-and detects by the engine's own file signatures, never by a game's executable name; a game
+and detects by the engine's own file signatures, never by a game's executable name (an engine's
+own launcher, such as Source's `hl2.exe` and `srcds.exe`, is the engine's, not a title's). Data
+the engine's format needs per title, with no per-title code, may sit in the engine plugin as a
+table (Warscape's RPFM schema per title: `warscape/db.py` `GAMES`); a game
 plugin holds the title's own tooling and data (Cyberpunk 2077: its path list, redscript; later
 its runtime frameworks such as Cyber Engine Tweaks). Overwatch stays one plugin of its own
 (DataTool works for that title only).

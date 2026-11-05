@@ -4,6 +4,20 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.6 (2026-11-05)
+- Genie and Warscape detect by their archive signatures only (DRS, PFH packs); their title
+  executables are no longer evidence (doc 2.10, the fourth audit's last open point). Source's
+  `hl2.exe` and `srcds.exe` are the engine's own launcher; Warscape's per-title RPFM schema
+  table is data the DB format needs, no per-title code (doc 2.10 says so).
+- Fix: `pack.asar` wrote an unpacked member into a subfolder of `app.asar.unpacked/` only when
+  that folder existed, and dropped a member whose name led out of it without a word; the folder
+  is made and such a member is said. (In 1.20.5 by accident, with its tests.)
+- Coverage: the guides' CLI, routes and edge values, and the asar integrity blocks, as
+  property tests (`tests/test_guides_more.py`, `tests/test_asar_pack.py`).
+- Presentation: `frames.py` cancels and waits for any job still running before it exits (an
+  interrupted Cyberpunk extraction had left 50 GB of staging); the walk waits up to two hours
+  for the extraction; the demo runs on the games pass's Cyberpunk subset.
+
 ## 1.20.5 (2026-11-05)
 - Embedded child GUIs dropped (owner): x64dbg, Ghidra, Cheat Engine and qrenderdoc stay native,
   in their own windows as tracked children. Doc 19.4 records the decision (its design removed),

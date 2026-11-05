@@ -86,7 +86,7 @@ declarative (Kaitai) plugins; the indexes repository split.
 | 2.8 built-in scan, drop-ins, entry points, opt-in, override | implemented | `core/wiring/registry.py`, `tests/test_registry.py` |
 | 2.9 conformance checks and sandbox | implemented | `core/wiring/conformance.py`, `tests/test_conformance_kit.py` |
 | 2.10 game plugins: discovery under their engine, selection with it (never loaded without it), what they supply through the run context | implemented | `core/wiring/registry.py` `_without_orphans`, `core/pipeline/select.py` `with_games`, `contracts/plugin.py`; `plugins/redengine/games/cyberpunk2077`, `plugins/taleworlds/games/bannerlord`; `tests/test_game_plugins.py` |
-| 2.10 engine plugins detect by the engine's signatures, never a title's executable | partial | `genie` (`empires2.exe`...), `warscape` (each title's exe and its RPFM schema in `db.py` `GAMES`) and `source` (`hl2.exe`) still use title executables as evidence; the per-title data belongs in game plugins (fourth audit, 1.20.2) |
+| 2.10 engine plugins detect by the engine's signatures, never a title's executable | implemented | `genie` by DRS, `warscape` by PFH packs (1.20.6; their title executables dropped), `source` by VPK and the engine's own launcher; Warscape's per-title RPFM schema table is data (`warscape/db.py` `GAMES`) |
 
 ## 03 Pipeline
 

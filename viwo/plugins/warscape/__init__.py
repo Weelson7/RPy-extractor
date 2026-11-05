@@ -29,7 +29,6 @@ LIMIT = 1 << 31
 MANIFEST = PluginManifest(
     "warscape", "Warscape (Total War)", "0.1.0", engine_type="warscape", priority=10
 )
-MARKERS = tuple(f"{exe}.exe" for exe in GAMES)  # every Warscape game ViWo has a schema for
 
 
 def entries(fh):
@@ -91,13 +90,10 @@ class WarscapePlugin(EnginePlugin):
     manifest = MANIFEST
 
     def detect(self, probe: GameProbe) -> DetectionResult:
-        evidence = []
-        if any(probe.head(p, 4) in MAGICS for p in probe.with_suffix(".pack")[:10]):
-            evidence.append("PFH pack archives")
-        if probe.has_name(*MARKERS):
-            evidence.append("Total War executable")
-        score = 0.9 if len(evidence) == 2 else 0.7 if evidence else 0.0
-        return DetectionResult("warscape", score, tuple(evidence), "warscape")
+        """The engine's own signature (doc 2.10): PFH packs, never a title's executable."""
+        packs = any(probe.head(p, 4) in MAGICS for p in probe.with_suffix(".pack")[:10])
+        evidence = ("PFH pack archives",) if packs else ()
+        return DetectionResult("warscape", 0.85 if packs else 0.0, evidence, "warscape")
 
     def slot_definitions(self):
         return (

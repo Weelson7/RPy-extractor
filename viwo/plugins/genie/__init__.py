@@ -22,7 +22,6 @@ LIMIT = 1 << 31
 MANIFEST = PluginManifest(
     "genie", "Genie (Age of Empires)", "0.1.0", engine_type="genie", priority=10
 )
-MARKERS = ("empires2.exe", "aok hd.exe", "aoe2de_s.exe", "empires.exe", "empires2_x1.exe")
 
 
 def entries(fh):
@@ -68,13 +67,10 @@ class GeniePlugin(EnginePlugin):
     manifest = MANIFEST
 
     def detect(self, probe: GameProbe) -> DetectionResult:
-        evidence = []
-        if any(probe.head(p, len(MAGIC)) == MAGIC for p in probe.with_suffix(".drs")[:10]):
-            evidence.append("DRS resource archives")
-        if probe.has_name(*MARKERS):
-            evidence.append("Age of Empires executable")
-        score = 0.9 if len(evidence) == 2 else 0.7 if evidence else 0.0
-        return DetectionResult("genie", score, tuple(evidence), "genie")
+        """The engine's own signature (doc 2.10): DRS archives, never a title's executable."""
+        drs = any(probe.head(p, len(MAGIC)) == MAGIC for p in probe.with_suffix(".drs")[:10])
+        evidence = ("DRS resource archives",) if drs else ()
+        return DetectionResult("genie", 0.85 if drs else 0.0, evidence, "genie")
 
     def slot_definitions(self):
         return (

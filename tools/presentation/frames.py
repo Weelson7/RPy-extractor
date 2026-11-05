@@ -79,7 +79,7 @@ def capture(game: Path, out: Path, width: str, height: str, features=None) -> li
         node = shutil.which("node") or "node"
         run = subprocess.run(
             [node, str(script), url, str(port), str(out), width, height, str(game)],
-            capture_output=True, text=True, encoding="utf-8", timeout=3600,
+            capture_output=True, text=True, encoding="utf-8", timeout=3 * 3600,
         )  # fmt: skip
         if run.returncode:
             print(run.stderr[-2000:], file=sys.stderr)
@@ -90,7 +90,18 @@ def capture(game: Path, out: Path, width: str, height: str, features=None) -> li
         else:
             child.kill()
         child.wait(30)
+        stop_jobs(app_module.get_app())
         httpd.shutdown()
+
+
+def stop_jobs(app) -> None:
+    """A job still running is cancelled and waited for, so it removes its own temporary
+    folders (an extraction's staging is tens of GB); exiting under it would leave them."""
+    for job in app.jobs.list():
+        if not job.done.is_set():
+            job.cancel.cancel()
+            if not job.done.wait(1800):
+                print(f"job {job.job_id} did not stop: its temp folder may remain", file=sys.stderr)
 
 
 def main(argv=None) -> int:

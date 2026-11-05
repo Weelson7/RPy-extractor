@@ -62,7 +62,7 @@ for (let n = 0; n < 40 && (await ev(live)); n++) {
     "The job block shows every stage (probe, detect, unpack, export, carve, collect, decode) with counters, a ticker and the log of every tool, live.", { hold: 0.7, pdf: n === 2 });
   await sleep(1200);
 }
-await idle(); await sleep(3000);
+await until(`!${live}`, 2 * 3600000); await sleep(3000); // the whole run: the result and the browse views need it
 await into("#view-extract .result-host");
 await shot("extract-result", "The result: every file out, every format decoded, every tool named.",
   "RESULT: files copied by type, archives found and extracted, the backend that handled each, every fallback to a spare and every skipped entry said as a warning. The provenance map records where every file came from.");

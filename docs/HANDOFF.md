@@ -1,6 +1,6 @@
 # Handoff
 
-State at **v1.20.5** (branch `makeover`). History is in [CHANGELOG.md](../CHANGELOG.md); the
+State at **v1.20.6** (branch `makeover`). History is in [CHANGELOG.md](../CHANGELOG.md); the
 design in [docs/contract/](contract/README.md); what is open in
 [CONFORMANCE.md](contract/CONFORMANCE.md) and below.
 
@@ -23,7 +23,7 @@ py -3.13 -m venv .venv; .venv\Scripts\Activate.ps1
 pip install -e ".[unity,sevenzip,renpy,lz4,dev]"
 ruff format viwo tests tools packaging; ruff check viwo tests tools packaging
 python tools/loc_count.py --report
-python -m unittest discover -s tests -t .      # 600 tests, ~22 min on Windows
+python -m unittest discover -s tests -t .      # 609 tests, ~25 min on Windows
 python tools/version.py commit -m "..." [--feature|--major] [--push]
 ```
 
@@ -40,7 +40,7 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
   half-edited module). Make a worktree at a committed version with its own venv, then run the
   pass there:
   ```powershell
-  git worktree add ..\viwo-pass v1.20.5
+  git worktree add ..\viwo-pass v1.20.6
   cd ..\viwo-pass; py -3.13 -m venv .venv; .venv\Scripts\pip install -e ".[unity,sevenzip,renpy,lz4]"
   powershell -File tools\games_pass.ps1 -Source C:\Users\<you>\Games [-Only <folder>,...]
   ```
@@ -139,27 +139,18 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
      class name, whose names are in the game's exe as `gamedata<Name>_Record`); names from
      WolvenKit's `tweakdbstr.kark` (Kraken); 164 MB JSON in 11 s on 2.x. Not shipped (one game).
    - Total War schema install on first use (today: `viwo install rpfm-schema-<game>`).
-8. **End of the open work, in this order:** the full audit is done (fourth audit, 1.20.2: the
-   work since 1.15.5, every finding fixed with a property test, see CHANGELOG; open from it:
-   `genie`, `warscape`, `source` still detect by title executables, the per-title data belongs
-   in game plugins, CONFORMANCE 2.10); the LoC-reclaim pass is done (1.20.3: web back to its
-   own budget, `viwo` -267, core -112, budgets lowered). Further reclaim needs the owner's
-   decisions: `DependencySpec` metadata into `tools.json` (about -200, doc 2.6), dropping
-   contract members nothing calls (`Stage`, `supports_keys`, `DependencySpec.packages`, the
-   three OS methods doc 1 lists: `python_executable`, `case_sensitive`, `long_path`), letting
-   API handlers raise (about -30; the HTTP statuses change). Next the
-   presentation, in two parts that replace the status PDF. A frames run on Cyberpunk 2077 at
-   1.20.4 (worktree, `--features extraction,sorting,merger,analysis,capture`) showed the walk
-   cannot wait for a full extraction: after the walk's 15-minute wait the run was at 40 % of
-   UNPACK (collect and WolvenKit's decode still ahead: hours), so EXTRACT's result and the
-   WORKSPACE, SORT and CLEANUP frames show an unfinished run and an empty workspace. Owner's
-   decision before the demo is built: (a) a full extraction made beforehand from the worktree
-   (`viwo extract`, hours, its size to check against the ~150 GB free) that the walk opens for
-   the browse views after showing the live burst on a fresh workspace (a `frames.py
-   --workspace` option to add), or (b) a narrower demo extraction (an extension filter still
-   unpacks every archive; a container choice does not exist yet). (The UX/UI review from frames of the
-   running UI at the owner's window and zoom, and on a real extraction, was done at 1.12.0; it
-   is repeated for the demo.)
+8. **End of the open work, in this order:** the full audit is done (fourth audit, 1.20.2, and
+   its last open point at 1.20.6: Genie and Warscape detect by their archive signatures); the
+   LoC-reclaim pass is done (1.20.3: web back to its own budget, `viwo` -267, core -112,
+   budgets lowered). Next the presentation, in two parts that replace the status PDF. The
+   whole of Cyberpunk 2077 (86 GB) cannot be extracted inside the walk (hours, and its
+   uncompressed archives come close to the free disk), so the demo runs on the subset the
+   games pass already defines (`sqc/ctf.json` `pass-cyberpunk-2077`: seven archives, 6.7 GB)
+   plus the executable and `final.redscripts`, copied to `Test-games/cyberpunk-2077-demo`
+   (owner's approval, 2026-11-05); the walk waits up to two hours for the extraction and
+   `frames.py` cancels and waits for any job still running, so no staging is left behind.
+   (The UX/UI review from frames of the running UI at the owner's window and zoom, and on a
+   real extraction, was done at 1.12.0; it is repeated for the demo.)
    - a product demo video (MP4, on-screen captions, no voice) on Cyberpunk 2077, the most
      technically advanced covered game: boot, setup from blank, survey, select, extract, browse
      the assets, the analysis, runtime and patching arms where they apply;
