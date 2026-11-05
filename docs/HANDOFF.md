@@ -49,8 +49,10 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
   analysis flags, game-folder hash check), keeps `viwo-data/games-pass/<slug>/report.*` and
   deletes the copy. Free titles: `python tools/integration_games.py` over `Test-games/`
   (`sqc/games.md`).
-- **Presentation** (`tools/presentation/`, owner's two parts): `frames.py <game>` serves ViWo
-  with the repository's startup.ini on a fresh workspace and drives headless Edge or Chrome
+- **Presentation** (`tools/presentation/`, owner's two parts): `frames.py <game> [--features
+  extraction,sorting,merger,analysis,capture] [--keep]` serves ViWo with the repository's
+  startup.ini (the switches overridden for the run only; the run's workspace is deleted after
+  unless `--keep`) on a fresh workspace and drives headless Edge or Chrome
   through every view (`shots.mjs`: one PNG per step, a burst while an extraction runs, with a
   caption and a longer description each, in `steps.json`); `tech_pdf.py` builds the technical
   PDF from `tech_template.html` (mermaid charts, pinned and installed by itself), the frames and

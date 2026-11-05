@@ -4,7 +4,7 @@ on one game. Writes the PNGs and `steps.json` (caption, detail, hold, pdf per fr
 `tech_pdf.py` and `video.py`. The game folder is only read.
 
 Usage: python tools/presentation/frames.py <game folder> [--out viwo-data/presentation/frames]
-       [--size 1600x900]
+       [--size 1600x900] [--features extraction,sorting,merger,analysis,capture] [--keep]
 """
 
 from __future__ import annotations
@@ -44,10 +44,11 @@ def browser() -> str:
     return found
 
 
-def serve(work: Path):
-    """The app on a free loopback port, on a fresh empty workspace; returns (server, url)."""
+def serve(work: Path, features: tuple[str, ...] | None = None):
+    """The app on a free loopback port, on a fresh empty workspace; returns (server, url).
+    `features` overrides the ini's switches for this run only (the ini is not written)."""
     ini = ROOT / "startup.ini"
-    app = app_module.App(boot(ini), ini)
+    app = app_module.App(boot(ini, features=features), ini)
     (work / "workspace").mkdir(parents=True)
     app.set_workspace(work / "workspace")
     app_module.reset_app(app)
@@ -62,10 +63,10 @@ def free_port() -> int:
         return probe.getsockname()[1]
 
 
-def capture(game: Path, out: Path, width: str, height: str) -> list[dict]:
+def capture(game: Path, out: Path, width: str, height: str, features=None) -> list[dict]:
     work = out / "_run"
     shutil.rmtree(work, ignore_errors=True)
-    httpd, url = serve(work)
+    httpd, url = serve(work, features)
     port = free_port()
     flags = ["--headless=new", "--disable-gpu", "--no-first-run", f"--window-size={width},{height}"]
     flags += [f"--remote-debugging-port={port}", f"--user-data-dir={work / 'profile'}"]
@@ -97,13 +98,18 @@ def main(argv=None) -> int:
     ap.add_argument("game", type=Path)
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT)
     ap.add_argument("--size", default="1600x900")
+    ap.add_argument("--features", help="switches for this run, e.g. extraction,analysis,capture")
+    ap.add_argument("--keep", action="store_true", help="keep the run's workspace (_run)")
     args = ap.parse_args(argv)
     width, height = args.size.split("x")
+    features = tuple(f.strip() for f in args.features.split(",")) if args.features else None
     for old in args.out.glob("*.png"):
         old.unlink()
     args.out.mkdir(parents=True, exist_ok=True)
-    steps = capture(args.game.resolve(), args.out.resolve(), width, height)
+    steps = capture(args.game.resolve(), args.out.resolve(), width, height, features)
     (args.out / "steps.json").write_text(json.dumps(steps, indent=1), encoding="utf-8")
+    if not args.keep:  # an extraction of a large game: tens of GB the frames no longer need
+        shutil.rmtree(args.out / "_run", ignore_errors=True)
     print(f"{len(steps)} frames in {args.out}")
     return 0 if steps else 1
 

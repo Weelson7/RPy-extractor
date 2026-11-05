@@ -233,7 +233,34 @@ several applied in order.</li>
 </section>
 
 <section>
-<h2>7 · Engineering properties</h2>
+<h2>7 · Guides for the child tools</h2>
+<p>What a child tool does natively, it does natively: ViWo teaches its interface, sequences
+ViWo's own actions around it, and records what the user does (contract doc 19).</p>
+<pre class="mermaid">
+flowchart LR
+  WB[Workbook<br/>how to do it in the tool] --> RB[Runbook<br/>ViWo actions + steps you do]
+  REC[Recorder<br/>every action in every view] --> WF[Workflow<br/>a runbook with expected answers]
+  RB --> RUN{replay}
+  WF --> RUN
+  RUN -->|answer as recorded| NEXT[next step, by itself]
+  RUN -->|answer differs| ASK[stops: what changed, your call]
+</pre>
+<ul>
+<li><b>Workbooks</b>: step-by-step how-tos for x64dbg, Ghidra and Cheat Engine's own
+interfaces (patch a byte live and into a file, find the code behind a string, find what writes a
+value), checked against the pinned versions; your own in <code>viwo-data/workbooks/</code>.</li>
+<li><b>Runbooks</b>: named, editable sequences: an action step runs a job through the same
+handler as its view (every check kept), a step you do pauses the run; a failed step stops it and
+RUN FROM HERE resumes. Three ship; your tweaked copies replace them.</li>
+<li><b>Workflows</b>: the server records every successful action of every view while a
+recording runs and saves a runbook whose steps carry what they answered (ids, times and paths
+left out). A replay on an updated game goes on by itself until an answer differs, then names the
+change. Secrets become inputs asked at each run, never written.</li>
+</ul>
+</section>
+
+<section>
+<h2>8 · Engineering properties</h2>
 <ul>
 <li>The game folder is read-only: collect copies from it, staging is the only place files are
 moved from, every run compares the game folder before and after.</li>
@@ -255,13 +282,13 @@ per-start token; a LAN peer gets the page only with the key link printed at star
 </section>
 
 <section>
-<h2>8 · The web UI</h2>
+<h2>9 · The web UI</h2>
 <p>Plain HTML and ES modules served by <code>viwo serve</code>, no build step. A functional
 layer (views built from a component library, talking to the API) and a style layer (CSS tokens
 and two themes, <code>wormhole</code> and <code>plain</code>); a lint keeps them apart and a
 real-browser smoke test drives every view.</p>
 <ul>
-<li><b>Top bar</b>: SYSTEM, JOBS, SETTINGS (codes 00, 01, 02), the FORMATS and JOB chips, the
+<li><b>Top bar</b>: SYSTEM, JOBS, WORKBOOKS, RUNBOOKS, SETTINGS (codes 00 to 04), the FORMATS, JOB and REC chips, the
 shared game selector and the workspace.</li>
 <li><b>Rail</b>: one arm at a time, STATIC, DYNAMIC, PATCHING. Each view's code is the arm's
 letter and its index (S0, S1, ... D0, ... P0, ...), computed at load: plugins contribute views
@@ -273,14 +300,14 @@ console keeps every line of every tool.</li>
 </section>
 
 <section>
-<h2>9 · A walk through every view</h2>
+<h2>10 · A walk through every view</h2>
 <p class="sub">Captured by <code>tools/presentation/frames.py</code> on a real game, on a fresh
 workspace, with every installed tool.</p>
 {{tour}}
 </section>
 
 <section>
-<h2>10 · Reference</h2>
+<h2>11 · Reference</h2>
 <h3>Engine plugins and their slots, by arm</h3>
 {{plugins_table}}
 <h3>Slots and their backends on this machine</h3>
@@ -300,7 +327,7 @@ workspace, with every installed tool.</p>
 </section>
 
 <section>
-<h2>11 · Quality</h2>
+<h2>12 · Quality</h2>
 <ul>
 <li><b>{{test_count}} tests</b> in layers L0 to L6: static rules (layers, caps, lint), unit and
 property tests (random archives, hostile input, covering designs for plugin pairs), pipeline and

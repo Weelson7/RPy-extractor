@@ -49,7 +49,7 @@ await send("Page.reload");
 await sleep(3500);
 await go("static");
 await shot("static-home", "STATIC: the game is not running. The path, step by step.",
-  "Each arm opens on its end-to-end path. The top bar holds the shared game selector and the workspace, SYSTEM, JOBS and SETTINGS (00, 01, 02); the rail lists the arm's views, numbered S0, S1... as plugins add them.");
+  "Each arm opens on its end-to-end path. The top bar holds the shared game selector and the workspace, SYSTEM, JOBS, WORKBOOKS, RUNBOOKS and SETTINGS (00 to 04); the rail lists the arm's views, numbered S0, S1... as plugins add them.");
 await go("survey"); await press("survey", "SURVEY"); await sleep(1500); await idle(); await sleep(1500);
 await shot("survey", "SURVEY: what ViWo can pull from this game, read-only.",
   "A read-only coverage report: the engine found, which files each tool can open, what needs a key, and the dense unknown blobs the carver would scan. It runs on one game or a whole library.");
@@ -90,6 +90,9 @@ await shot("capture", "CAPTURE: GPU frames through RenderDoc, harvested into the
 await go("runtime", 2000);
 await shot("runtime", "RUNTIME: an engine agent in a patched copy, memory dumps, API traces, sound, debugger.",
   "The engine's runtime agent runs in a marked patched copy (UE4SS for Unreal mappings and object dumps, BepInEx for Unity IL2CPP), memory dumps, Frida API traces, the game's sound to WAV, and x64dbg attached to the game's own process (live patching) or Cheat Engine with a ViWo table, as tracked children.");
+await press("runtime", "LIST TARGETS"); await sleep(4000); await into("#view-runtime .panel:last-of-type");
+await shot("runtime-debugger", "DEBUGGER AND MEMORY: x64dbg on the game's own process, Cheat Engine with a table.",
+  "The game's executables x64dbg and Cheat Engine can take. x64dbg attaches to the running game (or starts its own executable), so a byte patched live lands in the real process; HOW TO opens the tool's workbook.");
 await go("patching");
 await shot("patching-home", "PATCHING: you change the game's content, always in a marked copy.",
   "Nothing writes into the game folder: repack, patch sets and mods all write a separate, marked patched copy (.viwo-patched).");
@@ -111,6 +114,12 @@ await shot("jobs", "JOBS: every run, its log and its result.",
 await go("settings", 2500);
 await shot("settings", "SETTINGS: features, plugins, tool paths and options, applied at once.",
   "Features, plugins, slot bindings, tool paths and plugin options, written to startup.ini and applied without a restart.");
+await go("workbooks", 2500); await ev("[...document.querySelectorAll('#view-workbooks .job')].find((b) => b.textContent.includes('Patch a byte'))?.click()"); await sleep(1200);
+await shot("workbooks", "WORKBOOKS: how to do one thing in a child tool's own interface, step by step.",
+  "Teaching, never automation: patch a byte in x64dbg live and into a file, find the code behind a string in Ghidra, find what writes a value in Cheat Engine. Checked against the pinned versions; a workbook written for another version says so.");
+await go("runbooks", 2500); await ev("[...document.querySelectorAll('#view-runbooks .job')].find((b) => b.textContent.includes('Extract a game'))?.click()"); await sleep(1200);
+await shot("runbooks", "RUNBOOKS: ViWo's actions and the steps you do, run in order; record your own.",
+  "An action step runs a job through the same handler as its view; a step you do pauses the run until DONE. RECORD A WORKFLOW catches every action of every view and saves it as a runbook whose replay stops only where an answer differs from the recording.");
 await ev("document.querySelector('#dock-toggle').click()"); await sleep(2500);
 await shot("console", "The activity console: every line every tool printed.",
   "The activity console at the bottom keeps every line of every tool, with warnings marked.");

@@ -4,6 +4,12 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.4 (2026-11-05)
+- Presentation: the walk shows WORKBOOKS, RUNBOOKS with the workflow recorder, and RUNTIME's
+  debugger and memory panel; the top bar's five tabs; the technical PDF gains "Guides for the
+  child tools" (doc 19). `frames.py --features` turns switches on for the run only (the ini is
+  not written) and the run's extraction workspace is deleted afterwards unless `--keep`.
+
 ## 1.20.3 (2026-11-05)
 Reclaim pass (behaviour unchanged; budgets lowered in `loc_caps.ini`):
 - `viwo/web` is back under its own 5,400-line budget: the rules both themes held byte for byte
