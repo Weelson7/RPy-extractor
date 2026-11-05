@@ -4,6 +4,14 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.16.2 (2026-11-05)
+- The presentation tooling (`tools/presentation/`): frames of every view driven through
+  headless Edge on a real game; the technical PDF (architecture, the three arms and failover in
+  mermaid charts, every view with its screenshot, reference tables generated from the code:
+  plugins, slots, pinned tools, CLI, HTTP routes, conformance); the demo video (MP4, captions
+  in a band under the frame, no voice) through the pinned ffmpeg. mermaid 12.3.0 is pinned
+  (on demand). Deep pass: a companion read with its container (`.resS`, `.ucas`) counts as read.
+
 ## 1.16.1 (2026-11-05)
 - `tools/deep_pass.py`: every capability on one real game, judged on its output (the accounting
   of every game byte and workspace file, decoded files opened by real readers, a contact sheet,

@@ -72,7 +72,8 @@ viwo/
                install, config, indexes, diag), cli_dynamic.py, cli_patch.py, cli_format.py
 tools/         version.py, loc_count.py + caps_ini.py, coverage_check.py, notices.py,
                pin_python.py, integration_games.py, games_pass.ps1, deep_pass.py (+ deep_checks,
-               deep_arms: every capability on one real game)
+               deep_arms: every capability on one real game), presentation/ (frames, the
+               technical PDF, the demo video)
 packaging/     build_portable.py, viwo_entry.py (the frozen viwo.exe)
 indexes/       per-game indexes (future vidya_wormhole_indexes repository)
 distros/       twelve generated ini files

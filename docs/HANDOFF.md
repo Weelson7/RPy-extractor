@@ -49,6 +49,15 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
   analysis flags, game-folder hash check), keeps `viwo-data/games-pass/<slug>/report.*` and
   deletes the copy. Free titles: `python tools/integration_games.py` over `Test-games/`
   (`sqc/games.md`).
+- **Presentation** (`tools/presentation/`, owner's two parts): `frames.py <game>` serves ViWo
+  with the repository's startup.ini on a fresh workspace and drives headless Edge or Chrome
+  through every view (`shots.mjs`: one PNG per step, a burst while an extraction runs, with a
+  caption and a longer description each, in `steps.json`); `tech_pdf.py` builds the technical
+  PDF from `tech_template.html` (mermaid charts, pinned and installed by itself), the frames and
+  reference tables generated from the code (`reference.py`); `video.py` turns the frames into
+  the demo MP4 with burned-in captions through the pinned ffmpeg. Output in
+  `viwo-data/presentation/`. Capture the frames on the demo game (Cyberpunk 2077) after the
+  last change to the UI.
 - **Deep pass** (real games, every capability, judged on its output): from the same worktree,
   `python tools/deep_pass.py <game folder> [--dynamic] [--exe EXE]` runs detect, a deep survey,
   a full extraction, the accounting of every game byte and workspace file (open, raw, unknown;

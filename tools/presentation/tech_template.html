@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>ViWo technical overview {{version}}</title>
+<style>
+@page{size:A4;margin:14mm 13mm}
+body{font:10.5pt/1.45 "Segoe UI",Arial,sans-serif;color:#1b1b1f;margin:0}
+section{page-break-after:always}
+section:last-child{page-break-after:auto}
+h1{font-size:30pt;margin:30mm 0 2mm;color:#b3202a;letter-spacing:.04em}
+h2{font-size:17pt;margin:0 0 4mm;color:#b3202a;border-bottom:2px solid #b3202a;padding-bottom:1mm}
+h3{font-size:12pt;margin:5mm 0 1.5mm;color:#222}
+p{margin:1.5mm 0}
+ul{margin:1mm 0 2mm 5mm;padding-left:3mm}li{margin:.6mm 0}
+table{border-collapse:collapse;width:100%;font-size:8.6pt;margin:2mm 0;page-break-inside:auto}
+tr{page-break-inside:avoid}
+th,td{border:1px solid #c9c9cf;padding:2px 5px;text-align:left;vertical-align:top}
+th{background:#f3e7e8}
+code{font-family:Consolas,monospace;font-size:8.6pt}
+.sub{color:#555}
+.kpis{display:flex;flex-wrap:wrap;gap:4mm;margin:8mm 0}
+.kpi{min-width:36mm;padding:3mm 4mm;border:1px solid #c9c9cf;border-left:4px solid #b3202a}
+.kpi b{display:block;font-size:20pt;color:#b3202a}
+.mermaid{margin:3mm 0;text-align:center;page-break-inside:avoid}
+figure{margin:0 0 6mm;page-break-inside:avoid}
+figure img{width:100%;border:1px solid #333}
+figcaption{font-size:9.5pt;margin-top:1.5mm}
+.two{columns:2;column-gap:7mm}
+</style>
+<script src="{{mermaid}}"></script>
+<script>
+// one diagram at a time, each in its own place (rendering them together misplaces some)
+mermaid.initialize({ startOnLoad: false, theme: "neutral" });
+window.addEventListener("load", async () => {
+  const blocks = [...document.querySelectorAll("pre.mermaid")];
+  for (const [i, block] of blocks.entries()) {
+    const { svg } = await mermaid.render(`chart${i}`, block.textContent);
+    const host = document.createElement("div");
+    host.className = "mermaid";
+    host.innerHTML = svg;
+    block.replaceWith(host);
+  }
+});
+</script>
+</head><body>
+
+<section>
+<h1>ViWo // Vidya Wormhole</h1>
+<p class="sub">Technical overview · version {{version}} · contract {{contract}} · {{date}}</p>
+<p>A community-owned, local-first orchestrator for game reverse engineering. Point it at a game
+folder: it recognizes the engine, routes every container to the best available tool (with a
+spare when that tool is missing or fails), collects everything into one curated workspace and
+records where every file came from. From there it analyses the game's code, works with the
+running game, and writes changes into a patched copy. The game folder is never modified.</p>
+<div class="kpis">
+<div class="kpi"><b>{{plugin_count}}</b>engine plugins (+ {{game_count}} game plugins)</div>
+<div class="kpi"><b>{{slot_count}}</b>slots (formats and jobs)</div>
+<div class="kpi"><b>{{tool_count}}</b>pinned third-party tools</div>
+<div class="kpi"><b>{{test_count}}</b>tests</div>
+<div class="kpi"><b>{{conf_implemented}}</b>contract rows implemented ({{conf_partial}} partial, {{conf_open}} open)</div>
+</div>
+<h3>Contents</h3>
+<ol><li>Philosophy</li><li>Architecture</li><li>Static arm</li><li>Slots and failover</li>
+<li>Dynamic arm</li><li>Patching arm</li><li>Engineering properties</li><li>The web UI</li>
+<li>A walk through every view</li><li>Reference: plugins, slots, tools, CLI, HTTP API</li>
+<li>Quality</li></ol>
+</section>
+
+<section>
+<h2>1 · Philosophy</h2>
+<ul>
+<li><b>Community tool.</b> MIT, forkable. ViWo stays small (wiring, provenance, curation, round
+trip, care for the user's data); capability comes from pinned third-party tools and community
+data (per-game indexes and scripts).</li>
+<li><b>For everyone who wants to look inside a game</b>: reverse engineers, modders, artists,
+translators, data miners, researchers, preservationists, players, the curious. The tool judges
+neither the user nor the purpose.</li>
+<li><b>No boundaries, no safeguards in the code.</b> Nothing is refused because of what a game
+is, which plugin runs or what the user intends. Anti-cheat and online detection are warnings plus
+one opt-in (a feature switch and a confirmation), never a gate. A disclaimer replaces safeguards.</li>
+<li><b>Borderline code is never first-party.</b> DRM defeat, key brute force or anti-cheat
+evasion, if they exist, are pinned third-party tools or community scripts.</li>
+<li><b>Engineering properties are not boundaries.</b> Copy-not-move, traversal checks, secrets
+kept out of logs, a local server with a token, checksummed downloads protect the user's data and
+machine; any of them that blocks a wanted capability becomes an option.</li>
+<li><b>Never silent, minimal prompts.</b> Every fallback, empty export, skipped or unreadable
+file is said in the CLI and the GUI. Whatever a tool needs on first run happens by itself, off
+screen: no dialogs, no wizards, no installers.</li>
+</ul>
+</section>
+
+<section>
+<h2>2 · Architecture</h2>
+<p>A headless core with two clients (the CLI and the web UI) over three arms. A module imports
+only its own layer and the layers to its left; plugins never import the core or each other; the
+core reaches plugins, backends and the OS layer through registries filled at boot. GPL and AGPL
+tools run only as separate processes.</p>
+<pre class="mermaid">
+flowchart LR
+  C[contracts<br/>interfaces, value types] --> O[os<br/>Windows, Linux]
+  O --> P[plugins<br/>one folder per engine]
+  O --> B[backends<br/>zip, tar, 7z, rar]
+  P --> K[core<br/>wiring, pipeline, arms]
+  B --> K
+  K --> A[api<br/>local HTTP server]
+  K --> L[cli<br/>viwo ...]
+  A --> W[web UI<br/>plain ES modules]
+</pre>
+<h3>Boot</h3>
+<pre class="mermaid">
+flowchart LR
+  I[startup.ini<br/>+ distro base] --> R[plugin registry<br/>built-ins, drop-ins, entry points]
+  R --> S[slot binder<br/>main and spare per slot]
+  S --> F[preflight<br/>pinned tools installed by itself]
+  F --> RT[Runtime]
+  RT --> CLI[CLI]
+  RT --> API[API + web UI]
+</pre>
+<p>Configuration is one ini: features, plugins, which backend is main or spare for each slot,
+tool locations, plugin options and the server. A path in <code>[tools]</code> wins over
+<code>third_party/</code>, which wins over <code>PATH</code>. Twelve generated distro configs
+(<code>distros/</code>) give ready-made plugin sets per OS.</p>
+</section>
+
+<section>
+<h2>3 · Static arm: the game is not running</h2>
+<pre class="mermaid">
+flowchart TB
+  subgraph read [find and open]
+    direction LR
+    G[(game folder<br/>read-only)] --> PR[probe] --> D[detect<br/>every plugin scores]
+    D --> SE[select<br/>auto, one, mixed] --> U[unpack<br/>containers, nested]
+  end
+  subgraph write [take out and decode]
+    direction LR
+    E[export<br/>engine exporters] --> CA[carve<br/>signatures, streams]
+    CA --> CO[collect<br/>copy from the game,<br/>move from staging]
+    CO --> DE[decode<br/>audio, DDS, Bink, SLP, rpyc] --> WS[(workspace<br/>by extension,<br/>provenance, run record)]
+  end
+  U -->|a wrapper: asar, zip| D
+  U --> E
+</pre>
+<ul>
+<li><b>Survey</b> answers first, read-only: per game or library, the engine, what each tool can
+open, what needs a key, dense unknown blobs.</li>
+<li><b>Extract</b> runs the pipeline above. An engine found inside a wrapper (an RPG Maker MV game
+in an Electron asar) is re-detected once inside it; its exports are derived files, never mapped
+back to a wrong container.</li>
+<li><b>Keys</b> come from the user or the game's own local files and are verified before use
+(an Unreal AES key on the pak index, an RPG Maker key on the images); found keys are never
+logged or written.</li>
+<li><b>Curation</b>: WORKSPACE (groups by type, trash and restore), SORT (one file at a time with
+previews, keep, trash, rename, undo), CLEANUP (empty, junk, mislabeled, duplicates; plan, apply,
+undo), MERGER (frame sequences and clips to one video).</li>
+<li><b>Analysis</b> of a copy: Ghidra headless and the Continue in Ghidra handoff, ilspycmd,
+Cpp2IL, unrpyc, GDRE Tools, unluac, Detect It Easy, Unicorn and angr on isolated routines, a
+function-by-function version diff; x64dbg and Cheat Engine handoffs as tracked children.</li>
+</ul>
+</section>
+
+<section>
+<h2>4 · Slots and failover</h2>
+<p>Every format and every job is a slot with a main and an optional spare backend. A plugin
+declares slots and backends; the binder picks what is available on this machine.</p>
+<pre class="mermaid">
+flowchart TD
+  Q[a container or a job] --> M{main available?}
+  M -->|yes| RM[run the main]
+  M -->|no| SP{spare available?}
+  SP -->|yes| PROM[spare promoted<br/>said in SYSTEM and slots]
+  SP -->|no| UNB[unbound: the stage says<br/>unavailable + the install hint]
+  RM --> OK{outcome}
+  OK -->|ok| DONE[result, notes said]
+  OK -->|retryable failure| RS[run the spare<br/>fallback said]
+  OK -->|needs_key| NK[no fall-through:<br/>the key is asked for]
+  PROM --> DONE
+  RS --> DONE
+</pre>
+<p>Every outcome carries its kind, files, error, notes and fallback. A fallback, an export that
+wrote nothing, and every entry an unpacker skipped (an unsafe name, a missing part file, an
+archive cut short) become warnings in the CLI, the GUI job log and the result.</p>
+</section>
+
+<section>
+<h2>5 · Dynamic arm: the game is running</h2>
+<p>A feature switch (<code>capture</code>) with warnings and one confirmation. Anti-cheat and
+online titles are said, never refused.</p>
+<pre class="mermaid">
+flowchart LR
+  GA[(game)] --> PC[patched copy<br/>.viwo-patched]
+  PC --> AG[runtime agent<br/>UE4SS, BepInEx]
+  GA --> RD[RenderDoc capture<br/>unattended frame]
+  RD --> HV[harvest<br/>textures, shaders]
+  GA --> DU[memory dump]
+  GA --> TR[Frida API trace]
+  GA --> AU[sound to WAV]
+  AG --> WS[(workspace)]
+  HV --> WS
+  DU --> WS
+  TR --> WS
+  AU --> WS
+</pre>
+<p>Runtime agents run in a marked patched copy, never in the game folder: UE4SS writes the
+Unreal mappings (<code>.usmap</code>) that cooked UE5 assets need and an object dump; BepInEx
+gives Unity IL2CPP interop assemblies. A capture compares the game folder before and after and
+says what the game wrote there.</p>
+</section>
+
+<section>
+<h2>6 · Patching arm: changing the content</h2>
+<pre class="mermaid">
+sequenceDiagram
+  participant U as User
+  participant W as Workspace
+  participant P as Provenance map
+  participant K as Engine packer
+  participant C as Patched copy
+  U->>W: edits files
+  W->>P: which container and member each came from
+  P->>K: edited members per container
+  K->>C: repacked container (an override archive where the game loads one)
+  K->>C: read back and compared
+  C-->>U: verified, or every member that differs named
+</pre>
+<ul>
+<li><b>Patched copy</b>: workspace edits repacked into the game's own containers (Ren'Py RPA,
+Godot PCK, Unity bundles, Unreal pak, RPG Maker, Cyberpunk archives through WolvenKit).</li>
+<li><b>Patch sets</b>: byte patches by offset, RVA or AOB pattern, assembly through Keystone, a
+byte diff and an AOB export; a patch whose file the copy lacks fails alone.</li>
+<li><b>Mods</b>: a patched copy's changes as a mod package, checked against another game version,
+several applied in order.</li>
+</ul>
+</section>
+
+<section>
+<h2>7 · Engineering properties</h2>
+<ul>
+<li>The game folder is read-only: collect copies from it, staging is the only place files are
+moved from, every run compares the game folder before and after.</li>
+<li>Every write into a folder built from untrusted names goes through
+<code>safe_member</code> and <code>inside</code> (traversal, drive letters, NTFS streams, device
+names, links); junctions and links in a game folder are never walked into.</li>
+<li>Only folders ViWo owns are curated or cleared (a <code>.viwo-workspace</code> marker); a game
+inside its own workspace, or "replace" on a foreign folder, is refused.</li>
+<li>In-process parsers of game bytes are bounded: declared sizes cap every inflate, decoders stop
+at their width and height, hostile-input tests feed every reader random bytes.</li>
+<li>Third-party tools are pinned (version, size, sha256), HTTPS only, installed into
+<code>third_party/</code> and nowhere else; Python packages install only from hash locks.</li>
+<li>Secrets and found keys are never logged or written (run records store
+<code>&lt;secret&gt;</code>); tool output is masked.</li>
+<li>The server binds loopback by default, answers JSON only, checks the Host header and needs a
+per-start token; a LAN peer gets the page only with the key link printed at start.</li>
+<li>Child processes (GUI tools, launched games) are tracked and killed when ViWo exits.</li>
+</ul>
+</section>
+
+<section>
+<h2>8 · The web UI</h2>
+<p>Plain HTML and ES modules served by <code>viwo serve</code>, no build step. A functional
+layer (views built from a component library, talking to the API) and a style layer (CSS tokens
+and two themes, <code>wormhole</code> and <code>plain</code>); a lint keeps them apart and a
+real-browser smoke test drives every view.</p>
+<ul>
+<li><b>Top bar</b>: SYSTEM, JOBS, SETTINGS (codes 00, 01, 02), the FORMATS and JOB chips, the
+shared game selector and the workspace.</li>
+<li><b>Rail</b>: one arm at a time, STATIC, DYNAMIC, PATCHING. Each view's code is the arm's
+letter and its index (S0, S1, ... D0, ... P0, ...), computed at load: plugins contribute views
+and panels, so the numbering follows what is installed. Panels inside a view are lettered A, B,
+C in order.</li>
+<li><b>Jobs</b>: every long action is a job with live progress, a log and a result; the activity
+console keeps every line of every tool.</li>
+</ul>
+</section>
+
+<section>
+<h2>9 · A walk through every view</h2>
+<p class="sub">Captured by <code>tools/presentation/frames.py</code> on a real game, on a fresh
+workspace, with every installed tool.</p>
+{{tour}}
+</section>
+
+<section>
+<h2>10 · Reference</h2>
+<h3>Engine plugins and their slots, by arm</h3>
+{{plugins_table}}
+<h3>Slots and their backends on this machine</h3>
+{{slots_table}}
+</section>
+
+<section>
+<h3>Pinned third-party tools</h3>
+{{tools_table}}
+<h3>CLI commands</h3>
+{{cli_table}}
+</section>
+
+<section>
+<h3>HTTP API (local, token required)</h3>
+<div class="two">{{routes_table}}</div>
+</section>
+
+<section>
+<h2>11 · Quality</h2>
+<ul>
+<li><b>{{test_count}} tests</b> in layers L0 to L6: static rules (layers, caps, lint), unit and
+property tests (random archives, hostile input, covering designs for plugin pairs), pipeline and
+API tests, a real-browser UI smoke, and real-tool tests behind <code>VIWO_L5=1</code>.</li>
+<li><b>Size caps</b>: function 40 lines, class 200, file 250, six parameters, lines of 100;
+package budgets in <code>loc_caps.ini</code>, enforced by a test.</li>
+<li><b>Conformance</b>: every normative item of the contract documents has a row:
+{{conf_implemented}} implemented, {{conf_partial}} partial, {{conf_open}} open.</li>
+<li><b>Versioning</b>: <code>va.b.c</code>; every commit runs format, lint, caps and the whole
+suite before it is made, and tags itself.</li>
+</ul>
+</section>
+</body></html>

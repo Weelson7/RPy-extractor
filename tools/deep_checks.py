@@ -54,7 +54,10 @@ def account(game: Path, workspace: Path) -> dict:
     untouched: Counter = Counter()
     for path in ws.files(game):
         rel, size = path.relative_to(game).as_posix(), path.stat().st_size
-        state = "read" if rel in touched else "unread"
+        # a companion read with its container: x.assets.resS with x.assets, x.ucas with x.utoc
+        companion = rel.rsplit(".", 1)[0]
+        companions = {companion, f"{companion}.utoc", f"{companion}.pak"}
+        state = "read" if rel in touched or companions & touched else "unread"
         game_bytes[state] += size
         if state == "unread":
             untouched[ws.ext_of(path)] += size
