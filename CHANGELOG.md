@@ -4,6 +4,15 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.8 (2026-11-05)
+- A GPU capture keeps its frames: every RenderDoc capture (`.rdc`) is collected into the
+  workspace (`rdc/`) beside the textures harvested from it, so the frame opens in qrenderdoc
+  (doc 11.2). Before, only the textures were kept and the frame was deleted with the run's
+  temporary folder.
+- A fifth workbook, "Read a captured frame" (RenderDoc 1.47: draws, textures, meshes, shaders),
+  with a HOW TO button on CAPTURE's target panel. `opens` stays optional: no handoff opens
+  qrenderdoc.
+
 ## 1.20.7 (2026-11-05)
 Reclaim, with the owner's approval:
 - The tools ViWo's own backends need are described once, in `viwo/data/dependencies.json`

@@ -70,7 +70,7 @@ class CaptureApiTests(unittest.TestCase):
             {"gamePath": str(self.game), "exePath": str(self.game / "Game.exe"), "confirmed": True},
         )
         self.assertTrue(done["success"], done)
-        self.assertEqual((done["gathered"], done["backend"]), (2, "renderdoc"))
+        self.assertEqual((done["gathered"], done["backend"]), (3, "renderdoc"))  # 2 + the frame
         self.assertTrue(done["new"] and done["jobId"])
         self.assertEqual((self.game / "Game.exe").read_bytes(), b"MZ")
         outside = CAPTURE_POST["/api/capture"](

@@ -1,6 +1,6 @@
 # Handoff
 
-State at **v1.20.7** (branch `makeover`). History is in [CHANGELOG.md](../CHANGELOG.md); the
+State at **v1.20.8** (branch `makeover`). History is in [CHANGELOG.md](../CHANGELOG.md); the
 design in [docs/contract/](contract/README.md); what is open in
 [CONFORMANCE.md](contract/CONFORMANCE.md) and below.
 
@@ -40,7 +40,7 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
   half-edited module). Make a worktree at a committed version with its own venv, then run the
   pass there:
   ```powershell
-  git worktree add ..\viwo-pass v1.20.7
+  git worktree add ..\viwo-pass v1.20.8
   cd ..\viwo-pass; py -3.13 -m venv .venv; .venv\Scripts\pip install -e ".[unity,sevenzip,renpy,lz4]"
   powershell -File tools\games_pass.ps1 -Source C:\Users\<you>\Games [-Only <folder>,...]
   ```
@@ -92,8 +92,9 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
 ## Open work
 
 0. **UI capabilities (doc 16.4, spec in doc 19; owner flagged, in this order):** workbooks
-   shipped (1.18.0: four, for x64dbg, Ghidra and Cheat Engine; more tools and topics by reach,
-   e.g. qrenderdoc, WolvenKit); runbooks shipped (1.19.0: three defaults, run one step per
+   shipped (1.18.0: four, for x64dbg, Ghidra and Cheat Engine; 1.20.8: RenderDoc, on the frames
+   a capture now keeps; more tools and topics by reach, e.g. WolvenKit, whose GUI ViWo does not
+   pin); runbooks shipped (1.19.0: three defaults, run one step per
    request through the job handlers, edited as JSON; a structured step editor is open);
    workflows shipped (1.20.0: the server records every action route, saved as a runbook with
    expected answers; replay stops where one differs; what is done inside a child tool is a

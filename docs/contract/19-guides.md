@@ -49,8 +49,9 @@ the current pins; a test fails when a pin moves, so they are checked again.
 summary, steps, source}], problems}` (`source`: `viwo` or `yours`; `pinned`: the tool's version
 in `tools.json`, empty for an unpinned tool). UI: WORKBOOKS in the global strip (the list by
 tool, one step at a time with PREVIOUS and NEXT, the step reached remembered per workbook, the
-view that opens the tool); a HOW TO button beside Continue in Ghidra (ANALYSIS) and beside the
-x64dbg and Cheat Engine buttons (RUNTIME) opens the tool's workbooks.
+view that opens the tool); a HOW TO button beside Continue in Ghidra (ANALYSIS), beside the
+x64dbg and Cheat Engine buttons (RUNTIME) and on the target of CAPTURE (RenderDoc, whose frames
+the user opens in qrenderdoc: no handoff opens it) opens the tool's workbooks.
 
 Code: `viwo/core/guides.py` (the files), `viwo/core/workbooks.py`, `viwo/data/workbooks/`,
 `viwo/api/handlers_system.py`, `viwo/cli_guides.py`, `viwo/web/js/views/workbooks.js`.

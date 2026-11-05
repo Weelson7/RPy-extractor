@@ -124,12 +124,15 @@ class CaptureRunTests(unittest.TestCase):
             before = tree_hashes(game)
             report = capture(rt, CaptureRequest(game, game / "Game.exe", ws, confirmed=True))
             self.assertEqual(
-                (report["gathered"], report["newVsStatic"]), (1, 1)
-            )  # tex_1 = title.png
-            self.assertEqual(report["new"], ["png/tex_2.png"])
+                (report["gathered"], report["newVsStatic"]), (2, 2)
+            )  # tex_1 = title.png; the frame itself is kept for qrenderdoc
+            self.assertEqual(len(report["new"]), 2, report["new"])
+            self.assertIn("png/tex_2.png", report["new"])
+            self.assertTrue(any(p.endswith("_frame120.rdc") for p in report["new"]), report)
             self.assertEqual(tree_hashes(game), before)
             auto = CaptureRequest(game, game / "Game.exe", ws, True, capture_after=0.2)
-            self.assertEqual(capture(rt, auto)["alreadyStatic"], 2)  # unattended: trigger + stop
+            self.assertEqual(capture(rt, auto)["alreadyStatic"], 3)  # unattended: trigger + stop
+            # (the same fake frame bytes as the first run: already in the workspace)
             self.assertTrue((root / "trigger.ran").is_file())
             from viwo.core import capture as module
 

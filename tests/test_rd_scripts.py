@@ -364,7 +364,7 @@ class BackendTests(unittest.TestCase):
                                 (Path(argv[-1]) / f"tex_{t}.png").write_bytes(b"P")
                         return SimpleNamespace(ok=ok[k], returncode=0 if ok[k] else 1)
                     for k in range(len(ok)):  # the game ran: its captures land
-                        (staging.parent / "captures" / f"viwo-{k}.rdc").write_bytes(b"R")
+                        (staging / "captures" / f"viwo-{k}.rdc").write_bytes(b"R")
                     return SimpleNamespace(ok=True, stderr="", stdout="", returncode=0)
 
                 ctx, logs = self.ctx(root, run, config_ok=i != 2)

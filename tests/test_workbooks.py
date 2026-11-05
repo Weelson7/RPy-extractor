@@ -74,8 +74,9 @@ class WorkbookTests(unittest.TestCase):
         for b in books:
             self.assertEqual(b["source"], "viwo", b["id"])
             self.assertEqual((b["writtenFor"], b["stale"]), (pins[b["tool"]]["version"], False))
-            backend = self.rt.backends[self.rt.slots[b["opens"]].default_main]
-            self.assertIn(b["tool"], {spec.dep_id for spec in backend.requires}, b["id"])
+            if b["opens"]:  # optional (doc 19.1): no handoff opens every tool
+                backend = self.rt.backends[self.rt.slots[b["opens"]].default_main]
+                self.assertIn(b["tool"], {spec.dep_id for spec in backend.requires}, b["id"])
             self.assertTrue(all(s["title"] and s["text"] for s in b["steps"]), b["id"])
 
     def test_every_broken_file_is_named_and_hides_nothing_else(self) -> None:

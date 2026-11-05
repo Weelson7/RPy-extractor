@@ -5,6 +5,7 @@ import { h, fill, btn, panel, badge, viewHead, toast, toastErr, pref, busy, bus,
 import { setGame, followGame } from "../game.js";
 import { jobProgress, withSkeleton } from "../progress.js";
 import { beforeYouStart, renderResult, renderFailure } from "./capture-result.js";
+import { howToBtn } from "./workbooks.js";
 
 const S = { running: false, info: null, infoFor: "", confirmed: false, ws: "" };
 const el = {};
@@ -47,7 +48,7 @@ function mount(root) {
 function targetPanel() {
   const browseGame = browseBtn(el.game, (path) => { setGame(path); check(); });
   const browseExe = browseBtn(el.exe, (path) => { pref("capExe", path); bar(); }, (p) => api.browseFile(p || el.game.value.trim()).then((r) => r.path));
-  return panel(`${code("capture")}.A`, "TARGET", badge("READ-ONLY SOURCE", "ok"),
+  return panel(`${code("capture")}.A`, "TARGET", h("div", { class: "row" }, badge("READ-ONLY SOURCE", "ok"), howToBtn("renderdoccmd", "HOW TO: RENDERDOC")),
     h("label", { class: "lbl", for: "cap-game" }, "GAME FOLDER"),
     h("div", { class: "row" }, el.game, browseGame),
     h("label", { class: "lbl", for: "cap-exe" }, "EXECUTABLE TO LAUNCH (INSIDE THAT FOLDER)"),

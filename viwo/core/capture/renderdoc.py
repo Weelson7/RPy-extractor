@@ -59,7 +59,7 @@ class RenderDocCapture(Backend):
         problem = quiet_ui(ctx.os)
         if problem:
             ctx.log(problem, "warn", "capture")
-        captures = staging.parent / "captures"
+        captures = staging / "captures"  # kept with the textures: the frame opens in qrenderdoc
         captures.mkdir(parents=True, exist_ok=True)
         argv = [
             *cmd.argv_prefix,

@@ -68,7 +68,7 @@ that arm's home (`#static`, `#dynamic`, `#patching`); the arm switch sits above 
 views (SYSTEM, JOBS, WORKBOOKS, RUNBOOKS, SETTINGS) sit in the strip of the top bar with the
 shared GAME selector and the WORKSPACE; opening one keeps the arm you were in. WORKBOOKS (doc
 19.1) shows one step at a time and remembers the step reached per workbook (`pref("wb.<id>")`);
-the HOW TO buttons in ANALYSIS and RUNTIME open it on one tool (`pref("wbTool")`,
+the HOW TO buttons in ANALYSIS, RUNTIME and CAPTURE open it on one tool (`pref("wbTool")`,
 `howToBtn(tool)`), a runbook step on one workbook (`workbookBtn(id)`). RUNBOOKS (doc 19.2) runs
 one step per request (`/api/runbooks/step`), waits for DONE, CONTINUE on a step you do, keeps
 each runbook's input values (`pref("rb.<id>.<name>")`; a secret input's value stays in the page

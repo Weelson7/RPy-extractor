@@ -1,0 +1,41 @@
+{
+ "id": "renderdoc-read-a-frame",
+ "title": "Read a captured frame: draws, textures, meshes, shaders",
+ "tool": "renderdoccmd",
+ "written_for": "1.47",
+ "opens": "",
+ "summary": "Open a frame ViWo captured in RenderDoc's own interface and walk it draw by draw: what each draw wrote, the textures and buffers it read, its vertices and its shaders.",
+ "steps": [
+  {
+   "title": "Open the frame",
+   "text": "A capture (CAPTURE; CLI: viwo capture) keeps every frame in the workspace's rdc folder, its textures in png. Start qrenderdoc.exe, installed with the capture tool in ViWo's third_party folder under renderdoccmd, then File, Open Capture, and pick the frame.",
+   "keys": ["Ctrl+O"],
+   "expect": "The Event Browser on the left lists the frame's passes and draws."
+  },
+  {
+   "title": "Pick a draw",
+   "text": "In the Event Browser, expand the passes (the game's own markers when it sets them, otherwise RenderDoc's Colour Pass #1, #2 ...) and click a draw. Type part of a name in the filter box at the top to narrow the list.",
+   "expect": "The Texture Viewer shows the render target as it was right after that draw."
+  },
+  {
+   "title": "See what the draw read",
+   "text": "Open the Pipeline State tab and click a stage in the flow at the top (VS for vertices, PS for pixels): it lists the shader, the textures, samplers and buffers bound to it. The arrow beside a texture opens it in the Texture Viewer.",
+   "expect": "The stage's resources with their names, sizes and formats."
+  },
+  {
+   "title": "Look at the mesh",
+   "text": "Open the Mesh Viewer tab: VS Input lists the vertices as the draw received them, VS Output after the vertex shader, and the preview shows the geometry. Drag in the preview to turn it.",
+   "expect": "The draw's model in the preview and its vertex table."
+  },
+  {
+   "title": "Read a shader",
+   "text": "In Pipeline State, on a stage, press View beside the shader: its disassembly or source opens. Edit opens it for a change that the replay applies at once (in RenderDoc only; the game is not touched).",
+   "expect": "The shader's code in a new tab."
+  },
+  {
+   "title": "Save a texture",
+   "text": "In the Texture Viewer, the save button on the toolbar writes the texture shown as PNG, DDS, EXR or another format. ViWo already put every texture of the frame in the workspace's png folder: save from here a render target at a given draw, or a format the harvest does not write. Save into the workspace, never into the game folder.",
+   "expect": "The texture as a file where you chose."
+  }
+ ]
+}
