@@ -1,0 +1,26 @@
+{
+ "id": "extract-and-clean",
+ "title": "Extract a game and plan its cleanup",
+ "summary": "See what the game holds, extract it into a new workspace beside the active one, then plan the cleanup of empty, junk, duplicate and mislabeled files. Nothing is deleted: you review the plan and apply what you want.",
+ "steps": [
+  {
+   "title": "Survey the game (read-only)",
+   "do": "survey",
+   "with": {"folder": "{game}"}
+  },
+  {
+   "title": "Extract it into the workspace",
+   "do": "extract",
+   "with": {"gamePath": "{game}", "onExisting": "new"}
+  },
+  {
+   "title": "Plan the cleanup",
+   "do": "cleanup",
+   "with": {"op": "plan"}
+  },
+  {
+   "title": "Review the plan and apply what you want",
+   "text": "Open CLEANUP: the plan lists every finding with its action. Apply the safe ones, or pick; every apply can be undone."
+  }
+ ]
+}

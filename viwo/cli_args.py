@@ -151,8 +151,19 @@ def tool_commands(command) -> None:
     dg.add_argument("--out", type=Path, help="zip path (default: in the logs folder)")
     ix = command("indexes", "per-game indexes: update to the latest release for this version")
     ix.add_argument("action", choices=["update"], help="update: fetch the latest indexes release")
+    guide_commands(command)
+
+
+def guide_commands(command) -> None:
+    """viwo workbook / viwo runbook (doc 19): the guides for the child tools."""
     wb = command("workbook", "step-by-step how-tos for a child tool's own interface (doc 19.1)")
     wb.add_argument("id", nargs="?", default="", help="a workbook id (none: list them)")
+    rb = command("runbook", "named step sequences: list, show or run one (doc 19.2)")
+    rb.add_argument("id", nargs="?", default="", help="a runbook id (none: list them)")
+    rb.add_argument("--run", action="store_true", help="run its steps (else: show them)")
+    rb.add_argument("--workspace", type=Path, help="the workspace the steps run in (to run)")
+    rb.add_argument("--set", action="append", default=[], metavar="NAME=VALUE", help="game=...")
+    rb.add_argument("--from", dest="start", type=int, default=1, help="the step to start at")
 
 
 def patch_command(command) -> None:

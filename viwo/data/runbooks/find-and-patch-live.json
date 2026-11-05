@@ -1,0 +1,29 @@
+{
+ "id": "find-and-patch-live",
+ "title": "Find a hardcoded value and patch it live",
+ "summary": "Analyse the executable with Ghidra, find the code behind a value the program shows or logs, change it live in x64dbg, then keep the change as a patch set. Needs the analysis and capture switches.",
+ "inputs": [
+  {"name": "target", "label": "Target key (ANALYSIS, LIST TARGETS names them, e.g. game-exe)"}
+ ],
+ "steps": [
+  {
+   "title": "Analyse the executable (Ghidra headless, a copy)",
+   "do": "analyze",
+   "with": {"gamePath": "{game}", "targetKey": "{target}"}
+  },
+  {
+   "title": "Find the code in Ghidra",
+   "text": "In ANALYSIS, CONTINUE IN GHIDRA on the same target, then find the string or constant and the instruction that compares or loads the value. Note its offset (address minus image base).",
+   "workbook": "ghidra-find-string-users"
+  },
+  {
+   "title": "Change it live in x64dbg",
+   "text": "In RUNTIME, DEBUGGER AND MEMORY: CONTINUE IN X64DBG on the same executable (it attaches when the game runs). Go to the offset, assemble the new instruction, run, and check the effect.",
+   "workbook": "x64dbg-patch-a-byte"
+  },
+  {
+   "title": "Keep it as a patch set",
+   "text": "Write the change as a ViWo patch set (an AOB address finds it again after an update) and apply it into a patched copy: PATCHING, PATCHES + MODS, or the runbook 'Apply a patch set into a patched copy'."
+  }
+ ]
+}

@@ -24,6 +24,7 @@ from viwo.core.wiring.boot import boot
 from viwo.core.wiring.registry import cli_commands
 
 from .cli_dynamic import attach, capture, runtime
+from .cli_guides import runbook, workbook
 from .cli_patch import mod, patch
 
 
@@ -167,24 +168,6 @@ def _system(rt, args) -> Envelope:
     )
 
 
-def _workbook(rt, args) -> Envelope:
-    """viwo workbook [ID]: every workbook, or one with its steps (doc 19.1); stale steps and
-    unusable files are warnings."""
-    from viwo.core.workbooks import load
-
-    books, problems = load(rt)
-    shown = [b for b in books if b["id"] == args.id] if args.id else books
-    if args.id and not shown:
-        raise ViwoError("not_found", f"no workbook {args.id!r}", hint="`viwo workbook` lists them")
-    stale = [
-        f"{b['id']}: written for {b['tool']} {b['writtenFor']}, the pinned one is {b['pinned']}"
-        for b in shown
-        if b["stale"]
-    ]
-    data = {"workbook": shown[0]} if args.id else {"workbooks": books}
-    return Envelope.success(data, problems + stale)
-
-
 def _install(rt, args) -> Envelope:
     """viwo install [--all | <id>... | --game <slug>]: pinned tools into third_party/ (doc 10)."""
     from viwo.core.preflight import check, install
@@ -305,5 +288,6 @@ TOOLS = {  # the tool commands (the dynamic and patching arms, survey, analyze, 
     "install": _install,
     "diag": _system,
     "indexes": _system,
-    "workbook": _workbook,
+    "workbook": workbook,
+    "runbook": runbook,
 }

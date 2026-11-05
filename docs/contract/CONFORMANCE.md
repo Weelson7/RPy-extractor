@@ -313,10 +313,12 @@ declarative (Kaitai) plugins; the indexes repository split.
 
 | Item | State | Where / missing |
 |------|-------|-----------------|
-| 19.1 workbook files, validation, user override, stale marking | implemented | `core/workbooks.py`, `data/workbooks/` (x64dbg, Ghidra x2, Cheat Engine); `tests/test_workbooks.py` |
+| 19.1 workbook files, validation, user override, stale marking | implemented | `core/guides.py`, `core/workbooks.py`, `data/workbooks/` (x64dbg, Ghidra x2, Cheat Engine); `tests/test_workbooks.py` |
 | 19.1 CLI, API, UI | implemented | `viwo workbook`, `GET /api/workbooks`, WORKBOOKS and the HOW TO buttons (`web/js/views/workbooks.js`) |
 | 19.1 overlays over the tool's own window | open | needs 19.4 |
 | 19.1 workbooks from the indexes repository | open | `docs/indexes.md` |
-| 19.2 runbooks | open | - |
+| 19.2 runbook files, validation, `{name}` values, save and delete of the user's copy | implemented | `core/guides.py`, `core/runbooks.py`, `data/runbooks/` (three); `tests/test_runbooks.py` |
+| 19.2 one step at a time through the job handlers, stop on failure, resume from any step, pause for a step you do | implemented | `api/handlers_runbooks.py`, `cli_guides.py` (`viwo runbook`), `web/js/views/runbooks.js` |
+| 19.2 a structured step editor (today: the runbook as JSON) | open | - |
 | 19.3 workflows | open | - |
 | 19.4 embedded child GUIs | open | - |

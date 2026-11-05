@@ -163,6 +163,10 @@ def sanitize(data: dict) -> str:
     return "\n".join(lines)
 
 
+def _indent(text: str) -> str:
+    return textwrap.fill(text, 96, initial_indent="   ", subsequent_indent="   ")
+
+
 def workbook(data: dict) -> str:
     """The list (id, tool, steps, title), or one workbook's steps to follow in the tool."""
     if "workbook" not in data:
@@ -171,15 +175,32 @@ def workbook(data: dict) -> str:
             mine = " (yours)" if b["source"] == "yours" else ""
             rows.append(f"{b['id']:<28} {b['tool']:<12} {len(b['steps']):>5}  {b['title']}{mine}")
         return "\n".join(rows)
-    b, wrap = (
-        data["workbook"],
-        lambda t: textwrap.fill(t, 96, initial_indent="   ", subsequent_indent="   "),
-    )
+    b = data["workbook"]
     lines = [f"{b['title']} ({b['tool']})", textwrap.fill(b["summary"], 99)]
     for number, step in enumerate(b["steps"], 1):
-        lines += ["", f"{number}. {step['title']}", wrap(step["text"])]
+        lines += ["", f"{number}. {step['title']}", _indent(step["text"])]
         lines += [f"   keys: {', '.join(step['keys'])}"] if step["keys"] else []
-        lines += [wrap(f"you should see: {step['expect']}")] if step["expect"] else []
+        lines += [_indent(f"you should see: {step['expect']}")] if step["expect"] else []
+    return "\n".join(lines)
+
+
+def runbook(data: dict) -> str:
+    """The list, one runbook's inputs and steps, or what a run did."""
+    if "runbooks" in data:
+        rows = [f"{'ID':<28} STEPS  TITLE"]
+        for b in data["runbooks"]:
+            mine = " (yours)" if b["source"] == "yours" else ""
+            rows.append(f"{b['id']:<28} {len(b['steps']):>5}  {b['title']}{mine}")
+        return "\n".join(rows)
+    if "done" in data:  # what a run did (`runbook` is then the id)
+        stop = f"; stopped at step {data['stoppedAt']}" if data["stoppedAt"] else ", every step"
+        return f"Runbook {data['runbook']}: {len(data['done'])} action(s) run{stop}"
+    b = data["runbook"]
+    lines = [b["title"], textwrap.fill(b["summary"], 99), ""]
+    lines += [f"input {i['name']}: {i['label']} (default {i['default']!r})" for i in b["inputs"]]
+    for number, step in enumerate(b["steps"], 1):
+        what = f"do {step['do']} {json.dumps(step['with'])}" if "do" in step else step["text"]
+        lines += [f"{number}. {step['title']}", _indent(what)]
     return "\n".join(lines)
 
 
@@ -253,4 +274,5 @@ FORMATTERS: dict[str, Any] = {
     "replay": extraction,
     "unpack": unpack,
     "workbook": workbook,
+    "runbook": runbook,
 }

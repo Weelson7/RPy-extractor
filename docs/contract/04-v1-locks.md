@@ -28,7 +28,8 @@ goes to the log); invalid JSON is 400.
 | patching | | `/api/patch` (T1 patch sets), `/api/mod` (T2 mod packages) |
 | analysis | `/api/analysis/targets?gamePath` | `/api/analysis/run`, `/api/analysis/open`, `/api/analysis/diff` |
 | dynamic | `/api/runtime/attach?gamePath` | `/api/capture/warnings`, `/api/capture`, `/api/runtime/dump`, `/api/runtime/trace`, `/api/runtime/profile`, `/api/runtime/agent`, `/api/runtime/record`, `/api/runtime/attach` |
-| system | `/api/dependencies`, `/api/settings`, `/api/updates`, `/api/ui-modules`, `/api/logs`, `/api/workbooks` | `/api/preflight`, `/api/preflight/install`, `/api/settings`, `/api/diag`, `/api/indexes/update`, `/api/logs/clear` |
+| guides (doc 19) | `/api/workbooks`, `/api/runbooks` | `/api/runbooks/step`, `/api/runbooks/save`, `/api/runbooks/delete` |
+| system | `/api/dependencies`, `/api/settings`, `/api/updates`, `/api/ui-modules`, `/api/logs` | `/api/preflight`, `/api/preflight/install`, `/api/settings`, `/api/diag`, `/api/indexes/update`, `/api/logs/clear` |
 
 Patch sets and mods are also job kinds of `POST /api/jobs` (`patch`, `mod`).
 

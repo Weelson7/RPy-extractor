@@ -8,7 +8,7 @@ does not reimplement what the child does.
 | # | Capability | State |
 |---|------------|-------|
 | 19.1 | Workbooks: a guided how-to for a child tool's own interface | shipped 1.18.0 |
-| 19.2 | Runbooks: named, editable, saved sequences of steps | open |
+| 19.2 | Runbooks: named, editable, saved sequences of steps | shipped 1.19.0 |
 | 19.3 | Workflows: record, pause, continue; replay that stops only where the output differs | open |
 | 19.4 | Embedded child GUIs inside ViWo's web surface, with faithful input forwarding | open |
 
@@ -52,14 +52,67 @@ tool, one step at a time with PREVIOUS and NEXT, the step reached remembered per
 view that opens the tool); a HOW TO button beside Continue in Ghidra (ANALYSIS) and beside the
 x64dbg and Cheat Engine buttons (RUNTIME) opens the tool's workbooks.
 
-Code: `viwo/core/workbooks.py`, `viwo/data/workbooks/`, `viwo/api/handlers_system.py`,
-`viwo/web/js/views/workbooks.js`.
+Code: `viwo/core/guides.py` (the files), `viwo/core/workbooks.py`, `viwo/data/workbooks/`,
+`viwo/api/handlers_system.py`, `viwo/cli_guides.py`, `viwo/web/js/views/workbooks.js`.
 
-## 19.2 Runbooks (open)
+## 19.2 Runbooks
 
-A named sequence of steps a user runs, tweaks and saves: ViWo's own actions (a survey, an
-extraction, an analysis, a patch set) and child steps (a workbook step the user does in the
-tool). Shipped defaults plus the user's own, saved beside the user's workbooks.
+A runbook is a named sequence of steps a user runs, tweaks and saves: ViWo's own actions (a
+survey, an extraction, an analysis, a patch set: any job kind) and steps the user does, in a
+child tool when a workbook says how. Shipped defaults plus the user's own.
+
+**Files.** One JSON object per file, in the same two places as workbooks (`viwo/data/runbooks/`,
+`<data>/runbooks/`; one of the user's with a shipped id replaces it, marked `yours`):
+
+```text
+id       [a-z0-9-]+          title, summary   texts
+inputs   optional [{name, label, default?}]   name [a-z][a-z0-9_]*, not game or workspace
+steps    one or more of
+  {title, do: KIND, with: {params}}   a ViWo action: KIND is a job kind of POST /api/jobs
+                                      (doc 12.5), params its parameters
+  {title, text, workbook?: ID}        a step the user does, then confirms; the workbook (19.1)
+                                      says how in the child tool
+```
+
+In a string anywhere inside `with`, `{name}` takes the run's value: `{game}` the game folder,
+`{workspace}` the active workspace, `{<input>}` the input's value (its default when none is
+given); a parameter that is one `{name}` alone whose value is `true` or `false` becomes that
+boolean (an input is text). A file that is not valid (a wrong type anywhere included), an unknown
+job kind, an unknown `{name}` or an unknown workbook is named in `problems` and skipped; so is a
+second file with an id already read (never silently).
+
+**Running.** One step at a time, each in the active workspace: an action step goes through the
+same handler as `POST /api/jobs` and comes back with its job's result or failure; a value the
+step needs that is empty is refused before anything runs (`invalid_request`, naming it). A
+failed step stops the run where it is; the run continues from any step (the UI's RUN FROM HERE,
+`--from N`). A step the user does pauses the run until it is confirmed (the UI's DONE,
+CONTINUE; on the command line Enter, and without a terminal the run stops there and says
+`--from N+1`, with `--workspace` when an extract step switched the active workspace). Every
+action goes through its own checks and feature switches. A runbook's parameters can carry an
+action's own answers (capture's `confirmed`, cleanup's `op: apply`, extract's `onExisting:
+replace`): they are written in the runbook by its author, and each step's row shows its
+parameters before it runs. Each action's answer (a plan, a report) is shown with its step (the
+UI's ANSWER, the CLI's stderr and `done`), so the step you do next can read it.
+
+**Saving.** `POST /api/runbooks/save {runbook}` validates and writes the user's file that holds
+that id, else `<data>/runbooks/<id>.json` (through `safe_member` and `inside`); saving a shipped
+id keeps the user's tweaked copy, which replaces the shipped one; `POST /api/runbooks/delete
+{id}` removes only the user's file holding that id (a shipped runbook comes back when its
+tweaked copy is deleted).
+
+**Entry points.** `viwo runbook` lists them, `viwo runbook ID` prints the steps, `viwo runbook
+ID --run --workspace W [--set name=value]... [--from N]` runs them (a `--set` name the runbook
+does not have is said; a `--from` outside its steps is refused). API: `GET /api/runbooks` ->
+`{runbooks: [{id, title, summary, inputs, steps, source}], problems, kinds}`; `POST
+/api/runbooks/step {id, step, values}` runs one action step (step counted from 0) -> the job's
+answer plus `step`. UI: RUNBOOKS in the global strip: the list; a runbook's inputs (the game
+from the top bar, the active workspace), its steps with their state, RUN, RUN FROM HERE, DONE,
+CONTINUE, STOP, each step's job linked to JOBS; EDIT shows the runbook as JSON to change and
+save (a shipped one is saved as the user's copy), DELETE removes the user's copy.
+
+Code: `viwo/core/guides.py` (the files of 19.1 and 19.2), `viwo/core/runbooks.py`,
+`viwo/data/runbooks/`, `viwo/api/handlers_runbooks.py`, `viwo/cli_guides.py`,
+`viwo/web/js/views/runbooks.js`.
 
 ## 19.3 Workflows (open)
 

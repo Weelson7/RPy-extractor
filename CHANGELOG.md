@@ -4,6 +4,29 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.19.0 (2026-11-05)
+- Runbooks (doc 19.2, the second UI capability of doc 16.4): named, editable, saved sequences
+  of steps. An action step is a job kind with its parameters and runs through the handler
+  `POST /api/jobs` uses (every action keeps its own checks and switches); a step you do pauses
+  the run until DONE, CONTINUE (a workbook says how in the child tool). `{game}`, `{workspace}`
+  and the runbook's inputs fill the parameters; an empty one is refused, named, before anything
+  runs. A failed step stops the run where it is; RUN FROM HERE / `--from N` resumes. Three ship:
+  "Extract a game and plan its cleanup", "Find a hardcoded value and patch it live", "Apply a
+  patch set into a patched copy". EDIT shows a runbook as JSON; SAVE validates and writes your
+  copy to `viwo-data/runbooks/` (a shipped id: your tweaked copy replaces it until deleted).
+  RUNBOOKS in the global strip, `viwo runbook [ID] [--run --workspace W --set name=value --from
+  N]` (without a terminal the run stops at a step you do and says `--from`), `GET
+  /api/runbooks`, `POST /api/runbooks/step|save|delete`.
+- Each action's answer (a plan, a report) is shown with its step (ANSWER in the UI; stderr and
+  `done` on the CLI), so the step you do next can read it. The CLI says a `--set` name the
+  runbook does not have, refuses a `--from` outside its steps, and names the workspace to resume
+  in when an extract step switched it. A parameter that is one `{name}` alone with the value
+  true or false becomes that boolean.
+- `core/guides.py` holds what workbooks and runbooks share (the two folders, problems named, a
+  file with a wrong type anywhere named and never a crash, save and delete of the user's file
+  that holds the id through `safe_member` and `inside`); the CLI's guide commands moved to
+  `cli_guides.py`. A runbook step can open its workbook directly.
+
 ## 1.18.0 (2026-11-05)
 - Workbooks (doc 19.1, the first of the owner's UI capabilities of doc 16.4): step-by-step
   how-tos for a child tool's own interface, teaching text and never automation. Four ship,

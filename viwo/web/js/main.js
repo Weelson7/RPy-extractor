@@ -22,6 +22,7 @@ import "./views/settings.js";
 import "./views/runtime.js";
 import "./views/patches.js";
 import "./views/workbooks.js";
+import "./views/runbooks.js";
 import { openWorkspaceDialog } from "./workspace-dialog.js";
 import { landingWanted, runLanding } from "./landing.js";
 import { KIND } from "./views/jobs.js";

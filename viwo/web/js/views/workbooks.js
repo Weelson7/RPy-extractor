@@ -13,6 +13,8 @@ const OPENS = { handoff: "analysis", attach: "runtime" };
 /** The HOW TO button beside a tool (ANALYSIS, RUNTIME): this view, showing that tool's workbooks. */
 export const howToBtn = (tool, label = "HOW TO") => btn(label, () => { pref("wbTool", tool); location.hash = "#workbooks"; },
   "sm ghost", { title: `Step-by-step workbooks for ${tool}` });
+/** Open one workbook by id (a runbook step that says how). */
+export const workbookBtn = (id) => btn("HOW, STEP BY STEP", () => { pref("wbOpen", id); location.hash = "#workbooks"; }, "sm ghost");
 
 function mount(root) {
   el.tools = h("div", {});
@@ -33,6 +35,8 @@ async function show() {
     S.problems = res.problems || [];
   } catch (err) { return fill(el.list, errorBox(err, "WORKBOOKS UNAVAILABLE")); }
   S.tool = S.books.some((b) => b.tool === pref("wbTool")) ? pref("wbTool") : "";
+  const want = S.books.find((b) => b.id === pref("wbOpen"));
+  if (want) { pref("wbOpen", ""); S.sel = want.id; S.tool = want.tool; }
   renderList();
   const shown = S.books.filter((b) => !S.tool || b.tool === S.tool);
   renderBook(shown.find((b) => b.id === S.sel) || shown[0]);

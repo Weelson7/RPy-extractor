@@ -98,7 +98,7 @@ not reimplement a child tool's capability.
    child's own interface (a guided, step-by-step how-to for a child tool: e.g. how to patch a
    byte in x64dbg, how to export a program in Ghidra). Teaching overlays/text, not automation;
    overlays over the tool's own window wait for item 4.
-2. **Runbooks** — default or saved workflows, editable. A named sequence of steps a user can run,
+2. **Runbooks** (shipped 1.19.0, doc 19.2) — default or saved workflows, editable. A named sequence of steps a user can run,
    tweak and save (ViWo's own actions and/or child steps).
 3. **Workflows** — record what the user does, with pause/continue. On replay, when a step's
    output is identical it proceeds to the next automatically; when it differs it prompts whether

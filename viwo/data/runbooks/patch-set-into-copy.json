@@ -1,0 +1,25 @@
+{
+ "id": "patch-set-into-copy",
+ "title": "Apply a patch set into a patched copy",
+ "summary": "Check where each patch of a patch set lands in the game, then apply it into a marked patched copy. The game folder is only read.",
+ "inputs": [
+  {"name": "patchset", "label": "Patch set file (*.patch.json, absolute path)"},
+  {"name": "copy", "label": "Patched copy folder (absolute; an existing copy is patched in place)"}
+ ],
+ "steps": [
+  {
+   "title": "Check where each patch lands",
+   "do": "patch",
+   "with": {"gamePath": "{game}", "patchSet": "{patchset}", "plan": true}
+  },
+  {
+   "title": "Read the plan",
+   "text": "Every patch should be found once, with the bytes you expect. A patch that is not found or found twice stops here: fix the patch set first."
+  },
+  {
+   "title": "Apply it into the patched copy",
+   "do": "patch",
+   "with": {"gamePath": "{game}", "patchSet": "{patchset}", "out": "{copy}"}
+  }
+ ]
+}
