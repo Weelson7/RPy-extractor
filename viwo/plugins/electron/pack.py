@@ -82,16 +82,29 @@ class AsarWriter(Packer):
             inside = {m: p for m, p in members.items() if m not in unpacked}
             count = write_asar(container, inside, temp)
             os.replace(temp, container)
-            for member, source in unpacked.items():
-                target = ws.member_path(container.with_name(container.name + ".unpacked"), member)
-                if target is not None:
-                    target.write_bytes(source.read_bytes())
+            written = _write_unpacked(container, unpacked)
         except (OSError, ValueError, struct.error, UnicodeDecodeError) as exc:
             temp.unlink(missing_ok=True)
             return Outcome(OutcomeKind.FAILED, error=f"asar not rebuilt: {exc}"[:300])
         missing = sorted(set(inside) - _names(container))
-        notes = (f"{len(missing)} new member(s) not in the archive: not added",) if missing else ()
-        return Outcome(OutcomeKind.OK, count + len(unpacked), notes=notes)
+        notes = [f"{len(missing)} new member(s) not in the archive: not added"] * bool(missing)
+        lost = len(unpacked) - written  # never silent: a name leading out of the folder
+        notes += [
+            f"{lost} unpacked member(s) whose path leads out of the folder: not written"
+        ] * bool(lost)
+        return Outcome(OutcomeKind.OK, count + written, notes=tuple(notes))
+
+
+def _write_unpacked(container: Path, unpacked: dict[str, Path]) -> int:
+    """Members Electron keeps outside the archive, in `<archive>.unpacked/`; the count written."""
+    folder, written = container.with_name(container.name + ".unpacked"), 0
+    for member, source in unpacked.items():
+        target = ws.member_path(folder, member)
+        if target is not None:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(source.read_bytes())
+            written += 1
+    return written
 
 
 def _unpacked(container: Path, members: dict[str, Path]) -> dict[str, Path]:

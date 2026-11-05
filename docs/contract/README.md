@@ -29,7 +29,7 @@ Code and tests cite sections as "doc N.M"; section numbers are stable.
 | 16 | [16-roadmap.md](16-roadmap.md) | coverage ladder and the orchestrator rungs: shipped and open |
 | 17 | [17-testing-model.md](17-testing-model.md) | test levels, safety catalogue, fixtures, CI |
 | 18 | [18-round-trip.md](18-round-trip.md) | patching arm: round trip, patch sets, mod packages |
-| 19 | [19-guides.md](19-guides.md) | guides for the child tools: workbooks, runbooks, workflows, embedded GUIs |
+| 19 | [19-guides.md](19-guides.md) | guides for the child tools: workbooks, runbooks, workflows (embedded GUIs dropped) |
 
 ## Scope
 

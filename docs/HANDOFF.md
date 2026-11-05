@@ -1,6 +1,6 @@
 # Handoff
 
-State at **v1.20.3** (branch `makeover`). History is in [CHANGELOG.md](../CHANGELOG.md); the
+State at **v1.20.5** (branch `makeover`). History is in [CHANGELOG.md](../CHANGELOG.md); the
 design in [docs/contract/](contract/README.md); what is open in
 [CONFORMANCE.md](contract/CONFORMANCE.md) and below.
 
@@ -40,7 +40,7 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
   half-edited module). Make a worktree at a committed version with its own venv, then run the
   pass there:
   ```powershell
-  git worktree add ..\viwo-pass v1.20.3
+  git worktree add ..\viwo-pass v1.20.5
   cd ..\viwo-pass; py -3.13 -m venv .venv; .venv\Scripts\pip install -e ".[unity,sevenzip,renpy,lz4]"
   powershell -File tools\games_pass.ps1 -Source C:\Users\<you>\Games [-Only <folder>,...]
   ```
@@ -97,10 +97,9 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
    request through the job handlers, edited as JSON; a structured step editor is open);
    workflows shipped (1.20.0: the server records every action route, saved as a runbook with
    expected answers; replay stops where one differs; what is done inside a child tool is a
-   note until 19.4); next **embedded child GUIs**: designed in doc 19.4 (A: child-native
-   remote display through pinned tools, recommended, Linux first; B: ViWo's own capture and
-   input); it waits for the owner's decisions listed there (approach, pins, Windows popups,
-   the input route's exposure). Contract first, then API and UI, property tests.
+   note the user writes). Embedded child GUIs are dropped (owner, 2026-11-05): native tools stay
+   native, in their own windows (doc 19.4). Open here: more workbooks by reach, a structured
+   runbook step editor.
 1. **Rung D4** (partly shipped: CPU profiling, `viwo profile`, 1.6.1): open are the hook loader
    with hot reload (`hook.inject`), the overlay (`hook.overlay`) and own-traffic network tooling
    (`net.*`). The network plaintext capture and the DLL injection loader are the owner's call and
@@ -149,7 +148,16 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
    contract members nothing calls (`Stage`, `supports_keys`, `DependencySpec.packages`, the
    three OS methods doc 1 lists: `python_executable`, `case_sensitive`, `long_path`), letting
    API handlers raise (about -30; the HTTP statuses change). Next the
-   presentation, in two parts that replace the status PDF. (The UX/UI review from frames of the
+   presentation, in two parts that replace the status PDF. A frames run on Cyberpunk 2077 at
+   1.20.4 (worktree, `--features extraction,sorting,merger,analysis,capture`) showed the walk
+   cannot wait for a full extraction: after the walk's 15-minute wait the run was at 40 % of
+   UNPACK (collect and WolvenKit's decode still ahead: hours), so EXTRACT's result and the
+   WORKSPACE, SORT and CLEANUP frames show an unfinished run and an empty workspace. Owner's
+   decision before the demo is built: (a) a full extraction made beforehand from the worktree
+   (`viwo extract`, hours, its size to check against the ~150 GB free) that the walk opens for
+   the browse views after showing the live burst on a fresh workspace (a `frames.py
+   --workspace` option to add), or (b) a narrower demo extraction (an extension filter still
+   unpacks every archive; a container choice does not exist yet). (The UX/UI review from frames of the
    running UI at the owner's window and zoom, and on a real extraction, was done at 1.12.0; it
    is repeated for the demo.)
    - a product demo video (MP4, on-screen captions, no voice) on Cyberpunk 2077, the most

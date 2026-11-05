@@ -96,16 +96,12 @@ not reimplement a child tool's capability.
 
 1. **Workbooks** (shipped 1.18.0, doc 19.1) — in the UI, explain how to do something in a
    child's own interface (a guided, step-by-step how-to for a child tool: e.g. how to patch a
-   byte in x64dbg, how to export a program in Ghidra). Teaching overlays/text, not automation;
-   overlays over the tool's own window wait for item 4.
+   byte in x64dbg, how to export a program in Ghidra). Teaching text beside the tool, not
+   automation.
 2. **Runbooks** (shipped 1.19.0, doc 19.2) — default or saved workflows, editable. A named sequence of steps a user can run,
    tweak and save (ViWo's own actions and/or child steps).
 3. **Workflows** (shipped 1.20.0, doc 19.3) — record what the user does, with pause/continue. On replay, when a step's
    output is identical it proceeds to the next automatically; when it differs it prompts whether
    to continue, then proceeds if yes, and so on. Useful for automated/repeatable patching.
-4. **Embedded child GUIs** — wrap the child GUIs (x64dbg, Ghidra, Cheat Engine, qrenderdoc, ...)
-   inside the ViWo web UI, each resizable and fullscreen, instead of a separate OS window. Input
-   must be done properly: the cursor, mouse and keyboard are forwarded to the embedded native
-   window faithfully. This is the natural end of "let the child do it natively" — the native tool
-   runs inside ViWo's surface. Comes after workflows. OS-agnostic (an X11/Wayland embed on Linux,
-   the matching mechanism on Windows).
+4. **Embedded child GUIs** — dropped (owner, 2026-11-05): native tools stay native, in their
+   own windows as tracked children (doc 19.4).

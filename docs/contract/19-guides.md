@@ -1,23 +1,23 @@
-# 19. Guides: workbooks, runbooks, workflows, embedded child GUIs
+# 19. Guides: workbooks, runbooks, workflows
 
-The owner's UI capabilities (doc 16.4), in the order they are built. All are OS-agnostic:
-nothing may assume Windows or Linux. They follow one principle: **what a child tool can do
-natively, it does natively**. ViWo teaches, sequences and records the child's own interface; it
-does not reimplement what the child does.
+The owner's UI capabilities (doc 16.4). All are OS-agnostic: nothing may assume Windows or
+Linux. They follow one principle: **what a child tool can do natively, it does natively, in its
+own window**. ViWo teaches the child's interface, sequences its own actions around it and
+records them; it does not reimplement, embed or drive the child.
 
 | # | Capability | State |
 |---|------------|-------|
 | 19.1 | Workbooks: a guided how-to for a child tool's own interface | shipped 1.18.0 |
 | 19.2 | Runbooks: named, editable, saved sequences of steps | shipped 1.19.0 |
 | 19.3 | Workflows: record, pause, continue; replay that stops only where the output differs | shipped 1.20.0 |
-| 19.4 | Embedded child GUIs inside ViWo's web surface, with faithful input forwarding | open |
+| 19.4 | Embedded child GUIs inside ViWo's web surface | dropped (owner): native tools stay native |
 
 ## 19.1 Workbooks
 
 A workbook explains, step by step, how to do one thing in a child tool's own interface: "patch a
 byte in x64dbg", "find the code that uses a string in Ghidra". It is teaching text, never
-automation: ViWo does not click or type in the tool. Overlays drawn over the tool's own window
-need the embedded GUIs (19.4); until then a workbook is shown beside the tool.
+automation: ViWo does not click or type in the tool, and draws nothing over its window. A
+workbook is shown beside the tool, which stays in its own window.
 
 **Files.** One JSON object per file, `*.json`:
 
@@ -169,33 +169,10 @@ like any other: edit it, add steps you do, run it from any step.
 Code: `viwo/core/workflows.py` (expectations, portable parameters), `viwo/api/recording.py`
 (the recorder and its route wrapper), `viwo/web/js/views/recording.js`.
 
-## 19.4 Embedded child GUIs (open: design, the owner's decisions below)
+## 19.4 Embedded child GUIs (dropped)
 
-The child GUIs (x64dbg, Ghidra, Cheat Engine, qrenderdoc) run inside ViWo's web surface instead
-of a separate OS window, each resizable and fullscreen, with the cursor, mouse and keyboard
-forwarded faithfully to the native window: the matching mechanism per OS (X11 or Wayland on
-Linux, the window system on Windows), behind the OS layer. Comes after workflows.
-
-A browser cannot hold a native window, so an embedded child is a remote display of that window:
-its pixels streamed to a canvas, the user's input sent back. What "faithful" has to cover: every
-window the child opens (its popup menus, dialogs and tooltips are separate OS windows), the
-cursor shape, the keyboard as typed (layout, dead keys, shortcuts the browser would take such
-as Ctrl+W), the clipboard both ways, resizing the child with its panel, and fullscreen.
-
-| | A. Child-native remote display (pinned tools) | B. ViWo's own capture and input |
-|---|---|---|
-| Linux | each child on its own virtual display (Xvfb) with a VNC server for it (x11vnc), or one `xpra` session per child (its own HTML5 client); Wayland runs the child under Xwayland on that display | X11 capture (XGetImage/XShm) and XTest input on the child's own Xvfb display |
-| Windows | a VNC server sharing one window (UltraVNC's single-window mode) or the desktop region it covers | Windows.Graphics.Capture or PrintWindow/BitBlt through `ctypes`, SendInput or PostMessage for input |
-| browser side | noVNC (MPL-2.0) through websockify, in the panel | a canvas and a WebSocket of ViWo's own |
-| popups, menus | Linux: complete (the whole display is the child's); Windows: the open risk | Linux: complete; Windows: a desktop-region capture shows them only while the window is visible on the real desktop |
-| cost | GPL tools as separate processes, pinned; their first-run answers off screen | more first-party code, no new pins |
-
-Recommended: A (the child's display, native tools: the principle of this doc), Linux first,
-where a private display gives full fidelity; Windows as a second step once its popup
-behaviour is verified by hand on the four tools.
-
-Decisions needed from the owner before building: A or B; the pins A adds (Xvfb, x11vnc or
-xpra, UltraVNC, noVNC, websockify); whether a desktop-region capture is acceptable on Windows
-(the child stays visible on the real desktop); and the input route's exposure (local only; never
-over the LAN key link by default). Nothing here injects input into anything but the child's own
-window or display.
+Dropped by the owner (2026-11-05): the child GUIs (x64dbg, Ghidra, Cheat Engine, qrenderdoc)
+stay native, in their own windows, started by ViWo as tracked children (doc 8.3a). ViWo does
+not embed, stream or drive their windows; workbooks (19.1) teach them beside the tool, and what
+the user does inside them is a step the user records as a note (19.3). The number stays so the
+section numbers keep their meaning.

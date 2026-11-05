@@ -4,6 +4,14 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.5 (2026-11-05)
+- Embedded child GUIs dropped (owner): x64dbg, Ghidra, Cheat Engine and qrenderdoc stay native,
+  in their own windows as tracked children. Doc 19.4 records the decision (its design removed),
+  16.4 item 4 and CONFORMANCE follow; workbooks are shown beside the tool, and what is done in a
+  child tool stays a note the user writes in a workflow.
+- Presentation: a frames run on Cyberpunk 2077 showed the walk cannot wait for a full
+  extraction (hours); HANDOFF records the two ways to stage the demo, for the owner to choose.
+
 ## 1.20.4 (2026-11-05)
 - Presentation: the walk shows WORKBOOKS, RUNBOOKS with the workflow recorder, and RUNTIME's
   debugger and memory panel; the top bar's five tabs; the technical PDF gains "Guides for the
