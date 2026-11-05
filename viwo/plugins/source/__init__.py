@@ -126,16 +126,18 @@ class SourcePlugin(EnginePlugin):
 
     def slot_definitions(self):
         from .pack import SLOT as PACK_SLOT
+        from .vtf import SLOT as VTF_SLOT
 
-        return (SLOT, PACK_SLOT)
+        return (SLOT, PACK_SLOT, VTF_SLOT)
 
     def pack_slot(self, unarchive_slot: str) -> str:
         return "pack.vpk" if unarchive_slot == "unarchive.vpk" else ""
 
     def backends(self):
         from .pack import VpkWriter
+        from .vtf import VtfDecoder
 
-        return (VpkBuiltin(), VpkWriter())
+        return (VpkBuiltin(), VpkWriter(), VtfDecoder())
 
     def claimed_suffixes(self):
         return (".vpk",)  # numbered parts; _dir.vpk files are identified as containers first

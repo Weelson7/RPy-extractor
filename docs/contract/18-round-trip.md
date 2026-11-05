@@ -66,9 +66,9 @@ after writing):
 | `pack.pack` | `movie-pack` | override: `data/viwo_<pack>.pack`, a pack of type movie Warscape loads over the release packs; PFH4 games; a PFH5/PFH6 game is refused by name until its layout is verified |
 | `pack.rgssad` | `rgssad-writer` | RPG Maker XP/VX (v1) and VX Ace (v3) archives rebuilt, every entry under its own key |
 | `pack.drs` | `drs-writer` | Genie DRS rebuilt, tables and entries in place |
+| `pack.wad` | `wad-writer` | IWAD/PWAD rebuilt, lumps and markers in order; what the unpacker converted is converted back: a PNG to a Doom picture (grAb offsets kept) or a flat through the game's palette, a WAV to DMX sound; read back after the palette mapping |
 
-Not written back yet: Doom WADs (pictures and sounds would need converting back from PNG and
-WAV) and TaleWorlds TPAC packages.
+Not written back yet: TaleWorlds TPAC packages.
 
 ## 18.5 Packer interface
 

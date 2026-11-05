@@ -49,7 +49,14 @@ class DoomPlugin(EnginePlugin):
         return DetectionResult("doom", score, tuple(evidence), "doom")
 
     def slot_definitions(self):
-        return (WAD_SLOT,)
+        from .pack import SLOT as PACK_SLOT
+
+        return (WAD_SLOT, PACK_SLOT)
+
+    def pack_slot(self, unarchive_slot: str) -> str:
+        return "pack.wad" if unarchive_slot == "unarchive.wad" else ""
 
     def backends(self):
-        return (WadBuiltin(),)
+        from .pack import WadWriter
+
+        return (WadBuiltin(), WadWriter())

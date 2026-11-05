@@ -133,11 +133,11 @@ Detection markers live in each plugin's `detect()`; slot defaults in doc 8.4.
 | unity | `export.unity` (UnityPy, AssetStudioModCLI spare), `unarchive.unitypackage`, `pack.unity`, `runtime.unity` (BepInEx); IL2CPP and managed targets | `include_cache`, `meshes`, `objects` (bool; `objects`: videos, fonts, shaders and every other object as JSON) |
 | godot | `unarchive.pck` (embedded PCK carving), `export.godot`, `pack.pck`, `analysis.gdscript` | `encryption_key` (secret), `recover` (bool) |
 | unreal | `unarchive.upak` (repak, QuickBMS spare), `unarchive.utoc` (retoc), `pack.upak` (`_P.pak`), `runtime.unreal` (UE4SS), `export.unreal` (UnrealAssetScout: textures, models, animations, sounds, JSON; mappings from the agent); AES per D18 | `aes_key` (secret), `find_key` (bool), `usmap` (path), `engine` (string) |
-| doom | `unarchive.wad` (PNG, WAV, MIDI, maps) | `raw_lumps` (bool) |
+| doom | `unarchive.wad` (PNG, WAV, MIDI, maps), `pack.wad` (edits converted back through the palette) | `raw_lumps` (bool) |
 | rpgmaker | `unarchive.rgssad`, `export.rpgmaker` (MV/MZ decryption), `pack.rpgmaker`, `pack.rgssad` | - |
 | kirikiri | `unarchive.xp3` (unencrypted entries; per-title ciphers reported), `pack.xp3` (the next patch archive) | - |
 | electron | `unarchive.asar` (`package.nw` is a zip), `pack.asar`; wrapper re-detection (doc 3.1) | - |
-| source | `unarchive.vpk` (v1/v2, multi-part, absent parts skipped), `pack.vpk` (override VPK in `custom/`) | - |
+| source | `unarchive.vpk` (v1/v2, multi-part, absent parts skipped), `pack.vpk` (override VPK in `custom/`), `decode.vtf` (VTF textures to PNG) | - |
 | bethesda | `unarchive.bsa`, `unarchive.ba2` (textures rebuilt as DDS), `pack.bsa`/`pack.ba2` (loose files in `Data/`) | - |
 | genie | `unarchive.drs`, `decode.slp` (SLP sprites to PNG with the game palette), `pack.drs` | - |
 | warscape | `unarchive.pack` (Total War PFH4/PFH5), `pack.pack` (a movie pack in `data/`), `decode.loc` (localisation to JSON), `export.warscape` (DB tables to JSON with the game's RPFM schema) | - |

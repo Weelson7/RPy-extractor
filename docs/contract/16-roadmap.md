@@ -45,7 +45,7 @@ libraries (Oodle, Bink), as for Kraken today; a pinned community tool run as a s
 | Ren'Py | RPA members, `.rpyc` to `.rpy` | - |
 | RPG Maker | RGSSAD, MV/MZ decrypted assets, data JSON | XP/VX/VX Ace `.rxdata`/`.rvdata2` (Ruby Marshal) to JSON |
 | KiriKiri | unencrypted XP3 entries | TLG images to PNG, PSB/SCN scripts to JSON |
-| Source | VPK members | VTF to PNG, MDL to glTF, BSP maps, VCS shaders |
+| Source | VPK members; VTF textures to PNG (DXT1/3/5 and the 8-bit formats) | MDL to glTF, BSP maps, VCS shaders, the 16-bit and HDR VTF formats |
 | Bethesda | BSA/BA2 members, BA2 textures to DDS | NIF to glTF, ESP/ESM/ESL records to JSON, FUZ/XWM audio to WAV |
 | Age of Empires (genie) | DRS members, SLP to PNG | SMX (Definitive Edition) to PNG |
 | Total War (warscape) | PFH4/PFH5 members; `.loc` localisation to JSON (`decode.loc`); DB tables to JSON with the game's RPFM schema (`export.warscape`, 14 games) | RigidModel to glTF; DB tables with binary fields (`models_*`); the game's schema installed by itself on first use |

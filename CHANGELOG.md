@@ -4,6 +4,13 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.16.4 (2026-11-05)
+- `pack.wad`: Doom WADs are written back (found missing by the deep pass on Freedoom): edited
+  pictures and flats go back through the game's palette (grAb offsets kept), sounds to DMX, every
+  other lump as it was; verified on Freedoom (a repainted sprite comes back).
+- `decode.vtf`: Source textures to PNG in process (the largest mipmap of the first frame; DXT1,
+  DXT3, DXT5 and the 8-bit formats; VTF 7.0-7.5).
+
 ## 1.16.3 (2026-11-05)
 The patching arm for the engines ViWo reads itself (from the deep pass: Doom had no packer,
 nor had most of these): `pack.asar` (rebuilt, integrity hashes recomputed), `pack.vpk` (an
