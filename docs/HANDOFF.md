@@ -49,9 +49,16 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
   analysis flags, game-folder hash check), keeps `viwo-data/games-pass/<slug>/report.*` and
   deletes the copy. Free titles: `python tools/integration_games.py` over `Test-games/`
   (`sqc/games.md`).
-- **Status PDF:** `python tools/status_pdf.py [--out PATH] [--tests LOG]` fills
-  `tools/status_template.html` from the reports, the sqc suite, the CTF flags and the commit log
-  and prints it with headless Edge.
+- **Deep pass** (real games, every capability, judged on its output): from the same worktree,
+  `python tools/deep_pass.py <game folder> [--dynamic] [--exe EXE]` runs detect, a deep survey,
+  a full extraction, the accounting of every game byte and workspace file (open, raw, unknown;
+  the raw types ranked), every decoded file opened by a real reader (Pillow, WAV, JSON, glTF,
+  ffprobe), a contact sheet of sampled images, cleanup plan/apply/undo, every analysis target,
+  a real edit per container type repacked and read back, an AOB patch set, a mod packed,
+  checked and applied, and with `--dynamic` capture, the engine agent, a dump, a trace and the
+  game's sound. Reports in `viwo-data/deep-pass/<slug>/` (`report.md`, `report.json`,
+  `contact.png`); the game folder is only read (checked). A patched copy is skipped, and said,
+  when the disk cannot hold one.
 
 ## Gotchas that still apply
 

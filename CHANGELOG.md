@@ -4,6 +4,15 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.16.1 (2026-11-05)
+- `tools/deep_pass.py`: every capability on one real game, judged on its output (the accounting
+  of every game byte and workspace file, decoded files opened by real readers, a contact sheet,
+  cleanup undo, every analysis target, a real edit repacked and read back, an AOB patch set, a
+  mod, and the dynamic arm with `--dynamic`). Verified on Freedoom: every byte read, 80 % of the
+  workspace in open formats, every sampled PNG, WAV and text opens. Found there: Doom WADs have
+  no packer yet (the patching arm does not reach them). `tools/status_pdf.py` is retired (the
+  technical PDF replaces it).
+
 ## 1.16.0 (2026-11-05)
 Game plugins (doc 2.10, owner's decision: plugins per engine, each engine with game plugins):
 - An engine plugin keeps what holds for every game on its engine and detects by the engine's own
