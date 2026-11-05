@@ -4,6 +4,17 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.16.6 (2026-11-05)
+- Fix: the analysis arm copied a binary under its original name, and Ghidra's headless refuses a
+  name with an apostrophe, a space and more ("Void's Cave.exe": "Please rename", found by the
+  deep pass). The copy now gets a tool-safe name (the extension kept for format detection).
+- Roadmap (doc 16): T3 records that interactive/live patching is the child's native job (x64dbg,
+  Ghidra) and ViWo does not reimplement it; 16.4 records the planned, OS-agnostic UI features
+  (workbooks, runbooks, workflows, embedded child GUIs with proper input forwarding); and a
+  managed-vs-unmanaged tools distinction for the indexes and plugins. Verified by hand: ViWo's
+  Ghidra analysis located Free Download Manager's hardcoded 20-connection per-server cap (one
+  `cmp` byte), raised in a patched copy; connections rose from 20 to 47.
+
 ## 1.16.5 (2026-11-05)
 - Unity IL2CPP builds: MonoBehaviour data comes out with its fields. The export runs Cpp2IL
   (pinned, its own process) once to rebuild stand-in assemblies from GameAssembly and the

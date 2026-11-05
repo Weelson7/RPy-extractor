@@ -46,7 +46,7 @@ py -3.13 -m venv .venv; .venv\Scripts\Activate.ps1
 pip install -e ".[unity,sevenzip,renpy,dev]"
 ruff format viwo tests tools packaging; ruff check viwo tests tools packaging
 python tools/loc_count.py --report          # caps: run AFTER ruff format
-python -m unittest discover -s tests -t .    # 566 tests, ~19 min; real-tool tests need VIWO_L5=1
+python -m unittest discover -s tests -t .    # 567 tests, ~19 min; real-tool tests need VIWO_L5=1
 viwo serve                                   # web UI, opens the browser
 viwo config check startup.ini distros/*.ini  # strict config validation
 ```

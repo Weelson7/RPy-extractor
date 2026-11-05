@@ -70,6 +70,7 @@ feature switch where it is heavy. Sequencing by owner's call.
 | dynamic | D4 | `hook.inject` (hook loader with hot reload), `hook.overlay`, `net.*` (own-traffic capture and proxy), `profile.sample` (CPU sampling) | OS layer (profile) | `profile.sample` shipped 1.6.1; the rest **open**; the plaintext network capture and the DLL injection loader are the owner's call and are not authored by the assistant |
 | patching | T1 | patch sets: offset, RVA and AOB addresses, Keystone assembly, capstone plans, whole-file verify, diff and AOB export | Keystone (`kstool`), capstone | shipped 1.4.5-1.4.6 |
 | patching | T2 | mod packages: pack, check (with the AOB update check), ordered and conflict-checked apply | - | shipped 1.4.5-1.4.6; the in-game half (loader, hook API, overlay, crash handler) is what the pinned runtime loaders do |
+| patching | T3 | **interactive / live patching** | x64dbg, Ghidra | **the child does it natively, ViWo does not reimplement it** (owner's principle: what a child can do natively, let it do natively). x64dbg patches live memory and writes to the file (Patches dialog); Ghidra edits bytes and exports. ViWo's role is the handoff that opens the child pre-loaded (D3 `handoff.debug`, A1 Continue in Ghidra). ViWo's own patch sets (T1) stay for scripted, reproducible patches. Verified by hand on real software (Free Download Manager: lifted a hardcoded 20-connection per-server cap via one `cmp` byte, found through ViWo's Ghidra analysis). Note: the x64dbg handoff is today gated behind the `capture` feature; interactive patching should also be reachable from the patching arm. |
 
 The arm homes of the UI (`viwo/web/js/views/home.js`) show the same rungs as SHIPPED or ROADMAP.
 
@@ -84,3 +85,26 @@ The arm homes of the UI (`viwo/web/js/views/home.js`) show the same rungs as SHI
 | `keys.*` as a slot family (keys stay plugin options) | 14.2 #4 |
 | coverage per file at 98 % line / 95 % branch (owner's target) | 17.5 |
 | the `vidya_wormhole_indexes` repository split and its first release | `docs/indexes.md` |
+| **managed vs unmanaged tools** distinction in the indexes and plugins: *managed* = ViWo pins (version/size/sha256) and installs into `third_party/`; *unmanaged* = user-supplied (a `[tools]` path), on PATH, or a third-party/community tool ViWo deliberately does not pin (including borderline tools, never first-party). ViWo uses an unmanaged tool but does not own its lifecycle; an index or plugin that references a tool says which it is (owner, 2026-11-05) | 10, `docs/indexes.md` |
+
+## 16.4 UI capabilities (owner, planned 2026-11-05)
+
+Planned web-UI features, in the order the owner wants them, to be introduced later. All of them
+are **OS-agnostic** (Windows and Linux alike): nothing may assume one OS. They build on the
+principle **"what a child can do natively, let it do natively"** — ViWo orchestrates and does not
+reimplement a child tool's capability.
+
+1. **Workbooks** — in the UI, explain how to do something in a child's own interface (a guided,
+   step-by-step how-to for a child tool: e.g. how to patch a byte in x64dbg, how to export a
+   program in Ghidra). Teaching overlays/text, not automation.
+2. **Runbooks** — default or saved workflows, editable. A named sequence of steps a user can run,
+   tweak and save (ViWo's own actions and/or child steps).
+3. **Workflows** — record what the user does, with pause/continue. On replay, when a step's
+   output is identical it proceeds to the next automatically; when it differs it prompts whether
+   to continue, then proceeds if yes, and so on. Useful for automated/repeatable patching.
+4. **Embedded child GUIs** — wrap the child GUIs (x64dbg, Ghidra, Cheat Engine, qrenderdoc, ...)
+   inside the ViWo web UI, each resizable and fullscreen, instead of a separate OS window. Input
+   must be done properly: the cursor, mouse and keyboard are forwarded to the embedded native
+   window faithfully. This is the natural end of "let the child do it natively" — the native tool
+   runs inside ViWo's surface. Comes after workflows. OS-agnostic (an X11/Wayland embed on Linux,
+   the matching mechanism on Windows).

@@ -5,6 +5,7 @@ Never part of an extraction; behind the `analysis` feature switch (a capability 
 from __future__ import annotations
 
 import json
+import re
 import shutil
 import tempfile
 import time
@@ -27,6 +28,8 @@ from .ghidra import GhidraGui, GhidraHeadless
 from .handoffs import CheatEngineGui, X64dbgGui
 from .identify import DetectItEasy
 from .managed import Cpp2Il, IlSpy, Unluac
+
+_ANALYSIS_NAME = re.compile(r"[^A-Za-z0-9._-]")  # a copied binary's name a tool can take (Ghidra)
 
 
 def slot_for(kind: str) -> str:
@@ -161,8 +164,13 @@ def _copy_inputs(target: AnalysisTarget, scratch: Path) -> AnalysisTarget:
     folder = scratch / "input"
     folder.mkdir(parents=True, exist_ok=True)
     copies: list[Path] = []
-    for index, path in enumerate(target.paths):  # same-named chunks from different folders
-        name = path.name if path.name not in {c.name for c in copies} else f"{index}-{path.name}"
+    taken: set[str] = set()
+    for index, path in enumerate(target.paths):
+        # a name a tool can take: Ghidra's headless refuses an apostrophe, a space and more
+        # ("Void's Cave.exe": "Please rename"); the extension is kept for format detection
+        safe = _ANALYSIS_NAME.sub("_", path.stem) + path.suffix
+        name = safe if safe not in taken else f"{index}-{safe}"  # same-named chunks of two folders
+        taken.add(name)
         copies.append(Path(shutil.copy2(path, folder / name)))
     copies = tuple(copies)
     return AnalysisTarget(target.key, target.kind, copies, target.owner, target.label, target.hints)

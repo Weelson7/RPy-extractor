@@ -1,4 +1,4 @@
 """Vidya Wormhole (ViWo): game asset extraction and curation framework."""
 
-__version__ = "1.16.5"
+__version__ = "1.16.6"
 CONTRACT_VERSION = "1.2"

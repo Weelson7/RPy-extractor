@@ -145,6 +145,30 @@ class TableNameTests(unittest.TestCase):
             self.assertEqual(re.sub(r"\\(.)", r"\1", literal), name)
 
 
+class CopyInputsTests(unittest.TestCase):
+    def test_a_copied_binary_gets_a_name_a_tool_can_take(self) -> None:
+        from viwo.contracts.analysis import AnalysisTarget
+        from viwo.core.analysis import _copy_inputs
+
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "g").mkdir()
+            names = ["Void's Cave.exe", "a b&c.exe", "fine.exe", "fine.exe"]  # last two collide
+            paths = []
+            for i, n in enumerate(names):
+                sub = root / "g" / str(i)
+                sub.mkdir()
+                (sub / n).write_bytes(b"MZ")
+                paths.append(sub / n)
+            target = AnalysisTarget("k", "native_binary", tuple(paths), "owner")
+            copied = _copy_inputs(target, root / "scratch")
+            out = [p.name for p in copied.paths]
+            self.assertEqual(out, ["Void_s_Cave.exe", "a_b_c.exe", "fine.exe", "3-fine.exe"])
+            for name in out:
+                self.assertRegex(name, r"^[A-Za-z0-9._-]+$")  # Ghidra-safe
+                self.assertTrue((root / "scratch" / "input" / name).read_bytes() == b"MZ")
+
+
 class TargetTests(unittest.TestCase):
     def test_plugins_propose_targets(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
