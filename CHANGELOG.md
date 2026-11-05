@@ -4,6 +4,26 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.17.0 (2026-11-05)
+- Static and dynamic analysis separated (owner). Continue in x64dbg and Continue in Cheat Engine
+  work on the game itself, so they left the static ANALYSIS view for the dynamic arm: RUNTIME,
+  DEBUGGER AND MEMORY; `viwo attach GAME [--target KEY --tool ID --pid N --workspace W
+  --confirm]`; `GET|POST /api/runtime/attach`. Their slots are renamed `handoff.debug` ->
+  `attach.debug` and `handoff.memory` -> `attach.memory` (family `attach`); an ini naming the old
+  ids needs the new ones. They need only the `capture` switch (with the once-per-game
+  confirmation and the warnings), no longer `analysis` too. ANALYSIS and `viwo analyze --open`
+  keep the static handoff (Continue in Ghidra); `analyze --confirm` is gone.
+- x64dbg debugs the game's own process (owner: live patching needs it): it attaches to the one
+  process running the target's executable (or the pid given) with `-p PID`, and starts the game's
+  own executable when none runs. The `<workspace>.debug-copy` patched copy is no longer made.
+  Several processes of that name answer `needs_decision` (give the pid).
+- The Cheat Engine table moved from `.analysis/cheatengine-gui/` to `.runtime/cheatengine-gui/`.
+- `core/handoff.py` holds what both arms share: the tracked launch, `wait_for`, the slot offer.
+- The default `startup.ini` keeps `extraction, sorting, merger` (a local edit turning on
+  `capture, analysis` was reverted, owner's call).
+- Tests: the browser smoke waits for the browser's DevTools port before driving it (a cold Edge
+  under the full suite's load refused the connection and all eight smoke tests failed).
+
 ## 1.16.8 (2026-11-05)
 - Handoff: the state header (version) and the test count brought current.
 

@@ -71,8 +71,9 @@ files anything can open.
 | `viwo dump --name <image> --workspace <ws>` | memory dump of a running game |
 | `viwo trace --name <image> --workspace <ws> [--functions ...]` | API calls through Frida |
 | `viwo record --workspace <ws> [--seconds S]` | the game's sound from the system output, to WAV |
+| `viwo attach <game> --target <key> --workspace <ws> --confirm [--tool cheatengine-gui] [--pid N]` | continue in x64dbg on the game's own process (attached when it runs, started otherwise: live patching), or in Cheat Engine with a ViWo table; no `--target` lists the targets |
 
-Continue in x64dbg and Continue in Cheat Engine open from `viwo analyze --open` and ANALYSIS.
+The same tools open from RUNTIME, DEBUGGER AND MEMORY.
 
 **Patching: you change its content**, always in a marked patched copy.
 

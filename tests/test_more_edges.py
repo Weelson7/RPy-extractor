@@ -109,7 +109,7 @@ class AnalyzeCliTests(unittest.TestCase):
             opened = {"label": "Continue in Ghidra", "pid": 77, "handoff": "ghidra-gui"}
             with (
                 mock.patch("viwo.core.analysis.open_in", return_value=opened),
-                mock.patch("viwo.core.analysis.wait_for", return_value=True) as wait,
+                mock.patch("viwo.core.handoff.wait_for", return_value=True) as wait,
             ):
                 argv = ["--ini", ini, "analyze", str(root / "game"), "--target", "x"]
                 code, out, err = run([*argv, "--workspace", str(root / "ws"), "--open"])

@@ -188,7 +188,7 @@ class GodotRecoverTests(unittest.TestCase):
 
 class HandoffTests(unittest.TestCase):
     def test_only_vivos_own_copy_is_pre_answered(self) -> None:
-        from viwo.core.analysis import handoffs
+        from viwo.core.capture import handoffs
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -204,6 +204,7 @@ class HandoffTests(unittest.TestCase):
                 ctx = SimpleNamespace(
                     os=SimpleNamespace(tools=SimpleNamespace(locate=lambda s: tool)),
                     log=lambda *a, **k: logs.append(a),
+                    options={},
                 )
                 with mock.patch.object(handoffs, "_bits", return_value=64):
                     handoffs.X64dbgGui().prepare(target, ctx)

@@ -1,6 +1,6 @@
 # Handoff
 
-State at **v1.16.8** (branch `makeover`). History is in [CHANGELOG.md](../CHANGELOG.md); the
+State at **v1.17.0** (branch `makeover`). History is in [CHANGELOG.md](../CHANGELOG.md); the
 design in [docs/contract/](contract/README.md); what is open in
 [CONFORMANCE.md](contract/CONFORMANCE.md) and below.
 
@@ -23,7 +23,7 @@ py -3.13 -m venv .venv; .venv\Scripts\Activate.ps1
 pip install -e ".[unity,sevenzip,renpy,lz4,dev]"
 ruff format viwo tests tools packaging; ruff check viwo tests tools packaging
 python tools/loc_count.py --report
-python -m unittest discover -s tests -t .      # 576 tests, ~13 min on Windows
+python -m unittest discover -s tests -t .      # 577 tests, ~13 min on Windows
 python tools/version.py commit -m "..." [--feature|--major] [--push]
 ```
 
@@ -40,7 +40,7 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
   half-edited module). Make a worktree at a committed version with its own venv, then run the
   pass there:
   ```powershell
-  git worktree add ..\viwo-pass v1.16.8
+  git worktree add ..\viwo-pass v1.17.0
   cd ..\viwo-pass; py -3.13 -m venv .venv; .venv\Scripts\pip install -e ".[unity,sevenzip,renpy,lz4]"
   powershell -File tools\games_pass.ps1 -Source C:\Users\<you>\Games [-Only <folder>,...]
   ```
@@ -105,7 +105,9 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
    plugins.
 5. **Indexes:** create the `vidya_wormhole_indexes` repository, split `indexes/` out
    (`docs/indexes.md`), publish its first release; add QuickBMS scripts pinned by checksum.
-6. **Not verified on real data:** DataTool on a real Overwatch install (independent operator);
+6. **Not verified on real data:** `viwo attach` since 1.17.0 (SQC-DYN-01/02: x64dbg attached to a
+   running game and a live byte patch, Cheat Engine's table under `.runtime/`);
+   DataTool on a real Overwatch install (independent operator);
    QuickBMS on a real game archive; the Godot PCK path on a title that ships its data; the game loading a
    `pack.archive` override (`archive/pc/mod/!viwo_*.archive`, ahead of other mods by name).
 7. **Completeness contract (doc 16.0c, owner):** everything out of every game, decoded, all

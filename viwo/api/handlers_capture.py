@@ -86,9 +86,45 @@ def runtime_routes(prefix: str) -> dict[str, Callable[[App, dict], Any]]:
     return {f"{prefix}{k}": (lambda app, d, k=k: runtime_job(app, d, k)) for k in kinds}
 
 
-CAPTURE_GET: dict[str, Callable[[App, dict], Any]] = {"/api/browse-file": browse_file}
+def attach_targets(app: App, q: dict) -> dict:
+    """GET /api/runtime/attach?gamePath=: the targets x64dbg or Cheat Engine can take."""
+    from viwo.core.capture.attach import listing
+
+    if isinstance(game := existing(q, "gamePath", "Game folder"), dict):
+        return game
+    problems: list[str] = []
+    targets = listing(app.rt, game, problems)
+    enabled = "capture" in app.rt.config.features
+    return {"success": True, "targets": targets, "enabled": enabled, "problems": problems}
+
+
+def run_attach(app: App, d: dict) -> dict:
+    """POST /api/runtime/attach {gamePath, targetKey, tool?, pid?, confirm?}: the tool starts
+    as a tracked child (no job: it runs until the user closes it)."""
+    from viwo.core.capture.attach import AttachRequest, attach
+
+    if isinstance(game := existing(d, "gamePath", "Game folder"), dict):
+        return game
+    key = str(d.get("targetKey", "")).strip()
+    if not key:
+        return failure(ViwoError("invalid_request", "targetKey is required"))
+    try:
+        pid = int(d.get("pid") or 0)
+    except (TypeError, ValueError):
+        return failure(ViwoError("invalid_request", "pid must be a number"))
+    req = AttachRequest(
+        game, app.workspace, key, str(d.get("tool", "")), pid, bool(d.get("confirm"))
+    )
+    return {"success": True, **attach(app.rt, req)}
+
+
+CAPTURE_GET: dict[str, Callable[[App, dict], Any]] = {
+    "/api/browse-file": browse_file,
+    "/api/runtime/attach": attach_targets,
+}
 CAPTURE_POST: dict[str, Callable[[App, dict], Any]] = {
     "/api/capture/warnings": capture_warnings,
     "/api/capture": run_capture,
+    "/api/runtime/attach": run_attach,
     **runtime_routes("/api/runtime/"),
 }

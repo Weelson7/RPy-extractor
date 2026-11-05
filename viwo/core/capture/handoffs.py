@@ -1,7 +1,9 @@
-"""D3 handoffs (doc 8.3a, 16.2b): "Continue in x64dbg" opens a game executable under the debugger
-(x64dbg is GPL-3: a separate process, pinned), "Continue in Cheat Engine" opens a starter table
-that attaches to the game as soon as it runs (Cheat Engine unpacked by the startup check).
-Both run as tracked children of ViWo, like the Ghidra GUI."""
+"""D3 attach tools (doc 11.2, 8.3a, 16.2b), the dynamic arm's `attach.*` slots: "Continue in
+x64dbg" attaches the debugger to the game's running process (`-p PID`), or starts the game's own
+executable under it, so a live patch lands in the real process (x64dbg is GPL-3: a separate
+process, pinned); "Continue in Cheat Engine" opens a starter table that attaches to the game as
+soon as it runs (Cheat Engine unpacked by the startup check). Both run as tracked children of
+ViWo, like the Ghidra GUI."""
 
 from __future__ import annotations
 
@@ -12,6 +14,8 @@ from viwo.contracts.analysis import AnalysisTarget, Handoff, LaunchSpec
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 
 from ..patch_tools import pe
+
+ATTACH = frozenset({"attach"})  # the slot family: Handoff's interface, run on the live game
 
 X64DBG = DependencySpec(
     "x64dbg",
@@ -76,12 +80,13 @@ def quiet_x64dbg(debugger: Path) -> None:
 
 class X64dbgGui(Handoff):
     backend_id, license, isolation = "x64dbg-gui", "GPL-3.0", "subprocess"
-    label, accepts = "Continue in x64dbg", ("native_binary",)
+    label, accepts, families = "Continue in x64dbg", ("native_binary",), ATTACH
     self_check_args = ()  # a GUI: never started just to answer
 
     requires = (X64DBG,)
 
     def prepare(self, target: AnalysisTarget, ctx) -> LaunchSpec | Outcome:
+        """`ctx.options["pid"]`: the running game to attach to; none starts the executable."""
         tool = ctx.os.tools.locate(X64DBG)
         if tool is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=X64DBG.hint)
@@ -96,7 +101,9 @@ class X64dbgGui(Handoff):
             quiet_x64dbg(debugger)
         else:
             ctx.log("x64dbg is your own install: its first-run windows are left to you", "info")
-        return LaunchSpec((str(debugger), str(exe)), exe.parent)
+        pid = int(ctx.options.get("pid") or 0)
+        what = ("-p", str(pid)) if pid else (str(exe),)
+        return LaunchSpec((str(debugger), *what), exe.parent)
 
 
 def quiet_cheatengine(host, home: Path) -> None:
@@ -117,7 +124,7 @@ def quiet_cheatengine(host, home: Path) -> None:
 
 class CheatEngineGui(Handoff):
     backend_id, license, isolation = "cheatengine-gui", "Cheat Engine license", "subprocess"
-    label, accepts = "Continue in Cheat Engine", ("native_binary",)
+    label, accepts, families = "Continue in Cheat Engine", ("native_binary",), ATTACH
     self_check_args = ()
 
     requires = (CHEATENGINE,)

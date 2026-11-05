@@ -26,17 +26,23 @@ from ..scan_exclusions import excluded
 from ..steps import tell, teller
 from ..workspace import claim, write_atomic
 from .audio import LoopbackRecorder
+from .handoffs import CheatEngineGui, X64dbgGui
 from .policy import DEFAULT_AUTO, check, warnings_for
 from .renderdoc import RENDERDOCCMD, RenderDocCapture
 from .runtime import FridaTrace
 
-SLOTS = (SlotDefinition("capture.gpu", "capture", "core", "renderdoc"),)
+SLOTS = (
+    SlotDefinition("capture.gpu", "capture", "core", "renderdoc"),
+    SlotDefinition("attach.debug", "attach", "core", "x64dbg-gui"),
+    SlotDefinition("attach.memory", "attach", "core", "cheatengine-gui"),
+)
 
 
 def backends() -> list:
-    """RenderDoc serves capture.gpu; Frida and the loopback recorder serve no slot (one tool
-    each, nothing to fail over to) and are listed for their dependencies (preflight, SYSTEM)."""
-    return [FridaTrace(), LoopbackRecorder(), RenderDocCapture()]
+    """RenderDoc serves capture.gpu, x64dbg and Cheat Engine the attach slots (attach.py);
+    Frida and the loopback recorder serve no slot (one tool each, nothing to fail over to) and
+    are listed for their dependencies (preflight, SYSTEM)."""
+    return [FridaTrace(), LoopbackRecorder(), RenderDocCapture(), X64dbgGui(), CheatEngineGui()]
 
 
 def _known_hashes(workspace: Path) -> set[str]:

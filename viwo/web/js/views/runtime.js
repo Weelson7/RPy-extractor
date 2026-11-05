@@ -1,8 +1,8 @@
 // RUNTIME (dynamic arm): the engine's agent in a patched copy (UE4SS, BepInEx), the game's
-// sound, a memory dump and an API trace of the running game. Each run is a job; the outputs land
-// in the active workspace under .runtime/.
+// sound, a memory dump and an API trace of the running game, and x64dbg or Cheat Engine on the
+// game itself. Each run is a job; the outputs land in the active workspace under .runtime/.
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, viewHead, kv, toast, toastErr, pref, emit, browseBtn, errorBox, openBtn, assure } from "../ui.js";
+import { h, fill, btn, panel, badge, viewHead, kv, toast, toastErr, pref, emit, browseBtn, errorBox, openBtn, assure, busy, table, confirmBox } from "../ui.js";
 import { jobProgress } from "../progress.js";
 import { setGame, gameField } from "../game.js";
 
@@ -19,10 +19,11 @@ function mount(root) {
   el.secs = h("input", { class: "input mono", id: "rt-secs", type: "number", min: "1", value: pref("rtSecs") || "10", oninput: (e) => pref("rtSecs", e.target.value) });
   el.progHost = h("div", {});
   el.result = h("div", {});
+  el.attach = h("div", {}, h("p", { class: "dim" }, "LIST TARGETS names the game's executables x64dbg and Cheat Engine can take."));
   el.buttons = [btn("RUN AGENT", () => run("agent"), "primary"), btn("DUMP MEMORY", () => run("dump"), ""),
     btn("TRACE CALLS", () => run("trace"), ""), btn("PROFILE CPU", () => run("profile"), ""), btn("RECORD SOUND", () => run("record"), "")];
   root.append(
-    viewHead(code("runtime"), "RUNTIME", "The game is running: load the engine's agent into a patched copy, record what it plays, dump its memory or trace its API calls. Each run is a job; the outputs land in the workspace under .runtime/."),
+    viewHead(code("runtime"), "RUNTIME", "The game is running: load the engine's agent into a patched copy, record what it plays, dump its memory, trace its API calls, or continue in x64dbg or Cheat Engine on the game itself. Each run is a job; the outputs land in the workspace under .runtime/."),
     assure([["GAME FOLDER READ-ONLY", "the agent goes into a marked patched copy beside it, never into the game"],
       ["UNATTENDED", "first-run questions of the tools are answered before launch; nothing to click"],
       ["YOUR CALL", "anti-cheat and online titles only produce warnings; you are responsible"]]),
@@ -38,8 +39,39 @@ function mount(root) {
           h("label", { class: "lbl", for: "rt-proc" }, "PROCESS (IMAGE NAME OR PID)"), h("div", { class: "row" }, el.proc),
           h("label", { class: "lbl", for: "rt-funcs" }, "FUNCTIONS TO TRACE (FRIDA GLOBS, COMMA-SEPARATED)"), h("div", { class: "row" }, el.funcs),
           h("label", { class: "lbl", for: "rt-secs" }, "SECONDS (TRACE AND RECORDING)"), h("div", { class: "row" }, el.secs),
-          h("div", { class: "row" }, el.buttons[1], el.buttons[2], el.buttons[3], el.buttons[4]))),
+          h("div", { class: "row" }, el.buttons[1], el.buttons[2], el.buttons[3], el.buttons[4])),
+        panel(`${code("runtime")}.E`, "DEBUGGER AND MEMORY", badge("THE GAME ITSELF", "warn"),
+          h("p", { class: "note" }, "x64dbg attaches to the running game (the pid above, else the process of the target's executable) or starts it: a patch made live lands in the real process. Cheat Engine opens a table that attaches as soon as the game runs."),
+          h("div", { class: "row" }, btn("LIST TARGETS", (e) => busy(e.currentTarget, listAttach), "")), el.attach)),
       h("div", { class: "col" }, el.progHost, el.result)));
+}
+
+async function listAttach() {
+  const gamePath = el.game.value.trim();
+  if (!gamePath) return toast("Enter the game folder first.", "warn");
+  try {
+    const res = await api.attachTargets(gamePath);
+    if (!res.targets.length) return fill(el.attach, h("p", { class: "dim" }, "No executable proposed for this folder."));
+    fill(el.attach, res.enabled ? null : h("p", { class: "note warn-text" }, "The dynamic arm is off: turn on capture in SETTINGS first."),
+      table([{ key: "label", label: "TARGET" }, { key: "act", label: "" }], res.targets.map((t) => ({
+        label: h("span", { class: "mono" }, t.label),
+        act: h("div", { class: "row" }, t.attach.map((tool) => btn(tool.label.toUpperCase(), () => attach(t, tool), "sm"))),
+      })), { caption: "Attach targets" }));
+  } catch (err) { fill(el.attach, errorBox(err, "LISTING FAILED")); }
+}
+
+/** One confirmation per game (the warnings shown first), then the tool runs as ViWo's child. */
+async function attach(t, tool, confirm = false) {
+  const proc = el.proc.value.trim();
+  try {
+    const res = await api.attach({ gamePath: el.game.value.trim(), targetKey: t.key, tool: tool.id, pid: /^\d+$/.test(proc) ? Number(proc) : 0, confirm });
+    const how = res.attached ? `attached to pid ${res.attached}` : "started the game";
+    toast(`${tool.label}: ${how} (pid ${res.pid}). It closes with ViWo.`, "ok", (res.warnings || []).join(" · "));
+  } catch (err) {
+    // needs_decision is also "several processes run this executable": that one names the pid
+    if (err.code === "needs_decision" && !confirm && /confirm/i.test(err.message || "") && await confirmBox(`${tool.label}: THE GAME ITSELF`, err.hint)) return attach(t, tool, true);
+    toastErr(err, `${tool.label} failed: `);
+  }
 }
 
 function body(kind) {
@@ -89,5 +121,5 @@ async function run(kind) {
 import { registerView, code } from "../registry.js";
 
 const VIEW = { mount };
-registerView({ id: "runtime", arm: "dynamic", order: 20, title: "RUNTIME", subtitle: "agents, dumps, traces, sound", ...VIEW });
+registerView({ id: "runtime", arm: "dynamic", order: 20, title: "RUNTIME", subtitle: "agents, dumps, traces, sound, debugger", ...VIEW });
 export default VIEW;

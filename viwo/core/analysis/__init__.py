@@ -1,6 +1,8 @@
 """Static analysis jobs (doc 6): targets proposed by the plugins, one analyzer run per target
-into `<workspace>/.analysis/<analyzer>/<key>/`, and "continue in <tool>" handoffs (doc 8.3a).
-Never part of an extraction; behind the `analysis` feature switch (a capability switch)."""
+into `<workspace>/.analysis/<analyzer>/<key>/`, and the static "continue in <tool>" handoffs
+(doc 8.3a: Ghidra). Never part of an extraction; behind the `analysis` feature switch (a
+capability switch). Nothing here runs the game: the debugger and memory tools that do are the
+dynamic arm's (`core/capture/attach.py`)."""
 
 from __future__ import annotations
 
@@ -9,15 +11,16 @@ import re
 import shutil
 import tempfile
 import time
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from viwo.contracts.analysis import ANALYSIS_DIR, AnalysisTarget
 from viwo.contracts.errors import ViwoError
 from viwo.contracts.slots import SlotDefinition
-from viwo.contracts.types import CancelToken, Outcome
+from viwo.contracts.types import CancelToken
 
 from ..context import core_context
+from ..handoff import failure, launch, offered
 from ..pipeline.failover import run_with_failover
 from ..pipeline.probe import FolderProbe
 from ..records import record_context
@@ -25,7 +28,6 @@ from ..scan_exclusions import excluded
 from ..workspace import write_atomic
 from .emulate import AngrSymbolic, UnicornEmulate
 from .ghidra import GhidraGui, GhidraHeadless
-from .handoffs import CheatEngineGui, X64dbgGui
 from .identify import DetectItEasy
 from .managed import Cpp2Il, IlSpy, Unluac
 
@@ -41,12 +43,6 @@ def output_dir(workspace: Path, backend_id: str, key: str) -> Path:
     return workspace / ANALYSIS_DIR / backend_id / key
 
 
-def _failure(outcome: Outcome, default: str) -> ViwoError:
-    """A failed outcome as an error: its kind is the code ("failed" for a stray "ok")."""
-    kind = outcome.kind.value
-    return ViwoError(kind if kind != "ok" else "failed", outcome.error or default)
-
-
 SLOTS = (
     SlotDefinition("analysis.native", "analysis", "core", "ghidra-headless"),
     SlotDefinition("handoff.native", "handoff", "core", "ghidra-gui"),
@@ -56,8 +52,6 @@ SLOTS = (
     SlotDefinition("analysis.protector", "analysis", "core", "die"),
     SlotDefinition("analysis.emulate", "analysis", "core", "unicorn-emulate"),
     SlotDefinition("analysis.symbolic", "analysis", "core", "angr-symbolic"),
-    SlotDefinition("handoff.debug", "handoff", "core", "x64dbg-gui"),
-    SlotDefinition("handoff.memory", "handoff", "core", "cheatengine-gui"),
 )
 
 
@@ -71,8 +65,6 @@ def backends() -> list:
         DetectItEasy(),
         UnicornEmulate(),
         AngrSymbolic(),
-        X64dbgGui(),
-        CheatEngineGui(),
     ]
 
 
@@ -109,16 +101,21 @@ def _check_enabled(rt) -> None:
     require(rt, "analysis", "static analysis", more)
 
 
-def _pick(rt, req: AnalysisRequest) -> tuple[AnalysisTarget, str]:
-    """(target, slot id) for the request; unknown key or kind without a slot is an error."""
-    targets = {t.key: t for t in targets_for(rt, req.game)}
-    if req.target_key not in targets:
+def find_target(rt, game: Path, key: str) -> AnalysisTarget:
+    """The proposed target with this key; an unknown key names the ones there are."""
+    targets = {t.key: t for t in targets_for(rt, game)}
+    if key not in targets:
         raise ViwoError(
             "not_found",
-            f"no analysis target {req.target_key!r} in {req.game}",
+            f"no analysis target {key!r} in {game}",
             hint="targets: " + ", ".join(sorted(targets)) if targets else "no target proposed",
         )
-    target = targets[req.target_key]
+    return targets[key]
+
+
+def _pick(rt, req: AnalysisRequest) -> tuple[AnalysisTarget, str]:
+    """(target, slot id) for the request; unknown key or kind without a slot is an error."""
+    target = find_target(rt, req.game, req.target_key)
     slot = req.slot or slot_for(target.kind)
     if slot not in rt.bindings or (req.slot and not _accepts(rt, slot, target.kind)):
         raise ViwoError("unavailable", f"no analyzer slot for {target.kind} targets yet")
@@ -198,7 +195,7 @@ def analyze(rt, req: AnalysisRequest, sink=None, cancel: CancelToken | None = No
                 binding, rt.backends, lambda b: b.analyze(inputs, ctx)
             )
     if not outcome.ok:
-        raise _failure(outcome, f"{slot} failed")
+        raise failure(outcome, f"{slot} failed")
     if outcome.fallback:
         ctx.log(outcome.fallback, "warn", "analyze")
     artifacts = sorted(p.name for p in out.iterdir() if p.is_file())  # where the run wrote
@@ -217,82 +214,24 @@ def analyze(rt, req: AnalysisRequest, sink=None, cancel: CancelToken | None = No
 
 
 def handoffs_for(rt, kind: str) -> list[dict]:
-    """Every bound handoff that accepts this target kind (doc 8.3a), the kind's own first
-    (Ghidra for a native binary), then the others (x64dbg, Cheat Engine)."""
-    own = slot_for(kind).replace("analysis.", "handoff.")
-    found = []
-    for slot_id in sorted(rt.bindings, key=lambda s: (s != own, s)):
-        binding = rt.bindings[slot_id]
-        if not slot_id.startswith("handoff.") or not binding.bound:
-            continue
-        backend = rt.backends[binding.main]
-        if kind in getattr(backend, "accepts", ()):
-            found.append({"id": backend.backend_id, "label": backend.label, "slot": slot_id})
-    return found
-
-
-LAUNCHED: dict[int, object] = {}  # pid -> Child, for callers that wait on the tool
-
-
-def wait_for(pid: int, cancel: CancelToken | None = None) -> bool:
-    """Block until the launched tool exits (CLI); True when it ended by itself."""
-    child = LAUNCHED.get(pid)
-    while child is not None and child.alive():
-        if cancel is not None and cancel.cancelled:
-            child.kill()
-            return False
-        time.sleep(0.5)
-    return True
+    """Every bound static handoff (`handoff.*`, doc 8.3a) that accepts this target kind, the
+    kind's own first (Ghidra for a native binary)."""
+    return offered(rt, "handoff", kind, slot_for(kind).replace("analysis.", "handoff."))
 
 
 def open_in(rt, req: AnalysisRequest, handoff_id: str = "") -> dict:
     """Prepare the target and start the GUI tool as a tracked child; returns the pid."""
     _check_enabled(rt)
     target, slot = _pick(rt, req)
-    offered = {h["id"]: h for h in handoffs_for(rt, target.kind)}
-    choice = handoff_id or next(iter(offered), "")
-    if choice not in offered:
+    tools = {h["id"]: h for h in handoffs_for(rt, target.kind)}
+    choice = handoff_id or next(iter(tools), "")
+    if choice not in tools:
         raise ViwoError(
             "unavailable",
             f"no handoff {handoff_id or ''} for {target.kind} targets".replace("  ", " "),
         )
-    backend = rt.backends[choice]
-    target, warnings = _dynamic(rt, req, offered[choice]["slot"], target)
-    own = offered[choice]["slot"] == slot.replace("analysis.", "handoff.")
+    own = tools[choice]["slot"] == slot.replace("analysis.", "handoff.")
     ctx = core_context(rt, "handoff", req.game, rt.temp_root)
     # the kind's own handoff opens the analyzer's project; the others get a folder of their own
     ctx.staging = output_dir(req.workspace, rt.bindings[slot].main if own else choice, target.key)
-    spec = backend.prepare(target, ctx)
-    if isinstance(spec, Outcome):
-        raise _failure(spec, f"{choice} could not prepare the target")
-    child = rt.os.process.launch(spec.argv, spec.cwd, spec.env)
-    LAUNCHED[child.pid] = child
-    return {
-        "handoff": backend.backend_id,
-        "label": backend.label,
-        "pid": child.pid,
-        "target": target.key,
-        "warnings": warnings,
-    }
-
-
-DYNAMIC = {"handoff.debug", "handoff.memory"}  # these run the game or attach to it
-
-
-def _dynamic(rt, req: AnalysisRequest, slot: str, target: AnalysisTarget):
-    """(target, warnings): a handoff that runs or attaches to the game is a dynamic action
-    (doc 11.1): the capture switch, one confirmation per game, the warnings; the debugger runs
-    a patched copy beside the workspace (a running game writes next to itself)."""
-    if slot not in DYNAMIC:
-        return target, []
-    from ..capture import policy, sensitive_plugins
-    from ..roundtrip import prepare_copy
-
-    confirmed = bool(req.options.get("confirm"))
-    warnings = policy.check(rt, req.game, confirmed, sensitive_plugins(rt, req.game))
-    if slot == "handoff.debug":
-        game, copy = req.game.resolve(), req.workspace.parent / f"{req.workspace.name}.debug-copy"
-        prepare_copy(rt, req.game, copy, None, "handoff", reuse=True)
-        paths = tuple(copy / Path(p).resolve().relative_to(game) for p in target.paths)
-        target = replace(target, paths=paths)
-    return target, warnings
+    return launch(rt, rt.backends[choice], target, ctx)

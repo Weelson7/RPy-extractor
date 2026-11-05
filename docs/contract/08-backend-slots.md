@@ -18,7 +18,7 @@ ini's `[slots]` section (doc 9).
 SlotDefinition
   slot_id        "<family>.<name>", e.g. "unarchive.rpa"
   family         unarchive | export | carve | decode | probe | media.encode | pack | patch
-                 | analysis | handoff | capture | runtime
+                 | analysis | handoff | attach | capture | runtime
   owner          "core" or the plugin id that introduces it
   default_main, default_spare
   suffixes, magic, identify(path, head, tail) -> Match    how UNPACK and DECODE pick the slot
@@ -77,7 +77,8 @@ MediaEncoder (media.encode) the merger's ffmpeg builds; honours max_command_leng
 Packer       (pack)         pack(container, members, ctx); output_for(container); verify(...)
 Patcher      (patch)        byte writes, Keystone assembly, capstone disassembly (doc 18.8)
 Analyzer     (analysis)     analyze(target, ctx)                    doc 6
-Handoff      (handoff)      prepare(target, ctx) -> LaunchSpec | Outcome      8.3a
+Handoff      (handoff,      prepare(target, ctx) -> LaunchSpec | Outcome      8.3a
+              attach)       the same interface; `attach` runs on the live game (doc 11.2)
 capture      (capture)      RenderDoc capture and harvest           doc 11
 RuntimeAgent (runtime)      accepts, install, finished, outputs     doc 11.2
 ```
@@ -90,18 +91,19 @@ GUI-first tools are not driven headless; ViWo prepares the target and hands off
 | Slot | Backend | Label | Accepts | What `prepare` does |
 |------|---------|-------|---------|---------------------|
 | `handoff.native` | `ghidra-gui` | Continue in Ghidra | `native_binary` | opens the project of the headless run, JVM started directly |
-| `handoff.debug` | `x64dbg-gui` | Continue in x64dbg | `native_binary` | starts the executable under x64dbg (x32dbg for 32-bit PEs), stopping at the system breakpoint |
-| `handoff.memory` | `cheatengine-gui` | Continue in Cheat Engine | `native_binary` | writes a ViWo table that attaches to the game's process when it runs, then opens Cheat Engine |
+| `attach.debug` | `x64dbg-gui` | Continue in x64dbg | `native_binary` | attaches x64dbg (x32dbg for 32-bit PEs) to the game's running process (`-p PID`), or starts the game's own executable under it, stopping at the system breakpoint |
+| `attach.memory` | `cheatengine-gui` | Continue in Cheat Engine | `native_binary` | writes a ViWo table that attaches to the game's process when it runs, then opens Cheat Engine |
 
 Rules:
 
-- The tool runs as a **tracked child** (`ProcessRunner.launch`): it is killed when ViWo exits; the
-  CLI waits for it (`viwo analyze --open`).
+- The tool runs as a **tracked child** (`ProcessRunner.launch`, `core/handoff.py`): it is killed
+  when ViWo exits; the CLI waits for it (`viwo analyze --open`, `viwo attach`).
 - Every first-run question of the tool is pre-answered off screen before launch (Ghidra user
   agreement and tips, x64dbg release notes, Cheat Engine CEShare and table-Lua prompts), only when
   the user has not answered it; a value that cannot be written is said.
-- A handoff that runs the game (debugger, memory editor) is a dynamic action. Handoffs are
-  declared and overridable like any backend.
+- `handoff.*` slots are the static arm's (ANALYSIS) and never run the game; `attach.*` slots work
+  on the game itself and are the dynamic arm's (RUNTIME, doc 11.2). Both are declared and
+  overridable like any backend.
 
 ## 8.4 Default slot table
 
@@ -163,11 +165,11 @@ stored script); `decode.rpyc`
 capstone dependencies).
 
 **Analysis (doc 6):** `analysis.native`, `.dotnet`, `.il2cpp`, `.script`, `.python`,
-`.gdscript`, `.protector`, `.emulate`, `.symbolic`. **Handoff:** `handoff.native`, `.debug`,
-`.memory` (8.3a).
+`.gdscript`, `.protector`, `.emulate`, `.symbolic`. **Handoff:** `handoff.native` (8.3a).
 
 **Dynamic (doc 11):** `capture.gpu` (`renderdoc`), `runtime.unreal` (`ue4ss-agent`),
-`runtime.unity` (`bepinex-agent`).
+`runtime.unity` (`bepinex-agent`), `attach.debug` (`x64dbg-gui`), `attach.memory`
+(`cheatengine-gui`).
 
 **Declarations:** every backend declares `license`; a GPL/AGPL backend has `isolation =
 "subprocess"`; `network` is `none` unless the tool fetches (`datatool`, `bepinex-agent`:
@@ -188,6 +190,7 @@ capstone dependencies).
 | patch set | Patcher | `patch.bytes` |
 | analyze | Analyzer | `analysis.<kind>` or the requested `--slot` |
 | handoff | Handoff | every bound `handoff.*` accepting the kind |
+| attach | Handoff | every bound `attach.*` accepting the kind |
 | capture | capture | `capture.gpu` |
 | agent | RuntimeAgent | `runtime.<engine>` of the detected plugin |
 

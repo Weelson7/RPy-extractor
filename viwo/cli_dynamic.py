@@ -1,5 +1,5 @@
 """The dynamic arm's commands (doc 11, 16.2b D1-D3): `viwo capture`, `viwo dump`, `viwo trace`,
-`viwo agent`, `viwo record`."""
+`viwo agent`, `viwo record`, `viwo attach`."""
 
 from __future__ import annotations
 
@@ -37,3 +37,28 @@ def capture(rt, args) -> Envelope:
             print(f"[CAPTURE:WARN] {warning}", file=sys.stderr)
     req = CaptureRequest(args.game, args.exe, args.workspace, args.confirm, args.auto)
     return Envelope.success(capture(rt, req, note))
+
+
+def attach(rt, args) -> Envelope:
+    """viwo attach: no --target lists what x64dbg and Cheat Engine take; with one, the tool runs
+    on the game and the CLI waits for it (it is ViWo's child: it would die with this process)."""
+    from viwo.core.capture.attach import AttachRequest, attach, listing
+    from viwo.core.handoff import wait_for
+
+    if not args.game.is_dir():
+        raise ViwoError("not_found", f"game folder not found: {args.game}")
+    if not args.target:
+        return Envelope.success({"targets": listing(rt, args.game)})
+    if args.workspace is None:
+        raise ViwoError("invalid_request", "give --workspace <folder>")
+    req = AttachRequest(args.game, args.workspace, args.target, args.tool, args.pid, args.confirm)
+    opened = attach(rt, req)
+    if not getattr(args, "quiet", False):
+        for warning in opened["warnings"]:
+            print(f"[ATTACH:WARN] {warning}", file=sys.stderr)
+        print(
+            f"[ATTACH] {opened['label']} running (pid {opened['pid']}); close it to return",
+            file=sys.stderr,
+        )
+    wait_for(opened["pid"])
+    return Envelope.success(opened)

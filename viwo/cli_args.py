@@ -73,7 +73,8 @@ def runtime_commands(command) -> None:
 
 
 def agent_commands(command) -> None:
-    """viwo agent / viwo record (D2): the engine's runtime agent in a copy, the game's sound."""
+    """viwo agent / viwo record (D2): the engine's runtime agent in a copy, the game's sound;
+    viwo attach (D3): x64dbg or Cheat Engine on the game itself."""
     ag = command("agent", "run the engine's runtime agent in a patched copy (UE4SS, BepInEx)")
     ag.add_argument("game", type=Path, help="the game folder (read-only; a copy runs)")
     ag.add_argument("--exe", type=Path, required=True, help="the game executable")
@@ -83,6 +84,13 @@ def agent_commands(command) -> None:
     rc = command("record", "record the game's sound (system output) to WAV")
     rc.add_argument("--workspace", type=Path, required=True, help="where .runtime/audio/ lands")
     rc.add_argument("--seconds", type=float, default=10, help="how long to record")
+    at = command("attach", "continue in x64dbg or Cheat Engine on the game itself (D3)")
+    at.add_argument("game", type=Path, help="the game folder")
+    at.add_argument("--target", metavar="KEY", help="target key from the listing (no key: list)")
+    at.add_argument("--tool", default="", help="x64dbg-gui | cheatengine-gui (default: the first)")
+    at.add_argument("--pid", type=int, default=0, help="x64dbg: attach to this process")
+    at.add_argument("--workspace", type=Path, help="where .runtime/ lands (required to attach)")
+    at.add_argument("--confirm", action="store_true", help=f"I confirm: {CONFIRMATION}")
 
 
 def capture_command(command) -> None:
@@ -193,10 +201,7 @@ def analysis_command(command) -> None:
     an.add_argument("--workspace", type=Path, help="where .analysis/ lands (required to run)")
     an.add_argument("--target", metavar="KEY", help="target key from --list")
     an.add_argument("--list", action="store_true", help="only list the targets")
-    an.add_argument("--open", metavar="HANDOFF", nargs="?", const="", help="continue in the GUI")
-    an.add_argument(
-        "--confirm", action="store_true", help="debugger/memory handoffs: I confirm (once per game)"
-    )
+    an.add_argument("--open", metavar="HANDOFF", nargs="?", const="", help="continue in Ghidra")
     an.add_argument("--timeout", type=int, default=0, help="seconds (default 4 h)")
     an.add_argument(
         "--slot", default="", help="another analyzer for the target (see --list extras)"

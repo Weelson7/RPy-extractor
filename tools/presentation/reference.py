@@ -13,7 +13,8 @@ ROOT = Path(__file__).resolve().parents[2]
 ARMS = {  # slot family -> the arm it serves
     "unarchive": "static", "export": "static", "decode": "static", "carve": "static",
     "probe": "static", "analysis": "static", "handoff": "static", "media.encode": "static",
-    "capture": "dynamic", "runtime": "dynamic", "pack": "patching", "patch": "patching",
+    "capture": "dynamic", "runtime": "dynamic", "attach": "dynamic", "pack": "patching",
+    "patch": "patching",
 }  # fmt: skip
 
 

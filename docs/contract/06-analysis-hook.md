@@ -80,11 +80,11 @@ BinDiff has no pinnable release; the diff is ViWo's own.
 
 ## 6.3 Handoffs from a target (doc 8.3a)
 
-A target offers every bound handoff that accepts its kind, the kind's own first:
-`handoff.native` (Continue in Ghidra: opens the project of the headless run), `handoff.debug`
-(Continue in x64dbg), `handoff.memory` (Continue in Cheat Engine). `viwo analyze --open
-[HANDOFF]`, `POST /api/analysis/open`. The debugger and memory handoffs run the game and belong
-to the dynamic arm (doc 11.2).
+A target offers every bound static handoff (`handoff.*`) that accepts its kind, the kind's own
+first: `handoff.native` (Continue in Ghidra: opens the project of the headless run).
+`viwo analyze --open [HANDOFF]`, `POST /api/analysis/open`. Nothing in the static arm runs the
+game: x64dbg and Cheat Engine work on the game itself and are the dynamic arm's attach tools
+(`attach.*`, doc 11.2), offered on the same targets from RUNTIME and `viwo attach`.
 
 ## 6.4 Ghidra specifics
 
@@ -97,8 +97,8 @@ to the dynamic arm (doc 11.2).
   the `analysis` feature is turned on (the main backends' missing tools install as one
   background job, `core/preflight.py` `feature_tools`), never by the startup preflight.
   First-run prompts (user agreement, tips) are pre-answered without overwriting a user's own
-  choice; the x64dbg and Cheat Engine handoffs pre-answer theirs only in ViWo's own copy under
-  `third_party/`, and say so when the tool is the user's own install.
+  choice; the x64dbg and Cheat Engine attach tools (doc 11.2) pre-answer theirs only in ViWo's
+  own copy under `third_party/`, and say so when the tool is the user's own install.
 - Timeout: `viwo analyze --timeout` (default 4 h); cancel kills the tree.
 
 ## 6.5 Rules

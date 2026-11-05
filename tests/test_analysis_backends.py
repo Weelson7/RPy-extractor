@@ -159,19 +159,19 @@ class AnalysisFlowTests(unittest.TestCase):
 
     def test_waiting_on_a_gui_tool_stops_with_a_cancel(self) -> None:
         from viwo.contracts import CancelToken
-        from viwo.core import analysis
+        from viwo.core import handoff
 
         killed = []
         child = SimpleNamespace(alive=lambda: not killed, kill=lambda: killed.append(1))
-        analysis.LAUNCHED[4242] = child
+        handoff.LAUNCHED[4242] = child
         token = CancelToken()
         token.cancel()
         try:
-            self.assertFalse(analysis.wait_for(4242, token))
+            self.assertFalse(handoff.wait_for(4242, token))
         finally:
-            analysis.LAUNCHED.pop(4242, None)
+            handoff.LAUNCHED.pop(4242, None)
         self.assertEqual(killed, [1])
-        self.assertTrue(analysis.wait_for(99999))  # not launched by ViWo: nothing to wait for
+        self.assertTrue(handoff.wait_for(99999))  # not launched by ViWo: nothing to wait for
 
 
 class FirstRunAnswerTests(unittest.TestCase):
@@ -183,7 +183,7 @@ class FirstRunAnswerTests(unittest.TestCase):
         import random
 
         from viwo.core.analysis.ghidra import ANSWERS, quiet_gui
-        from viwo.core.analysis.handoffs import quiet_x64dbg
+        from viwo.core.capture.handoffs import quiet_x64dbg
 
         rng = random.Random(4)
         with tempfile.TemporaryDirectory() as tmp:
@@ -223,7 +223,7 @@ class FirstRunAnswerTests(unittest.TestCase):
     def test_cheat_engine_asks_the_registry_first_and_32_bit_games_get_x32dbg(self) -> None:
         import struct
 
-        from viwo.core.analysis.handoffs import X64dbgGui, quiet_cheatengine
+        from viwo.core.capture.handoffs import X64dbgGui, quiet_cheatengine
 
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -252,6 +252,7 @@ class FirstRunAnswerTests(unittest.TestCase):
             ctx = SimpleNamespace(
                 os=SimpleNamespace(tools=SimpleNamespace(locate=lambda s: located)),
                 log=lambda *a, **k: None,
+                options={},
             )
             target = AnalysisTarget("g", "native_binary", (game,), "user")
             missing = X64dbgGui().prepare(target, ctx)  # this x64dbg came without x32dbg

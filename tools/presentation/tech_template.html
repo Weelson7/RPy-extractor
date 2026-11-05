@@ -152,7 +152,7 @@ previews, keep, trash, rename, undo), CLEANUP (empty, junk, mislabeled, duplicat
 undo), MERGER (frame sequences and clips to one video).</li>
 <li><b>Analysis</b> of a copy: Ghidra headless and the Continue in Ghidra handoff, ilspycmd,
 Cpp2IL, unrpyc, GDRE Tools, unluac, Detect It Easy, Unicorn and angr on isolated routines, a
-function-by-function version diff; x64dbg and Cheat Engine handoffs as tracked children.</li>
+function-by-function version diff. Nothing in the static arm runs the game.</li>
 </ul>
 </section>
 
@@ -192,6 +192,7 @@ flowchart LR
   GA --> DU[memory dump]
   GA --> TR[Frida API trace]
   GA --> AU[sound to WAV]
+  GA --> DB[x64dbg, Cheat Engine<br/>on the game's process]
   AG --> WS[(workspace)]
   HV --> WS
   DU --> WS
@@ -201,7 +202,8 @@ flowchart LR
 <p>Runtime agents run in a marked patched copy, never in the game folder: UE4SS writes the
 Unreal mappings (<code>.usmap</code>) that cooked UE5 assets need and an object dump; BepInEx
 gives Unity IL2CPP interop assemblies. A capture compares the game folder before and after and
-says what the game wrote there.</p>
+says what the game wrote there. x64dbg attaches to the game's own process (or starts its own
+executable), so a patch made live in the debugger lands in the real process.</p>
 </section>
 
 <section>

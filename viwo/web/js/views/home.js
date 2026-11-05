@@ -21,14 +21,14 @@ const PATHS = {
     ["AGENTS", "UE4SS (Unreal) or BepInEx (Unity IL2CPP) in a patched copy: mappings, dumps", "#runtime", S],
     ["RECORD", "the game's sound from the system output, to WAV", "#runtime", S],
     ["DUMP + TRACE", "process memory through the OS, API calls through Frida", "#runtime", S],
-    ["DEBUGGER + MEMORY", "continue in x64dbg or Cheat Engine (attached to the game)", "#analysis", S],
+    ["DEBUGGER + MEMORY", "x64dbg attached to the game's own process (live patching), Cheat Engine with a ViWo table", "#runtime", S],
     ["CPU PROFILE", "where the running game spends its CPU time: hot spots by export, module, thread", "#runtime", S],
     ["HOOKS + NETWORK", "a hook loader with hot reload, own-traffic tooling", "", R]]],
   patching: ["PATCHING", "You change its content: always in a marked patched copy, the game folder stays read-only.", [
     ["PATCHED COPY", "your workspace edits repacked into a copy of the game, verified", "#repack", S],
     ["PATCH SETS", "byte, RVA and AOB patches, assembly through Keystone, export", "#patches", S],
     ["MODS", "pack a copy's changes, check them against a game update, apply several in order", "#patches", S],
-    ["CHEAT ENGINE TABLE", "the game opened in Cheat Engine with a ViWo table", "#analysis", S]]],
+    ["CHEAT ENGINE TABLE", "the game opened in Cheat Engine with a ViWo table", "#runtime", S]]],
 };
 
 /** A step names the tab that runs it (its live code); one in another arm says where it opens. */

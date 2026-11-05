@@ -23,7 +23,7 @@ from viwo.core.pipeline.unpack import unpack_all
 from viwo.core.wiring.boot import boot
 from viwo.core.wiring.registry import cli_commands
 
-from .cli_dynamic import capture, runtime
+from .cli_dynamic import attach, capture, runtime
 from .cli_patch import mod, patch
 
 
@@ -278,6 +278,7 @@ TOOLS = {  # the tool commands (the dynamic and patching arms, survey, analyze, 
     "profile": runtime,
     "agent": runtime,
     "record": runtime,
+    "attach": attach,
     "analyze": _analyze,
     "diff": _diff,
     "patch": patch,

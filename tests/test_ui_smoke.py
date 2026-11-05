@@ -10,6 +10,7 @@ import socket
 import subprocess
 import tempfile
 import threading
+import time
 import unittest
 from pathlib import Path
 
@@ -35,6 +36,18 @@ def browser() -> str:
 
 
 BROWSER, NODE = browser(), shutil.which("node")
+
+
+def wait_for_port(port: int, seconds: float = 30) -> None:
+    """Until the browser's DevTools port accepts a connection (or the time is up: the smoke
+    script then names what it could not reach)."""
+    deadline = time.monotonic() + seconds
+    while time.monotonic() < deadline:
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=1):
+                return
+        except OSError:
+            time.sleep(0.25)
 
 
 @unittest.skipUnless(BROWSER and NODE, "needs a Chromium browser and Node")
@@ -78,6 +91,7 @@ class UiSmokeTests(unittest.TestCase):
             stderr=subprocess.DEVNULL,
         )
         script = ROOT / "tests" / "ui" / "smoke.mjs"
+        wait_for_port(cls.cdp)  # a cold browser under a full suite's load takes seconds
         for _ in range(3):  # the debugging port needs a moment
             run = subprocess.run(
                 [NODE, str(script), cls.url, str(cls.cdp), str(cls.game), str(cls.out)],

@@ -80,7 +80,7 @@ await shot("merger", "MERGER: numbered frames and clips become one video.",
   "The media merger finds numbered frame sequences and clip runs and builds one video per candidate through the pinned ffmpeg.");
 await go("analysis", 1500); await press("analysis", "LIST TARGETS"); await sleep(5000);
 await shot("analysis", "ANALYSIS: the game's code (Ghidra, ILSpy, Cpp2IL, unrpyc, GDRE, unluac, version diff).",
-  "Code analysis of a copy: Ghidra headless (functions, decompiled C) and the Continue in Ghidra handoff, ilspycmd for .NET, Cpp2IL for IL2CPP, unrpyc, GDRE Tools, unluac, Detect It Easy, Unicorn and angr on isolated routines, a function-by-function version diff, and the Continue in x64dbg and Continue in Cheat Engine handoffs, opened as tracked children.");
+  "Code analysis of a copy: Ghidra headless (functions, decompiled C) and the Continue in Ghidra handoff, ilspycmd for .NET, Cpp2IL for IL2CPP, unrpyc, GDRE Tools, unluac, Detect It Easy, Unicorn and angr on isolated routines and a function-by-function version diff. Nothing here runs the game.");
 await go("dynamic");
 await shot("dynamic-home", "DYNAMIC: the game is running. Capture, agents, dumps, traces.",
   "The dynamic arm is a feature switch with warnings and one confirmation: anti-cheat and online titles are said, never refused.");
@@ -88,8 +88,8 @@ await go("capture", 2000);
 await shot("capture", "CAPTURE: GPU frames through RenderDoc, harvested into the workspace.",
   "RenderDoc captures a frame (unattended by default), the harvest pulls its textures and shader disassembly, and the diff says what was new against the static extraction.");
 await go("runtime", 2000);
-await shot("runtime", "RUNTIME: an engine agent in a patched copy, memory dumps, API traces, sound.",
-  "The engine's runtime agent runs in a marked patched copy (UE4SS for Unreal mappings and object dumps, BepInEx for Unity IL2CPP), memory dumps, Frida API traces and the game's sound to WAV.");
+await shot("runtime", "RUNTIME: an engine agent in a patched copy, memory dumps, API traces, sound, debugger.",
+  "The engine's runtime agent runs in a marked patched copy (UE4SS for Unreal mappings and object dumps, BepInEx for Unity IL2CPP), memory dumps, Frida API traces, the game's sound to WAV, and x64dbg attached to the game's own process (live patching) or Cheat Engine with a ViWo table, as tracked children.");
 await go("patching");
 await shot("patching-home", "PATCHING: you change the game's content, always in a marked copy.",
   "Nothing writes into the game folder: repack, patch sets and mods all write a separate, marked patched copy (.viwo-patched).");

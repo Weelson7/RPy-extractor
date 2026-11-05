@@ -101,6 +101,8 @@ export const api = {
   surveyReport: (id) => v1("GET", `/api/survey-report?id=${encodeURIComponent(id)}`),
   uiModules: () => v1("GET", "/api/ui-modules"),
   runtime: (kind, body) => v1("POST", `/api/runtime/${kind}`, body),
+  attachTargets: (gamePath) => v1("GET", `/api/runtime/attach?gamePath=${encodeURIComponent(gamePath)}`),
+  attach: (body) => v1("POST", "/api/runtime/attach", body),
   patch: (body) => v1("POST", "/api/patch", body),
   mod: (body) => v1("POST", "/api/mod", body),
 };

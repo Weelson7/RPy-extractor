@@ -50,9 +50,11 @@ viwo/
     sanitizer.py, sanitizer_rules.py   cleanup: plan, apply, undo
     survey.py, surveys.py              coverage report per game or library, numbered reports
     analysis/    static analysis: targets, Ghidra (headless + GUI), managed analyzers, Detect It
-                 Easy, emulate/symbolic workers, version diff, x64dbg and Cheat Engine handoffs
+                 Easy, emulate/symbolic workers, version diff; nothing here runs the game
+    handoff.py   "continue in <tool>": a prepared GUI tool as a tracked child (both arms)
     capture/     dynamic arm: policy (warnings, confirmation), RenderDoc capture and harvest,
-                 runtime agents, dump, trace, profile, audio loopback
+                 runtime agents, dump, trace, profile, audio loopback, attach (x64dbg on the
+                 game's own process, Cheat Engine)
     roundtrip.py, roundtrip_edits.py   edit set, plan, patched copy, pack, verify
     patchsets.py, patch_tools.py       T1 patch sets (offset, RVA, AOB, Keystone, capstone)
     mods.py                            T2 mod packages

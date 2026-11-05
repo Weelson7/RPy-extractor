@@ -1,7 +1,7 @@
-// ANALYSIS: the binaries a game offers (proposed by the plugins), one headless analysis per
-// target into the workspace's .analysis/, and "continue in <tool>" handoffs (doc 6, 8.3a).
+// ANALYSIS (static arm): the binaries a game offers (proposed by the plugins), one headless
+// analysis per target into the workspace's .analysis/, and "continue in Ghidra" (doc 6, 8.3a).
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, viewHead, toast, toastErr, pref, busy, bus, emit, browseBtn, errorBox, logLine, assure, table, alert, kv, confirmBox } from "../ui.js";
+import { h, fill, btn, panel, badge, viewHead, toast, toastErr, pref, busy, bus, emit, browseBtn, errorBox, logLine, assure, table, alert, kv } from "../ui.js";
 import { setGame, followGame } from "../game.js";
 import { featureOff } from "../feature.js";
 import { jobProgress, withSkeleton } from "../progress.js";
@@ -134,15 +134,13 @@ async function run(t, slot = "") {
   } finally { S.running = false; renderTargets(); bar(); emit("jobs"); }
 }
 
-async function open(t, hd, confirm = false) {
+/** A static handoff (Ghidra) opens the analysis project; the tools that run or attach to the
+ * game (x64dbg, Cheat Engine) are the dynamic arm's, in RUNTIME. */
+async function open(t, hd) {
   try {
-    const res = await api.openHandoff({ gamePath: el.game.value.trim(), targetKey: t.key, handoff: hd.id, options: confirm ? { confirm: true } : {} });
-    toast(`${hd.label}: started (pid ${res.pid}). It closes with ViWo.`, "ok", (res.warnings || []).join(" · "));
-  } catch (err) {
-    // a debugger or memory tool runs the game: one confirmation per game, the warnings shown first
-    if (err.code === "needs_decision" && await confirmBox(`${hd.label}: RUNS THE GAME`, err.hint)) return open(t, hd, true);
-    toastErr(err, `${hd.label} failed: `);
-  }
+    const res = await api.openHandoff({ gamePath: el.game.value.trim(), targetKey: t.key, handoff: hd.id });
+    toast(`${hd.label}: started (pid ${res.pid}). It closes with ViWo.`, "ok");
+  } catch (err) { toastErr(err, `${hd.label} failed: `); }
 }
 
 /** Opening ANALYSIS lists the targets of the current game when they are not listed yet. */

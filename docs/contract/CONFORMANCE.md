@@ -148,7 +148,7 @@ declarative (Kaitai) plugins; the indexes repository split.
 | 6.2 A3 version diff | implemented | `core/analysis/diff.py`, `viwo diff`, `POST /api/analysis/diff`, 12.F VERSION DIFF in ANALYSIS |
 | 6.2 A4 `analysis.emulate`, `analysis.symbolic` workers | implemented | `core/analysis/emulate.py`, `core/workers.py`, `data/workers/emulate.py`, `data/workers/symbolic.py` |
 | 6.2 `record.json` per run, output emptied before rerun | implemented | `core/analysis/__init__.py` `analyze` |
-| 6.3 handoffs per kind | implemented | `core/analysis/__init__.py` `handoffs_for`, `open_in` |
+| 6.3 static handoffs per kind (`handoff.*`; nothing runs the game) | implemented | `core/analysis/__init__.py` `handoffs_for`, `open_in`; `core/handoff.py` |
 | 6.4 Ghidra project beside the workspace, on-demand pin, first-run answers | implemented | `core/analysis/ghidra.py`, `data/tools.json` |
 | 6.5 `memory_image` targets | open | the kind exists; no proposer and no analyzer |
 | 6.6 API | implemented | `api/handlers_analysis.py` |
@@ -170,8 +170,8 @@ declarative (Kaitai) plugins; the indexes repository split.
 | 8.2 binding, promotion, unbound, bad ini entries | implemented | `core/wiring/binder.py` |
 | 8.2 never silent: `Outcome.fallback` in every stage | implemented | `core/pipeline/failover.py`; stages in `core/pipeline/`, `core/analysis/`, `core/capture/` |
 | 8.3 interfaces | implemented | `contracts/slots.py`, `contracts/analysis.py`, `contracts/runtime.py`, `core/patch_tools.py` |
-| 8.3a handoffs Ghidra, x64dbg, Cheat Engine as tracked children | implemented | `core/analysis/ghidra.py` `GhidraGui`, `core/analysis/handoffs.py` |
-| 8.3a first-run answers off screen | implemented | `core/analysis/handoffs.py`, `core/analysis/ghidra.py`, `core/capture/renderdoc.py` |
+| 8.3a Ghidra (`handoff.*`), x64dbg and Cheat Engine (`attach.*`) as tracked children | implemented | `core/handoff.py`, `core/analysis/ghidra.py` `GhidraGui`, `core/capture/handoffs.py` |
+| 8.3a first-run answers off screen | implemented | `core/capture/handoffs.py`, `core/analysis/ghidra.py`, `core/capture/renderdoc.py` |
 | 8.4 slot table | implemented | `backends/__init__.py`, `core/*` `SLOTS`, plugin `slot_definitions` (`viwo slots`) |
 | 8.5 stage use | implemented | as listed |
 | 8.6 slot conformance | implemented | `core/wiring/conformance.py`, `tests/test_core_units.py`, `tests/test_config.py` |
@@ -208,16 +208,16 @@ declarative (Kaitai) plugins; the indexes repository split.
 
 | Item | State | Where / missing |
 |------|-------|-----------------|
-| 11.1 `capture` switch for capture, dump, trace, agent, record | implemented | `core/capture/policy.py` `check`, `core/capture/runtime.py` `_enabled` |
+| 11.1 `capture` switch for capture, dump, trace, profile, agent, record, attach | implemented | `core/capture/policy.py` `check`, `core/capture/runtime.py` `_enabled` |
 | 11.1 confirmation once per game | implemented | `core/capture/policy.py` `remember`, `confirmed_games` |
 | 11.1 warnings: markers, services, online titles, sensitive plugins, network | implemented | `core/capture/policy.py` `warnings_for`, `data/capture_policy.json` |
-| 11.1 debugger and memory handoffs as dynamic actions | implemented | `core/analysis` `_dynamic`: the `capture` switch, one confirmation per game (`--confirm`, the UI's confirm box), the warnings; x64dbg runs a patched copy |
+| 11.1 debugger and memory attach tools as dynamic actions | implemented | `core/capture/attach.py` `attach`: only the `capture` switch (not `analysis`), one confirmation per game (`--confirm`, the UI's confirm box), the warnings (`tests/test_attach.py`) |
 | 11.2 D1 unattended capture, shader disassembly | implemented | `core/capture/renderdoc.py`, `data/renderdoc/rd_trigger.py`, `data/renderdoc/rd_harvest.py` (`tests/test_rd_scripts.py`) |
 | 11.2 D2 UE4SS and BepInEx agents | implemented | `plugins/unreal/agent.py`, `plugins/unity/agent.py`, `core/capture/agents.py` |
 | 11.2 D2 audio loopback | implemented | `core/capture/audio.py` |
 | 11.2 D3 memory dump | implemented | `core/capture/runtime.py` `dump`, `os/*` `dump_process` |
 | 11.2 D3 API trace | implemented | `core/capture/runtime.py` `trace` |
-| 11.2 D3 x64dbg and Cheat Engine handoffs | implemented | `core/analysis/handoffs.py` |
+| 11.2 D3 x64dbg on the game's own process (attached by pid, else its executable started), Cheat Engine table | implemented | `core/capture/handoffs.py`, `core/capture/attach.py`; `viwo attach`, `/api/runtime/attach`, RUNTIME |
 | 11.3 agent contract and core flow | implemented | `contracts/runtime.py`, `core/capture/agents.py` |
 | 11.4 job kinds and routes, capture steps, DIFF by hash | implemented | `api/handlers_capture.py`, `core/capture/__init__.py` |
 | 11.4 temporary antivirus exclusions | implemented | `core/scan_exclusions.py` |
