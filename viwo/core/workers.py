@@ -4,8 +4,6 @@ script viwo/data/workers/<script> with ViWo's interpreter as a separate process 
 nothing from the user's environment leaks in), handing it that folder (`--lib`). This is how
 GPL code (Unicorn, angr's engine) is used: a process boundary, never an import (CLAUDE.md)."""
 
-from __future__ import annotations
-
 import shutil
 import sys
 from pathlib import Path

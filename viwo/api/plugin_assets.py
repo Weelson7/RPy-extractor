@@ -5,8 +5,6 @@ file comes only from the `ui/` folder next to that module. Static code like the 
 no token, but strict path containment (`safe_member` + `inside`).
 """
 
-from __future__ import annotations
-
 from pathlib import Path
 
 from viwo.contracts.workspace import inside, safe_member

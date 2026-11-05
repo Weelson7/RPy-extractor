@@ -1,8 +1,6 @@
 """Generic job submit (doc 12.5): `POST /api/jobs {kind, params}` runs the same handler the
 kind's own route uses, so every job kind is reachable from one entry point."""
 
-from __future__ import annotations
-
 from typing import Any, Callable
 
 from viwo.contracts.errors import ViwoError

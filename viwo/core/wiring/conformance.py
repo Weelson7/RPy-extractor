@@ -2,8 +2,6 @@
 contract major, engine type, option keys and kinds, OS layers, detect() purity on an
 empty probe, dependency ids, capabilities, suffix clashes."""
 
-from __future__ import annotations
-
 import re
 from pathlib import Path
 

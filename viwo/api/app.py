@@ -1,7 +1,5 @@
 """Server application state: runtime, jobs, active workspace, sort history, activity log."""
 
-from __future__ import annotations
-
 import threading
 import time
 from collections import deque

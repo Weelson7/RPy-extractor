@@ -1,8 +1,6 @@
 """Mount & Blade II: Bannerlord, the game plugin under TaleWorlds (doc 2.10): its executables
 name the title; its tooling (module SDK, the game's XML data) belongs here as it is added."""
 
-from __future__ import annotations
-
 from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest
 from viwo.contracts.types import DetectionResult
 
@@ -14,8 +12,6 @@ MANIFEST = PluginManifest(
     engine_type="taleworlds",
     engine="taleworlds",
 )
-
-PLUGIN = "BannerlordPlugin"  # discovered by viwo.core.wiring.registry
 
 
 class BannerlordPlugin(EnginePlugin):

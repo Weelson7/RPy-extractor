@@ -1,7 +1,5 @@
 """ffmpeg backend for the media.encode slot: probing, filtergraph, encoding."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from pathlib import Path
 

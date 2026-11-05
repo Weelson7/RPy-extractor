@@ -1,7 +1,5 @@
 """Jobs: background work with an event stream, cancellation and a result (doc 12.3)."""
 
-from __future__ import annotations
-
 import itertools
 import threading
 import time

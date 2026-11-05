@@ -2,8 +2,6 @@
 plays, through the soundcard package (BSD; WASAPI loopback on Windows, the PulseAudio monitor
 on Linux)."""
 
-from __future__ import annotations
-
 import warnings
 import wave
 from pathlib import Path

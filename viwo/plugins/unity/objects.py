@@ -6,8 +6,6 @@ layouts come from the game's managed assemblies when they ship (Mono), else (IL2
 stand-in assemblies Cpp2IL rebuilds from GameAssembly and the metadata (a separate process, MIT),
 once per export, into the run's scratch folder."""
 
-from __future__ import annotations
-
 import json
 from pathlib import Path
 

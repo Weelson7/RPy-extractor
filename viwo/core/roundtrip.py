@@ -5,8 +5,6 @@ provenance map; loose files are overridden in the copy, container members go thr
 owning plugin's pack.* slot, and every packed container is re-extracted to verify it.
 """
 
-from __future__ import annotations
-
 import json
 import os
 import shutil

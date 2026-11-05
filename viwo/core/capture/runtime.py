@@ -5,8 +5,6 @@ number of seconds. Both read a running process and write only into the workspace
 `capture` feature switch like the rest of the dynamic arm. `run` is the one dispatch the CLI
 (`viwo dump|trace|record|agent`) and the API (POST /api/runtime/<kind>) share."""
 
-from __future__ import annotations
-
 import os
 import sys
 import time

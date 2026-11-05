@@ -1,7 +1,5 @@
 """Boot sequence (doc 9.3, prototype subset) and the Runtime facade."""
 
-from __future__ import annotations
-
 import re
 import sys
 from dataclasses import dataclass, field

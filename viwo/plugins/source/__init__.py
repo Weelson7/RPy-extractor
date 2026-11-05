@@ -1,7 +1,5 @@
 """Source engine (Valve) VPK archives: v1 and v2, multi-part (_dir.vpk + _000.vpk...)."""
 
-from __future__ import annotations
-
 import struct
 from pathlib import Path
 
@@ -108,9 +106,6 @@ def _close(handles: dict) -> None:
 
 
 SLOT = SlotDefinition("unarchive.vpk", "unarchive", "source", "vpk-builtin", identify=identify_vpk)
-
-
-PLUGIN = "SourcePlugin"  # discovered by viwo.core.wiring.registry
 
 
 class SourcePlugin(EnginePlugin):

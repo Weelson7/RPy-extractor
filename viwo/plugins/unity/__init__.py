@@ -1,7 +1,5 @@
 """Unity engine plugin (doc 2.7, D3, D7): UnityPy main, AssetStudioModCLI spare."""
 
-from __future__ import annotations
-
 from viwo.contracts.analysis import AnalysisTarget
 from viwo.contracts.plugin import (
     EnginePlugin,
@@ -62,9 +60,6 @@ STRONG = (
     "globalgamemanagers.assets",
     "unity default resources",
 )
-
-
-PLUGIN = "UnityPlugin"  # discovered by viwo.core.wiring.registry
 
 
 class UnityPlugin(EnginePlugin):

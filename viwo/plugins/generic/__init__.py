@@ -1,15 +1,10 @@
 """Fallback plugin: plain archives and loose files (v1 generic behavior)."""
 
-from __future__ import annotations
-
 from viwo.contracts.analysis import AnalysisTarget, target_key
 from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest
 from viwo.contracts.types import DetectionResult
 
 MANIFEST = PluginManifest("generic", "Generic", "0.1.0", engine_type="generic", priority=-100)
-
-
-PLUGIN = "GenericPlugin"  # discovered by viwo.core.wiring.registry
 
 
 LUA_SUFFIXES = (".lua", ".luac", ".lub", ".luc", ".out")

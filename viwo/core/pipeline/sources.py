@@ -1,7 +1,5 @@
 """Where COLLECT reads from: game roots (copied), unpack/carve/export outputs (moved)."""
 
-from __future__ import annotations
-
 import json
 from pathlib import Path
 

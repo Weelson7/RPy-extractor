@@ -4,8 +4,6 @@ tracked child until the agent says it is finished (or the timeout), then it is s
 agent's files are collected into `<workspace>/.runtime/agent/<agent>/`. The game folder is only
 read. Audio (`viwo record`) records the system output while a game plays."""
 
-from __future__ import annotations
-
 import shutil
 import time
 from pathlib import Path

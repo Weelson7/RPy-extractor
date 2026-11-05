@@ -4,8 +4,6 @@ the original; offsets are laid out again; a member's `integrity` (Electron's per
 and 4 MB block hashes) is recomputed when the original carries one. A file marked `unpacked`
 lives in `app.asar.unpacked/` and is written there."""
 
-from __future__ import annotations
-
 import hashlib
 import json
 import os

@@ -1,7 +1,5 @@
 """OS layer selection (doc 1). Absolute imports keep the stdlib `os` module intact."""
 
-from __future__ import annotations
-
 import sys
 from typing import Mapping, Sequence
 

@@ -6,8 +6,6 @@ index size, timestamp. Index entries: u32 size (+ u32 timestamp when the type ca
 order, uncompressed. An encrypted index (0x80) is reported, not guessed.
 """
 
-from __future__ import annotations
-
 import struct
 from pathlib import Path
 
@@ -87,9 +85,6 @@ class PackBuiltin(Unarchiver):
         files = count_files(dest)
         notes = (f"{cut} member(s) cut short (the pack ends early)",) if cut else ()
         return Outcome(OutcomeKind.OK, files, notes=names.save() + notes)
-
-
-PLUGIN = "WarscapePlugin"  # discovered by viwo.core.wiring.registry
 
 
 class WarscapePlugin(EnginePlugin):

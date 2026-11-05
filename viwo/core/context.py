@@ -2,8 +2,6 @@
 serves core-owned work (capture, repack, merger probe, analysis, agents); for_owner turns it
 into one owner's view (the extraction pipeline and `viwo unpack`, per plugin or "core")."""
 
-from __future__ import annotations
-
 from dataclasses import replace
 from pathlib import Path
 

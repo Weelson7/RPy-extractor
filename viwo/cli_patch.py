@@ -1,7 +1,5 @@
 """The patching arm's commands (doc 16.2b T1-T2): `viwo patch` and `viwo mod`."""
 
-from __future__ import annotations
-
 from viwo.contracts.errors import Envelope, ViwoError
 
 

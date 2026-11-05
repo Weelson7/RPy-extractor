@@ -6,8 +6,6 @@ exactly the segment's size gives the stored width, height and mips, so the segme
 standard DDS (DX10 header when no FourCC or legacy format names it).
 Layout and formats measured on the Native module's 150 packages (2026-11-04)."""
 
-from __future__ import annotations
-
 import re
 import struct
 

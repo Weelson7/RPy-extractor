@@ -1,7 +1,5 @@
 """Identify containers for unarchive slots: custom identifiers, suffixes, magic (doc 8.4)."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Iterable
 

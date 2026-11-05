@@ -1,7 +1,5 @@
 """Plugin selection (doc 3.3): a pure function, so every combination is testable."""
 
-from __future__ import annotations
-
 from typing import Mapping, Sequence
 
 from viwo.contracts.errors import ViwoError

@@ -1,7 +1,5 @@
 """Unity export backends: UnityPy (main, in-process) and AssetStudioModCLI (spare)."""
 
-from __future__ import annotations
-
 import gc
 import json
 import re
@@ -284,8 +282,7 @@ class AssetStudioModCli(Exporter):
         ]
 
     def export(self, ctx) -> Outcome:
-        tool = ctx.os.tools.locate(ASSETSTUDIO)
-        if tool is None:
+        if (tool := ctx.os.tools.locate(ASSETSTUDIO)) is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=ASSETSTUDIO.hint)
         result = ctx.os.process.run(self.argv(ctx, tool), timeout=7200, cancel=ctx.cancel)
         if not result.ok:

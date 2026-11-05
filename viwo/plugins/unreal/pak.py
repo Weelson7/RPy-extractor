@@ -1,7 +1,5 @@
 """Unreal .pak footers, IoStore .utoc headers, key verification and the CLI backends."""
 
-from __future__ import annotations
-
 import os
 import shutil
 import struct
@@ -94,8 +92,7 @@ class _UnrealCli(Unarchiver):
         return archive
 
     def extract(self, archive, dest, ctx) -> Outcome:
-        tool = ctx.os.tools.locate(self.spec)
-        if tool is None:
+        if (tool := ctx.os.tools.locate(self.spec)) is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=self.spec.hint)
         key, problem = resolve_key(archive, ctx)
         if problem:

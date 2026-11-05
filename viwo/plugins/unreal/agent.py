@@ -2,8 +2,6 @@
 with unversioned properties need, and a dump of every UObject, then tells ViWo it is done.
 Its GUI console and its bundled mods stay off (owner's rule: nothing on screen but the game)."""
 
-from __future__ import annotations
-
 import shutil
 from pathlib import Path
 

@@ -1,7 +1,5 @@
 """RDAR index reader, CR2W type sniffing and the Oodle bridge (the game's own DLL)."""
 
-from __future__ import annotations
-
 import ctypes
 import struct
 from dataclasses import dataclass

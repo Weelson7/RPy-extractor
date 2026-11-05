@@ -1,7 +1,5 @@
 """WAD reading (IWAD / PWAD) and the in-process unpack backend."""
 
-from __future__ import annotations
-
 import re
 import struct
 from dataclasses import dataclass

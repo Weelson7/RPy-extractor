@@ -1,7 +1,5 @@
 """Shared OS-layer building blocks; subclasses only differ in OS-specific details."""
 
-from __future__ import annotations
-
 import atexit
 import glob
 import importlib.util

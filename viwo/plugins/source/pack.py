@@ -4,8 +4,6 @@ inline, no parts), so a
 30 GB set is never rebuilt for one edit and the original parts stay as they are. The override
 holds the edits only; it is read back after writing."""
 
-from __future__ import annotations
-
 import binascii
 import struct
 from collections import defaultdict

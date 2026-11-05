@@ -1,7 +1,5 @@
 """Doom lump decoders: pictures, flats and DMX sounds to PNG / WAV; formats by magic bytes."""
 
-from __future__ import annotations
-
 import io
 import math
 import struct

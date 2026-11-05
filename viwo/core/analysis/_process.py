@@ -1,8 +1,6 @@
 """The one way an analyzer runs its tool: timeout from the request options, lines relayed to
 the activity log (ANSI stripped), and the failure outcome built from the tail of its output."""
 
-from __future__ import annotations
-
 import re
 
 from viwo.contracts.types import Outcome, OutcomeKind

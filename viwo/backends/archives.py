@@ -1,7 +1,5 @@
 """Core-owned unarchive backends (doc 8.4): stdlib zip/tar, 7-Zip CLI, py7zr, unrar CLI."""
 
-from __future__ import annotations
-
 import shutil
 import tarfile
 import zipfile
@@ -99,8 +97,7 @@ class _CliBackend(Unarchiver):
         return (self.spec,)
 
     def extract(self, archive, dest, ctx) -> Outcome:
-        tool = ctx.os.tools.locate(self.spec)
-        if tool is None:
+        if (tool := ctx.os.tools.locate(self.spec)) is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=self.spec.hint)
         result = ctx.os.process.run(
             [*tool.argv_prefix, *self.argv(archive, dest)], timeout=3600, cancel=ctx.cancel

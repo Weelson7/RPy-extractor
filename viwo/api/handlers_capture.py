@@ -1,7 +1,5 @@
 """CAPTURE: file picker, the warnings before a capture, and the capture itself as a job."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Any, Callable
 

@@ -5,8 +5,6 @@ The bundle holds what a bug report needs: recent logs, the run records of the ac
 the effective wiring, tool status and pins, OS and Python versions. Secrets are stripped.
 """
 
-from __future__ import annotations
-
 import json
 import platform
 import re

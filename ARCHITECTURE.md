@@ -74,7 +74,7 @@ viwo/
                comparison), ranges.py (byte ranges), routes.py (envelope routes),
                handlers*.py (legacy-shaped routes per area), app.py (jobs, locks, payloads),
                recording.py (the workflow recorder), plugin_assets.py (plugin UI modules)
-  web/         index.html, css/base.css + css/themes/, js/ (api, registry, game selector,
+  web/         index.html, css/base.css + css/skin.css + css/themes/, js/ (api, registry, game selector,
                progress, ui/ component library, views/ one module per view)
   data/        tools.json (pins), locks/ (hash locks), capture_policy.json, ghidra/ViwoExport.java,
                workers/ (emulate.py, symbolic.py)

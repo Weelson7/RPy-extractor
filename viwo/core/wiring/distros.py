@@ -12,8 +12,6 @@ Rules the generator follows and `check` enforces:
  5. Every generated file loads with zero problems before it is written.
 """
 
-from __future__ import annotations
-
 import re
 import tempfile
 from pathlib import Path

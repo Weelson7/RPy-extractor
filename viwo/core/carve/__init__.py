@@ -5,8 +5,6 @@ executables in "all" mode) and writes each one out with its real suffix. Nothing
 decrypted or decompressed here: carved archives go back through the unpack loop.
 """
 
-from __future__ import annotations
-
 import mmap
 import struct
 from dataclasses import dataclass

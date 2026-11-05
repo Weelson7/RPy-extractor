@@ -1,7 +1,7 @@
 // Live job progress: stage rail, typed log ticker, counters parsed from events, job clock, warnings.
 // Everything shown comes from the job's own event stream (/api/jobs + /api/jobs/<id>/events).
 import { api } from "./api.js";
-import { h, fill, logLine, emit, cssVar, rail } from "./ui.js";
+import { h, fill, logLine, emit, cssVar, rail, toast, toastErr } from "./ui.js";
 
 const RM = window.matchMedia("(prefers-reduced-motion: reduce)");
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -298,7 +298,13 @@ export function jobProgress(kind, { logClass = "feed", onStatus = null } = {}) {
     if (!RM.matches) await sleep(250 + 40 * Math.min(10, t.order.length)); // lets the rail pop finish (300 ms + stagger)
   }
 
-  return { el: root, log: el.log, start, finish, stop, get id() { return t?.id || null; } };
+  /** The CANCEL button of every job view: asks the running job to stop at its next checkpoint. */
+  async function cancel(note = "Cancellation requested.") {
+    if (!t?.id) return toast("Job not registered yet — try again in a moment.", "warn");
+    try { await api.cancel(t.id); toast(note, "warn"); } catch (err) { toastErr(err); }
+  }
+
+  return { el: root, log: el.log, start, finish, stop, cancel, get id() { return t?.id || null; } };
 }
 
 /** Skeleton placeholder with a scanline, for short waits (detect, view loads, previews). */

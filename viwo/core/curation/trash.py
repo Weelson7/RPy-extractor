@@ -5,8 +5,6 @@
 .trash/merger/<file>       inputs trashed after a merger build
 """
 
-from __future__ import annotations
-
 import re
 import shutil
 from pathlib import Path

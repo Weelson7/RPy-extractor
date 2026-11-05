@@ -1,8 +1,6 @@
 """AES-256 single-block decryption (FIPS-197), used only to verify a candidate key against a
 pak index; bulk decryption is left to the unpack tools."""
 
-from __future__ import annotations
-
 
 def _xtime(a: int) -> int:
     return ((a << 1) ^ 0x1B) & 0xFF if a & 0x80 else a << 1

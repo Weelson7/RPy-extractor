@@ -2,8 +2,6 @@
 turns into a chosen type is collected and decoded, then the files of types not chosen are
 left out; what the filter left out is said."""
 
-from __future__ import annotations
-
 from collections import Counter
 from pathlib import Path
 

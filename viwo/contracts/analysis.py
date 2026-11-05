@@ -3,8 +3,6 @@ backend interfaces. An analyzer reads a copy of a binary and writes artifacts; a
 prepares the same target and hands it to a GUI tool that runs as a tracked child of ViWo.
 Both use the ExtractionContext (`staging` is the output folder): one context type per arm."""
 
-from __future__ import annotations
-
 import re
 from abc import abstractmethod
 from dataclasses import dataclass, field
@@ -15,14 +13,9 @@ from .plugin import ExtractionContext
 from .slots import Backend
 from .types import Outcome
 
-KINDS = (
-    "native_binary",
-    "dotnet_assembly",
-    "il2cpp",
-    "python_bytecode",
-    "gdscript_bytecode",
-    "script_vm",
-    "memory_image",
+KINDS = tuple(
+    "native_binary dotnet_assembly il2cpp python_bytecode gdscript_bytecode script_vm "
+    "memory_image".split()
 )
 ANALYSIS_DIR = ".analysis"  # <workspace>/.analysis/<analyzer id>/<target key>/
 

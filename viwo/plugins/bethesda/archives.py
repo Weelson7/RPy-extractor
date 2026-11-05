@@ -1,8 +1,6 @@
 """Bethesda archives: BSA (Oblivion 103, Fallout 3 / Skyrim 104, Skyrim SE 105) and BA2
 (Fallout 4 / 76, Starfield: GNRL files and DX10 textures rebuilt as .dds)."""
 
-from __future__ import annotations
-
 import struct
 import zlib
 

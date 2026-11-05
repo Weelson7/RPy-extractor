@@ -4,8 +4,6 @@ Unencrypted archives unpack fully. Many commercial games add a per-title cipher 
 (flagged in the index): those entries are reported, not guessed at.
 """
 
-from __future__ import annotations
-
 import struct
 import zlib
 from pathlib import Path
@@ -121,9 +119,6 @@ class Xp3Builtin(Unarchiver):
 SLOT = SlotDefinition(
     "unarchive.xp3", "unarchive", "kirikiri", "xp3-builtin", suffixes=(".xp3",), magic=(MAGIC,)
 )
-
-
-PLUGIN = "KiriKiriPlugin"  # discovered by viwo.core.wiring.registry
 
 
 class KiriKiriPlugin(EnginePlugin):

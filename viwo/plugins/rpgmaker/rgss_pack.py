@@ -3,8 +3,6 @@ patched copy with the edited members, every entry in its place and under its own
 come from the header stream, v3 keys are stored per entry, so neither depends on a member's
 size); RPG Maker loads nothing over its archive, so the archive itself is rewritten."""
 
-from __future__ import annotations
-
 import os
 import struct
 from pathlib import Path

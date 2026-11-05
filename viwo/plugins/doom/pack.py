@@ -5,8 +5,6 @@ a Doom picture (posts per column, the grAb offsets kept) or a flat through the g
 it is. Lumps keep their order (markers included). The read-back decodes the new lumps again and
 compares them with the edit after the palette mapping, the only loss the format imposes."""
 
-from __future__ import annotations
-
 import io
 import os
 import struct

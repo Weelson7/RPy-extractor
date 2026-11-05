@@ -6,8 +6,6 @@ ViWo processes cannot work on one workspace at once. A stale file (dead pid, or 
 STALE_AFTER) is taken over with a warning in the log.
 """
 
-from __future__ import annotations
-
 import json
 import logging
 import os

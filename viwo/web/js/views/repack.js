@@ -21,7 +21,7 @@ function mount(root) {
   el.sum = h("div", { class: "ab-sum mono" });
   el.why = h("span", { class: "ab-why" });
   el.build = btn("BUILD PATCHED COPY", build, "primary lg");
-  el.cancel = btn("CANCEL", cancelJob, "ghost", { hidden: true });
+  el.cancel = btn("CANCEL", () => el.prog.cancel(), "ghost", { hidden: true });
   root.append(
     viewHead(code("repack"), "PATCHED COPY", "Put the files you edited in the workspace back into the game, as a separate patched copy. Each patched container is re-extracted to verify your edits."),
     assure([["ORIGINAL GAME NEVER MODIFIED", "it is only read; the copy goes to a folder you choose"],
@@ -116,12 +116,6 @@ function bar() {
   el.build.textContent = S.running ? "BUILDING…" : "BUILD PATCHED COPY";
   el.planBtn.disabled = S.running;
   el.cancel.hidden = !S.running;
-}
-
-async function cancelJob() {
-  const id = el.prog.id;
-  if (!id) return toast("Job not registered yet — try again in a moment.", "warn");
-  try { await api.cancel(id); toast("Cancellation requested.", "warn"); } catch (err) { toastErr(err); }
 }
 
 async function build() {

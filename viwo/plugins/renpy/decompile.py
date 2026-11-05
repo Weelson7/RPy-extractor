@@ -3,8 +3,6 @@ run as a separate process (pinned source archive in third_party/unrpyc, run by V
 Plugin option `decompile = on|off` (default on) switches the slot.
 """
 
-from __future__ import annotations
-
 import shutil
 from pathlib import Path
 
@@ -30,8 +28,7 @@ class UnrpycCli(Decoder):
 
     def decode(self, path: Path, dest: Path, ctx) -> Outcome:
         """unrpyc writes <name>.rpy next to its input: work on a copy inside dest."""
-        tool = ctx.os.tools.locate(UNRPYC)
-        if tool is None:
+        if (tool := ctx.os.tools.locate(UNRPYC)) is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=UNRPYC.hint)
         dest.mkdir(parents=True, exist_ok=True)
         copy = dest / path.name
@@ -56,8 +53,7 @@ class UnrpycAnalyzer(Analyzer):
     requires = (UNRPYC,)
 
     def analyze(self, target: AnalysisTarget, ctx) -> Outcome:
-        tool = ctx.os.tools.locate(UNRPYC)
-        if tool is None:
+        if (tool := ctx.os.tools.locate(UNRPYC)) is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=UNRPYC.hint)
         folder = target.paths[0].parent  # the copies ViWo made (doc 6.5), never the game
         ctx.log(f"unrpyc: decompiling {len(target.paths)} .rpyc file(s)", stage="analyze")

@@ -1,7 +1,5 @@
 """Byte ranges for /preview/ (media seeks): parsing a Range header and copying a span."""
 
-from __future__ import annotations
-
 import re
 
 RANGE = re.compile(r"bytes=(\d{0,18})-(\d{0,18})")  # longer is no file: the whole file is sent

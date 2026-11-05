@@ -1,7 +1,5 @@
 """Throttled progress for long loops: real counts, at most one event per interval."""
 
-from __future__ import annotations
-
 import time
 from typing import Callable
 

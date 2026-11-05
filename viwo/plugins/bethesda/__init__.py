@@ -1,7 +1,5 @@
 """Bethesda (Gamebryo / Creation Engine): BSA and BA2 archives."""
 
-from __future__ import annotations
-
 import mmap
 import struct
 import zlib
@@ -101,9 +99,6 @@ SLOTS = (
         "unarchive.ba2", "unarchive", "bethesda", "ba2-builtin", suffixes=(".ba2",), magic=(BA2,)
     ),
 )
-
-
-PLUGIN = "BethesdaPlugin"  # discovered by viwo.core.wiring.registry
 
 
 class BethesdaPlugin(EnginePlugin):

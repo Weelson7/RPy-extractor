@@ -4,8 +4,6 @@ through a DDS header for Pillow, the 8-bit-per-channel formats as raw pixels. Mi
 smallest first, each with all frames, faces and slices; from 7.3 a resource table points at the
 image data, before that it follows the header and the low-resolution thumbnail."""
 
-from __future__ import annotations
-
 import io
 import struct
 from pathlib import Path

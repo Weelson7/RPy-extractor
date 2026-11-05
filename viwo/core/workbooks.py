@@ -2,8 +2,6 @@
 automation. The files (shipped, the user's own, problems named) are core/guides.py's; here are
 their rules, and the stale mark for steps written for another version than the pinned tool."""
 
-from __future__ import annotations
-
 from functools import partial
 
 from . import guides, thirdparty

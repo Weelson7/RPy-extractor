@@ -6,8 +6,6 @@ never writes; `fix` is report-only in phase 1 (phase 2 writes into `.sanitizer/c
 Findings are plain dicts: {rule, path, message, action, severity, ...}.
 """
 
-from __future__ import annotations
-
 import mmap
 import struct
 from dataclasses import dataclass

@@ -8,8 +8,6 @@ Kraken segments are inflated with the decompressor the game itself ships (`bin/x
 found beside the archive; Windows only): ViWo authors no decompressor and fetches none.
 """
 
-from __future__ import annotations
-
 import struct
 from pathlib import Path
 
@@ -93,9 +91,6 @@ def _names(ctx, oodle) -> tuple[Names | None, list[str]]:
         return Names.load(Path(tool.path), oodle), []
     except (OSError, ValueError) as exc:
         return None, [f"members keep their hashes: the path list did not load ({exc})"]
-
-
-PLUGIN = "RedenginePlugin"  # discovered by viwo.core.wiring.registry
 
 
 class RedenginePlugin(EnginePlugin):

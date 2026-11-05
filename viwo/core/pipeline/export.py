@@ -1,7 +1,5 @@
 """EXPORT stage: one export per selected plugin, plus the wrapper re-detection (doc 14.2 #3)."""
 
-from __future__ import annotations
-
 from pathlib import Path
 
 from viwo.contracts import workspace as ws

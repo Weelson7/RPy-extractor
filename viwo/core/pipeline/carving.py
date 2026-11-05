@@ -1,7 +1,5 @@
 """CARVE (after UNPACK): pull embedded files out of blobs nothing else recognizes."""
 
-from __future__ import annotations
-
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path

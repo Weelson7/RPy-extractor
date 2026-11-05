@@ -3,8 +3,6 @@ GDRE needs the bytecode revision: the `bytecode` option wins, then the engine ve
 executable carries (the plugin puts it in the target hints), then the revision GDRE lists for
 the header number of the files (`GDSC` + uint32)."""
 
-from __future__ import annotations
-
 import re
 import struct
 from pathlib import Path
@@ -49,8 +47,7 @@ class GdreDecompile(Analyzer):
     requires = (GDRE,)
 
     def analyze(self, target: AnalysisTarget, ctx) -> Outcome:
-        tool = ctx.os.tools.locate(GDRE)
-        if tool is None:
+        if (tool := ctx.os.tools.locate(GDRE)) is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=GDRE.hint)
         files = [p for p in target.paths if p.suffix.lower() == ".gdc"]  # the copies (doc 6.5)
         bytecode = str(ctx.options.get("bytecode") or target.hints.get("engine_version", ""))

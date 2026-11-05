@@ -6,8 +6,6 @@ every game. QuickBMS (GPL-2.0) runs as a separate process.
 Flags (-o overwrite, -Y yes to prompts) follow the QuickBMS documentation.
 """
 
-from __future__ import annotations
-
 from pathlib import Path
 
 from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest
@@ -61,9 +59,6 @@ class QuickBmsCli(Unarchiver):
         if not result.ok or not files:
             return Outcome(OutcomeKind.FAILED, error=(result.stderr or result.stdout)[-300:])
         return Outcome(OutcomeKind.OK, files, notes=(f"script {script.name}",))
-
-
-PLUGIN = "QuickBmsPlugin"  # discovered by viwo.core.wiring.registry
 
 
 class QuickBmsPlugin(EnginePlugin):

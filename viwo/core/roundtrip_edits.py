@@ -2,8 +2,6 @@
 provenance map, files the user adds under `_added/<target path>`, and the same-format rule
 (doc 18.3 RESOLVE): an edit whose bytes no longer match the member's format is rejected."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from pathlib import Path
 

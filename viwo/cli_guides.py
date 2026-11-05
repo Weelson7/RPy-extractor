@@ -1,8 +1,6 @@
 """`viwo workbook` and `viwo runbook` (doc 19): the guides for the child tools, and runbooks run
 step by step through the same handlers as the web UI (so every action keeps its own checks)."""
 
-from __future__ import annotations
-
 import getpass
 import json
 import sys

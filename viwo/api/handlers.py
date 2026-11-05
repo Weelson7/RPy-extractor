@@ -1,7 +1,5 @@
 """JSON route handlers for the web UI (v1-compatible shapes; doc 4.1)."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Any, Callable
 

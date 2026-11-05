@@ -3,8 +3,6 @@ path list names the members of its archives (the engine's RDAR reader takes `nam
 the run's game plugins), its compiled scripts are decompiled by redscript, and its executables
 are the detection evidence for the title."""
 
-from __future__ import annotations
-
 from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest, PluginOption
 from viwo.contracts.slots import Backend
 from viwo.contracts.types import DependencySpec, DetectionResult
@@ -34,9 +32,6 @@ class PathList(Backend):
     backend_id, owner, license = "cp77-path-list", "cyberpunk2077", "MIT"
     families = frozenset({"names"})
     requires = (CP77_HASHES,)
-
-
-PLUGIN = "Cyberpunk2077Plugin"  # discovered by viwo.core.wiring.registry
 
 
 class Cyberpunk2077Plugin(EnginePlugin):

@@ -1,7 +1,5 @@
 """Merger inputs: media entries, candidate groups, selection expansion (v1 semantics)."""
 
-from __future__ import annotations
-
 import re
 from pathlib import Path
 from typing import Any

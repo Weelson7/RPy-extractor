@@ -40,20 +40,24 @@ Rules for views (the lint fails otherwise):
 
 - `base.css`: structure only. Layout, spacing, sizes, grid templates, clip paths, visibility.
   It must not contain colours, fonts, shadows or animations (lint).
+- `skin.css`: the skin every theme shares (rules written only with the tokens), loaded after
+  `base.css` and before the theme, so a theme's own rules win. Same rule as a theme: no layout.
 - `themes/<name>.css`: tokens (`--bg`, `--red`, `--text`, `--line`, `--f-head`, `--f-body`,
-  `--f-mono`...) plus every colour, font, glow, border, transition and keyframe. It must not
-  contain layout declarations (`display`, `grid-template*`, `position`).
+  `--f-mono`...) plus the colours, fonts, glows, borders, transitions and keyframes that are
+  the theme's own. It must not contain layout declarations (`display`, `grid-template*`,
+  `position`).
 - Shipped themes: `wormhole` (the red terminal HUD) and `plain` (neutral, high contrast, no
   motion). The active theme is `<html data-theme>` and the `#theme-link` stylesheet; the user
   picks it in SETTINGS > APPEARANCE (a browser preference, `pref("theme")`, not an ini key).
 
 To write a theme: copy `themes/plain.css`, change the `:root` tokens first (that alone restyles
-everything), then override component skins (`.panel`, `.btn`, `.badge[data-kind="ok"]`...).
-Keep layout out of it; the lint test checks every file under `themes/`.
+everything with `skin.css`), then override component skins (`.panel`, `.btn`,
+`.badge[data-kind="ok"]`...). Keep layout out of it; the lint test checks every file under
+`themes/` and `skin.css`.
 
 To add a component: put it in `ui/components.js` (or a new `ui/<area>.js` re-exported from
 `ui/index.js`), give it a class name and data attributes for its states, add its structure to
-`base.css` and its skin to every theme.
+`base.css` and its skin to `skin.css` (or to every theme, when the themes differ).
 
 ## Arms and the global strip
 

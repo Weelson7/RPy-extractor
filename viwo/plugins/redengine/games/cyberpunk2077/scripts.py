@@ -2,8 +2,6 @@
 final.redscripts`) decompiled into redscript source, one `.script` file per stored file, through
 redscript's console (MIT, run as its own process; the 0.5 line is the one with a decompiler)."""
 
-from __future__ import annotations
-
 from pathlib import Path
 
 from viwo.contracts.slots import Decoder, SlotDefinition
@@ -27,8 +25,7 @@ class RedscriptDecompile(Decoder):
     requires = (REDSCRIPT,)
 
     def decode(self, path: Path, dest: Path, ctx) -> Outcome:
-        tool = ctx.os.tools.locate(REDSCRIPT)
-        if tool is None:
+        if (tool := ctx.os.tools.locate(REDSCRIPT)) is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=REDSCRIPT.hint)
         out = dest / path.name.replace(".", "_")
         result = ctx.os.process.run(

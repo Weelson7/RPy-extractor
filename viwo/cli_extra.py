@@ -1,7 +1,5 @@
 """`viwo replay`, `viwo unpack`, the tool commands, `viwo install` and plugin add-on commands."""
 
-from __future__ import annotations
-
 import argparse
 import json
 import shutil

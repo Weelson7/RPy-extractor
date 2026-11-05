@@ -1,7 +1,5 @@
 """Persisted survey reports: numbered files under viwo-data/surveys, never overwritten."""
 
-from __future__ import annotations
-
 import json
 import re
 import time

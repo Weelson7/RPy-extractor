@@ -4,8 +4,6 @@ A DRS is a flat container: tables per extension (the extension is stored reverse
 then (id, offset, size) per file. Members come out as `<id>.<ext>` (slp, wav, bina, shp).
 """
 
-from __future__ import annotations
-
 import struct
 from pathlib import Path
 
@@ -64,9 +62,6 @@ class DrsBuiltin(Unarchiver):
         except (OSError, ValueError, struct.error) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"bad DRS: {exc}")
         return Outcome(OutcomeKind.OK, count_files(dest))
-
-
-PLUGIN = "GeniePlugin"  # discovered by viwo.core.wiring.registry
 
 
 class GeniePlugin(EnginePlugin):

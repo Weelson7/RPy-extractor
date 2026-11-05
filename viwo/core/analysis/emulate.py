@@ -10,8 +10,6 @@ Options (`viwo analyze --set key=value`, or the API's `options`):
   find       symbolic: the address to reach (required); avoid: comma-separated addresses
 The worker writes result.json (status, return value, reason) and the dumped or solved buffers."""
 
-from __future__ import annotations
-
 from viwo.contracts.analysis import Analyzer
 from viwo.contracts.errors import ViwoError
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
@@ -69,8 +67,7 @@ class _Worker(Analyzer):
     def analyze(self, target, ctx) -> Outcome:
         import json
 
-        tool = ctx.os.tools.locate(self.dependency)
-        if tool is None:
+        if (tool := ctx.os.tools.locate(self.dependency)) is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=self.dependency.hint)
         spec = worker_spec(target.paths[0], dict(ctx.options), self.symbolic)
         (ctx.scratch / "worker-spec.json").write_text(json.dumps(spec), encoding="utf-8")

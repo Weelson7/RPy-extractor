@@ -5,8 +5,6 @@ with the game's own Oodle (like the archives) once, then kept beside the pin as 
 sorted index
 (`usedhashes.txt`, `usedhashes.idx`: hashes, then line offsets) that later runs only load."""
 
-from __future__ import annotations
-
 import bisect
 import mmap
 import struct

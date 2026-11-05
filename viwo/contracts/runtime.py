@@ -3,8 +3,6 @@ and writes what static extraction cannot see (UE5 mappings, IL2CPP interop assem
 installed into a ViWo patched copy, never into the game folder; core launches that copy,
 waits for `finished`, stops it and collects `outputs` into the workspace."""
 
-from __future__ import annotations
-
 from abc import abstractmethod
 from pathlib import Path
 

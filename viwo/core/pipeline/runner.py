@@ -1,7 +1,5 @@
 """Stage runner (doc 3.1): prepare, probe, detect, unpack, export, collect, verify, report."""
 
-from __future__ import annotations
-
 import json
 import shutil
 import tempfile

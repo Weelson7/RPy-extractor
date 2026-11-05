@@ -1,7 +1,5 @@
 """RPG Maker plugin: MV/MZ encrypted media (exporter) and XP/VX/VX Ace RGSSAD archives."""
 
-from __future__ import annotations
-
 from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest
 from viwo.contracts.slots import SlotDefinition
 from viwo.contracts.types import DetectionResult
@@ -28,9 +26,6 @@ SLOTS = (
 )
 MARKERS = ("rpg_core.js", "rmmz_core.js", "rpg_managers.js", "rmmz_managers.js", "game.rgssad")
 MARKERS += ("game.rgss2a", "game.rgss3a", "rgss102e.dll", "rgss202e.dll", "rgss301.dll")
-
-
-PLUGIN = "RpgMakerPlugin"  # discovered by viwo.core.wiring.registry
 
 
 class RpgMakerPlugin(EnginePlugin):

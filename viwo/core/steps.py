@@ -1,7 +1,5 @@
 """A named step of a long job: throttled "label: i / N" events plus one final line."""
 
-from __future__ import annotations
-
 from viwo.contracts.errors import ViwoError
 from viwo.contracts.types import ProgressEvent
 

@@ -53,6 +53,8 @@ class StylesheetBoundaryTests(unittest.TestCase):
         html = (WEB / "index.html").read_text(encoding="utf-8")
         self.assertIn('href="css/base.css"', html)
         self.assertIn('id="theme-link"', html)
+        order = [html.index(s) for s in ('css/base.css"', 'css/skin.css"', 'id="theme-link"')]
+        self.assertEqual(order, sorted(order))  # what every theme shares, then the theme's own
         self.assertFalse(
             (WEB / "viwo.css").exists(), "the single stylesheet was split; do not bring it back"
         )
@@ -68,7 +70,7 @@ class StylesheetBoundaryTests(unittest.TestCase):
     def test_themes_have_no_layout(self) -> None:
         themes = sorted((WEB / "css" / "themes").glob("*.css"))
         self.assertGreaterEqual(len(themes), 2, "at least two themes prove the boundary")
-        for theme in themes:
+        for theme in [*themes, WEB / "css" / "skin.css"]:  # the shared skin is theme-side too
             for n, line in enumerate(theme.read_text(encoding="utf-8").splitlines(), 1):
                 if line.lstrip().startswith("/*"):
                     continue

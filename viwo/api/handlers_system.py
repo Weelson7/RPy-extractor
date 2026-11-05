@@ -1,8 +1,6 @@
 """System handlers: diagnostics bundle, update checks (on click only), indexes update job,
 workbooks."""
 
-from __future__ import annotations
-
 from typing import Any, Callable
 
 from viwo import __version__

@@ -4,8 +4,6 @@ Rules: detect() is fast and pure (probe only); plugins write only into
 ctx.staging / ctx.scratch; tools run through ctx.os; no print().
 """
 
-from __future__ import annotations
-
 import inspect
 import time
 from abc import ABC, abstractmethod

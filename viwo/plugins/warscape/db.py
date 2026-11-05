@@ -4,8 +4,6 @@ from the game's packs with the game's RPFM schema (MIT, pinned per game, install
 tried against the table's other definitions (decoding to the last byte is the check); a table
 the schema lacks or that no definition reads is counted and named."""
 
-from __future__ import annotations
-
 import json
 import re
 import struct

@@ -1,7 +1,5 @@
 """COLLECT (doc 3.1): copy from the game folder, move from staging, dedupe, provenance."""
 
-from __future__ import annotations
-
 import hashlib
 import os
 import shutil

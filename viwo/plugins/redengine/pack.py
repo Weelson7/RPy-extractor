@@ -4,8 +4,6 @@ WolvenKit's console (GPL-3.0, its own process). A member known by name is packed
 (the game hashes it with backslashes); one known only by its hash is staged as `<decimal>.<ext>`,
 the name WolvenKit keeps the hash of. The archive is read back and every edited member compared."""
 
-from __future__ import annotations
-
 import re
 import shutil
 import tempfile
@@ -68,8 +66,7 @@ class WolvenKitPack(Packer):
         return folder / f"{PREFIX}{container.stem}.archive"
 
     def pack(self, container, members, ctx) -> Outcome:
-        tool = ctx.os.tools.locate(WOLVENKIT)
-        if tool is None:
+        if (tool := ctx.os.tools.locate(WOLVENKIT)) is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=WOLVENKIT.hint)
         if mods_folder(container) is None:
             why = "not under archive/pc/<folder>/ or mods/<name>/archives/: no override loads"

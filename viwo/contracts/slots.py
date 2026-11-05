@@ -5,8 +5,6 @@ The core identifies files for unarchive slots (head/tail bytes, carving) and
 falls back to the spare when the main's outcome is retryable.
 """
 
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path

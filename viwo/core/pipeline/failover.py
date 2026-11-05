@@ -1,7 +1,5 @@
 """Main -> spare failover for one slot call (doc 8.2)."""
 
-from __future__ import annotations
-
 from dataclasses import replace
 from typing import Callable
 

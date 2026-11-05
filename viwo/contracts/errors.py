@@ -1,22 +1,11 @@
 """Error taxonomy and the result envelope (doc 12.3b)."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 from typing import Any
 
-CODES = (
-    "invalid_request",
-    "not_found",
-    "busy",
-    "unavailable",
-    "needs_key",
-    "needs_decision",
-    "failed",
-    "cancelled",
-    "refused",
-    "offline",
-    "internal",
+CODES = tuple(
+    "invalid_request not_found busy unavailable needs_key needs_decision failed cancelled "
+    "refused offline internal".split()
 )
 
 

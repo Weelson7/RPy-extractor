@@ -1,8 +1,6 @@
 """capture.gpu backend: RenderDoc (MIT). The game runs under renderdoccmd; the user takes
 captures with RenderDoc's in-game hotkey (F12 / PrtScn); every capture is harvested to PNG."""
 
-from __future__ import annotations
-
 import json
 from pathlib import Path
 

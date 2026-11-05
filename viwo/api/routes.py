@@ -3,8 +3,6 @@
 Every response is the doc 12.3b envelope with an HTTP status from the error code.
 """
 
-from __future__ import annotations
-
 from viwo.contracts.errors import Envelope, ViwoError
 from viwo.contracts.pipeline import ExtractionMode, ExtractionRequest, MixedPolicy
 from viwo.core.pipeline.probe import FolderProbe

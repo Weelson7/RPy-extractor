@@ -2,8 +2,6 @@
 its provenance entry follows, so the map never points at a missing file (round trip, doc 18).
 """
 
-from __future__ import annotations
-
 import json
 import os
 from pathlib import Path

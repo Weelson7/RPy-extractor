@@ -4,8 +4,6 @@ earlier step answered as `{step<N>_<key>}`, secret plugin options as secret inpu
 never written, a process id as an input), and its answer an expectation (a digest, and the
 facts that name what changed) that a replay compares with."""
 
-from __future__ import annotations
-
 import copy
 import hashlib
 import json

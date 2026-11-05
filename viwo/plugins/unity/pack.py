@@ -1,8 +1,6 @@
 """Unity round trip with UnityPy: TextAsset text (exact) and Texture2D images (stored as
 lossless RGBA32) written back into the copied container, then read back to verify."""
 
-from __future__ import annotations
-
 import gc
 from pathlib import Path
 

@@ -3,8 +3,6 @@ engine loads after its own (`patch.xp3`, then `patch2.xp3`, ...: a later archive
 the game's archives. Unencrypted, zlib-compressed segments and index; read back after
 writing."""
 
-from __future__ import annotations
-
 import struct
 import zlib
 from pathlib import Path

@@ -2,8 +2,6 @@
 the thread is held for an instant (SuspendThread + GetThreadContext, no administrator rights),
 and the modules the process has loaded (EnumProcessModulesEx)."""
 
-from __future__ import annotations
-
 import ctypes
 import time
 from ctypes import wintypes as wt

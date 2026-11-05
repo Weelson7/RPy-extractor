@@ -5,8 +5,6 @@ the user confirms once per game (own install, offline use, own responsibility) a
 runs. The only gate is the `capture` feature switch in the ini.
 """
 
-from __future__ import annotations
-
 import json
 import socket
 from pathlib import Path

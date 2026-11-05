@@ -4,8 +4,6 @@ Process running, tool location, filesystem rules and the minimal desktop shell. 
 installation is not an OS-layer concern: pinned downloads live in core (doc 10, 1.0).
 """
 
-from __future__ import annotations
-
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from pathlib import Path

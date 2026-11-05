@@ -4,8 +4,6 @@ The custom-engine showcase: everything runs in process with the standard library
 plugin only uses the public contracts, as an out-of-tree plugin would.
 """
 
-from __future__ import annotations
-
 from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest, PluginOption
 from viwo.contracts.slots import SlotDefinition
 from viwo.contracts.types import DetectionResult
@@ -28,9 +26,6 @@ WAD_SLOT = SlotDefinition(
 SOURCE_PORTS = "gzdoom zdoom chocolate-doom crispy-doom prboom-plus dsda-doom woof".split()
 PORTS = ("doom.exe", "doom2.exe", "heretic.exe", "hexen.exe")
 PORTS += tuple(SOURCE_PORTS) + tuple(f"{p}.exe" for p in SOURCE_PORTS)  # Linux and Windows names
-
-
-PLUGIN = "DoomPlugin"  # discovered by viwo.core.wiring.registry
 
 
 class DoomPlugin(EnginePlugin):

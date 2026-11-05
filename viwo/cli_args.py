@@ -1,7 +1,5 @@
 """Argument definitions of the core `viwo` subcommands (doc 12.4); `cli.py` wires them."""
 
-from __future__ import annotations
-
 import argparse
 from pathlib import Path
 

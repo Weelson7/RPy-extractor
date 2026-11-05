@@ -3,8 +3,6 @@ decompiles it. Detect It Easy's console scanner (`diec`, MIT) names the compiler
 libraries, packers and protectors (Themida, VMProtect, Denuvo, UPX...) from its signature
 database; ViWo keeps the JSON and writes a one-line-per-finding summary next to it."""
 
-from __future__ import annotations
-
 import json
 
 from viwo.contracts.analysis import AnalysisTarget, Analyzer
@@ -46,8 +44,7 @@ class DetectItEasy(Analyzer):
     requires = (DIE,)
 
     def analyze(self, target: AnalysisTarget, ctx) -> Outcome:
-        tool = ctx.os.tools.locate(DIE)
-        if tool is None:
+        if (tool := ctx.os.tools.locate(DIE)) is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=DIE.hint)
         binary = target.paths[0]
         ctx.log(f"Detect It Easy: identifying {binary.name}", stage="analyze")

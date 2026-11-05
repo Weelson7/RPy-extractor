@@ -7,8 +7,6 @@ core.decode=off, core.decode_video=on.
 A file no backend could decode is counted per slot in one warning (never silent).
 """
 
-from __future__ import annotations
-
 import os
 import shutil
 import tempfile
@@ -26,19 +24,8 @@ from .pipeline.failover import run_with_failover
 from .pipeline.ticker import Ticker
 
 AUDIO = (".wem", ".fsb", ".bnk", ".xwm", ".xma", ".at3", ".at9", ".adx", ".hca", ".vag", ".awb")
-AUDIO += (
-    ".acb",
-    ".bfstm",
-    ".bcstm",
-    ".brstm",
-    ".bfwav",
-    ".lopus",
-    ".xwb",
-    ".sab",
-    ".msf",
-    ".binka",
-    ".bank",  # FMOD Studio banks (FSB5 inside)
-)
+AUDIO += (".acb", ".bfstm", ".bcstm", ".brstm", ".bfwav", ".lopus", ".xwb", ".sab", ".msf")
+AUDIO += (".binka", ".bank")  # .bank: FMOD Studio banks (FSB5 inside)
 SLOTS = (
     SlotDefinition(
         "decode.audio", "decode", "core", "vgmstream-cli", "ffmpeg-decode", suffixes=AUDIO
@@ -73,8 +60,7 @@ class _CliDecoder(Decoder):
         return (self.spec,)
 
     def decode(self, path: Path, dest: Path, ctx) -> Outcome:
-        tool = ctx.os.tools.locate(self.spec)
-        if tool is None:
+        if (tool := ctx.os.tools.locate(self.spec)) is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=self.spec.hint)
         result = ctx.os.process.run(
             [*tool.argv_prefix, *self.argv(path, dest)], timeout=1800, cancel=ctx.cancel
@@ -135,8 +121,7 @@ class FfprobeProbe(Prober):
     requires = (FFPROBE,)
 
     def probe(self, path, ctx) -> Outcome:
-        tool = ctx.os.tools.locate(FFPROBE)
-        if tool is None:
+        if (tool := ctx.os.tools.locate(FFPROBE)) is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=FFPROBE.hint)
         argv = [
             *tool.argv_prefix,
@@ -172,15 +157,8 @@ class PillowProbe(Prober):
 
 def decoders() -> list:
     """Every core decode/probe backend (doc 8.4)."""
-    return [
-        VgmstreamCli(),
-        FfmpegDecode(),
-        FfmpegImage(),
-        FfmpegVideo(),
-        BinkGame(),
-        FfprobeProbe(),
-        PillowProbe(),
-    ]
+    kinds = (VgmstreamCli, FfmpegDecode, FfmpegImage, FfmpegVideo, BinkGame, FfprobeProbe)
+    return [backend() for backend in (*kinds, PillowProbe)]
 
 
 def _wanted(run, options: dict) -> dict[str, str]:

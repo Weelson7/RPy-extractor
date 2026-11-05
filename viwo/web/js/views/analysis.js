@@ -24,7 +24,7 @@ function mount(root) {
   el.result = h("div", {});
   el.sum = h("div", { class: "ab-sum mono" });
   el.why = h("span", { class: "ab-why" });
-  el.cancel = btn("CANCEL", cancelJob, "ghost", { hidden: true });
+  el.cancel = btn("CANCEL", () => el.prog.cancel(), "ghost", { hidden: true });
   followGame(el.game, () => { if (!S.running) { S.targets = null; S.listedFor = ""; renderTargets(); bar(); } });
   S.ws = bus.ws?.path || ""; // before the note is built: the workspace may be known already
   root.append(
@@ -105,12 +105,6 @@ function bar() {
   el.sum.textContent = S.running ? `analysing ${S.key}…` : `${S.targets ? S.targets.length : 0} target(s) → ${S.ws ? S.ws.split(/[\\/]/).pop() : "workspace"}`;
   el.why.textContent = S.running ? "" : (S.targets && !S.enabled ? "analysis is off (SETTINGS)" : "");
   el.cancel.hidden = !S.running;
-}
-
-async function cancelJob() {
-  const id = el.prog.id;
-  if (!id) return toast("Job not registered yet — try again in a moment.", "warn");
-  try { await api.cancel(id); toast("Cancellation requested.", "warn"); } catch (err) { toastErr(err); }
 }
 
 async function run(t, slot = "") {

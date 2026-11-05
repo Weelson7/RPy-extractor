@@ -1,8 +1,6 @@
 """analysis.native main: Ghidra headless (Apache-2.0) with ViWo's export script, and the
 "Continue in Ghidra" handoff that opens the same project in the GUI (doc 6.4, 8.3a)."""
 
-from __future__ import annotations
-
 import os
 from pathlib import Path
 
@@ -35,8 +33,7 @@ DEFAULT_TIMEOUT = 4 * 3600
 
 def java_env(ctx) -> dict[str, str] | None:
     """JAVA_HOME and PATH for Ghidra's launchers, from the pinned (or found) JDK."""
-    java = ctx.os.tools.locate(JDK)
-    if java is None:
+    if (java := ctx.os.tools.locate(JDK)) is None:
         return None
     home = Path(java.path).resolve().parent.parent
     path = f"{home / 'bin'}{os.pathsep}{os.environ.get('PATH', '')}"

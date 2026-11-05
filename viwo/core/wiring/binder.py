@@ -5,8 +5,6 @@ is an error for that entry only: the problem is recorded and the slot's default 
 A default spare that is unknown (its plugin is switched off) is simply absent.
 """
 
-from __future__ import annotations
-
 from viwo.contracts.os import OS
 from viwo.contracts.slots import Backend, SlotBinding, SlotDefinition
 

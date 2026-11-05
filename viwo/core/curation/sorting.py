@@ -4,8 +4,6 @@ Response shapes match the v1 API (doc 4.1). Paths travel URL-encoded and
 workspace-relative; every resolved path must stay inside the workspace.
 """
 
-from __future__ import annotations
-
 import shutil
 from pathlib import Path
 from urllib.parse import quote, unquote

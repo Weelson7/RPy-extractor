@@ -4,8 +4,6 @@ ilspycmd (MIT) writes a C# project, Cpp2IL (MIT) rebuilds stub assemblies from a
 and its metadata, unluac (MIT, on the pinned JDK) decompiles Lua bytecode. Artifacts land under
 `ctx.staging`; the input copies in `ctx.scratch` are ViWo's to move around."""
 
-from __future__ import annotations
-
 import shutil
 from pathlib import Path
 
@@ -66,8 +64,7 @@ class IlSpy(Analyzer):
     requires = (ILSPY, DOTNET)
 
     def analyze(self, target: AnalysisTarget, ctx) -> Outcome:
-        tool = ctx.os.tools.locate(ILSPY)
-        if tool is None:
+        if (tool := ctx.os.tools.locate(ILSPY)) is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=ILSPY.hint)
         argv = [*tool.argv_prefix, "-p", "-o", str(ctx.staging), str(target.paths[0])]
         ctx.log(f"ilspycmd: decompiling {target.paths[0].name} into a C# project", stage="analyze")
@@ -109,8 +106,7 @@ class Cpp2Il(Analyzer):
     requires = (CPP2IL,)
 
     def analyze(self, target: AnalysisTarget, ctx) -> Outcome:
-        tool = ctx.os.tools.locate(CPP2IL)
-        if tool is None:
+        if (tool := ctx.os.tools.locate(CPP2IL)) is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=CPP2IL.hint)
         game = il2cpp_layout(target, ctx.scratch / "il2cpp")
         if game is None:

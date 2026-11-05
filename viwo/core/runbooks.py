@@ -3,8 +3,6 @@ POST /api/jobs with its parameters) and steps the user does, in a child tool whe
 says how. The files are core/guides.py's; here are their rules and the `{name}` values a step's
 parameters take. The job kinds live in the API layer, so callers pass them in."""
 
-from __future__ import annotations
-
 import re
 from functools import partial
 from pathlib import Path

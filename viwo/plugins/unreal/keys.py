@@ -1,8 +1,6 @@
 """AES key resolution (D18): the user's key wins; otherwise candidates from the game's own
 executables, each verified against an encrypted pak index. Nothing is guessed."""
 
-from __future__ import annotations
-
 import base64
 import binascii
 import mmap

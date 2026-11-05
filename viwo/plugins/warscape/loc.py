@@ -2,8 +2,6 @@
 read by ViWo: `{key: text}` in the file's order, UTF-8. Format: `FF FE "LOC" 00`, a version and
 an entry count (u32), then per entry a key and a text (u16 length + UTF-16LE) and a flag byte."""
 
-from __future__ import annotations
-
 import json
 import struct
 from pathlib import Path

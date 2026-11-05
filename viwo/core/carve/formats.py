@@ -4,8 +4,6 @@ A sizer gets (buffer, start, end) and returns (size, suffix) or None. Validation
 (chunk walks, CRCs, back-references) so random bytes that happen to match are rejected.
 """
 
-from __future__ import annotations
-
 import struct
 import zlib
 

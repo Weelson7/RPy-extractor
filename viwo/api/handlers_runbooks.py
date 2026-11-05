@@ -1,8 +1,6 @@
 """RUNBOOKS (doc 19.2): the runbooks, one action step at a time through the handler POST
 /api/jobs uses (so every action keeps its own checks), and the user's saved copies."""
 
-from __future__ import annotations
-
 from typing import Any, Callable
 
 from viwo.contracts.errors import ViwoError

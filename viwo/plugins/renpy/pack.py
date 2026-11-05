@@ -4,8 +4,6 @@ Unchanged members are streamed from the original; the index is pickled by us (pr
 plain tuples), so nothing untrusted is ever unpickled.
 """
 
-from __future__ import annotations
-
 import os
 import pickle
 import zlib

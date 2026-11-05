@@ -1,8 +1,6 @@
 """Handlers for the platform tools: survey (+ saved reports), sanitizer (as the "cleanup"
 job), round trip (repack), preflight and installs."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Any, Callable
 

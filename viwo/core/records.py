@@ -2,8 +2,6 @@
 so that "same record + same tools" is checkable from the record alone. Cheap: no tool is run;
 versions come from the pins (third_party/) or from the cached location."""
 
-from __future__ import annotations
-
 from viwo import __version__
 
 from . import thirdparty

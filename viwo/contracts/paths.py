@@ -2,8 +2,6 @@
 and a target is inside a root only when no link lies between them. Re-exported by
 contracts.workspace, where callers use them (`ws.walk`, `ws.inside`)."""
 
-from __future__ import annotations
-
 import fnmatch
 import os
 from pathlib import Path

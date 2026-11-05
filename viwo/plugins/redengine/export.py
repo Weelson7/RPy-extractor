@@ -4,8 +4,6 @@ console (GPL-3.0, run only as its own process). One run takes a whole batch of e
 every CR2W resource into JSON (embedded buffers included). WolvenKit's export settings ViWo needs
 are written off screen into its own copy under third_party (minimal prompts); others stay."""
 
-from __future__ import annotations
-
 import json
 from pathlib import Path
 
@@ -55,8 +53,7 @@ class WolvenKitExport(Decoder):
         return self.decode_many([path], dest, ctx)
 
     def decode_many(self, paths: list[Path], dest: Path, ctx) -> Outcome:
-        tool = ctx.os.tools.locate(WOLVENKIT)
-        if tool is None:
+        if (tool := ctx.os.tools.locate(WOLVENKIT)) is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=WOLVENKIT.hint)
         if "third_party" in Path(tool.path).parts:  # ViWo's own copy, never the user's install
             quiet_settings(Path(tool.path).parent)

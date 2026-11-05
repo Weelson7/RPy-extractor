@@ -3,8 +3,6 @@ the game's `Data/` folder, where Gamebryo and Creation Engine games load a loose
 same path in any archive (Fallout 4 and later also want `bInvalidateOlderFiles=1` and an empty
 `sResourceDataDirsFinal=` in their ini: said in the notes). The archives stay as they are."""
 
-from __future__ import annotations
-
 from pathlib import Path
 
 from viwo.contracts import workspace as ws

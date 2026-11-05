@@ -1,7 +1,5 @@
 """Shared value types (contract doc 2, 4.4, 8). Stdlib only, no app imports."""
 
-from __future__ import annotations
-
 import threading
 from dataclasses import dataclass, field
 from enum import Enum

@@ -5,8 +5,6 @@ running process, or starts the game's own executable when none runs: a patch mad
 debugger lands in the real process. The targets are the plugins' analysis targets (doc 6.1);
 files a tool needs (the Cheat Engine table) go to `<workspace>/.runtime/<tool>/<target key>/`."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from pathlib import Path
 

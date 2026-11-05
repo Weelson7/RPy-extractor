@@ -3,8 +3,6 @@ automatically into third_party/ (pinned versions, checksums verified). Fully aut
 manual step. Every check and install is an event, so the landing screen shows real progress.
 """
 
-from __future__ import annotations
-
 import importlib.metadata
 
 from viwo.contracts.errors import ViwoError

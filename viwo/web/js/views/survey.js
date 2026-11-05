@@ -22,7 +22,7 @@ function mount(root) {
   el.sum = h("div", { class: "ab-sum mono" });
   el.why = h("span", { class: "ab-why" });
   el.run = btn("SURVEY", () => run(), "primary lg");
-  el.cancel = btn("CANCEL", cancelJob, "ghost", { hidden: true });
+  el.cancel = btn("CANCEL", () => el.prog.cancel(), "ghost", { hidden: true });
   root.append(
     viewHead(code("survey"), "SURVEY", "What can ViWo pull? Survey one game or a folder of games: every file is sorted by what extraction would do with it. Read-only — nothing is copied or written."),
     panel(`${code("survey")}.A`, "GAME OR LIBRARY FOLDER", badge("READ-ONLY", "ok"),
@@ -75,12 +75,6 @@ function bar() {
   el.run.disabled = Boolean(el.why.textContent);
   el.run.textContent = S.running ? "SURVEYING…" : "SURVEY";
   el.cancel.hidden = !S.running;
-}
-
-async function cancelJob() {
-  const id = el.prog.id;
-  if (!id) return toast("Job not registered yet — try again in a moment.", "warn");
-  try { await api.cancel(id); toast("Cancellation requested.", "warn"); } catch (err) { toastErr(err); }
 }
 
 function renderIdle() {

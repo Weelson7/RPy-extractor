@@ -4,8 +4,6 @@ packs stay as they are. PFH4 (Empire through Attila, Rome II, Thrones of Britann
 read back on Rome II. A PFH5/PFH6 game (Warhammer II and later) is refused by name until its
 index layout is verified on a real install."""
 
-from __future__ import annotations
-
 import struct
 import time
 from pathlib import Path

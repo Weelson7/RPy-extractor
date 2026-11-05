@@ -2,8 +2,6 @@
 game's own archives, and which members more than one mod carries (the first archive by name in
 `archive/pc/mod` wins, REDmod's `mods/<name>/archives` come after). Only the indexes are read."""
 
-from __future__ import annotations
-
 import struct
 from pathlib import Path
 

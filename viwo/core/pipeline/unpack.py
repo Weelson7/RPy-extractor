@@ -1,7 +1,5 @@
 """Recursive unpack loop (doc 3.1 UNPACK); keeps v1's queue/seen/subfolder behavior."""
 
-from __future__ import annotations
-
 import shutil
 import uuid
 from collections import Counter, deque

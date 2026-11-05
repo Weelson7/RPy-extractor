@@ -1,7 +1,5 @@
 """Startup ini parsing (doc 9): one flat file, one optional `base =` layer, strict checks."""
 
-from __future__ import annotations
-
 import configparser
 from dataclasses import dataclass, field
 from pathlib import Path

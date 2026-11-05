@@ -1,7 +1,5 @@
 """VERIFY stage warnings (doc 3.1) and the per-plugin verify call (doc 2.2, 0.4)."""
 
-from __future__ import annotations
-
 from dataclasses import replace
 
 from viwo.contracts.pipeline import PluginRun

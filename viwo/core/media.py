@@ -1,8 +1,6 @@
 """Media types by extension: the one table the workspace listing, the preview and the
 merger agree on (an extension is image, audio, video, text or other)."""
 
-from __future__ import annotations
-
 IMAGE = frozenset(".png .jpg .jpeg .webp .bmp .gif .svg .ico .tif .tiff .heic .avif".split())
 VIDEO = frozenset(".mp4 .webm .mov .m4v .mpeg .mpg .avi .mkv .flv .3gp .ts .m2ts".split())
 AUDIO = frozenset(".mp3 .ogg .wav .m4a .aac .opus .flac .wma .aiff .aif .mid .midi".split())

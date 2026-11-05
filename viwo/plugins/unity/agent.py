@@ -4,8 +4,6 @@ the IL2CPP code with every type and signature, then its chainloader reports star
 Its console window stays off (owner's rule). Mono games need no agent: their assemblies are in
 the files already (analysis.dotnet)."""
 
-from __future__ import annotations
-
 import shutil
 from pathlib import Path
 

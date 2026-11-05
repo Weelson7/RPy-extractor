@@ -1,7 +1,5 @@
 """SETTINGS: read the startup ini as a form and write it back; applied by reloading."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from typing import Any, Callable
 

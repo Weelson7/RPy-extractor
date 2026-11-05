@@ -3,8 +3,6 @@
 NW.js package.nw files are zips (core zip slot); loose app folders are collected as is.
 """
 
-from __future__ import annotations
-
 import json
 import struct
 from pathlib import Path
@@ -83,9 +81,6 @@ def _write_all(fh, tree: dict, base: int, names: ws.Names, ctx) -> tuple[int, in
 SLOT = SlotDefinition(
     "unarchive.asar", "unarchive", "electron", "asar-builtin", suffixes=(".asar",)
 )
-
-
-PLUGIN = "ElectronPlugin"  # discovered by viwo.core.wiring.registry
 
 
 class ElectronPlugin(EnginePlugin):

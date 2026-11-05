@@ -2,8 +2,6 @@
 are wrapped once, so a success in any view adds a step while the recording runs and is not
 paused; `stop` saves it as the user's runbook, its steps carrying what they answered."""
 
-from __future__ import annotations
-
 import re
 import threading
 import time

@@ -1,7 +1,5 @@
 """ViWo web server: local API + static UI, with the hotfix security model (doc 4.1)."""
 
-from __future__ import annotations
-
 import json
 import mimetypes
 import os

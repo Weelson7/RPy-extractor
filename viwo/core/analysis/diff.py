@@ -5,8 +5,6 @@ survives relocation; a name seen twice (overloads) pairs by fingerprint too. Eac
 `same` or `changed`; the rest is `added` or `removed`.
 BinDiff has no pinnable release, so this is ViWo's own, on the data the export already writes."""
 
-from __future__ import annotations
-
 import json
 from collections import Counter
 from pathlib import Path

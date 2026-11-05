@@ -4,8 +4,6 @@ administrator rights; Linux: perf); each sample is placed in its module and name
 nearest export below it. Writes `.runtime/profile/<pid>-<time>/hotspots.json` and `.txt`:
 the hottest addresses, modules and threads, as shares of all samples."""
 
-from __future__ import annotations
-
 import bisect
 import json
 import struct

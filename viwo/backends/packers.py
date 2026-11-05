@@ -1,7 +1,5 @@
 """Core round-trip packers: zip containers rebuilt with edited members replaced."""
 
-from __future__ import annotations
-
 import os
 import zipfile
 

@@ -1,7 +1,5 @@
 """RPG Maker XP / VX (.rgssad, .rgss2a: RGSSAD v1) and VX Ace (.rgss3a: v3) archives."""
 
-from __future__ import annotations
-
 import mmap
 import struct
 from pathlib import Path

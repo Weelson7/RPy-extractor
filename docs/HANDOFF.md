@@ -1,6 +1,6 @@
 # Handoff
 
-State at **v1.20.2** (branch `makeover`). History is in [CHANGELOG.md](../CHANGELOG.md); the
+State at **v1.20.3** (branch `makeover`). History is in [CHANGELOG.md](../CHANGELOG.md); the
 design in [docs/contract/](contract/README.md); what is open in
 [CONFORMANCE.md](contract/CONFORMANCE.md) and below.
 
@@ -40,7 +40,7 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
   half-edited module). Make a worktree at a committed version with its own venv, then run the
   pass there:
   ```powershell
-  git worktree add ..\viwo-pass v1.20.2
+  git worktree add ..\viwo-pass v1.20.3
   cd ..\viwo-pass; py -3.13 -m venv .venv; .venv\Scripts\pip install -e ".[unity,sevenzip,renpy,lz4]"
   powershell -File tools\games_pass.ps1 -Source C:\Users\<you>\Games [-Only <folder>,...]
   ```
@@ -141,8 +141,12 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
 8. **End of the open work, in this order:** the full audit is done (fourth audit, 1.20.2: the
    work since 1.15.5, every finding fixed with a property test, see CHANGELOG; open from it:
    `genie`, `warscape`, `source` still detect by title executables, the per-title data belongs
-   in game plugins, CONFORMANCE 2.10); next the LoC-reclaim pass (`loc_caps.ini` budgets were
-   raised for 1.17-1.20 with their reasons: take them back); then the
+   in game plugins, CONFORMANCE 2.10); the LoC-reclaim pass is done (1.20.3: web back to its
+   own budget, `viwo` -267, core -112, budgets lowered). Further reclaim needs the owner's
+   decisions: `DependencySpec` metadata into `tools.json` (about -200, doc 2.6), dropping
+   contract members nothing calls (`Stage`, `supports_keys`, `DependencySpec.packages`, the
+   three OS methods doc 1 lists: `python_executable`, `case_sensitive`, `long_path`), letting
+   API handlers raise (about -30; the HTTP statuses change). Next the
    presentation, in two parts that replace the status PDF. (The UX/UI review from frames of the
    running UI at the owner's window and zoom, and on a real extraction, was done at 1.12.0; it
    is repeated for the demo.)

@@ -1,7 +1,5 @@
 """Sizers for game-specific media (Bink, FMOD, Wwise, DDS, glTF) and archives (zip, 7z)."""
 
-from __future__ import annotations
-
 import struct
 import zlib
 

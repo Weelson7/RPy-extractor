@@ -7,8 +7,6 @@ Format (SLP 2.0N): header (version, frame count, comment), 32-byte frame records
 outline table offsets, palette, properties, width, height, hotspot), per row: left/right
 padding (0x8000 = empty row) and a command stream ended by 0x0F."""
 
-from __future__ import annotations
-
 import struct
 from pathlib import Path
 

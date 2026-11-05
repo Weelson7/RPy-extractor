@@ -1,7 +1,5 @@
 """Godot engine plugin (doc 13.3): PCK v1-v4, embedded PCKs, GDRE Tools / GodotPckTool."""
 
-from __future__ import annotations
-
 from viwo.contracts.analysis import AnalysisTarget
 from viwo.contracts.plugin import (
     EnginePlugin,
@@ -63,9 +61,6 @@ NO_PCK_HINT = (
     "no PCK data: the executable carries an empty pck section and no .pck sits next to it; "
     "copy the game's .pck beside the executable (or the export embedded nothing)"
 )
-
-
-PLUGIN = "GodotPlugin"  # discovered by viwo.core.wiring.registry
 
 
 class GodotPlugin(EnginePlugin):

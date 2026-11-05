@@ -7,8 +7,6 @@ needs a key, a decoder or runtime capture; structured data is where the carver c
 Every step reports its counts as events (scan, identify, probe, carve, decode).
 """
 
-from __future__ import annotations
-
 import zlib
 from dataclasses import dataclass, field
 from pathlib import Path

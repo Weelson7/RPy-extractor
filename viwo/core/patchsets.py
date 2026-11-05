@@ -12,8 +12,6 @@ image, and `asm` is assembled at the edit's address (Keystone, a separate proces
 already read as `patched` are reported `already` (re-applying a set is harmless). Every write is
 read back. The set is the user's content: ViWo applies bytes, it does not author them."""
 
-from __future__ import annotations
-
 import json
 import re
 import shutil

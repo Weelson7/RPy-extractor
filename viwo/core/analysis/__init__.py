@@ -4,8 +4,6 @@ into `<workspace>/.analysis/<analyzer>/<key>/`, and the static "continue in <too
 capability switch). Nothing here runs the game: the debugger and memory tools that do are the
 dynamic arm's (`core/capture/attach.py`)."""
 
-from __future__ import annotations
-
 import json
 import re
 import shutil
@@ -56,16 +54,8 @@ SLOTS = (
 
 
 def backends() -> list:
-    return [
-        GhidraHeadless(),
-        GhidraGui(),
-        IlSpy(),
-        Cpp2Il(),
-        Unluac(),
-        DetectItEasy(),
-        UnicornEmulate(),
-        AngrSymbolic(),
-    ]
+    kinds = (GhidraHeadless, GhidraGui, IlSpy, Cpp2Il, Unluac, DetectItEasy, UnicornEmulate)
+    return [backend() for backend in (*kinds, AngrSymbolic)]
 
 
 @dataclass

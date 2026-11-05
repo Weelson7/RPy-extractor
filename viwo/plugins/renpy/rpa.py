@@ -5,8 +5,6 @@ code, so the safe reader refuses every global except the two bytes builders
 protocol 2 uses (`_codecs.encode`, `bytes`). Anything else marks the archive as failed.
 """
 
-from __future__ import annotations
-
 import codecs
 import io
 import pickle
@@ -129,8 +127,7 @@ class Unrpa(Unarchiver):
     requires = (UNRPA,)
 
     def extract(self, archive, dest, ctx) -> Outcome:
-        tool = ctx.os.tools.locate(UNRPA)
-        if tool is None:
+        if (tool := ctx.os.tools.locate(UNRPA)) is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=UNRPA.hint)
         argv = [*tool.argv_prefix, "-mp", str(dest), str(archive)]
         result = ctx.os.process.run(argv, timeout=3600, cancel=ctx.cancel)

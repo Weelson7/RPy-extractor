@@ -1,7 +1,5 @@
 """Human-readable CLI output (`--json` keeps the machine envelope)."""
 
-from __future__ import annotations
-
 import json
 import textwrap
 from typing import Any

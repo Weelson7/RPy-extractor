@@ -2,8 +2,6 @@
 perf (`perf record -p`, then `perf script -F tid,ip`). perf needs perf_event_paranoid <= 1 or
 CAP_PERFMON; without it the error says so (nothing on the system is changed)."""
 
-from __future__ import annotations
-
 import shutil
 import subprocess
 import tempfile

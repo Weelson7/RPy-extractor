@@ -5,8 +5,6 @@ refused; the user is responsible), and real-game testing is done by the independ
 (doc 17.4b).
 """
 
-from __future__ import annotations
-
 import re
 
 from viwo.contracts.plugin import (
@@ -68,8 +66,7 @@ class DataToolExporter(Exporter):
     requires = (DATATOOL,)
 
     def export(self, ctx) -> Outcome:
-        tool = ctx.os.tools.locate(DATATOOL)
-        if tool is None:
+        if (tool := ctx.os.tools.locate(DATATOOL)) is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=DATATOOL.hint)
         modes, problem = parse_modes(ctx.options.get("modes"))
         if problem:
@@ -86,9 +83,6 @@ class DataToolExporter(Exporter):
             return Outcome(OutcomeKind.FAILED, error=f"DataTool failed: {', '.join(failed)}")
         notes = (REMINDER,) + ((f"failed modes: {', '.join(failed)}",) if failed else ())
         return Outcome(OutcomeKind.OK, files, notes=notes)
-
-
-PLUGIN = "OverwatchPlugin"  # discovered by viwo.core.wiring.registry
 
 
 class OverwatchPlugin(EnginePlugin):

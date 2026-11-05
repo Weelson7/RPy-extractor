@@ -1,7 +1,5 @@
 """Merger builds (v1 /api/media-merger/build semantics), run through the media.encode slot."""
 
-from __future__ import annotations
-
 import re
 import tempfile
 import time

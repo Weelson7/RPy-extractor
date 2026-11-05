@@ -2,8 +2,6 @@
 the header, every table and every entry stay in place (`<id>.<ext>` names the entry), the data
 is laid out again. Members a DRS does not list are said, not added."""
 
-from __future__ import annotations
-
 import os
 import struct
 from pathlib import Path

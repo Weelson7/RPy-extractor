@@ -5,8 +5,6 @@ process, pinned); "Continue in Cheat Engine" opens a starter table that attaches
 soon as it runs (Cheat Engine unpacked by the startup check). Both run as tracked children of
 ViWo, like the Ghidra GUI."""
 
-from __future__ import annotations
-
 from pathlib import Path
 from xml.sax.saxutils import escape
 
@@ -87,8 +85,7 @@ class X64dbgGui(Handoff):
 
     def prepare(self, target: AnalysisTarget, ctx) -> LaunchSpec | Outcome:
         """`ctx.options["pid"]`: the running game to attach to; none starts the executable."""
-        tool = ctx.os.tools.locate(X64DBG)
-        if tool is None:
+        if (tool := ctx.os.tools.locate(X64DBG)) is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=X64DBG.hint)
         exe = target.paths[0].resolve()
         debugger = Path(tool.path).resolve()
@@ -130,8 +127,7 @@ class CheatEngineGui(Handoff):
     requires = (CHEATENGINE,)
 
     def prepare(self, target: AnalysisTarget, ctx) -> LaunchSpec | Outcome:
-        tool = ctx.os.tools.locate(CHEATENGINE)
-        if tool is None:
+        if (tool := ctx.os.tools.locate(CHEATENGINE)) is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=CHEATENGINE.hint)
         exe = target.paths[0]
         ctx.staging.mkdir(parents=True, exist_ok=True)

@@ -2,8 +2,6 @@
 by the static arm's handoffs (`handoff.*`: Ghidra, core/analysis) and the dynamic arm's attach
 tools (`attach.*`: x64dbg, Cheat Engine, core/capture/attach.py)."""
 
-from __future__ import annotations
-
 import time
 
 from viwo.contracts.errors import ViwoError

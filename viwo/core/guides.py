@@ -3,8 +3,6 @@ the user's own in <data>/<kind>/ (beside the temp folder; one there with a shipp
 and is marked `yours`). A file that cannot be used is named in the problems, never skipped
 silently. Saving and deleting touch only the user's folder."""
 
-from __future__ import annotations
-
 import json
 import re
 from pathlib import Path

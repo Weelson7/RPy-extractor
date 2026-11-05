@@ -4,8 +4,6 @@ Members come out as .uasset/.uexp/.ubulk; `export.unreal` (UnrealAssetScout) dec
 PNG textures, models, animations, sounds and JSON, with the mappings the RUNTIME agent writes.
 """
 
-from __future__ import annotations
-
 from viwo.contracts.analysis import AnalysisTarget
 from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest, PluginOption
 from viwo.contracts.slots import SlotDefinition
@@ -59,9 +57,6 @@ SLOTS = (  # identified by footer / magic only: ".pak" is used by many engines
 )
 PACK_SLOT = SlotDefinition("pack.upak", "pack", "unreal", "repak-patch")
 MARKERS = ("ue4game", "engine", "ue4prereqsetup_x64.exe", "ueprereqsetup_x64.exe")
-
-
-PLUGIN = "UnrealPlugin"  # discovered by viwo.core.wiring.registry
 
 
 class UnrealPlugin(EnginePlugin):

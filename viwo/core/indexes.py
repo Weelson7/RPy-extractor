@@ -7,8 +7,6 @@ third_party/quickbms/scripts (HTTPS only, checksum verified). The folder is laid
 future `vidya_wormhole_indexes` submodule root (docs/indexes.md).
 """
 
-from __future__ import annotations
-
 import hashlib
 import json
 import re

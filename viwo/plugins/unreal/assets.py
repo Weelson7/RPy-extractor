@@ -5,8 +5,6 @@ binaries (the `++UE5+Release-5.x` build string); cooked UE5 assets need the game
 (`.usmap`), which the RUNTIME agent (UE4SS) writes into the workspace, or which the user gives;
 without them those packages are counted and the way to get them is named."""
 
-from __future__ import annotations
-
 import re
 import shutil
 from pathlib import Path
@@ -74,8 +72,7 @@ class UasExport(Exporter):
     requires = (UAS,)
 
     def export(self, ctx) -> Outcome:
-        tool = ctx.os.tools.locate(UAS)
-        if tool is None:
+        if (tool := ctx.os.tools.locate(UAS)) is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=UAS.hint)
         version = str((ctx.options or {}).get("engine", "") or "") or engine(ctx.game_root)
         folders = paks_folders(ctx.game_root)

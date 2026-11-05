@@ -1,7 +1,5 @@
 """GameProbe implementation: one bounded scan shared by all plugins (doc 2.3)."""
 
-from __future__ import annotations
-
 import fnmatch
 from functools import lru_cache
 from pathlib import Path

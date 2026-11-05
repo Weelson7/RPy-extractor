@@ -1,7 +1,5 @@
 """`viwo` command line (doc 12.4)."""
 
-from __future__ import annotations
-
 import argparse
 import json
 import sys

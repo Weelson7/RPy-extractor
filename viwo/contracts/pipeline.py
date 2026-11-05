@@ -1,7 +1,5 @@
 """Extraction request/result contract (doc 3). v1 payload keys are kept."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any, Mapping

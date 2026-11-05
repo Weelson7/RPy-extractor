@@ -1,7 +1,5 @@
 """Ren'Py engine plugin (doc 2.7): RPA archives, `game/` as the loose-file root, .rpyc decompile."""
 
-from __future__ import annotations
-
 from pathlib import Path
 
 from viwo.contracts.analysis import AnalysisTarget
@@ -26,9 +24,6 @@ RPA_SLOT = SlotDefinition(
 )
 
 PACK_SLOT = SlotDefinition("pack.rpa", "pack", "renpy", "rpa-writer")
-
-
-PLUGIN = "RenPyPlugin"  # discovered by viwo.core.wiring.registry
 
 
 class RenPyPlugin(EnginePlugin):

@@ -1,7 +1,5 @@
 """Core-owned slots and backends (doc 8.4)."""
 
-from __future__ import annotations
-
 from viwo.contracts.slots import Backend, SlotDefinition
 
 from .archives import Py7zrBackend, SevenZipCli, TarBackend, UnrarCli, ZipBackend
@@ -49,11 +47,4 @@ CORE_SLOTS = (
 def core_backends() -> list[Backend]:
     """The backends of this package (the core's own, carver and ffmpeg, are added by
     core.wiring: backends sit below core and never import it)."""
-    return [
-        ZipBackend(),
-        TarBackend(),
-        SevenZipCli(),
-        UnrarCli(),
-        Py7zrBackend(),
-        ZipPacker(),
-    ]
+    return [b() for b in (ZipBackend, TarBackend, SevenZipCli, UnrarCli, Py7zrBackend, ZipPacker)]

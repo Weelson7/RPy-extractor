@@ -2,8 +2,6 @@
 an HTTPS download that returns its sha256, archive members unpacked only inside their folder
 (no links, devices or traversal), and a folder swap that never leaves half an install."""
 
-from __future__ import annotations
-
 import hashlib
 import os
 import shutil

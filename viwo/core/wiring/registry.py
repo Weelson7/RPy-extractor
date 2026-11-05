@@ -6,8 +6,6 @@ from the `viwo.plugins` entry-point group of installed packages. Every plugin is
 manifest id. A broken plugin disables only itself (D2).
 """
 
-from __future__ import annotations
-
 import importlib
 import importlib.metadata
 import importlib.util

@@ -4,6 +4,23 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.3 (2026-11-05)
+Reclaim pass (behaviour unchanged; budgets lowered in `loc_caps.ini`):
+- `viwo/web` is back under its own 5,400-line budget: the rules both themes held byte for byte
+  moved to `css/skin.css`, loaded between `base.css` and the theme (the cascade kept: a rule
+  is shared only when no theme rule before it names the same selector; every view's screenshot
+  compared before and after); empty rules dropped; the five views' CANCEL code is one
+  `cancel()` on the progress block.
+- `viwo` 17,187 -> 16,920 counted lines (budget 17,200 -> 16,950), `viwo/core` 7,469 -> 7,357
+  (7,475 -> 7,375): the `from __future__ import annotations` no module needs on Python 3.11+
+  (176 modules; `viwo/data/` keeps it, it runs in other interpreters), tool lookups as one
+  walrus line, the built-in plugins' `PLUGIN` markers the registry does not need (it finds the
+  module's one plugin class), data-like tuples and backend lists on a line or two.
+- Not done, decisions for the owner (HANDOFF): moving the tools' `DependencySpec` metadata into
+  `tools.json` (doc 2.6), dropping contract members nothing calls (`Stage`, `supports_keys`,
+  `DependencySpec.packages`, the three OS methods of doc 1), letting API handlers raise (their
+  HTTP statuses would change).
+
 ## 1.20.2 (2026-11-05)
 Fourth audit (the work since 1.15.5; two independent reviews, every finding verified, each with
 a property test in `tests/test_audit4.py` or beside its code):

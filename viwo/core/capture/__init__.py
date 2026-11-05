@@ -1,8 +1,6 @@
 """Runtime capture pilot (D19, doc 11): POLICY -> RESTORE pending -> CAPTURE (RenderDoc) ->
 HARVEST -> GATHER into the workspace -> DIFF against static extraction -> REPORT."""
 
-from __future__ import annotations
-
 import json
 import shutil
 import tempfile

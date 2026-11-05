@@ -2,8 +2,6 @@
 decoder). A helper process decodes every frame and pipes it into ffmpeg; ViWo authors no
 decoder and the game's code never runs inside ViWo."""
 
-from __future__ import annotations
-
 import sys
 from functools import lru_cache
 from pathlib import Path

@@ -5,8 +5,6 @@ are XORed with the project key. The key comes from the game's own data/System.js
 that is missing it is recovered from the fixed PNG signature and checked on every image.
 """
 
-from __future__ import annotations
-
 import json
 from pathlib import Path
 

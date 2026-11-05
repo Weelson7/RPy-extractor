@@ -5,8 +5,6 @@ journals what it added and removes exactly that when the last job using a folder
 the next job when a crash (or a refused removal) left a journal behind. Jobs running together
 share an exclusion. `[startup] av_exclusions = off` switches it off."""
 
-from __future__ import annotations
-
 import json
 import os
 import threading

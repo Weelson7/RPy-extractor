@@ -1,7 +1,5 @@
 """Godot PCK identification (standalone and embedded) and unpack backends."""
 
-from __future__ import annotations
-
 import struct
 import tempfile
 from pathlib import Path
@@ -94,8 +92,7 @@ class _PckCli(Unarchiver):
         return (self.spec,)
 
     def extract(self, archive, dest, ctx) -> Outcome:
-        tool = ctx.os.tools.locate(self.spec)
-        if tool is None:
+        if (tool := ctx.os.tools.locate(self.spec)) is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=self.spec.hint)
         key = str(ctx.options.get("encryption_key", "") or "")
         result = ctx.os.process.run(
@@ -132,8 +129,7 @@ class GdreRecover(Exporter):
     requires = (GDRE,)
 
     def export(self, ctx) -> Outcome:
-        tool = ctx.os.tools.locate(GDRE)
-        if tool is None:
+        if (tool := ctx.os.tools.locate(GDRE)) is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=GDRE.hint)
         target = _recover_target(ctx.game_root)
         if target is None:
@@ -187,8 +183,7 @@ class GodotPckPacker(Packer):
     requires = (PCKTOOL,)
 
     def pack(self, container, members, ctx) -> Outcome:
-        tool = ctx.os.tools.locate(PCKTOOL)
-        if tool is None:
+        if (tool := ctx.os.tools.locate(PCKTOOL)) is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=PCKTOOL.hint)
         ctx.scratch.mkdir(parents=True, exist_ok=True)
         root = Path(tempfile.mkdtemp(prefix="pck-", dir=ctx.scratch))  # one per pack call

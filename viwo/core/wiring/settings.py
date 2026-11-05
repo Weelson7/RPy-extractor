@@ -5,8 +5,6 @@ in place, keeping comments and lines it does not know, then validates the result
 before replacing the file. Changes apply by reloading the runtime (App.reload), never a restart.
 """
 
-from __future__ import annotations
-
 import os
 import re
 from pathlib import Path

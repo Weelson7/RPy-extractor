@@ -8,8 +8,6 @@ size, two GUIDs, 12 unknown bytes, a storage format byte: 0 raw, 1 LZ4 block) an
 `<name>.<segment index>.bin`. LZ4 needs the `lz4` package.
 """
 
-from __future__ import annotations
-
 import struct
 from pathlib import Path
 
@@ -148,9 +146,6 @@ def _item(fh, target: Path, segments: list, typed: tuple[bytes, bytes], counts: 
         data = _segment(fh, segment, counts)
         if data is not None:
             target.with_name(f"{target.name}.{n}.bin").write_bytes(data)
-
-
-PLUGIN = "TaleworldsPlugin"  # discovered by viwo.core.wiring.registry
 
 
 class TaleworldsPlugin(EnginePlugin):

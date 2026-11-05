@@ -2,8 +2,6 @@
 read-only). ViWo writes only to staging, scratch and the workspace; this module refuses
 layouts that would put those inside the game, and verifies the game afterwards."""
 
-from __future__ import annotations
-
 from pathlib import Path
 
 from viwo.contracts import workspace as ws

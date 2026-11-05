@@ -5,8 +5,6 @@ Custom archives often store each entry compressed. A stream counts only when it 
 end without error; its output is then carved like any other buffer.
 """
 
-from __future__ import annotations
-
 import bisect
 import zlib
 from dataclasses import dataclass

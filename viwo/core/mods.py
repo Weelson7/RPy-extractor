@@ -7,8 +7,6 @@ patches (the update check); `apply` writes mods in load order into a patched cop
 conflicts. The game folder itself is only ever read. The in-game side of a mod framework
 (loader, hooks, overlay) is the pinned runtime loaders' (BepInEx, UE4SS; doc 11.2)."""
 
-from __future__ import annotations
-
 import json
 import time
 import zipfile

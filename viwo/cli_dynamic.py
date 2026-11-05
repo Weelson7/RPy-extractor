@@ -1,8 +1,6 @@
 """The dynamic arm's commands (doc 11, 16.2b D1-D3): `viwo capture`, `viwo dump`, `viwo trace`,
 `viwo agent`, `viwo record`, `viwo attach`."""
 
-from __future__ import annotations
-
 import sys
 
 from viwo.contracts.errors import Envelope, ViwoError

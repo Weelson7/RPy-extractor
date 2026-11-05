@@ -9,8 +9,6 @@ worker packages (never imported, GPL) into third_party/<id>/, run as processes (
 Nothing is installed outside third_party/.
 """
 
-from __future__ import annotations
-
 import gzip
 import json
 import os

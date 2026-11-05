@@ -1,8 +1,6 @@
 """`viwo slots --check` (backend self-tests, doc 12.4 / 14.6), the forced single-archive unpack
 behind `viwo unpack --slot/--backend`, and `viwo analyze` (doc 6)."""
 
-from __future__ import annotations
-
 import shutil
 import sys
 import tempfile

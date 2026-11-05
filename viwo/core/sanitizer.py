@@ -5,8 +5,6 @@ actions; every apply is journaled under .sanitizer/ and can be undone. Nothing l
 Rules are providers (`sanitizer_rules.SanitizerRule`, core and plugins) run in cost order.
 """
 
-from __future__ import annotations
-
 import json
 import re
 import shutil

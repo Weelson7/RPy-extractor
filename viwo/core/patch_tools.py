@@ -3,8 +3,6 @@ through Keystone's `kstool` (GPL-2, so a separate process, never imported), disa
 capstone (BSD, a pinned Python package; optional), and AOB signatures that make a patch survive
 the next game version (`patch.sig`)."""
 
-from __future__ import annotations
-
 import re
 import struct
 
@@ -94,8 +92,7 @@ def arch(data: bytes) -> tuple[str, int]:
 
 def assemble(ctx_os, text: str, data: bytes, offset: int) -> bytes:
     """`jmp 0x1010; nop` assembled for the file's architecture at the edit's address."""
-    tool = ctx_os.tools.locate(KEYSTONE)
-    if tool is None:
+    if (tool := ctx_os.tools.locate(KEYSTONE)) is None:
         raise ViwoError("unavailable", "an `asm` patch needs Keystone", hint=KEYSTONE.hint)
     mode, _ = arch(data)
     argv = [*tool.argv_prefix, mode, text, f"{address_of(data, offset):x}"]

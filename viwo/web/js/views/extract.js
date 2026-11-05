@@ -28,7 +28,7 @@ function mount(root) {
   el.why = h("span", { class: "ab-why" });
   el.run = btn("RUN EXTRACTION", () => run(), "primary lg");
   el.target = h("code", { class: "mono path" }, "—");
-  el.cancel = btn("CANCEL JOB", cancelJob, "ghost", { hidden: true });
+  el.cancel = btn("CANCEL JOB", () => el.prog.cancel(), "ghost", { hidden: true });
   followGame(el.path, forget);
   root.append(
     viewHead(code("extract"), "EXTRACT", "Pull assets from a game folder into a ViWo workspace. The game folder is opened read-only and never modified."),
@@ -258,12 +258,6 @@ function setRunning(on) {
   el.cancel.hidden = !on;
   if (on) el.idle.hidden = !(el.prog.el.hidden = false);
   updateBar();
-}
-
-async function cancelJob() {
-  const id = el.prog.id;
-  if (!id) return toast("Job not registered yet — try again in a moment.", "warn");
-  try { await api.cancel(id); toast("Cancellation requested.", "warn"); } catch (err) { toastErr(err); }
 }
 
 async function run(onExisting) {

@@ -1,8 +1,6 @@
 """Who is asking (doc 4.1): this machine or a LAN peer, and a token compared in constant time
 whatever text a client sends."""
 
-from __future__ import annotations
-
 import hmac
 import ipaddress
 

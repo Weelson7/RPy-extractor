@@ -26,7 +26,7 @@ function mount(root) {
   el.sum = h("div", { class: "ab-sum mono" });
   el.why = h("span", { class: "ab-why" });
   el.run = btn("LAUNCH + CAPTURE", run, "primary lg");
-  el.cancel = btn("CANCEL", cancelJob, "ghost", { hidden: true });
+  el.cancel = btn("CANCEL", () => el.prog.cancel("Cancellation requested; quit the game to stop sooner."), "ghost", { hidden: true });
   followGame(el.game);
   S.ws = bus.ws?.path || ""; // before the note is built: the workspace may be known already
   root.append(
@@ -100,12 +100,6 @@ function bar() {
   el.run.textContent = S.running ? "CAPTURING…" : "LAUNCH + CAPTURE";
   el.checkBtn.disabled = S.running;
   el.cancel.hidden = !S.running;
-}
-
-async function cancelJob() {
-  const id = el.prog.id;
-  if (!id) return toast("Job not registered yet — try again in a moment.", "warn");
-  try { await api.cancel(id); toast("Cancellation requested; quit the game to stop sooner.", "warn"); } catch (err) { toastErr(err); }
 }
 
 async function run() {

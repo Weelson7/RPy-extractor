@@ -1,7 +1,5 @@
 """Workspace layout contract (doc 4.3)."""
 
-from __future__ import annotations
-
 import json
 import re
 from pathlib import Path, PurePosixPath
