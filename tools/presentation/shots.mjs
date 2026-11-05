@@ -30,10 +30,11 @@ const shot = async (name, caption, detail = "", { hold = 0, pdf = true } = {}) =
   const words = (caption.match(/\S+/g) || []).length;
   console.log(JSON.stringify({ file, name, caption, detail, pdf, hold: hold || Math.max(3.5, words / 2.6) }));
 };
-const go = async (hash, wait = 1800) => { await ev(`location.hash = '#${hash}'`); await sleep(wait); await ev("document.querySelector('#main').scrollTop = 0"); };
+const until = async (expr, ms = 900000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await ev(expr)) return true; await sleep(1000); } return false; };
+// a view reading a large workspace shows a skeleton first: the frame waits for its content
+const go = async (hash, wait = 1800) => { await ev(`location.hash = '#${hash}'`); await sleep(wait); await until("!document.querySelector('#main .skel')", 600000); await ev("document.querySelector('#main').scrollTop = 0"); };
 const press = (view, label) => ev(`(() => { const b = [...document.querySelectorAll('#view-${view} button')].find((x) => x.textContent.trim().startsWith(${JSON.stringify(label)}) && !x.disabled); if (!b) return false; b.click(); return true; })()`);
 const live = "!!document.querySelector('#status-chips [data-kind=live]')";
-const until = async (expr, ms = 900000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await ev(expr)) return true; await sleep(1000); } return false; };
 const idle = () => until(`!${live}`);
 const into = (selector) => ev(`document.querySelector(${JSON.stringify(selector)})?.scrollIntoView({ block: "start" })`);
 
@@ -62,7 +63,7 @@ for (let n = 0; n < 40 && (await ev(live)); n++) {
     "The job block shows every stage (probe, detect, unpack, export, carve, collect, decode) with counters, a ticker and the log of every tool, live.", { hold: 0.7, pdf: n === 2 });
   await sleep(1200);
 }
-await until(`!${live}`, 2 * 3600000); await sleep(3000); // the whole run: the result and the browse views need it
+await until(`!${live}`, 4 * 3600000); await sleep(3000); // the whole run (the demo subset: 2 h 20 min): the result and the browse views need it
 await into("#view-extract .result-host");
 await shot("extract-result", "The result: every file out, every format decoded, every tool named.",
   "RESULT: files copied by type, archives found and extracted, the backend that handled each, every fallback to a spare and every skipped entry said as a warning. The provenance map records where every file came from.");

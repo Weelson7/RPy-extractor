@@ -26,6 +26,7 @@ from .pipeline.ticker import Ticker
 AUDIO = (".wem", ".fsb", ".bnk", ".xwm", ".xma", ".at3", ".at9", ".adx", ".hca", ".vag", ".awb")
 AUDIO += (".acb", ".bfstm", ".bcstm", ".brstm", ".bfwav", ".lopus", ".xwb", ".sab", ".msf")
 AUDIO += (".binka", ".bank")  # .bank: FMOD Studio banks (FSB5 inside)
+PART = 600  # files per call of a batch backend: the counter moves between calls
 SLOTS = (
     SlotDefinition(
         "decode.audio", "decode", "core", "vgmstream-cli", "ffmpeg-decode", suffixes=AUDIO
@@ -209,6 +210,22 @@ def _decode_batch(run, ctx, workspace: Path, rels: list[str], slot: str):
     return None, f"{len(rels)} file(s): {_why(outcome)}"
 
 
+def _decode_parts(run, ctx, workspace: Path, rels: list[str], slot: str, ticker):
+    """A batch backend called PART files at a time, so the counter moves between its runs
+    (WolvenKit takes hours on a large game; never silent): (sources, one warning or "")."""
+    sources, errors = [], []
+    for start in range(0, len(rels), PART):
+        part = rels[start : start + PART]
+        source, error = _decode_batch(run, ctx, workspace, part, slot)
+        sources += [source] if source is not None else []
+        errors += [error] if error else []
+        ticker.tick(len(part))
+        if run.cancel.cancelled:
+            break
+    more = f" (and in {len(errors) - 1} more part(s) of {PART} files)" if len(errors) > 1 else ""
+    return sources, f"{errors[0]}{more}" if errors else ""
+
+
 def _why(outcome) -> str:
     """The tool's telling line ("Invalid data found..."), not the tail of a path it echoed."""
     lines = [ln.strip() for ln in (outcome.error or outcome.kind.value).splitlines() if ln.strip()]
@@ -267,8 +284,9 @@ def decode_all(run, workspace: Path, collected) -> None:
         run, ctx, workspace, [j for j in jobs if j[1] not in batched], ticker
     )
     for slot in sorted(batched):
-        source, error = _decode_batch(run, ctx, workspace, [r for r, s in jobs if s == slot], slot)
-        sources += [source] if source is not None else []
+        rels = [r for r, s in jobs if s == slot]
+        done, error = _decode_parts(run, ctx, workspace, rels, slot, ticker)
+        sources += done
         if error:
             _warn(run, collected, f"{slot}: {error}")
     for slot, errors in failed.items():

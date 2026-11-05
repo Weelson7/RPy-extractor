@@ -246,6 +246,38 @@ class BatchTests(unittest.TestCase):
                     self.assertEqual(why, "2 file(s): WolvenKit crashed")
             self.assertEqual(len(list(Path(tmp).glob("dec-*"))), 1)  # the failed one is removed
 
+    def test_parts_move_the_counter_and_say_every_failure_once(self) -> None:
+        rng = random.Random(16)
+        for _ in range(40):
+            rels = [f"f{i}.xbm" for i in range(rng.randint(1, 3 * decode.PART + 7))]
+            parts = -(-len(rels) // decode.PART)
+            bad = {k for k in range(parts) if rng.random() < 0.4}
+            stop = rng.choice([None, rng.randrange(parts)])
+            calls = []
+            run = SimpleNamespace(cancel=SimpleNamespace(cancelled=False))
+
+            def one(run, ctx, ws, part, slot, bad=bad, stop=stop, calls=calls):
+                calls.append(part)
+                run.cancel.cancelled = len(calls) - 1 == stop  # the user cancels during it
+                return (None, f"part {len(calls) - 1}") if len(calls) - 1 in bad else ("s", "")
+
+            ticker = SimpleNamespace(done=0)
+            ticker.tick = lambda n, t=ticker: setattr(t, "done", t.done + n)
+            with mock.patch.object(decode, "_decode_batch", one):
+                sources, why = decode._decode_parts(run, None, Path("ws"), rels, "s", ticker)
+            ran = parts if stop is None else stop + 1
+            self.assertEqual(len(calls), ran)  # nothing runs after a cancel
+            self.assertEqual(sum(calls, []), rels[: sum(len(c) for c in calls)])
+            self.assertTrue(all(len(c) <= decode.PART for c in calls))
+            self.assertEqual(ticker.done, sum(len(c) for c in calls))  # every file counted
+            failed = sorted(k for k in bad if k < ran)
+            self.assertEqual(len(sources), ran - len(failed))
+            if not failed:
+                self.assertEqual(why, "")
+                continue
+            self.assertTrue(why.startswith(f"part {failed[0]}"), why)  # one warning, the first
+            self.assertEqual(f"{len(failed) - 1} more part(s)" in why, len(failed) > 1, why)
+
     def test_a_cancelled_run_decodes_nothing_and_warns_nothing(self) -> None:
         batch = SimpleNamespace(decode_many=None)
         run = SimpleNamespace(

@@ -4,6 +4,17 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.9 (2026-11-05)
+- Never silent: a batch decoder (WolvenKit's `decode.cr2w`) is called 600 files at a time
+  (`decode.PART`), so the "Decoded files" counter moves between calls. On the Cyberpunk demo
+  subset the counter had stood still for 98 minutes while WolvenKit converted 62,653 files in
+  one call. A cancel stops after the part running; the parts' failures stay one warning per
+  slot (the first, and how many other parts failed). Doc 08.
+- Presentation: every view change waits until the view has finished loading (a skeleton
+  reading a large workspace was captured as the WORKSPACE frame), and the walk waits up to four
+  hours for the extraction (the demo subset takes about 2 h 20 min; the first capture ran out
+  of its two hours during the decode).
+
 ## 1.20.8 (2026-11-05)
 - A GPU capture keeps its frames: every RenderDoc capture (`.rdc`) is collected into the
   workspace (`rdc/`) beside the textures harvested from it, so the frame opens in qrenderdoc

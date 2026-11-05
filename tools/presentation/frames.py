@@ -79,7 +79,7 @@ def capture(game: Path, out: Path, width: str, height: str, features=None) -> li
         node = shutil.which("node") or "node"
         run = subprocess.run(
             [node, str(script), url, str(port), str(out), width, height, str(game)],
-            capture_output=True, text=True, encoding="utf-8", timeout=3 * 3600,
+            capture_output=True, text=True, encoding="utf-8", timeout=5 * 3600,
         )  # fmt: skip
         if run.returncode:
             print(run.stderr[-2000:], file=sys.stderr)
