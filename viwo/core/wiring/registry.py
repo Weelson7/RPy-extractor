@@ -54,7 +54,8 @@ def plugin_class(module, wanted: str = "") -> type[EnginePlugin]:
 
 
 def _discover_builtins() -> dict[str, str]:
-    """Manifest id -> "module:Class" for every package under viwo.plugins.
+    """Manifest id -> "module:Class" for every package under viwo.plugins, and every game
+    plugin under an engine's `games/` package (doc 2.10).
 
     pkgutil (not a folder scan): inside the frozen build (viwo.exe) the packages live in the
     PYZ archive and PyInstaller's importer lists them through iter_modules."""
@@ -63,16 +64,38 @@ def _discover_builtins() -> dict[str, str]:
         if not info.ispkg:
             continue
         module_name = f"{_builtins.__name__}.{info.name}"
-        try:
-            cls = plugin_class(importlib.import_module(module_name))
-            plugin_id = cls().manifest.plugin_id
-        except Exception as exc:  # a broken built-in must not stop the app (D2)
-            DISCOVERY_PROBLEMS.append(f"plugin {info.name} disabled: {exc}")
-            continue
-        if plugin_id != info.name:
-            DISCOVERY_PROBLEMS.append(f"plugin {info.name}: manifest id is '{plugin_id}'")
-        out[plugin_id] = f"{module_name}:{cls.__name__}"
+        if _found(out, module_name, info.name, ""):
+            out.update(_games_of(module_name, info.name))
     return out
+
+
+def _games_of(engine_module: str, engine_id: str) -> dict[str, str]:
+    """The game plugins in `<engine>/games/`: each must name that engine as its own."""
+    try:
+        games = importlib.import_module(f"{engine_module}.games")
+    except ModuleNotFoundError:
+        return {}
+    out: dict[str, str] = {}
+    for info in sorted(pkgutil.iter_modules(games.__path__), key=lambda i: i.name):
+        if info.ispkg:
+            _found(out, f"{games.__name__}.{info.name}", info.name, engine_id)
+    return out
+
+
+def _found(out: dict[str, str], module_name: str, name: str, engine: str) -> bool:
+    try:
+        cls = plugin_class(importlib.import_module(module_name))
+        manifest = cls().manifest
+    except Exception as exc:  # a broken built-in must not stop the app (D2)
+        DISCOVERY_PROBLEMS.append(f"plugin {name} disabled: {exc}")
+        return False
+    if manifest.plugin_id != name:
+        DISCOVERY_PROBLEMS.append(f"plugin {name}: manifest id is '{manifest.plugin_id}'")
+    if manifest.engine != engine:
+        DISCOVERY_PROBLEMS.append(f"plugin {name}: engine '{manifest.engine}', not '{engine}'")
+        return False
+    out[manifest.plugin_id] = f"{module_name}:{cls.__name__}"
+    return True
 
 
 BUILTIN_PLUGINS: dict[str, str] = _discover_builtins()

@@ -21,6 +21,13 @@ the single `EnginePlugin` subclass defined in the module when there is no marker
 `manifest.plugin_id`. The folder name should equal the id; a mismatch is reported as a startup
 problem and the manifest id wins. Adding a built-in = adding a folder.
 
+**Game plugins** (doc 2.10): what one title adds on top of its engine lives in a game plugin under
+that engine, `viwo/plugins/<engine>/games/<game>/`, whose manifest names the engine (`engine =
+"redengine"`). An engine plugin keeps what holds for every game on the engine and detects by
+the engine's own file signatures; a game plugin detects its title (its executables), runs only
+with its engine, and offers what the engine's backends read from `ctx.games` (REDengine reads
+`name_lists`). Adding a title's tooling = adding a folder under its engine's `games/`.
+
 The distro profiles are derived the same way (`viwo/core/wiring/distros.py`): `mixed` enables
 everything, an engine profile (`renpy`, `unity`, `unreal`, `godot`) enables that engine, and
 `custom` enables every other built-in. Commented `[tools]` examples come from each dependency's

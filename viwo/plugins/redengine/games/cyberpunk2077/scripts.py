@@ -17,12 +17,13 @@ REDSCRIPT = DependencySpec(
     hint="`viwo install redscript` (MIT, Windows build)",
 )
 SLOT = SlotDefinition(
-    "decode.redscripts", "decode", "redengine", "redscript-decompile", suffixes=(".redscripts",)
+    "decode.redscripts", "decode", "cyberpunk2077", "redscript-decompile", suffixes=(".redscripts",)
 )
 
 
 class RedscriptDecompile(Decoder):
-    backend_id, owner, license, isolation = "redscript-decompile", "redengine", "MIT", "subprocess"
+    backend_id, owner, isolation = "redscript-decompile", "cyberpunk2077", "subprocess"
+    license = "MIT"
     requires = (REDSCRIPT,)
 
     def decode(self, path: Path, dest: Path, ctx) -> Outcome:

@@ -58,6 +58,7 @@ class PluginManifest:
     capabilities: tuple[str, ...] = ()
     dependencies: tuple[str, ...] = ()
     os_layers: tuple[str, ...] = ()
+    engine: str = ""  # a game plugin (doc 2.10): the engine plugin it belongs to
 
 
 @dataclass(frozen=True)
@@ -117,6 +118,7 @@ class ExtractionContext:
     source: str = "core"
     probe: GameProbe | None = None  # the shared folder index (doc 2.3); None in tool contexts
     workspace: Path | None = None  # the run's workspace: what other arms left there (read-only)
+    games: tuple = ()  # the run's game plugins of this engine (doc 2.10): what they supply
 
     def log(self, message: str, level: str = "info", stage: str = "") -> None:
         if self.progress:

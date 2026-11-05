@@ -32,6 +32,7 @@ def _plugin_info(app: App) -> dict[str, dict]:
         out[plugin_id] = {
             "name": m.name,
             "engineType": m.engine_type,
+            "engine": m.engine,  # a game plugin: the engine plugin it belongs to (doc 2.10)
             "tosSensitive": m.tos_sensitive,
             "options": [o.__dict__ for o in m.options if o.kind != "secret"],
             "custom": plugin_id not in BUILTIN_PLUGINS,

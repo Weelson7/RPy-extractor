@@ -18,7 +18,7 @@ from tests.test_redengine import rdar
 from viwo.contracts import CancelToken, ExtractionRequest
 from viwo.contracts.types import OutcomeKind
 from viwo.core.pipeline.runner import extract
-from viwo.plugins.redengine.scripts import RedscriptDecompile
+from viwo.plugins.redengine.games.cyberpunk2077.scripts import RedscriptDecompile
 
 FAKE = """import sys
 from pathlib import Path
@@ -117,7 +117,7 @@ class PipelineTests(unittest.TestCase):
 
     def test_decompile_off_leaves_the_cache_alone(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
-            self.run_game(Path(tmp), "[options.redengine]\ndecompile = off\n")
+            self.run_game(Path(tmp), "[options.cyberpunk2077]\ndecompile = off\n")
             ws = Path(tmp) / "ws"
             self.assertTrue((ws / "redscripts" / "final.redscripts").is_file())
             self.assertFalse((ws / "script").exists())

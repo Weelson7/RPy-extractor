@@ -159,6 +159,7 @@ class ArchivePropertyTests(unittest.TestCase):
             ctx = mock.Mock()
             ctx.os.tools.locate.return_value = None
             ctx.cancel.cancelled = False
+            ctx.games = ()
             path = Path(tmp) / "a.archive"
             path.write_bytes(blob)
             out = RdarBuiltin().extract(path, Path(tmp) / "plugin", ctx)  # no Oodle beside it
@@ -264,13 +265,18 @@ class NameListTests(unittest.TestCase):
             bad = Path(tmp) / "bad.kark"
             bad.write_bytes(b"NOPE")
 
-            def ctx(tool, cancelled=False):
+            from viwo.plugins.redengine.games.cyberpunk2077 import Cyberpunk2077Plugin
+
+            def ctx(tool, cancelled=False, games=(Cyberpunk2077Plugin(),)):
                 located = SimpleNamespace(path=str(tool)) if tool else None
                 return SimpleNamespace(
                     os=SimpleNamespace(tools=SimpleNamespace(locate=lambda spec: located)),
                     cancel=SimpleNamespace(cancelled=cancelled),
+                    games=games,
                 )
 
+            names, notes = _names(ctx(kark, games=()), self.PlainOodle())  # no game plugin
+            self.assertIn("no game plugin supplies", notes[0])
             cases = (
                 (None, self.PlainOodle(), "cp77-hashes"),
                 (kark, None, "needs the game's Oodle"),

@@ -1,7 +1,8 @@
-"""Archive member names for Cyberpunk 2077: the game stores each file under the FNV-1a 64 hash
-of its path; the community path list (WolvenKit's `usedhashes.kark`, pinned in tools.json as
-`cp77-hashes`) names them. The list is Kraken-compressed, so it is inflated with the game's own
-Oodle (like the archives) once, then kept beside the pin as text plus a sorted index
+"""Archive member names for REDengine 4: a game stores each file under the FNV-1a 64 hash of its
+path; a path list a game plugin supplies (Cyberpunk 2077: WolvenKit's `usedhashes.kark`, pinned
+in tools.json as `cp77-hashes`) names them. The list is Kraken-compressed, so it is inflated
+with the game's own Oodle (like the archives) once, then kept beside the pin as text plus a
+sorted index
 (`usedhashes.txt`, `usedhashes.idx`: hashes, then line offsets) that later runs only load."""
 
 from __future__ import annotations
@@ -11,14 +12,6 @@ import mmap
 import struct
 from array import array
 from pathlib import Path
-
-from viwo.contracts.types import DependencySpec
-
-CP77_HASHES = DependencySpec(
-    "cp77-hashes",
-    "Cyberpunk 2077 path list (WolvenKit)",
-    hint="`viwo install cp77-hashes` (data from WolvenKit, pinned by commit)",
-)
 
 
 def fnv1a64(data: bytes) -> int:

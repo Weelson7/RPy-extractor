@@ -9,10 +9,10 @@ top-level folder. Update a row in the commit that changes its state.
 
 | State | Rows |
 |-------|------|
-| implemented | 165 |
+| implemented | 166 |
 | partial | 5 |
 | open | 16 |
-| total | 186 |
+| total | 187 |
 
 **Partial**, by cause: no built-in plugin keeps an inventory (0.4, 2.2); no built-in plugin
 ships sanitizer rules (5.1); no pinned QuickBMS script in the indexes (16.0b); coverage per file (17.5).
@@ -85,6 +85,7 @@ declarative (Kaitai) plugins; the indexes repository split.
 | 2.7 seventeen built-in plugins | implemented | `plugins/*/` |
 | 2.8 built-in scan, drop-ins, entry points, opt-in, override | implemented | `core/wiring/registry.py`, `tests/test_registry.py` |
 | 2.9 conformance checks and sandbox | implemented | `core/wiring/conformance.py`, `tests/test_conformance_kit.py` |
+| 2.10 game plugins: discovery under their engine, selection with it, what they supply through the run context | implemented | `core/wiring/registry.py`, `core/pipeline/select.py` `with_games`, `contracts/plugin.py`; `plugins/redengine/games/cyberpunk2077`, `plugins/taleworlds/games/bannerlord`; `tests/test_game_plugins.py` |
 
 ## 03 Pipeline
 

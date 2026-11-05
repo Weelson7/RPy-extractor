@@ -28,31 +28,24 @@ from viwo.contracts.workspace import count_files
 from . import conflicts
 from .export import SLOT as CR2W_SLOT
 from .export import WolvenKitExport
-from .names import CP77_HASHES, Names
+from .names import Names
 from .pack import SLOT as PACK_SLOT
 from .pack import WolvenKitPack
 from .rdar import Archive, Oodle
-from .scripts import SLOT as SCRIPTS_SLOT
-from .scripts import RedscriptDecompile
 
 MAGIC = b"RDAR"
 MANIFEST = PluginManifest(
     "redengine",
-    "REDengine 4 (Cyberpunk 2077)",
+    "REDengine 4",
     "0.1.0",
     engine_type="redengine",
     priority=12,
-    options=(PluginOption("decompile", "decompile final.redscripts (redscript)", "bool", "on"),),
 )
-MARKERS = ("redprelauncher.exe", "cyberpunk2077.exe", "redlauncher.exe")
 
 
 class RdarBuiltin(Unarchiver):
     backend_id, owner, license = "rdar-builtin", "redengine", "MIT"
     parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
-
-    def dependencies(self):
-        return (CP77_HASHES,)
 
     def available(self, os):
         return True, ""  # the path list only names members; without it they keep their hash
@@ -86,10 +79,14 @@ class RdarBuiltin(Unarchiver):
 
 
 def _names(ctx, oodle) -> tuple[Names | None, list[str]]:
-    """The path list, or why members keep their hashes this run."""
-    tool = ctx.os.tools.locate(CP77_HASHES)
+    """The path list a game plugin of this run supplies (doc 2.10), or why members keep their
+    hashes this run."""
+    lists = [spec for game in ctx.games for spec in getattr(game, "name_lists", ())]
+    if not lists:
+        return None, ["members keep their hashes: no game plugin supplies this game's paths"]
+    tool = next((t for t in map(ctx.os.tools.locate, lists) if t is not None), None)
     if tool is None:
-        return None, [f"members keep their hashes: {CP77_HASHES.hint}"]
+        return None, [f"members keep their hashes: {lists[0].hint}"]
     if oodle is None:
         return None, ["members keep their hashes: the path list needs the game's Oodle (Windows)"]
     try:
@@ -105,13 +102,10 @@ class RedenginePlugin(EnginePlugin):
     manifest = MANIFEST
 
     def detect(self, probe: GameProbe) -> DetectionResult:
-        evidence = []
-        if any(probe.head(p, 4) == MAGIC for p in probe.with_suffix(".archive")[:10]):
-            evidence.append("RDAR archives")
-        if probe.has_name(*MARKERS):
-            evidence.append("REDengine launcher or executable")
-        score = 0.9 if len(evidence) == 2 else 0.7 if evidence else 0.0
-        return DetectionResult("redengine", score, tuple(evidence), "redengine")
+        """The engine's own signature (RDAR archives), never a game's executable name."""
+        found = any(probe.head(p, 4) == MAGIC for p in probe.with_suffix(".archive")[:10])
+        evidence = ("RDAR archives",) if found else ()
+        return DetectionResult("redengine", 0.85 if found else 0.0, evidence, "redengine")
 
     def slot_definitions(self):
         return (
@@ -124,7 +118,6 @@ class RedenginePlugin(EnginePlugin):
                 magic=(MAGIC,),
             ),
             CR2W_SLOT,
-            SCRIPTS_SLOT,
             PACK_SLOT,
         )
 
@@ -146,4 +139,4 @@ class RedenginePlugin(EnginePlugin):
         return "pack.archive" if unarchive_slot == "unarchive.archive" else ""
 
     def backends(self):
-        return (RdarBuiltin(), WolvenKitExport(), RedscriptDecompile(), WolvenKitPack())
+        return (RdarBuiltin(), WolvenKitExport(), WolvenKitPack())

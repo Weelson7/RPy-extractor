@@ -1,4 +1,4 @@
-"""Bannerlord TPAC textures to DDS. A texture item's metadata ends with the full-size shape,
+"""TaleWorlds TPAC textures to DDS. A texture item's metadata ends with the full-size shape,
 then the pixel format as a length-prefixed name: u32 width, u32 height, u32 depth, u8 mip count,
 u16, u32 name length, the name (DXT1, BC7, R8_UNORM...). Its largest data segment is that chain
 from some mip level down (the top levels can stream from elsewhere): the level whose chain is

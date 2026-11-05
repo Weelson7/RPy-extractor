@@ -9,10 +9,15 @@
     "archive/pc/content/*.archive"
   ],
   "plugins": [
-    "redengine"
+    "redengine",
+    "cyberpunk2077"
   ],
-  "tools": [],
-  "notes": "REDengine RDAR archives; Kraken (Oodle) segments are inflated through the game's own bin/x64/oo2ext_*_win64.dll (never shipped by ViWo), members are typed by their CR2W root class (xbm, mesh, ent, questphase, mi, anims, inkwidget...). Names come from a community hash list (roadmap); 86 GB, extract one archive at a time.",
+  "tools": [
+    "cp77-hashes",
+    "wolvenkit",
+    "redscript"
+  ],
+  "notes": "REDengine 4 RDAR archives (the redengine plugin); Kraken (Oodle) segments are inflated through the game's own bin/x64/oo2ext_*_win64.dll (never shipped by ViWo). The cyberpunk2077 game plugin names members from the community path list (cp77-hashes) and decompiles r6/cache/final.redscripts (redscript); WolvenKit decodes CR2W resources (textures to PNG, meshes to glTF, every resource to JSON) and packs edits into an override archive. 86 GB.",
   "source": "own testing (308 members out of basegame_2_mainmenu.archive; sqc/ctf.json pass-cyberpunk-2077)",
   "options": {},
   "scripts": []

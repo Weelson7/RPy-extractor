@@ -1,4 +1,4 @@
-"""TaleWorlds engine (Mount & Blade II: Bannerlord): `.tpac` asset packages.
+"""TaleWorlds engine: `.tpac` asset packages (Mount & Blade II: Bannerlord is its game plugin).
 
 Header (36 bytes): magic TPAC, version (1 or 2), package GUID, item count, data offset,
 reserved. Items follow in a row: type GUID, asset GUID, [version], name (i32 length, UTF-8),
@@ -25,10 +25,9 @@ MAGIC = b"TPAC"
 HEADER = 36
 LIMIT = 1 << 30
 MANIFEST = PluginManifest(
-    "taleworlds", "TaleWorlds (Bannerlord)", "0.1.0", engine_type="taleworlds", priority=10
+    "taleworlds", "TaleWorlds", "0.1.0", engine_type="taleworlds", priority=10
 )
-MARKERS = ("bannerlord.exe", "taleworlds.mountandblade.launcher.exe", "bannerlord.native.exe")
-LZ4 = DependencySpec("lz4", "lz4 (Bannerlord TPAC)", kind="python", import_name="lz4")
+LZ4 = DependencySpec("lz4", "lz4 (TaleWorlds TPAC)", kind="python", import_name="lz4")
 
 
 def _string(fh) -> str:
@@ -158,13 +157,10 @@ class TaleworldsPlugin(EnginePlugin):
     manifest = MANIFEST
 
     def detect(self, probe: GameProbe) -> DetectionResult:
-        evidence = []
-        if any(probe.head(p, 4) == MAGIC for p in probe.with_suffix(".tpac")[:10]):
-            evidence.append("TPAC asset packages")
-        if probe.has_name(*MARKERS):
-            evidence.append("Bannerlord executable")
-        score = 0.9 if len(evidence) == 2 else 0.7 if evidence else 0.0
-        return DetectionResult("taleworlds", score, tuple(evidence), "taleworlds")
+        """The engine's own signature (TPAC packages), never a game's executable name."""
+        found = any(probe.head(p, 4) == MAGIC for p in probe.with_suffix(".tpac")[:10])
+        evidence = ("TPAC asset packages",) if found else ()
+        return DetectionResult("taleworlds", 0.85 if found else 0.0, evidence, "taleworlds")
 
     def slot_definitions(self):
         return (

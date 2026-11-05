@@ -36,7 +36,8 @@ viwo/
   backends/    core unarchivers (zip, tar, 7-Zip, py7zr, unrar) and the zip packer
   plugins/     one folder per engine: generic, renpy, unity, godot, unreal, doom, rpgmaker,
                kirikiri, electron, source, bethesda, genie, warscape, redengine, taleworlds,
-               quickbms, overwatch
+               quickbms, overwatch; game plugins under their engine in <engine>/games/
+               (redengine/games/cyberpunk2077, taleworlds/games/bannerlord; doc 2.10)
   core/
     wiring/      ini parsing, plugin registry (scan, drop-ins, entry points), slot binder,
                  boot (Runtime), distros, conformance checks, settings writer

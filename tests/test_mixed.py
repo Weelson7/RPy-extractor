@@ -91,13 +91,21 @@ class MixedPairwiseTests(unittest.TestCase):
             game = make_mixed_game(root)
             before = tree_hashes(game)
             rt = runtime(root, tools_ini(root))  # every built-in plugin is on by default
+            from viwo.core.pipeline.probe import FolderProbe
+            from viwo.core.pipeline.runner import detect_all
+            from viwo.core.pipeline.select import with_games
+
+            found = detect_all(rt, FolderProbe(game))
             for index, combo in enumerate(combos):
                 request = ExtractionRequest(
                     str(game), str(root / f"ws{index}"), mode=ExtractionMode.MIXED, plugins=combo
                 )
                 result = extract(rt, request, f"j{index}", lambda e: None, CancelToken())
                 with self.subTest(combo=combo):
-                    self.assertEqual({r.plugin_id for r in result.runs}, set(combo))
+                    # a game plugin brings its engine; a chosen engine its detected games (2.10)
+                    want = set(with_games(rt.plugins, combo, found))
+                    self.assertEqual({r.plugin_id for r in result.runs}, want)
+                    self.assertLessEqual(set(combo), want)
                     self.assertEqual(result.to_legacy_dict()["extractorType"], "mixed")
                     self.assertGreater(result.copied_files, 0)
             self.assertEqual(tree_hashes(game), before)

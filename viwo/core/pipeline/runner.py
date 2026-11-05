@@ -28,7 +28,7 @@ from .export import export_one, rewrap
 from .filters import prune, widened
 from .guard import change_warning, refuse_writes_inside, snapshot
 from .probe import FolderProbe, detect_all
-from .select import select_plugins
+from .select import select_plugins, with_games
 from .sources import claimed, sources_for
 from .unpack import files_under, unpack_all
 
@@ -64,6 +64,8 @@ class Run:
         probe = self.probe if game is None else None
         extra = {"selected_exts": self.request.selected_exts, "probe": probe, **found}
         extra["workspace"] = Path(self.request.workspace) if self.request.workspace else None
+        mine = [self.rt.plugins[g] for g in self.chosen]
+        extra["games"] = tuple(p for p in mine if p.manifest.engine == owner)
         return for_owner(base, self.rt, owner, options, **extra)
 
 
@@ -110,7 +112,8 @@ def _select(run: Run) -> tuple[str, ...]:
             "warn",
         )
     priorities = {pid: p.manifest.priority for pid, p in rt.plugins.items()}
-    chosen = select_plugins(run.request, list(run.detections.values()), priorities)
+    picked = select_plugins(run.request, list(run.detections.values()), priorities)
+    chosen = with_games(rt.plugins, picked, run.detections)
     run.log(f"Selected plugin(s): {', '.join(chosen)}", "detect")
     run.chosen = tuple(chosen)
     return chosen

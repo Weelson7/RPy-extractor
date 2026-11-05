@@ -21,6 +21,7 @@ PluginManifest
                  derived from the hooks and slots when empty
   dependencies   dependency ids for people (backends declare the real DependencySpec)
   os_layers      empty = every OS layer; else a subset of linux, windows
+  engine         a game plugin (2.10): the id of the engine plugin it belongs to; "" otherwise
 
 PluginOption { key, label, kind: string|secret|bool|int|float|choice|path, default, choices, help }
 ```
@@ -71,7 +72,8 @@ GameProbe (FolderProbe)     built once per request, shared by all plugins; bound
 
 ExtractionContext           per request and per plugin
   request_id, game_root, staging, scratch, os, detection, selected_exts, options,
-  progress, cancel, source, probe, workspace (the run's workspace: what other arms left there)
+  progress, cancel, source, probe, workspace (the run's workspace: what other arms left there),
+  games (the run's game plugins of this engine, 2.10)
   log(message, level, stage);  tool_output(stage, every, mask) -> on_line relay (masks a secret)
 ```
 
@@ -139,8 +141,10 @@ Detection markers live in each plugin's `detect()`; slot defaults in doc 8.4.
 | bethesda | `unarchive.bsa`, `unarchive.ba2` (textures rebuilt as DDS) | - |
 | genie | `unarchive.drs`, `decode.slp` (SLP sprites to PNG with the game palette) | - |
 | warscape | `unarchive.pack` (Total War PFH4/PFH5), `decode.loc` (localisation to JSON), `export.warscape` (DB tables to JSON with the game's RPFM schema) | - |
-| redengine | `unarchive.archive` (Cyberpunk 2077 RDAR; Kraken through the game's Oodle DLL; names from `cp77-hashes`), `decode.cr2w` (WolvenKit: textures to PNG, meshes and animations to glTF, every resource to JSON), `decode.redscripts` (redscript: `final.redscripts` to source), `pack.archive` (WolvenKit: override archive in `archive/pc/mod`); its verify reports the installed mods' conflicts (`archive/pc/mod` by name, then REDmod `mods/*/archives`; first wins) | `decompile` (bool) |
-| taleworlds | `unarchive.tpac` (Bannerlord TPAC; textures to DDS) | - |
+| redengine | REDengine 4, detected by its RDAR archives: `unarchive.archive` (RDAR; Kraken through the game's Oodle DLL; names from the path list a game plugin supplies), `decode.cr2w` (WolvenKit: textures to PNG, meshes and animations to glTF, every resource to JSON), `pack.archive` (WolvenKit: override archive in `archive/pc/mod`); its verify reports the installed mods' conflicts (`archive/pc/mod` by name, then REDmod `mods/*/archives`; first wins) | - |
+| cyberpunk2077 | game plugin of redengine: the path list `cp77-hashes` (`name_lists`), `decode.redscripts` (redscript: `final.redscripts` to source); detected by the game's executables | `decompile` (bool) |
+| taleworlds | TaleWorlds engine, detected by its TPAC packages: `unarchive.tpac` (textures to DDS) | - |
+| bannerlord | game plugin of taleworlds: the title, by its executables | - |
 | quickbms | `unarchive.bms`: one `<ext>.bms` script per format from `[options.quickbms] scripts` (default `third_party/quickbms/scripts/`) | - |
 | overwatch | `export.overwatch` (DataTool, Windows); `tos_sensitive`: a reminder in every run's warnings | `modes` (string) |
 
@@ -175,3 +179,26 @@ in the startup problems (`viwo info`, SYSTEM).
 
 The kit runs over the built-ins, `examples/plugins/hello/` and every folder in
 `VIWO_PLUGIN_DIRS`, so a third-party plugin runs the same checks against its own folder.
+
+## 2.10 Game plugins
+
+Plugins are per engine, and each engine has game plugins: what one title adds on top of its
+engine (owner's decision). An engine plugin keeps only what holds for every game on that engine
+and detects by the engine's own file signatures, never by a game's executable name; a game
+plugin holds the title's own tooling and data (Cyberpunk 2077: its path list, redscript; later
+its runtime frameworks such as Cyber Engine Tweaks). Overwatch stays one plugin of its own
+(DataTool works for that title only).
+
+- **Form:** an ordinary plugin (2.1-2.3) whose manifest names its engine (`engine`). Built-ins
+  live in `viwo/plugins/<engine>/games/<game>/` and are discovered with their engine; a game
+  plugin found under another engine, or naming another one, is a discovery problem. A game
+  plugin may import its own engine's package, never another plugin.
+- **Selection:** a game plugin never runs alone. A chosen game plugin (SINGLE, MIXED) brings its
+  engine first; the game plugins of the chosen engines whose own detection names their game
+  (confidence >= 0.5) run after them (`core/pipeline/select.py` `with_games`).
+- **What it supplies:** its own slots and backends (a decoder runs only for the plugins chosen
+  for the game, doc 8), options under `[options.<game id>]`, analysis targets, CLI commands; the
+  engine's backends read what the run's game plugins of their engine offer through
+  `ExtractionContext.games` (REDengine: `name_lists`, the path lists that name archive members).
+  Data with no backend of its own (a path list) is declared by a slot-less backend so the
+  preflight installs it and SYSTEM lists it.

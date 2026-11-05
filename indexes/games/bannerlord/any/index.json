@@ -9,7 +9,8 @@
     "Modules/Native/AssetPackages/*.tpac"
   ],
   "plugins": [
-    "taleworlds"
+    "taleworlds",
+    "bannerlord"
   ],
   "tools": [
     "lz4"

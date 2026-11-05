@@ -35,9 +35,11 @@ def copy_hello(root: Path, **meta_changes) -> Path:
 
 class BuiltinDiscoveryTests(unittest.TestCase):
     def test_every_plugin_package_is_discovered_by_its_manifest_id(self) -> None:
-        folders = sorted(
-            p.name for p in (ROOT / "viwo" / "plugins").iterdir() if (p / "__init__.py").is_file()
-        )
+        engines = [
+            p for p in (ROOT / "viwo" / "plugins").iterdir() if (p / "__init__.py").is_file()
+        ]
+        games = [g for e in engines if (e / "games").is_dir() for g in (e / "games").iterdir()]
+        folders = sorted(p.name for p in engines + games if (p / "__init__.py").is_file())
         self.assertEqual(sorted(registry.BUILTIN_PLUGINS), folders)
         self.assertEqual(registry.DISCOVERY_PROBLEMS, [])
         for plugin_id, entry in registry.BUILTIN_PLUGINS.items():

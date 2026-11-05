@@ -4,6 +4,20 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.16.0 (2026-11-05)
+Game plugins (doc 2.10, owner's decision: plugins per engine, each engine with game plugins):
+- An engine plugin keeps what holds for every game on its engine and detects by the engine's own
+  file signatures; what one title adds lives in a game plugin under the engine
+  (`viwo/plugins/<engine>/games/<game>/`), discovered with it, run only with it (a chosen game
+  plugin brings its engine; a chosen engine brings the game plugins that detect their game),
+  supplying the engine's backends through `ExtractionContext.games`.
+- REDengine 4 is now engine-only (RDAR archives, CR2W through WolvenKit, the override pack, mod
+  conflicts) and detects by its RDAR archives; the Cyberpunk 2077 game plugin holds the path list
+  (`cp77-hashes`, read by the engine's reader through `name_lists`), redscript decompilation and
+  its `decompile` option (now `[options.cyberpunk2077]`), and the title's executables.
+- TaleWorlds detects by its TPAC packages; the Bannerlord game plugin names the title.
+- SETTINGS shows a game plugin as "game plugin of <engine>". Contract 1.2 (optional fields).
+
 ## 1.15.6 (2026-11-04)
 A backend quality review and a UX/UI review (independent, every finding verified):
 - Member names Windows cannot write (`< > " | ? * :`, control characters, device names, a

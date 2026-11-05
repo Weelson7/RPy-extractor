@@ -35,7 +35,7 @@ export function pluginsForm(plugins, info, effective, touch) {
     h("p", { class: "note first" }, "Every engine plugin ViWo found, built-in or dropped in. Off = never detects, never runs. GENERIC always stays on."),
     Object.keys(plugins).sort().map((id) => {
       const p = info?.[id] || { name: id };
-      const hint = [p.engineType ? `engine ${p.engineType}` : "", p.custom ? "drop-in" : "", p.problem ? `problem: ${p.problem}` : ""].filter(Boolean).join(" · ");
+      const hint = [p.engine ? `game plugin of ${p.engine}` : p.engineType ? `engine ${p.engineType}` : "", p.custom ? "drop-in" : "", p.problem ? `problem: ${p.problem}` : ""].filter(Boolean).join(" · ");
       const row = toggle(`pl-${id}`, p.name || id, hint, id === "generic" ? true : plugins[id] !== false, (on) => { plugins[id] = on; touch(); }, id === "generic");
       add(row, p.tosSensitive ? badge("TOS-SENSITIVE", "warn") : null, loaded.has(id) ? badge("LOADED", "ok") : badge("NOT LOADED", "mute"));
       return row;
