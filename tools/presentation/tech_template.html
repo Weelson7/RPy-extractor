@@ -336,8 +336,16 @@ API tests, a real-browser UI smoke, and real-tool tests behind <code>VIWO_L5=1</
 package budgets in <code>loc_caps.ini</code>, enforced by a test.</li>
 <li><b>Conformance</b>: every normative item of the contract documents has a row:
 {{conf_implemented}} implemented, {{conf_partial}} partial, {{conf_open}} open.</li>
-<li><b>Versioning</b>: <code>va.b.c</code>; every commit runs format, lint, caps and the whole
-suite before it is made, and tags itself.</li>
+<li><b>Versioning</b>: <code>va.b.c</code>; every commit runs format, lint, caps and the tests
+the change is close to (in parallel, at most 80 % of the processors) before it is made, and tags
+itself; the whole suite runs before a merge to main or a tag.</li>
 </ul>
+</section>
+
+<section>
+<h2>13 · CTF results</h2>
+<p>Capture-the-flag runs on real installs: each asks ViWo for something concrete out of a game
+and is judged on what comes out. The game folder is only read in every run.</p>
+{{ctf}}
 </section>
 </body></html>

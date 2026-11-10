@@ -4,6 +4,12 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.26 (2026-11-10)
+- The technical PDF ends with the CTF results (owner): the flags of every real-game pass (per
+  game: engine, files out, flags passed and missed, the game folder unchanged) and the
+  challenges run by hand, recorded as they come in `viwo-data/ctf/results.json`
+  (`tools/presentation/ctf.py`). Its Quality section says what a commit now runs.
+
 ## 1.20.25 (2026-11-10)
 - CONFORMANCE tracks what "done" means per engine (owner): extract, edit + repack, verify (read
   back) and the game loading the change, each cell either proven on a real game (named, with

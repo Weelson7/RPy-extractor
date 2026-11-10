@@ -1,8 +1,9 @@
 """The technical PDF: what ViWo is, how it is built (mermaid charts), every view of the UI on a
-real game (the frames of `frames.py`), and reference tables generated from the code (plugins,
-slots, pinned tools, CLI, HTTP routes, conformance). The prose is `tech_template.html`; mermaid
-is pinned in `viwo/data/tools.json` and installed into third_party/ by itself; Edge or Chrome
-headless prints the page. The HTML stays next to the PDF.
+real game (the frames of `frames.py`), reference tables generated from the code (plugins,
+slots, pinned tools, CLI, HTTP routes, conformance) and, last, the CTF results (`ctf.py`).
+The prose is `tech_template.html`; mermaid is pinned in `viwo/data/tools.json` and installed
+into third_party/ by itself; Edge or Chrome headless prints the page. The HTML stays next to
+the PDF.
 
 Usage: python tools/presentation/tech_pdf.py [--frames viwo-data/presentation/frames]
        [--out viwo-data/presentation/ViWo-technical-<version>.pdf]
@@ -23,6 +24,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(Path(__file__).parent))
 
+import ctf  # noqa: E402
 import reference  # noqa: E402
 from frames import browser  # noqa: E402
 from reference import esc  # noqa: E402
@@ -86,6 +88,7 @@ def kpis(rt) -> dict[str, str]:
 def page(frames: Path) -> str:
     rt = boot(ROOT / "startup.ini")
     values = {**kpis(rt), **reference.all_tables(rt), "tour": tour(frames)}
+    values["ctf"] = ctf.section(ROOT / "viwo-data")  # the CTF results, last
     values["mermaid"] = mermaid().resolve().as_uri()
     text = TEMPLATE.read_text(encoding="utf-8")
     for key, value in values.items():
