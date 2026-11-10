@@ -1,6 +1,6 @@
 # Handoff
 
-State at **v1.20.10** (branch `makeover`). History is in [CHANGELOG.md](../CHANGELOG.md); the
+State at **v1.20.27** (branch `makeover`; local `main` fast-forwarded to it). History is in [CHANGELOG.md](../CHANGELOG.md); the
 design in [docs/contract/](contract/README.md); what is open in
 [CONFORMANCE.md](contract/CONFORMANCE.md) and below.
 
@@ -41,7 +41,7 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
   half-edited module). Make a worktree at a committed version with its own venv, then run the
   pass there:
   ```powershell
-  git worktree add ..\viwo-pass v1.20.10
+  git worktree add ..\viwo-pass v1.20.27
   cd ..\viwo-pass; py -3.13 -m venv .venv; .venv\Scripts\pip install -e ".[unity,sevenzip,renpy,lz4]"
   powershell -File tools\games_pass.ps1 -Source C:\Users\<you>\Games [-Only <folder>,...]
   ```
@@ -92,6 +92,10 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
 
 ## Open work
 
+- **Waiting on GitHub** (unreachable since 2026-11-05; the owner says when it is back): push
+  `makeover` and `main` with every tag from v1.20.10 on (`git push origin makeover main --tags`),
+  then rename the repository from `RPy-extractor` to `ViWo` (GitHub redirects the old URL) and
+  point `origin` and the URLs in `pyproject.toml` and the README at the new name.
 0. **UI capabilities (doc 16.4, spec in doc 19; owner flagged, in this order):** workbooks
    shipped (1.18.0: four, for x64dbg, Ghidra and Cheat Engine; 1.20.8: RenderDoc, on the frames
    a capture now keeps; more tools and topics by reach, e.g. WolvenKit, whose GUI ViWo does not
@@ -123,7 +127,8 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
    DataTool on a real Overwatch install (independent operator);
    QuickBMS on a real game archive; the Godot PCK path on a title that ships its data; the game loading a
    `pack.archive` override (`archive/pc/mod/!viwo_*.archive`, ahead of other mods by name).
-7. **Completeness contract (doc 16.0c, owner):** everything out of every game, decoded, all
+7. **Completeness contract (doc 16.0c, owner; per engine in CONFORMANCE "Done, per engine and
+   arm"):** everything out of every game, decoded, all
    three arms per engine; every capability valid for all games of its engine (owner: no
    overfitting to one game). Work the open column of the 16.0c table by reach; a row closes only
    when verified on a real install. Verifiable here: Cyberpunk 2077, two Unity IL2CPP games,

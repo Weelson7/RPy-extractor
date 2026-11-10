@@ -4,6 +4,11 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.27 (2026-11-10)
+- HANDOFF: the state at this version, the local `main` fast-forwarded to `makeover` (187
+  commits), and what waits on GitHub (the push of both branches and their tags, the rename to
+  ViWo).
+
 ## 1.20.26 (2026-11-10)
 - The technical PDF ends with the CTF results (owner): the flags of every real-game pass (per
   game: engine, files out, flags passed and missed, the game folder unchanged) and the
