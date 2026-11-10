@@ -36,6 +36,7 @@ attach tools (11.2) need only the `capture` switch, never `analysis`.
 | trace (D3) | `frida-trace` (no slot) | frida-tools 14.11.0 / frida 17.25.2 | `frida-trace -p <pid> -i <glob>...` for `--seconds` | `.runtime/trace/<pid>-<stamp>/trace.log` |
 | attach (D3) | `attach.debug` / `x64dbg-gui` | x64dbg (GPL-3, a separate process) | Continue in x64dbg (doc 8.3a) on the game's own process: attached to the one process running the target's executable (or `--pid`), else the game's own executable started under the debugger; a patch made live lands in the real process | - |
 | attach (D3) | `attach.memory` / `cheatengine-gui` | Cheat Engine 7.6 | Continue in Cheat Engine with a ViWo table that attaches to the game | `.runtime/cheatengine-gui/<key>/<exe>.CT` |
+| attach (D4) | `attach.net` / `mitmproxy-gui` | mitmproxy 12.3.1 | Continue in mitmproxy: its own web interface as a local proxy (regular mode, this machine only) for the game's own HTTP(S) traffic; the user points the game at it and decides about its certificate (11.7) | `.runtime/mitmproxy-gui/<key>/flows.mitm` |
 
 A name matching several running processes answers `needs_decision` (give `--pid`).
 
@@ -97,7 +98,20 @@ placed in its module and named after the nearest export below it. `.runtime/prof
 holds `hotspots.json` and `hotspots.txt`: hot spots, modules and threads as shares of the samples.
 Tracy profiles only games built with it, so it is not the backend.
 
-Open: a hook loader with hot reload (`hook.inject`), an in-game overlay (`hook.overlay`),
-own-traffic network tooling (`net.*`: capture with a dissector, a proxy between the user's client
-and their own server). The network plaintext capture and the DLL injection loader are the owner's
-call and are not authored by the assistant.
+Rung D4 is served by pinned third-party tools only (owner, 2026-11-10): ViWo writes no hook,
+overlay or capture code of its own; it starts the tool as a tracked child, like the debuggers.
+
+Shipped: own-traffic inspection, `attach.net` / `mitmproxy-gui` (mitmproxy 12.3.1, MIT):
+"Continue in mitmproxy" starts mitmproxy's own web interface as a local proxy on two free ports
+of this machine, in regular mode only, and saves every flow in the workspace
+(`.runtime/mitmproxy-gui/<key>/flows.mitm`). What the tool cannot do by itself is said, and left
+to the user: pointing the game or the system proxy at it; trusting mitmproxy's certificate
+authority to see HTTPS (the user's own choice, for the current user, no elevation; the workbook
+says how and to remove it after); a game that pins its certificates cannot be read this way.
+Not used, because they need elevation (the minimal-prompts rule): mitmproxy's per-process
+capture mode, and raw packet capture (Wireshark needs an administrator-installed driver).
+
+Open: `hook.inject` (a user's hook script in the running game: Frida, already pinned, is the
+tool for it) and `hook.overlay` (Special K on Windows and MangoHud on Linux are the candidates;
+both are loaded into the game, so they belong in a patched copy like the D2 agents; ReShade
+ships only as an installer).

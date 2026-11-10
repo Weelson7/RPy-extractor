@@ -536,6 +536,25 @@
     "find": "kstool.exe"
    }
   },
+  "mitmproxy": {
+   "version": "12.3.1",
+   "license": "MIT",
+   "_note": "mitmproxy's own web interface (mitmweb) for the Continue in mitmproxy attach tool: the user's own game traffic through a local proxy, regular mode only (no elevation); the user trusts its CA themselves",
+   "windows": {
+    "url": "https://downloads.mitmproxy.org/12.3.1/mitmproxy-12.3.1-windows-x86_64.zip",
+    "sha256": "336c03e7215876af329f57c44b1b738cfb22cd29dc7cd4c0714f15c7648af829",
+    "size": 88418256,
+    "kind": "zip",
+    "find": "mitmweb.exe"
+   },
+   "linux": {
+    "url": "https://downloads.mitmproxy.org/12.3.1/mitmproxy-12.3.1-linux-x86_64.tar.gz",
+    "sha256": "f7b4237f5702f6cd21357fe6e4680a7e905f8f9b816b872230d018ea696c34d5",
+    "size": 107431939,
+    "kind": "tar",
+    "find": "mitmweb"
+   }
+  },
   "x64dbg": {
    "version": "2026.05.27",
    "license": "GPL-3.0",

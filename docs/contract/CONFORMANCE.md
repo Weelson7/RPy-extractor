@@ -259,9 +259,9 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 11.4 temporary antivirus exclusions | implemented | `core/scan_exclusions.py` |
 | 11.5 agents in a patched copy; pending-journal restore | implemented | `core/capture/agents.py`, `core/capture/journal.py` |
 | 11.6 network declarations, `VIWO_OFFLINE` | implemented | backend `network`, `core/capture/renderdoc.py` |
-| 11.7 D4 `hook.inject` (hook loader, hot reload) | open | - |
-| 11.7 D4 `hook.overlay` | open | - |
-| 11.7 D4 `net.*` (own-traffic capture, proxy) | open | the plaintext capture is the owner's call |
+| 11.7 D4 `hook.inject` (a user's hook script, hot reload) | open | through the pinned Frida, not first-party code |
+| 11.7 D4 `hook.overlay` | open | third-party only: Special K (Windows), MangoHud (Linux), in a patched copy |
+| 11.7 D4 `net.*` (own-traffic proxy) | implemented | `attach.net` / `mitmproxy-gui`, `core/capture/nettools.py` (pinned mitmproxy as a tracked child, regular mode; `tests/test_nettools.py`; a real request passed through it at 1.20.43). Per-process capture and raw packet capture are not used: both need elevation |
 | 11.7 D4 `profile.sample` | implemented | `os/_win_probe.py`, `os/_linux_probe.py` `sample_threads`; `core/capture/profile.py`; `viwo profile`, `/api/runtime/profile` |
 
 ## 12 Core, jobs, CLI

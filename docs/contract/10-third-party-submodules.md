@@ -53,7 +53,7 @@ or when a feature that needs them is turned on (doc 6.4).
 | engines | `repak`, `retoc`, `gdre`, `godotpcktool`, `assetstudiomod` (on the `dotnet` runtime), `unrpyc`, `quickbms`, `datatool` (Windows), `uas` (UnrealAssetScout, Windows), `rpfm-schema-<game>` (RPFM's Total War schemas, data, one per game, on demand), `wolvenkit` (WolvenKit CLI, GPL-3.0, on the `dotnet` runtime), `redscript` (0.5 line, the one with a decompiler; Windows), `cp77-hashes` (WolvenKit path list, data), Python `unitypy` |
 | media | `ffmpeg`, `ffprobe`, `vgmstream` |
 | analysis | `ghidra` (on demand) and `jdk`, `ilspycmd`, `cpp2il` (Windows), `unluac`, `die`; workers `unicorn`, `angr` (on demand) |
-| dynamic | `renderdoccmd` and `rdpython` (qrenderdoc as the harvest Python), `ue4ss` (Windows), `bepinex` (Windows), `x64dbg` (Windows), `cheatengine` (Windows, Scoop's unpacked build), Python `frida-tools`, `soundcard` |
+| dynamic | `renderdoccmd` and `rdpython` (qrenderdoc as the harvest Python), `ue4ss` (Windows), `bepinex` (Windows), `x64dbg` (Windows), `cheatengine` (Windows, Scoop's unpacked build), `mitmproxy` (its portable build), Python `frida-tools`, `soundcard` |
 | patching | `keystone` (Windows, `kstool` as a separate process), Python `capstone` |
 
 Versions, licenses and checksums are in `tools.json`; `THIRD_PARTY_NOTICES.md` is generated from

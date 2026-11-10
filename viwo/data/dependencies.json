@@ -322,6 +322,14 @@
   ],
   "hint": "`viwo install wolvenkit` (GPL-3.0, run as its own process)"
  },
+ "mitmproxy": {
+  "label": "mitmproxy (your game's own traffic)",
+  "env_var": "VIWO_MITMPROXY",
+  "executables": [
+   "mitmweb"
+  ],
+  "hint": "install mitmproxy (MIT): `viwo install mitmproxy`"
+ },
  "x64dbg": {
   "label": "x64dbg (debugger)",
   "env_var": "VIWO_X64DBG",

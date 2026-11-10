@@ -1,0 +1,35 @@
+{
+ "id": "mitmproxy-read-your-games-traffic",
+ "title": "Read your game's own web traffic",
+ "tool": "mitmproxy",
+ "written_for": "12.3.1",
+ "opens": "attach.net",
+ "summary": "See the HTTP and HTTPS requests your own game sends from your own machine: which servers it calls, what it sends and what comes back. A local proxy; nothing is redirected by force and nothing needs administrator rights.",
+ "steps": [
+  {
+   "title": "Start mitmproxy from ViWo",
+   "text": "In RUNTIME, DEBUGGER AND MEMORY: LIST TARGETS, then CONTINUE IN MITMPROXY on the game's executable (CLI: viwo attach <game> --target <key> --tool mitmproxy-gui --workspace <ws> --confirm). The activity console says the proxy address (127.0.0.1 and a port) and where the flows are saved in the workspace.",
+   "expect": "mitmproxy's window opens in your browser with an empty flow list."
+  },
+  {
+   "title": "Point the game at the proxy",
+   "text": "Many games follow the system proxy: Windows Settings, Network and internet, Proxy, Manual proxy setup, Use a proxy server, with the address 127.0.0.1 and the port ViWo named. Some games ignore the system proxy; those show nothing here. Turn the system proxy off again when you are done.",
+   "expect": "Plain HTTP requests of the game, and of every other program on the machine, appear in the list."
+  },
+  {
+   "title": "Decide about HTTPS",
+   "text": "HTTPS is encrypted: mitmproxy can only show it if you trust its certificate authority on your own machine. That is your choice. With the proxy set, open http://mitm.it in a browser and follow the page for your system; installing for the current user needs no administrator rights. Remove the certificate again when you are done: anyone holding its key could read your traffic.",
+   "expect": "HTTPS flows show their content. A game that pins its own certificates refuses the connection instead: that traffic cannot be read this way."
+  },
+  {
+   "title": "Find the game's requests",
+   "text": "Type in the Search field above the list to filter, for example ~d example.com for one domain or ~m POST for one method. Click a flow: Request shows what the game sent, Response what came back.",
+   "expect": "The flow's headers and body, with JSON shown as a tree."
+  },
+  {
+   "title": "Keep what you found",
+   "text": "ViWo already saves every flow as it comes, next to the workspace's other runtime output (.runtime/mitmproxy-gui/<target>/flows.mitm). To keep a selection, use File, Save in mitmproxy. Open a saved file later with File, Open.",
+   "expect": "A .mitm file you can open again in mitmproxy."
+  }
+ ]
+}

@@ -4,6 +4,13 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.45 (2026-11-10)
+- Rung D4, network: `attach.net` opens mitmproxy (pinned third-party tool, MIT, installed by
+  itself into `third_party/`) as a tracked child from RUNTIME or `viwo attach`: a regular
+  local proxy on this machine only, its flows saved under the target's folder in the
+  workspace. ViWo says where to point the game and what HTTPS needs; nothing asks for
+  elevation. A workbook walks through it.
+
 ## 1.20.44 (2026-11-10)
 - Packaging: the build looks for packages in `viwo` only. It walked `viwo-data` too and failed
   when a running job's temporary folders changed under it.
