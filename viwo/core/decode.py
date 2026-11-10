@@ -302,7 +302,10 @@ def decode_all(run, workspace: Path, collected) -> None:
             f"{len(errors)} file(s) could not be decoded by {slot}: e.g. {errors[0]}",
         )
     if sources:
-        decoded = collect(sources, workspace, None, set(), run.cancel)
+        say = lambda message: run.log(message, "decode")  # noqa: E731
+        say(f"Collecting the decoded files of {len(sources):,} folder(s) into the workspace")
+        decoded = collect(sources, workspace, None, set(), run.cancel, say)
+        say(f"Collected {decoded.collected:,} decoded file(s)")
         collected.by_ext.update(decoded.by_ext)
         collected.provenance += decoded.provenance
         collected.unreadable += decoded.unreadable  # never silent: the OS refused them

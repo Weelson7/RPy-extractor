@@ -4,6 +4,11 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.33 (2026-11-10)
+- Never silent: after the decode, the decoded files (73,000 on the Cyberpunk demo subset) were
+  hashed and moved into the workspace without a line, for more than ten minutes. It is said,
+  counted and summed up now.
+
 ## 1.20.32 (2026-11-10)
 - CARVE runs on the worker pool: both the pass that finds which files nothing recognizes (a
   second silent pass over every extracted file, now announced and counted) and the carving
