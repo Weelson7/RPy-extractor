@@ -176,6 +176,7 @@ def _export_env(ctx, env, label: str, record: dict) -> tuple[int, list[str]]:
             exported += _one(ctx, obj, label, record)
         except Exception as exc:  # one broken object must not stop the export
             notes.append(f"{label}#{obj.path_id} ({obj.type.name}): {exc}"[:200])
+        notes += objects.layouts_off(env, record["dump"], shared)
     return exported, notes
 
 

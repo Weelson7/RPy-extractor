@@ -9,7 +9,7 @@ from viwo.contracts.errors import ViwoError
 
 KNOWN_SECTIONS = {"startup", "plugins", "slots", "tools", "server"}
 FORM_KEYS = ("os", "profile", "features", "auto_install", "strict_preflight", "av_exclusions")
-STARTUP_KEYS = {*FORM_KEYS, "base", "contract"}
+STARTUP_KEYS = {*FORM_KEYS, "base", "contract", "memory_limit"}
 SERVER_KEYS = {"host", "port", "workspace", "merged", "logs", "temp"}
 MAX_LAYERS = 2  # doc 9.1: the ini and at most one base file
 SECRET_WORDS = ("key", "secret", "password", "token")
@@ -23,6 +23,7 @@ class StartupConfig:
     auto_install: bool = True  # install missing pinned tools into third_party/ at startup
     strict_preflight: bool = False
     av_exclusions: bool = True  # workspace, source and temp skip the antivirus during a job
+    memory_limit: int = 50  # % of the machine's memory ViWo's own process may take; 0 = no ceiling
     plugins: dict[str, bool] = field(default_factory=dict)
     custom_dirs: tuple[Path, ...] = ()
     slots: dict[str, tuple[str, str]] = field(default_factory=dict)
@@ -75,6 +76,13 @@ def _read_startup(cfg: configparser.ConfigParser, out: StartupConfig) -> None:
     for name in ("auto_install", "strict_preflight", "av_exclusions"):
         if name in sec:
             setattr(out, name, cfg.getboolean("startup", name))
+    if "memory_limit" in sec:
+        text = str(sec["memory_limit"]).strip()
+        if text.isdigit() and int(text) <= 95:
+            out.memory_limit = int(text)
+        else:
+            why = f"0 to 95 (%); kept {out.memory_limit}"
+            out.problems.append(f"[startup] memory_limit = {sec['memory_limit']}: {why}")
 
 
 def _read_tables(cfg: configparser.ConfigParser, out: StartupConfig, base: Path) -> None:

@@ -248,6 +248,11 @@ class WindowsOS(HostOS):
     def data_home(self) -> Path:
         return Path(os.environ.get("LOCALAPPDATA") or Path.home() / "AppData" / "Local")
 
+    def limit_memory(self, ceiling: int) -> str:
+        from ._win_memory import limit
+
+        return limit(ceiling)
+
     def memory_bytes(self) -> int:
         import ctypes
 

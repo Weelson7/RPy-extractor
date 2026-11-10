@@ -38,6 +38,12 @@ features         = extraction, sorting, merger   ; + capture, analysis (opt-in)
 auto_install     = on            ; install missing pinned tools into third_party/ at startup
 strict_preflight = off           ; on: `viwo serve` exits 4 when a plugin slot has no backend
 av_exclusions    = on            ; workspace, source and temp skip the antivirus during a job
+memory_limit     = 50            ; percent of the machine's memory ViWo's own process may take
+                                 ; (0 to 95; 0 = no ceiling). Past it an allocation fails inside
+                                 ; ViWo as one counted failure (MemoryError) and the machine stays
+                                 ; up; a damaged file can otherwise ask for all of it. Windows: a
+                                 ; job object, child tools left out; Linux: the soft data limit.
+                                 ; The console says at start whether it holds.
 
 [plugins]
 generic     = on                 ; always on

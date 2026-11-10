@@ -4,6 +4,20 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.37 (2026-11-10)
+- Fix: extracting Schedule I (Unity, IL2CPP) took the owner's machine down, twice. A
+  MonoBehaviour read with a layout rebuilt from Cpp2IL's stand-ins did not fit its object; the
+  reader took a garbage length for an array and asked for memory without end (1.2 GB to 15.5 GB
+  in three seconds, measured under a watchdog).
+- ViWo's own process now has a memory ceiling: `[startup] memory_limit`, default 50 % of the
+  machine, 0 lifts it. Past it an allocation fails inside ViWo as a MemoryError, one counted
+  failure, and the machine stays up. Windows: a job object that leaves child tools out; Linux:
+  the soft data limit (written, not yet run on Linux). The console says at start whether it
+  holds. Doc 9.2.
+- The Unity export counts such a read, switches the rebuilt layouts off for the rest of the
+  export and says so once. Schedule I now extracts in ten minutes: 9,663 assets, 1.2 million
+  objects as JSON, 9,811 files (138 on 2026-11-03).
+
 ## 1.20.36 (2026-11-10)
 - Fix: `viwo --json` could answer text before its JSON. On a Unity IL2CPP game UnityPy's
   native layout generator prints "Error generating tree nodes" straight to the process's

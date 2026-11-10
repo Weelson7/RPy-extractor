@@ -147,6 +147,11 @@ class OS(ABC):
         """The machine's physical memory in bytes; 0 when this OS layer cannot tell."""
         return 0
 
+    def limit_memory(self, ceiling: int) -> str:
+        """A ceiling in bytes on this process's own memory: past it an allocation fails here
+        (MemoryError), the machine stays up. "" when it holds, else why not."""
+        return "this OS layer cannot limit its memory"
+
     def pids_of(self, image: str) -> list[int]:
         """Process ids whose image name is `image` (case-insensitive)."""
         return []

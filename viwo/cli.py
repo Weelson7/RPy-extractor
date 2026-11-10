@@ -26,6 +26,7 @@ from viwo.core.jobs import JobRunner
 from viwo.core.pipeline.probe import FolderProbe
 from viwo.core.pipeline.runner import detect_all, extract
 from viwo.core.wiring.boot import boot
+from viwo.core.wiring.memory import guard
 
 EXIT = {"invalid_request": 2, "needs_decision": 2, "refused": 3, "cancelled": 130}
 
@@ -151,9 +152,17 @@ def _only_the_answer(json_mode: bool):
         os.close(saved)
 
 
+def _ceiling(rt, argv: list[str]) -> None:
+    """The memory ceiling of this process (doc 9.2); said when it does not hold, or on request."""
+    said, holds = guard(rt) if rt is not None else ("", True)
+    if not holds or (said and "--verbose" in argv):  # never silent when unprotected
+        print(f"[CLI] {said}", file=sys.stderr)
+
+
 def main(argv: list[str] | None = None) -> int:
     arm, argv = cli_arms.split_arm(list(sys.argv[1:] if argv is None else argv))
     rt = boot_for_cli(argv) if argv else None  # add-ons need the runtime; bare `viwo` stays fast
+    _ceiling(rt, argv)
     parser = _parser(rt)
     if arm and cli_arms.first_word(argv) < 0:  # `viwo static`: that arm's commands
         print(cli_arms.listing(parser.viwo_helps, (arm,)))

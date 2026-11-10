@@ -148,6 +148,19 @@ class LinuxOS(HostOS):
     def data_home(self) -> Path:
         return Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local" / "share")
 
+    def limit_memory(self, ceiling: int) -> str:
+        """The soft data limit (heap and private mappings, not mapped files); child tools
+        inherit a soft limit and may raise it back to the hard one."""
+        try:
+            import resource
+
+            hard = resource.getrlimit(resource.RLIMIT_DATA)[1]
+            soft = ceiling if hard == resource.RLIM_INFINITY else min(ceiling, hard)
+            resource.setrlimit(resource.RLIMIT_DATA, (soft, hard))
+        except (ImportError, ValueError, OSError) as exc:
+            return f"the data limit could not be set ({exc})"
+        return ""
+
     def memory_bytes(self) -> int:
         try:
             return os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")

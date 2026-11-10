@@ -18,6 +18,7 @@ from viwo.contracts.pipeline import (
 from viwo.core.jobs import JobRunner
 from viwo.core.pipeline.runner import extract
 from viwo.core.wiring.boot import Runtime, boot
+from viwo.core.wiring.memory import guard
 from viwo.core.workspace import precheck, workspace_lock
 
 
@@ -34,6 +35,7 @@ class App:
         self._lock = threading.Lock()
         for folder in (server.logs, server.temp, server.workspace, server.merged):
             folder.mkdir(parents=True, exist_ok=True)  # a fresh install works out of the box
+        self.log(f"[SERVER] {guard(rt)[0]}")  # never silent: the console says whether it holds
 
     def reload(self) -> None:
         """Boot again (after installing a tool) so new tools bind; jobs and workspace stay."""

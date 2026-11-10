@@ -6,6 +6,7 @@ layouts come from the game's managed assemblies when they ship (Mono), else (IL2
 stand-in assemblies Cpp2IL rebuilds from GameAssembly and the metadata (a separate process, MIT),
 once per export, into the run's scratch folder."""
 
+import gc
 import json
 from pathlib import Path
 
@@ -74,14 +75,16 @@ class Dump:
         self.open: dict[str, object] = {}
         self.written = 0
         self.no_layout: dict[str, int] = {}
+        self.exhausted = False  # a layout asked for more memory than ViWo may take
 
     def add(self, obj, kind: str) -> None:
         source = Path(str(getattr(obj.assets_file, "name", "") or "unknown")).name
         try:
             entry = {"path_id": obj.path_id, "type": kind, "data": obj.read_typetree()}
         except Exception as exc:  # noqa: BLE001  (a stripped layout, or damage: listed, counted)
+            self.exhausted = self.exhausted or isinstance(exc, MemoryError)
             self.no_layout[kind] = self.no_layout.get(kind, 0) + 1
-            entry = {"path_id": obj.path_id, "type": kind, "unread": str(exc)[:160]}
+            entry = {"path_id": obj.path_id, "type": kind, "unread": str(exc)[:160] or "memory"}
         text = _json(entry)  # made before anything is written: a failure leaves the file whole
         fh = self._handle(source)
         fh.write(("[\n" if not self.counts[source] else ",\n") + text)
@@ -117,6 +120,21 @@ class Dump:
             why = "their script layout is not in the build" if mono else "unreadable"
             notes.append(f"{n} {kind}(s) listed without their fields: {why}")
         return (summary if self.written else ""), notes
+
+
+def layouts_off(env, dump, shared: dict) -> list[str]:
+    """A rebuilt layout that does not fit its object reads a garbage length and asks for the
+    machine's memory; the ceiling (doc 9.2) stops it. After one, the rebuilt layouts are not
+    trusted for the rest of the export: said once, the remaining objects listed without fields."""
+    if dump is None or not dump.exhausted or shared.get("generator") is None:
+        return []
+    shared["generator"] = env.typetree_generator = None
+    gc.collect()
+    return [
+        "a rebuilt MonoBehaviour layout did not fit its object and asked for more memory than "
+        "ViWo may take ([startup] memory_limit): the remaining MonoBehaviours are listed "
+        "without their fields"
+    ]
 
 
 def assemblies(game_root: Path, ctx) -> tuple[Path | None, str]:

@@ -86,6 +86,10 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
 - angr is pinned at 9.2.223 (angr 10's solver crashes on Windows); some Python pins have no
   wheels for every CPython (py7zr on 3.14, soundcard/numpy on 3.11, angr outside 3.12-3.13).
 - UnityPy holds file handles until `gc.collect()`; close every handle before moving files.
+- A reader given a layout that does not fit (UnityPy with Cpp2IL's stand-ins on Schedule I) can
+  ask for all the machine's memory in seconds: it took the owner's PC down twice (2026-11-10).
+  `[startup] memory_limit` (default 50 %) now stops it inside ViWo; when reproducing such a run,
+  keep the ceiling on. The Linux side (soft data limit) is written but not run on Linux yet.
 - Owner's machine: the rejected Cheat Engine 7.7 installer left an uninstall entry, the `.CT`
   association and `third_party/.cheatengine-7.7-installer-leftover`; removing them needs one
   elevated command.
