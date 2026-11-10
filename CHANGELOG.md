@@ -4,6 +4,14 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.49 (2026-11-10)
+- WolvenKit's runs are sized before they start: each is planned to fit 2 GB from the files'
+  sizes (an animation unfolds about 250 times, measured), a large file runs alone under its
+  own estimate, and what failed runs again once with twice the room. The memory budget
+  serves in the order asked. (1.20.42's "start small, split on failure" made a timed
+  extraction slower: a failing run took a minute to say so, and a retry under the whole
+  share stopped every other run.)
+
 ## 1.20.48 (2026-11-10)
 - `viwo --plugin <id>=on|off` and `viwo --slot <slot>=<main>[,<spare>]` (before the command,
   repeatable): a plugin or a slot's backends for one run, over the ini and the profile; the

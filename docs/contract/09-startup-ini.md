@@ -51,8 +51,9 @@ memory_limit     = 50            ; percent of the machine's memory ViWo's own pr
                                  ; its own (`ProcessRunner.run_capped`), held out of one budget:
                                  ; this share of the machine (`ctx.memory`; 50 % when 0). A run
                                  ; waits while the share is out, so the tools together never ask
-                                 ; for more. WolvenKit starts at 2 GB a run and gets more, up to
-                                 ; the share, only for what failed for want of memory (doc 8).
+                                 ; for more, in the order they asked. WolvenKit's runs are sized
+                                 ; to 2 GB by an estimate and get more only for a file that
+                                 ; needs it or failed (doc 8).
                                  ; Around one doubtful read (a Unity MonoBehaviour with a rebuilt
                                  ; layout) the ceiling is what ViWo holds plus 1 GB (`memory_room`).
 

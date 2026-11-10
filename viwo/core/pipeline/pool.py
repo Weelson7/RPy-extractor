@@ -50,18 +50,23 @@ def each(fn: Callable, items: Iterable, cancel=None, count: int = 0) -> Iterator
 class Budget:
     """ViWo's share of the machine's memory, handed out to the tools that run at once (doc 9.2):
     a run holds what its cap allows it to take and waits while the share is out, so however
-    many run, together they cannot ask for more than the share."""
+    many run, together they cannot ask for more than the share. Served in the order asked: a
+    large run is not passed by small ones for ever."""
 
     def __init__(self, share: int) -> None:
         self.share, self._free, self._turn = share, share, threading.Condition()
+        self._line: deque = deque()
 
     @contextlib.contextmanager
     def hold(self, amount: int):
-        amount = min(amount, self.share)
+        amount, ticket = min(amount, self.share), object()
         with self._turn:
-            while self._free < amount:
+            self._line.append(ticket)
+            while self._line[0] is not ticket or self._free < amount:
                 self._turn.wait(0.5)
+            self._line.popleft()
             self._free -= amount
+            self._turn.notify_all()  # the next in line may fit beside this one
         try:
             yield
         finally:

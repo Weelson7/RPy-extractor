@@ -149,11 +149,13 @@ spare `ffmpeg-decode`; Wwise, FMOD, CRI, XACT and console audio to WAV); `decode
 (`ffmpeg-image`, DDS to PNG); `decode.video` (`ffmpeg-video`, Bink to MP4, opt-in); `decode.bink2` (`bink-game`: Bink 2 to MP4
 through the game's own `bink2w64.dll` in a helper process, frames piped into ffmpeg, opt-in with
 video); `decode.cr2w` (`wolvenkit-export`, redengine: WolvenKit's console, GPL-3.0 as its own
-process, one run per batch of 150 files (ten animations count as a whole `export` run: WolvenKit
-keeps what it exports in memory until it exits). Each run starts under a 2 GB cap held out of the
-memory budget (doc 9.2); what WolvenKit could not convert for want of memory is run again, beside
-fewer files, then alone under twice the cap, up to ViWo's whole share, twelve extra runs at most
-per call; what it cannot read at all is not run again: `export` turns textures into PNG and meshes, morph
+process. A run takes up to 150 files, as many as are estimated to fit 2 GB: about 1.2 GB before
+WolvenKit reads a file, then per byte of file 250 bytes for an animation and 15 for the rest
+while it exports, 10 while it serializes (measured under caps on Cyberpunk 2077 2.x; a file
+that does not fit runs alone, capped at its estimate). Each run's cap is held out of the memory
+budget (doc 9.2). What a run could not convert is run again once, ten files at a time with
+twice the room; what then fails for want of memory gets ViWo's whole share, alone, six times
+at most per call: `export` turns textures into PNG and meshes, morph
 targets, cubemaps and animations into glTF, `convert serialize` turns every CR2W resource into
 JSON; ViWo writes the export settings it needs into WolvenKit's `appsettings.json` off screen and
 every file WolvenKit could not convert is counted; the core hands a batch backend 600 files per

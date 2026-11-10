@@ -70,8 +70,29 @@ class CommandTests(unittest.TestCase):
                 self.assertLessEqual(len(run), BATCH + 3)  # the command line stays short
                 if run[0] == "export":
                     self.assertEqual(run[-2:], ["-gp", "GAME"])  # the game supplies the rest
-                    heavy = sum(a.endswith(tuple(export.HEAVY)) for a in run[1:-2])
-                    self.assertLessEqual(heavy, 10)  # the ones WolvenKit keeps in memory
+
+    def test_a_run_is_planned_to_fit_its_room_or_holds_one_file(self) -> None:
+        rng = random.Random(49)
+        with tempfile.TemporaryDirectory() as tmp:
+            for round_ in range(8):
+                paths = []
+                for i in range(rng.randint(1, 60)):
+                    path = (
+                        Path(tmp) / f"{round_}-{i}{rng.choice(('.anims', '.xbm', '.mesh', '.ent'))}"
+                    )
+                    with path.open("wb") as handle:  # a sparse file: only its size matters
+                        handle.truncate(rng.choice((0, 9_000, 400_000, 3 << 20, 40 << 20)))
+                    paths.append(path)
+                runs = export.plans(paths, "GAME")
+                for head in (("export",), ("convert", "serialize")):
+                    mine = [r for r in runs if r.head == head]
+                    want = [p for p in paths if head[0] == "convert" or p.suffix in EXPORTS]
+                    self.assertEqual([p for r in mine for p in r.files], want)  # once, in order
+                for run in runs:
+                    self.assertTrue(run.need() <= export.START or len(run.files) == 1, run)
+                    self.assertLessEqual(len(run.files), BATCH)
+                big = [r for r in runs if r.head == ("export",) and r.need() > export.START]
+                self.assertTrue(all(r.files[0].stat().st_size >= 3 << 20 for r in big))
 
 
 class SettingsTests(unittest.TestCase):
@@ -151,10 +172,11 @@ class DecodeTests(unittest.TestCase):
                 else:
                     self.assertEqual(out.error, "")
 
-    def test_what_lacked_memory_is_run_again_with_more_and_the_rest_is_not(self) -> None:
+    def test_what_failed_runs_again_with_more_room_and_memory_gets_the_share(self) -> None:
         """A model of WolvenKit under a cap: it keeps what it read, and a file that no longer
         fits fails by name. Every file that fits ViWo's share comes out, under caps that never
-        pass the share; one that cannot fit and one WolvenKit cannot read are counted once."""
+        pass the share; one that cannot fit and one WolvenKit cannot read are counted once,
+        and the unreadable one is never given the share."""
         rng, gb = random.Random(8), 1 << 30
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -187,11 +209,11 @@ class DecodeTests(unittest.TestCase):
                 self.assertEqual(out.files, len(paths) - 2)  # all but the two that cannot
                 self.assertTrue((dest / "big.anims.glb").is_file())
                 self.assertIn("could not convert 2 file(s)", out.error)
-                self.assertLessEqual(max(caps), share)
-                self.assertEqual(caps[0], export.START)
+                self.assertIn("Failed to export", out.error)  # a reason of one still failing
+                self.assertEqual((caps[0], max(caps)), (export.START, share))
                 alone = [c for c, run in zip(caps, seen) if run == [str(root / "odd.xbm")]]
-                self.assertLessEqual(alone, [export.START])  # never given more room
-                self.assertLessEqual(len(caps), 2 + export.RETRIES)
+                self.assertEqual(alone, [])  # what WolvenKit cannot read is not given the share
+                self.assertLessEqual(len(caps), 3 + 2)  # two commands, one more pass, two alone
 
     def test_a_missing_tool_and_a_silent_crash_are_named(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
