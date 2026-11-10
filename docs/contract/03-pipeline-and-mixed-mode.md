@@ -19,6 +19,17 @@ Every stage sends progress events with its stage name and checks the cancel toke
 
 Analysis is never a stage of an extraction (doc 6). The sanitizer is a separate tool (doc 5).
 
+**Parallel stages and the worker budget** (`pipeline/pool.py`, owner). Work that is independent
+per file or per batch runs on one pool of workers: 80 % of the logical processors the process
+may use, counted when a stage starts, on any OS (`VIWO_WORKERS` overrides). Results are taken
+in the items' order, so names, provenance and the report are the same on every run; a cancel
+starts nothing more. On the pool today: the search for nested archives among the files just
+unpacked (UNPACK: one round per nesting depth; a round of 200 files or more is announced and
+counted, stage `identify`). What writes the workspace (COLLECT's moves) stays one writer.
+
+**Said as it happens** (owner): a stage says what it starts (what, how many, on how many
+workers) and nothing runs for more than a few seconds without a counted progress line.
+
 ## 3.2 Request
 
 ```text

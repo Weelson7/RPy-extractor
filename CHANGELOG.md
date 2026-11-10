@@ -4,6 +4,14 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.28 (2026-11-10)
+- The silent 20 to 38 minutes after UNPACK on Cyberpunk 2077 are found and gone: every
+  extracted file (87,000) was checked for being a nested archive, one at a time, with no log
+  line. The search now runs on a pool of workers and says what it does ("Looking for nested
+  archives in N extracted file(s) on W workers", then a counter). First stage of the parallel
+  pipeline (owner): `core/pipeline/pool.py` is the one worker budget, 80 % of the processors
+  (`VIWO_WORKERS` overrides), results in order so every run comes out the same. Doc 3.1.
+
 ## 1.20.27 (2026-11-10)
 - HANDOFF: the state at this version, the local `main` fast-forwarded to `makeover` (187
   commits), and what waits on GitHub (the push of both branches and their tags, the rename to

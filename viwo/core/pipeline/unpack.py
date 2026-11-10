@@ -2,7 +2,7 @@
 
 import shutil
 import uuid
-from collections import Counter, deque
+from collections import Counter
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Iterable
@@ -12,8 +12,11 @@ from viwo.contracts.plugin import ExtractionContext
 
 from .failover import run_with_failover
 from .identify import carve, identify
+from .pool import each, workers
+from .ticker import Ticker
 
 MAX_DEPTH = 10
+SAID_FROM = 200  # files in one round from which identifying them is announced and counted
 
 
 @dataclass
@@ -48,23 +51,39 @@ def unpack_all(
     stops the queue (the stage after says it)."""
     report = UnpackReport()
     seen: set[str] = set()
-    queue = deque((path, origin, 0) for path, origin in items)
-    while queue and not (cancel is not None and cancel.cancelled):
-        path, origin, depth = queue.popleft()
-        match = identify(path, runtime.slots.values())
-        key = runtime.os.fs.path_key(path.resolve())
-        if match is None or key in seen:
-            continue
-        seen.add(key)
-        report.found += 1
-        if depth > MAX_DEPTH:
-            report.failures.append(f"{origin}: nesting deeper than {MAX_DEPTH}")
-            continue
-        dest = out_root / f"archive_{report.found:05d}_{uuid.uuid4().hex[:8]}"
-        if _unpack_one(runtime, match, dest, make_ctx, report, origin):
-            for nested in _candidates(dest, set()):
-                queue.append((nested, f"{origin}!{nested.relative_to(dest).as_posix()}", depth + 1))
+    stopped = lambda: cancel is not None and cancel.cancelled  # noqa: E731
+    queue, depth = list(items), 0
+    while queue and not stopped():  # one round per nesting depth, in the queue's order
+        nested: list[tuple[Path, str]] = []
+        for (path, origin), match in zip(queue, _identified(runtime, queue, make_ctx, cancel)):
+            key = runtime.os.fs.path_key(path.resolve())
+            if match is None or key in seen or stopped():
+                continue
+            seen.add(key)
+            report.found += 1
+            if depth > MAX_DEPTH:
+                report.failures.append(f"{origin}: nesting deeper than {MAX_DEPTH}")
+                continue
+            dest = out_root / f"archive_{report.found:05d}_{uuid.uuid4().hex[:8]}"
+            if _unpack_one(runtime, match, dest, make_ctx, report, origin):
+                inside = _candidates(dest, set())
+                nested += [(p, f"{origin}!{p.relative_to(dest).as_posix()}") for p in inside]
+        queue, depth = nested, depth + 1
     return report
+
+
+def _identified(runtime, queue: list, make_ctx, cancel) -> Iterable:
+    """Which of the files are archives (their matches, in order). A large round (the files of
+    the archives just unpacked) runs on the worker pool and is announced and counted: each
+    file is opened for its head and tail, minutes on a large game (never silent)."""
+    slots = list(runtime.slots.values())
+    if len(queue) < SAID_FROM:
+        return (identify(path, slots) for path, _ in queue)
+    ctx = make_ctx("core")
+    say = lambda message: ctx.log(message, stage="identify")  # noqa: E731
+    say(f"Looking for nested archives in {len(queue):,} extracted file(s) on {workers()} workers")
+    ticker = Ticker(say, "Identified files:", len(queue))
+    return (ticker.tick() or m for m in each(lambda item: identify(item[0], slots), queue, cancel))
 
 
 def _unpack_one(runtime, match, dest: Path, make_ctx, report: UnpackReport, origin: str) -> bool:
