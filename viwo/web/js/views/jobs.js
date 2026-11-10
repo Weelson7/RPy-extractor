@@ -9,7 +9,9 @@ export const KIND = { extract: ["EXTRACTION", "#extract"], survey: ["SURVEY", "#
   capture: ["CAPTURE", "#capture"], indexes: ["INDEXES UPDATE", "#system"], cleanup: ["CLEANUP", "#cleanup"],
   analyze: ["ANALYSIS", "#analysis"], patch: ["PATCH SET", "#patches"], mod: ["MOD PACKAGE", "#patches"], dump: ["MEMORY DUMP", "#runtime"], trace: ["API TRACE", "#runtime"], agent: ["RUNTIME AGENT", "#runtime"], record: ["AUDIO RECORDING", "#runtime"], profile: ["CPU PROFILE", "#runtime"] };
 const kindName = (k) => KIND[k]?.[0] || String(k).toUpperCase();
-const when = (j) => `${new Date(j.started * 1000).toLocaleTimeString()} · ${Number(j.elapsed || 0).toFixed(1)} s`;
+const when = (j) => `${new Date(j.started * 1000).toLocaleTimeString()} · ${span(Number(j.elapsed || 0))}`;
+/** 8.2 s, 3 min 20 s, 3 h 28 min: a duration as a person says it. */
+const span = (s) => (s < 60 ? `${s.toFixed(1)} s` : s < 3600 ? `${Math.floor(s / 60)} min ${String(Math.round(s % 60)).padStart(2, "0")} s` : `${Math.floor(s / 3600)} h ${String(Math.floor((s % 3600) / 60)).padStart(2, "0")} min`);
 const human = (k) => k.replace(/([a-z])([A-Z])/g, "$1 $2").toLowerCase();
 const S = { list: [], sel: null, from: 0, timer: 0, busy: false };
 const el = {};

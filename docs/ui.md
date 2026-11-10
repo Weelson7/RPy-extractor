@@ -107,6 +107,17 @@ registerPanel("system", { id: "mygame-status", order: 10, render: (ctx) => panel
   and skipped; the app always starts. A drop-in plugin ships its module as a static file in its
   own folder; the server serves it under the URL it lists.
 
+## Feedback
+
+- An error toast stays until it is dismissed (DISMISS) or the user changes view; an
+  information toast leaves by itself. Toasts never cover what is under them for the pointer.
+- The log dock is polled open or closed: closed, its handle shows the last line, so what the
+  server last said is on every view.
+- Up to 1500 px wide the strip keeps its codes and counters and drops the labels, so the top
+  bar never wraps.
+- A button that started work says so while it runs (CONVERTING…, SCANNING…) and an empty or
+  unchanged workspace folder is answered in words before any request leaves.
+
 ## Tests
 
 - `tests/test_ui_lint.py` (L0, no browser): the rules above, on every view, `base.css` and

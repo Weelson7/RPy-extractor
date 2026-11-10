@@ -42,11 +42,17 @@ export function toast(message, kind = "info", detail = "") {
   const box = h("div", { class: "toast", "data-kind": kind, role: kind === "err" ? "alert" : null },
     h("b", {}, label), h("span", {}, message), detail ? h("small", {}, detail) : null);
   $("#toasts").append(box);
-  const life = kind === "err" ? 8000 : 4200;
-  setTimeout(() => { box.dataset.state = "out"; }, life);
-  setTimeout(() => box.remove(), life + 300);
+  if (kind === "err") { // an error stays until it is read: dismissed by hand, or by leaving the view
+    box.append(h("button", { type: "button", class: "btn sm ghost x", onclick: () => box.remove() }, "DISMISS"));
+    return box;
+  }
+  setTimeout(() => { box.dataset.state = "out"; }, 4200);
+  setTimeout(() => box.remove(), 4500);
   return box;
 }
+
+/** Leaving a view takes its error toasts along: they never describe the view you are on now. */
+export const clearErrors = () => document.querySelectorAll("#toasts .toast[data-kind=err]").forEach((t) => t.remove());
 
 export const toastErr = (err, prefix = "") =>
   toast(`${prefix}${err.message || err}`, err.code === "cancelled" ? "warn" : "err", err.hint || errInfo(err)[1]);
@@ -76,12 +82,12 @@ export function browseBtn(field, after = null, pick = (p) => api.browse(p).then(
 export function modal({ title, body, actions, input, tag = "// SYS" }) {
   return new Promise((resolve) => {
     const prev = document.activeElement;
-    const field = input ? h("input", { class: "input mono grow", value: input.value || "", placeholder: input.placeholder || null, "aria-label": input.label || title, spellcheck: "false" }) : null;
+    const field = input ? h("input", { id: "modal-input", class: "input mono grow", value: input.value || "", placeholder: input.placeholder || null, "aria-label": input.label || title, spellcheck: "false" }) : null;
     const buttons = actions.map((a) => btn(a.label, () => close(a.value), a.kind || ""));
     const primary = actions.findIndex((a) => a.primary);
     const dlg = h("div", { class: "modal panel", role: "dialog", "aria-modal": "true", "aria-labelledby": "modal-t" },
       h("header", { class: "panel-h" }, h("span", { class: "idx" }, tag), h("h3", { id: "modal-t" }, title)),
-      h("div", { class: "panel-b" }, body, input?.label ? h("label", { class: "lbl" }, input.label) : null,
+      h("div", { class: "panel-b" }, body, input?.label ? h("label", { class: "lbl", for: "modal-input" }, input.label) : null,
         input?.browse ? h("div", { class: "row" }, field, browseBtn(field)) : field),
       h("footer", { class: "modal-f" }, buttons));
     const back = h("div", { class: "backdrop", onmousedown: (e) => e.target === back && close(null) }, dlg);

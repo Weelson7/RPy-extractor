@@ -75,7 +75,7 @@ async function scan() {
   if (S.busy) return;
   if (S.done && !(await confirmBox("SCAN AGAIN", "A new scan drops the UNDO for the last cleanup. The files stay where they are now.", { ok: "SCAN" }))) return;
   S.busy = true;
-  bar();
+  render();
   try {
     const plan = await asJob(() => api.sanitize("plan", {}), (r) => `${fmtNum(r.findings.length)} FINDING(S)`);
     Object.assign(S, { plan, done: null, files: plan.scanned });
@@ -141,7 +141,7 @@ function sync() {
 
 const noFiles = () => empty("WORKSPACE EMPTY", "Nothing to clean yet. Extract a game into this workspace first.", goBtn("#extract", "GO TO EXTRACT"));
 
-const idle = () => (S.files === 0 ? noFiles() : empty("NO SCAN YET",
+const idle = () => (S.files === 0 ? noFiles() : S.busy ? empty("SCANNING…", "ViWo is reading every workspace file (read-only). The RUN panel counts them; the findings appear here when it ends.") : empty("NO SCAN YET",
   "ViWo reads every workspace file (read-only) and lists what could be cleaned. Nothing changes until you press APPLY SELECTED.", btn("SCAN NOW", () => scan(), "primary")));
 
 function groups(findings) {

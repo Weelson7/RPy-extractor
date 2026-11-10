@@ -3,7 +3,7 @@
 // (STATIC, DYNAMIC, PATCHING) with a registry-driven rail per arm, router, status chips, dock.
 import { api, hasToken } from "./api.js";
 import * as ui from "./ui.js";
-import { h, $, fill, pref, logLine, bus, emit, toastErr, seg } from "./ui.js";
+import { h, $, fill, pref, logLine, bus, emit, toastErr, seg, clearErrors } from "./ui.js";
 import { ARMS, views, view, armViews, stripViews, loadPluginModules, addonPanels, code } from "./registry.js";
 import { currentGame, pickGame } from "./game.js";
 import "./views/home.js";
@@ -39,7 +39,7 @@ function buildShell() {
   state.armSeg = seg(ARMS.map((a) => [a.id, a.title]), "", (id) => { location.hash = `#${id}`; }, { "aria-label": "Arms" });
   fill($("#arms"), state.armSeg);
   fill($("#strip"), stripViews().map((v) => h("a", { class: "chip", href: `#${v.id}`, "data-view": v.id, title: v.subtitle },
-    h("i", {}), h("b", {}, `${code(v.id)} ${v.title}`))));
+    h("i", {}), h("b", {}, h("span", { class: "n" }, `${code(v.id)} `), v.title))));
   fill($("#main"), views().map((v) => h("section", { class: "view", id: `view-${v.id}`, hidden: true })));
 }
 
@@ -88,6 +88,7 @@ function route() {
   const arm = view(id).arm;
   showArm(arm === "global" ? state.arm || ARMS[0].id : arm);
   if (state.current === id) return anchor && history.replaceState(null, "", `#${id}`);
+  clearErrors();
   if (state.current) {
     scroll[state.current] = $("#main").scrollTop;
     view(state.current).hide?.();
@@ -173,11 +174,17 @@ function setDock(open) {
   if (open) pollLogs();
 }
 
+/** A running counter ("Scanned files: 63 / 5,197") is one line that updates, not one a second. */
+const counterOf = (l) => (/^\[[\d:]+\] (\[[^\]]+\] [^:\d]{3,60}:) [\d,]+/.exec(l) || [])[1];
+const fold = (lines) => lines.filter((l, i) => !(counterOf(l) && counterOf(l) === counterOf(lines[i + 1])));
+
 async function pollLogs() {
-  if (!state.dockOpen || document.hidden) return;
+  if (document.hidden) return;
   try {
-    const lines = (await api.logs()).logs || [];
+    const lines = fold((await api.logs()).logs || []);
     const last = lines[lines.length - 1] || "";
+    $("#dock-last").textContent = state.dockOpen ? "" : last; // closed: what is happening now, in one line
+    if (!state.dockOpen) return;
     if (lines.length === state.logCount && last === state.lastLog) return;
     state.logCount = lines.length;
     state.lastLog = last;

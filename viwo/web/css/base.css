@@ -463,3 +463,8 @@ main { padding: 18px 20px 24px; }
 .sbar i { flex-grow: var(--w, 1); }
 .wave i { height: var(--h, 3%); }
 .theme-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+/* a narrower window (the owner's, about 1430 px): the strip keeps its names, drops the numbers and the labels */
+@media (max-width: 1500px) { .topbar { gap: 10px; } .ws-path { min-width: 0; gap: 6px; padding-left: 8px; } .ws-path .lbl, .strip .chip .n { display: none; } }
+#dock-last { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 62vw; display: inline-block; vertical-align: bottom; }
+.toast { pointer-events: auto; }
+.toast .x { grid-column: 2; justify-self: end; }

@@ -106,7 +106,7 @@ export async function renderIdle(host) {
     const job = (await api.jobs()).filter((j) => j.kind === "extract").pop();
     if (job) last = await api.job(job.id);
   } catch { /* the summary is optional */ }
-  fill(tail, last ? lastRun(last) : h("p", { class: "dim" }, "No extraction yet since ViWo started. Pick a game folder on the left to begin."));
+  fill(tail, last ? lastRun(last) : h("p", { class: "dim" }, "No extraction yet since ViWo started. Pick a game folder on the left, then press RUN EXTRACTION."));
 }
 
 /** The workspace already holds an extraction: NEW FOLDER (the default) or REPLACE. */

@@ -4,6 +4,12 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.43 (2026-11-10)
+- UI review, first fixes: error toasts stay until dismissed; the closed log dock shows the
+  last line; the top bar fits narrow windows (labels dropped up to 1500 px); buttons say what
+  they are doing (CONVERTING…, SCANNING…); the workspace dialog answers an empty or unchanged
+  folder in words; job durations read as times.
+
 ## 1.20.42 (2026-11-10)
 - One memory budget for the tools that run at once (`ctx.memory`, doc 9.2): a capped tool
   holds its cap out of ViWo's share of the machine and waits while the share is out.
