@@ -58,17 +58,19 @@ def bind_slot(
     backends: dict[str, Backend],
     override: tuple[str, str] | None,
     os: OS,
+    policy: str = "failover",
 ) -> SlotBinding:
     main, spare, problems = _resolve(slot, override, backends)
+    spare = "" if policy == "main_only" else spare  # neither promoted nor run after a failure
     source = "ini" if override else "default"
     main_ok, main_reason = _usable(main, slot, backends, os)
     spare_ok, spare_reason = _usable(spare, slot, backends, os)
     reasons = tuple(problems + [r for r in (main_reason, spare_reason) if r])
     if main_ok:
-        return SlotBinding(slot.slot_id, main, spare if spare_ok else "", False, source, reasons)
-    if spare_ok:
-        return SlotBinding(slot.slot_id, spare, "", True, source, reasons)
-    return SlotBinding(slot.slot_id, "", "", False, source, reasons)
+        bound = (main, spare if spare_ok else "", False)
+    else:
+        bound = (spare, "", True) if spare_ok else ("", "", False)
+    return SlotBinding(slot.slot_id, *bound, source, reasons, policy)
 
 
 def bind_all(
@@ -76,9 +78,13 @@ def bind_all(
     backends: dict[str, Backend],
     overrides: dict[str, tuple[str, str]],
     os: OS,
+    policies: dict[str, str] | None = None,
 ) -> tuple[dict[str, SlotBinding], list[str]]:
+    policies = policies or {}
     problems = [f"[slots] unknown slot '{s}' ignored" for s in overrides if s not in slots]
+    problems += [f"[slot_policy] unknown slot '{s}' ignored" for s in policies if s not in slots]
     bindings = {
-        sid: bind_slot(slot, backends, overrides.get(sid), os) for sid, slot in slots.items()
+        sid: bind_slot(slot, backends, overrides.get(sid), os, policies.get(sid, "failover"))
+        for sid, slot in slots.items()
     }
     return bindings, problems

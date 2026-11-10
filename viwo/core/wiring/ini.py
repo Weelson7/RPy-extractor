@@ -7,7 +7,8 @@ from pathlib import Path
 from viwo import CONTRACT_VERSION
 from viwo.contracts.errors import ViwoError
 
-KNOWN_SECTIONS = {"startup", "plugins", "slots", "tools", "server"}
+KNOWN_SECTIONS = {"startup", "plugins", "slots", "slot_policy", "tools", "server"}
+POLICIES = ("failover", "main_only")  # doc 8.2
 FORM_KEYS = ("os", "profile", "features", "auto_install", "strict_preflight", "av_exclusions")
 STARTUP_KEYS = {*FORM_KEYS, "base", "contract", "memory_limit"}
 SERVER_KEYS = {"host", "port", "workspace", "merged", "logs", "temp"}
@@ -27,6 +28,7 @@ class StartupConfig:
     plugins: dict[str, bool] = field(default_factory=dict)
     custom_dirs: tuple[Path, ...] = ()
     slots: dict[str, tuple[str, str]] = field(default_factory=dict)
+    policies: dict[str, str] = field(default_factory=dict)  # [slot_policy] slot -> POLICIES
     tools: dict[str, str] = field(default_factory=dict)
     options: dict[str, dict[str, str]] = field(default_factory=dict)
     source: str = "defaults"
@@ -102,6 +104,15 @@ def _read_tables(cfg: configparser.ConfigParser, out: StartupConfig, base: Path)
             for k, v in cfg["tools"].items()
             if v.strip() and v.strip().lower() != "auto"
         }
+
+
+def _read_policies(cfg: configparser.ConfigParser, out: StartupConfig) -> None:
+    for slot, value in cfg["slot_policy"].items() if cfg.has_section("slot_policy") else ():
+        if (policy := value.strip().lower()) in POLICIES:
+            out.policies[slot.lower()] = policy
+        else:
+            known = " or ".join(POLICIES)
+            out.problems.append(f"[slot_policy] {slot} = {value}: {known}; failover used")
 
 
 def _read_options(cfg: configparser.ConfigParser, out: StartupConfig) -> None:
@@ -186,6 +197,7 @@ def load_ini(path: Path | None) -> StartupConfig:
         _sources(files, out)
         _read_startup(cfg, out)
         _read_tables(cfg, out, path.parent)
+        _read_policies(cfg, out)
         _read_options(cfg, out)
         _read_server(cfg, out, path.parent)
     except (configparser.Error, ValueError) as exc:

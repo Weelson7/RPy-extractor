@@ -68,6 +68,10 @@ hello       = on                 ; drop-ins are opt-in (also custom.<id> = on)
 unarchive.7z   = sevenzip-cli, py7zr
 export.unity   = unitypy, assetstudiomod-cli
 
+[slot_policy]
+; <slot_id> = failover | main_only    failover (default): the spare runs when the main cannot;
+decode.audio   = main_only          ; main_only: the spare is never bound, promoted or run
+
 [tools]
 ; <dependency id> = path to the executable (relative to the ini); wins over third_party/
 sevenzip = C:/Program Files/7-Zip/7z.exe
@@ -115,8 +119,7 @@ The web UI's landing screen runs the same preflight as a job (kind `preflight`).
 
 ## 9.5 Not implemented
 
-`[slot_policy]` (policies other than failover) and `[hooks]` lifecycle hooks are open
-(CONFORMANCE).
+`[hooks]` lifecycle hooks and the `supplement` slot policy are open (CONFORMANCE).
 
 ## 9.6 Relationship to the UI
 

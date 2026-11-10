@@ -40,8 +40,11 @@ each the one tool for its job.
 
 ## 8.2 Failover and resolution
 
-Only the `failover` policy exists: run main; if the outcome is retryable, run the spare on the
-same item. Outcome kinds (`OutcomeKind`): `ok`, `unavailable` (retry), `failed` (retry; a backend
+Two policies, per slot (`[slot_policy]`, doc 9.2). `failover` (default): run main; if the
+outcome is retryable, run the spare on the same item. `main_only`: the spare is never bound,
+so it is neither promoted when the main is missing (the slot is then unbound and says why)
+nor run after the main failed. `supplement` (both run, the spare adding what the main left)
+is open. Outcome kinds (`OutcomeKind`): `ok`, `unavailable` (retry), `failed` (retry; a backend
 exception counts as failed), `needs_key` (never retried). Cancellation is the job's concern.
 
 Binding at boot:

@@ -156,6 +156,7 @@ class SlotBinding:
     promoted: bool = False  # main was unavailable, spare acts as main
     source: str = "default"  # "default" | "ini" | "cli"
     reasons: tuple[str, ...] = ()
+    policy: str = "failover"  # "failover" | "main_only": the spare is never used (doc 8.2)
 
     @property
     def bound(self) -> bool:

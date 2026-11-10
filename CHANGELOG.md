@@ -4,6 +4,10 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.53 (2026-11-10)
+- `[slot_policy] <slot> = main_only`: that slot's spare is never bound, promoted or run
+  (`failover` stays the default). `viwo slots` and `viwo info` show it.
+
 ## 1.20.51 (2026-11-10)
 - Deep pass: `--arms` runs part of it (for a repack proof: `static,patching`), `--workspace`
   reuses an extraction, and `tools/games_pass.ps1 -Deep <arms>` runs it on the copy of an

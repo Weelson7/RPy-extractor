@@ -33,7 +33,8 @@ def slots(data: dict) -> str:
     for slot_id, b in sorted(data.get("slots", data.get("bindings", {})).items()):
         main = b["main"] or "-- unbound --"
         flag = " (promoted)" if b.get("promoted") else ""
-        lines.append(f"{slot_id:<24} {main + flag:<20} {b.get('spare') or '-'}")
+        spare = "- (main only)" if b.get("policy") == "main_only" else b.get("spare") or "-"
+        lines.append(f"{slot_id:<24} {main + flag:<20} {spare}")
     deps = data.get("dependencies")
     if deps:
         lines += [

@@ -145,7 +145,7 @@ def boot(
         config.sources["startup.os"] = "cli"
     plugins, problems = _plugins(config, layer.os_id, home)
     slots, backends, clash = collect(*core_sources(), plugins)
-    bindings, bind_problems = bind_all(slots, backends, config.slots, layer)
+    bindings, bind_problems = bind_all(slots, backends, config.slots, layer, config.policies)
     for slot in slots_cli.keys() & bindings.keys():
         bindings[slot] = replace(bindings[slot], source="cli")
     for binding in bindings.values():
