@@ -4,6 +4,14 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.19 (2026-11-10)
+- Faster commits (owner): the tests a commit runs go in parallel (`tools/run_tests.py`), one
+  process per test module on a pool of 80 % of the logical processors (owner's cap, counted at
+  the start of the run on any OS), the largest first; the few
+  modules that bind a fixed port, drive the browser or time child processes run alone after the
+  pool. Doc 17. CLAUDE.md and HANDOFF name it and no longer state a test count (they went
+  stale: 567 and 611 against 612).
+
 ## 1.20.18 (2026-11-10)
 - Fix: trashing or renaming in SORT the song its preview was playing failed with Windows error
   32 ("being used by another process"), named against the whole workspace folder. SORT now

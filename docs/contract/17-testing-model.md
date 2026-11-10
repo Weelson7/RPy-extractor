@@ -10,6 +10,12 @@ the registry depends on every plugin, which it loads by discovery), the changed 
 and the tests whose code, or the code they import, names a changed file (a doc, a data file
 under `viwo/data/<folder>`, the web UI, a script run as a process). A change no test can see
 runs none; a change to the pipeline or to `pyproject.toml`, or `--full`, runs the whole suite.
+The selected modules run in parallel (`tools/run_tests.py`): one `python -m unittest` process
+per module on a pool of workers, 80 % of the logical processors counted at the start of the run
+on any OS (owner's cap; `VIWO_TEST_WORKERS` overrides),
+the largest first; the modules in its `SERIAL` list (a fixed port, a browser, child processes
+timed or killed on a timer) run alone after the pool, so a loaded machine cannot make them
+flaky. `python tools/run_tests.py` runs the whole suite the same way.
 
 ## 17.1 Principles
 

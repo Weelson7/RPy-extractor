@@ -28,7 +28,7 @@ CHECKS = (
     [sys.executable, "-m", "ruff", "check", "viwo", "tests", "tools", "packaging"],
     [sys.executable, "tools/loc_count.py"],
 )
-SUITE = [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-t", "."]
+SUITE = [sys.executable, "tools/run_tests.py"]  # every module, in parallel (run_tests.py)
 HOOK = "#!/bin/sh\n# ViWo: every commit must bump the version (tools/version.py)\n"
 HOOK += 'exec "${VIWO_PYTHON:-python}" tools/version.py verify\n'
 
@@ -105,7 +105,7 @@ def tests_argv(full: bool) -> list[str] | None:
     if picked is None:
         return SUITE
     print(f"tests affected by the change: {', '.join(picked) or 'none'}", flush=True)
-    return [sys.executable, "-m", "unittest", *picked] if picked else None
+    return [*SUITE, *picked] if picked else None
 
 
 def run_checks(full: bool = False) -> None:

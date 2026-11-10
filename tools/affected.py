@@ -12,7 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CODE = ("viwo", "tests", "tools", "packaging")
-EVERYTHING = {"pyproject.toml", "tools/version.py", "tools/affected.py"}
+EVERYTHING = {"pyproject.toml", "tools/version.py", "tools/affected.py", "tools/run_tests.py"}
 REGISTRY, PLUGINS = "viwo.core.wiring.registry", "viwo.plugins."
 
 
