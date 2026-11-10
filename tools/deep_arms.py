@@ -106,8 +106,8 @@ def _change(path: Path) -> str:
         ImageDraw.Draw(img).rectangle((0, 0, img.width // 3, img.height // 3), fill="red")
         img.save(path)
         return "red square"
-    if ext in ("txt", "json", "xml", "lua", "rpy"):
-        with open(path, "ab") as fh:
+    if ext in ("txt", "json", "xml", "lua", "rpy") and b"\0" not in path.read_bytes()[:4096]:
+        with open(path, "ab") as fh:  # real text; a binary under a text name gets the byte
             fh.write(b"\n" if ext == "json" else b"\n-- viwo deep pass\n")
         return "a line added"
     data = bytearray(path.read_bytes())

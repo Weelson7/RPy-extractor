@@ -5,6 +5,7 @@ bound as asked when the backends exist, and a bad id is said and replaced by the
 never silently; a malformed flag is refused with the form it should have; after the command
 word `--slot` and `--plugin` stay the command's own."""
 
+import os
 import random
 import tempfile
 import unittest
@@ -116,6 +117,24 @@ class FlagTextTests(unittest.TestCase):
             self.assertNotIn("renpy", early.plugins)
             late = boot_for_cli(["--ini", ini, "extract", "g", "--plugin", "renpy=off"])
             self.assertIn("renpy", late.plugins)  # the command's flag is not a wiring flag
+
+
+class RelativeIniTests(unittest.TestCase):
+    def test_a_relative_ini_still_gives_absolute_homes(self) -> None:
+        """`viwo --ini startup.ini`: a tool started in another folder must still be found."""
+        from viwo.core import thirdparty
+
+        with tempfile.TemporaryDirectory() as tmp:
+            write_ini(Path(tmp))
+            here = Path.cwd()
+            os.chdir(tmp)
+            try:
+                rt = boot(Path("test.ini"), temp_root=Path(tmp) / "t")
+            finally:
+                os.chdir(here)
+            self.assertTrue(rt.config.path.is_absolute())
+            home = thirdparty.home_of(rt.config)
+            self.assertEqual((home.is_absolute(), home), (True, Path(tmp).resolve()))
 
 
 if __name__ == "__main__":

@@ -4,6 +4,11 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.58 (2026-11-11)
+- `viwo --ini <relative path>`: the tools under `third_party/` are found by absolute path (a
+  tool started in another folder was not found).
+- Deep pass: a binary file under a text name gets a changed byte, not an added line.
+
 ## 1.20.57 (2026-11-11)
 - Repack: the edit set is hashed several files at once (`repack --plan` took 47 minutes on a
   183,000-file workspace, one file at a time).

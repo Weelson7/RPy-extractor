@@ -203,5 +203,5 @@ def load_ini(path: Path | None) -> StartupConfig:
     except (configparser.Error, ValueError) as exc:
         raise ViwoError("invalid_request", f"{path}: {exc}") from exc
     out.source = " <- ".join(str(f) for f in reversed(files))
-    out.path = path
+    out.path = path.resolve()  # tools are found from here whatever folder a tool runs in
     return out
