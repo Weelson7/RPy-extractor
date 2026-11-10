@@ -4,6 +4,11 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.47 (2026-11-10)
+- The technical deck is built from the repository: `python tools/presentation/deck.py` writes
+  the PowerPoint from the frames, the counts of the code and the CTF results; pptxgenjs is
+  pinned as one file and installed by itself.
+
 ## 1.20.46 (2026-11-10)
 - SQC suite brought up to the current build: view numbers dropped (codes are computed), stale
   lines fixed, new checks for guides, workspace conversion, SORT's group trash, the UI's

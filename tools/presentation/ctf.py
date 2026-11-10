@@ -9,29 +9,42 @@ from pathlib import Path
 from reference import esc
 
 
-def _load(path: Path):
+def load(path: Path):
     try:
         return json.loads(path.read_text(encoding="utf-8"))
     except (OSError, ValueError):
         return None
 
 
-def passes(data: Path) -> str:
-    """One row per game of the games pass: engine, files out, flags passed, the game unchanged."""
-    rows = []
+def flags(data: Path) -> list[dict]:
+    """One entry per game of the games pass: engine, files out, flags passed and missed, the
+    game unchanged."""
+    games = []
     for report in sorted((data / "games-pass").glob("*/report.json")):
-        for game in _load(report) or []:
-            flags = game.get("flags", [])
-            ok = sum(1 for f in flags if f.get("ok"))
-            failed = [f["name"] for f in flags if not f.get("ok")]
+        for game in load(report) or []:
+            judged = game.get("flags", [])
             extract = game.get("extract") or {}
-            rows.append(
-                f"<tr><td>{esc(game.get('game', report.parent.name))}</td>"
-                f"<td>{esc(', '.join(extract.get('plugins', [])) or '-')}</td>"
-                f"<td>{extract.get('copied', 0):,}</td><td>{ok} / {len(flags)}</td>"
-                f"<td>{esc('; '.join(failed)) or '-'}</td>"
-                f"<td>{'yes' if game.get('gameUnchanged') else 'NO'}</td></tr>"
+            games.append(
+                {
+                    "game": game.get("game", report.parent.name),
+                    "engine": ", ".join(extract.get("plugins", [])) or "-",
+                    "files": extract.get("copied", 0),
+                    "ok": sum(1 for f in judged if f.get("ok")),
+                    "flags": len(judged),
+                    "missed": [f["name"] for f in judged if not f.get("ok")],
+                    "unchanged": bool(game.get("gameUnchanged")),
+                }
             )
+    return games
+
+
+def passes(data: Path) -> str:
+    rows = [
+        f"<tr><td>{esc(g['game'])}</td><td>{esc(g['engine'])}</td><td>{g['files']:,}</td>"
+        f"<td>{g['ok']} / {g['flags']}</td><td>{esc('; '.join(g['missed'])) or '-'}</td>"
+        f"<td>{'yes' if g['unchanged'] else 'NO'}</td></tr>"
+        for g in flags(data)
+    ]
     if not rows:
         return "<p class='sub'>No games pass yet: run <code>tools/games_pass.ps1</code>.</p>"
     head = "<tr><th>Game</th><th>Engine</th><th>Files out</th><th>Flags</th>"
@@ -41,7 +54,7 @@ def passes(data: Path) -> str:
 
 def challenges(data: Path) -> str:
     """Each challenge run by hand: what was asked, how ViWo did it, the result and its limits."""
-    items = _load(data / "ctf" / "results.json") or []
+    items = load(data / "ctf" / "results.json") or []
     if not items:
         where = "<code>viwo-data/ctf/results.json</code>"
         return f"<p class='sub'>No challenge recorded yet ({where}).</p>"

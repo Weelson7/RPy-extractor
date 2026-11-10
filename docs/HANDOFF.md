@@ -58,7 +58,11 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
   caption and a longer description each, in `steps.json`); `tech_pdf.py` builds the technical
   PDF from `tech_template.html` (mermaid charts, pinned and installed by itself), the frames and
   reference tables generated from the code (`reference.py`); `video.py` turns the frames into
-  the demo MP4 with burned-in captions through the pinned ffmpeg. Output in
+  the demo MP4 with burned-in captions through the pinned ffmpeg; `deck.py` builds the
+  technical deck (PowerPoint, the presentation the owner shows: the PDF stays as the long
+  reference) from `deck.js` (layout and prose), the frames, the counts of the code and the
+  CTF results, through the pinned pptxgenjs (one file, run by Node, nothing to install); check
+  a new deck by eye before it leaves (PowerPoint or LibreOffice renders it). Output in
   `viwo-data/presentation/`. Capture the frames on the demo game (Cyberpunk 2077) after the
   last change to the UI.
 - **Deep pass** (real games, every capability, judged on its output): from the same worktree,
