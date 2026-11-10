@@ -4,6 +4,11 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.32 (2026-11-10)
+- CARVE runs on the worker pool: both the pass that finds which files nothing recognizes (a
+  second silent pass over every extracted file, now announced and counted) and the carving
+  itself. Carve folders are numbered in the files' order, so a run comes out the same.
+
 ## 1.20.31 (2026-11-10)
 - RDAR archives unpack their members several at once and say where they are
   ("basegame_4_gamedata.archive: 31,200/57,033 members", every second; before, one line when

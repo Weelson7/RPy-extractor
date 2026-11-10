@@ -34,12 +34,20 @@ class PoolTests(unittest.TestCase):
             self.assertEqual(
                 list(pool.each(slow, range(len(delays)))), [i * 2 for i in range(len(delays))]
             )
-        token, seen = CancelToken(), []
-        for value in pool.each(lambda i: i, range(1000), token):
+        token, seen, started = CancelToken(), [], []
+
+        def work(i):
+            started.append(i)
+            return i
+
+        for value in pool.each(work, range(100_000), token):
             seen.append(value)
             if value == 5:
                 token.cancel()
-        self.assertEqual(seen, list(range(6)))  # nothing after the cancel is handed on
+        self.assertEqual(seen, list(range(len(seen))))  # a prefix, in order
+        self.assertGreaterEqual(len(seen), 6)  # what had started is handed on
+        self.assertLess(len(started), 100_000)  # nothing starts after the cancel
+        self.assertEqual(list(pool.each(work, range(9), token)), [])  # cancelled before: nothing
 
     def test_the_budget_is_80_percent_and_can_be_set(self) -> None:
         for count in (1, 2, 4, 5, 20, 64):

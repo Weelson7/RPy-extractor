@@ -7,6 +7,7 @@ raises is a named failure in the failover; the carve stage says its failures and
 from __future__ import annotations
 
 import hashlib
+import os
 import random
 import tempfile
 import unittest
@@ -197,6 +198,7 @@ class CarveStageTests(unittest.TestCase):
             with (
                 mock.patch.object(carving, "run_with_failover", side_effect=answer),
                 mock.patch.object(carving, "BIG", 10),
+                mock.patch.dict(os.environ, {"VIWO_WORKERS": "1"}),  # one at a time: in order
             ):
                 report = carving.carve_all(run, frozenset(), blobs)
             self.assertEqual(report.scanned, 2)  # the cancel stopped before the third

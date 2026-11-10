@@ -29,7 +29,8 @@ counted, stage `identify`); the parts of a batch decoder (DECODE: WolvenKit's pa
 files, each its own process and folder, as many at once as the budget and the memory allow,
 4 GB kept per tool; the first part runs alone, since a tool writes its settings on first
 use); the per-file decoders; the members of an RDAR archive (read, inflated and written
-several at once, their names given in the members' order first). A plugin reaches the pool as
+several at once, their names given in the members' order first); CARVE (the check for
+files nothing recognizes, then the carving, its folders numbered in the files' order). A plugin reaches the pool as
 `ctx.each(fn, items, cancel)` (never by importing the core); without a pool it runs one at a
 time. At most twice the worker count of results wait for their reader. What writes the workspace (COLLECT's moves) stays one writer.
 

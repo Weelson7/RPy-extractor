@@ -8,6 +8,7 @@ from viwo.contracts.pipeline import CarveMode
 
 from .failover import run_with_failover
 from .identify import identify
+from .pool import each, workers
 from .ticker import Ticker
 
 KNOWN = frozenset(
@@ -22,6 +23,7 @@ CODE = frozenset(
 )
 MIN_SIZE = 1024
 BIG = 100 << 20
+SAID_FROM = 200  # files from which the check for carving candidates is announced
 
 
 @dataclass
@@ -56,23 +58,33 @@ def carve_all(run, claimed: frozenset[str], items: list[tuple[Path, str]]) -> Ca
     """claimed: suffixes/names decoded by an exporter that succeeded in this run."""
     rt, report = run.rt, CarveReport()
     binding = rt.bindings.get("carve.signatures")
-    todo = [(p, o) for p, o in items if wanted(p, run.request.carve, claimed, rt.slots.values())]
-    if not todo or binding is None or not binding.bound:
+    if run.request.carve is CarveMode.OFF or binding is None or not binding.bound:
+        return report
+    say, slots = (lambda m: run.log(m, "carve")), list(rt.slots.values())
+    if len(items) >= SAID_FROM:  # each file is opened: minutes on a large game, so it is said
+        say(f"Looking through {len(items):,} file(s) for ones nothing recognizes")
+    ticker = Ticker(say, "Checked files:", len(items))
+    check = lambda item: wanted(item[0], run.request.carve, claimed, slots)  # noqa: E731
+    keep = [ticker.tick() or yes for yes in each(check, items, run.cancel)]
+    todo = [item for item, yes in zip(items, keep) if yes]
+    if not todo:
         return report
     ctx = run.ctx("core")
-    run.log(f"Carving {len(todo)} unrecognized file(s) for embedded assets", "carve")
-    ticker = Ticker(lambda m: run.log(m, "carve"), "Carve-scanned files:", len(todo))
-    for path, origin in todo:
-        if run.cancel.cancelled:
-            break
+    say(f"Carving {len(todo)} unrecognized file(s) for embedded assets on {workers()} workers")
+    ticker = Ticker(say, "Carve-scanned files:", len(todo))
+    jobs = [  # numbered in the files' order, so the folders are the same on every run
+        (path, origin, run.work / "carve" / f"{i:05d}_{uuid.uuid4().hex[:6]}")
+        for i, (path, origin) in enumerate(todo)
+    ]
+
+    def one(job):
+        if (_size(job[0]) or 0) > BIG:
+            say(f"Scanning {job[0].name} ({(_size(job[0]) or 0) >> 20} MB)")
+        return run_with_failover(binding, rt.backends, lambda b: b.carve(job[0], job[2], ctx))
+
+    for (path, origin, dest), (outcome, used) in zip(jobs, each(one, jobs, run.cancel)):
         ticker.tick(note=f"{report.files:,} embedded file(s) found")
-        if (_size(path) or 0) > BIG:
-            run.log(f"Scanning {path.name} ({(_size(path) or 0) >> 20} MB)", "carve")
-        dest = run.work / "carve" / f"{report.scanned:05d}_{uuid.uuid4().hex[:6]}"
         report.scanned += 1
-        outcome, used = run_with_failover(
-            binding, rt.backends, lambda backend: backend.carve(path, dest, ctx)
-        )
         if outcome.fallback:
             run.log(f"{path.name}: {outcome.fallback}", "carve", "warn")
         if not outcome.ok:
