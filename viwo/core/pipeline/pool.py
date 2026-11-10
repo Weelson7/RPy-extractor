@@ -3,6 +3,7 @@ process may use, counted when asked, on any OS; VIWO_WORKERS overrides. One numb
 whole pipeline, so stages never oversubscribe the machine."""
 
 import os
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, Iterable, Iterator
 
@@ -18,9 +19,21 @@ def each(fn: Callable, items: Iterable, cancel=None, count: int = 0) -> Iterator
     """fn over items on the worker pool (`count` workers when given), results in the items'
     order (so what follows is the same on every run); after a cancel the result in hand is
     still handed on, then what has not started is dropped and the results end."""
-    with ThreadPoolExecutor(count or workers()) as pool:
-        for result in pool.map(fn, items):
-            yield result
-            if cancel is not None and cancel.cancelled:
-                pool.shutdown(wait=True, cancel_futures=True)
-                return
+    count, ahead = count or workers(), deque()
+    with ThreadPoolExecutor(count) as pool:
+        try:  # at most 2 x count results wait for the reader: memory stays bounded
+            for item in items:
+                if cancel is not None and cancel.cancelled:
+                    return  # nothing starts after a cancel
+                ahead.append(pool.submit(fn, item))
+                if len(ahead) >= count * 2:
+                    yield ahead.popleft().result()
+                    if cancel is not None and cancel.cancelled:
+                        return
+            while ahead:
+                yield ahead.popleft().result()
+                if cancel is not None and cancel.cancelled:
+                    return
+        finally:
+            for future in ahead:
+                future.cancel()

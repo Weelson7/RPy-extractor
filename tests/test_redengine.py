@@ -10,6 +10,7 @@ from unittest import mock
 
 from tests.helpers import runtime, tree_hashes
 from viwo.contracts import CancelToken, ExtractionRequest
+from viwo.core.pipeline import pool
 from viwo.core.pipeline.runner import extract
 from viwo.plugins.redengine import RdarBuiltin
 from viwo.plugins.redengine.rdar import CLASSES, KARK, Archive, Oodle, extension, root_class
@@ -160,6 +161,7 @@ class ArchivePropertyTests(unittest.TestCase):
             ctx.os.tools.locate.return_value = None
             ctx.cancel.cancelled = False
             ctx.games = ()
+            ctx.each = pool.each  # the run's worker pool, as the core hands it
             path = Path(tmp) / "a.archive"
             path.write_bytes(blob)
             out = RdarBuiltin().extract(path, Path(tmp) / "plugin", ctx)  # no Oodle beside it
@@ -273,6 +275,8 @@ class NameListTests(unittest.TestCase):
                     os=SimpleNamespace(tools=SimpleNamespace(locate=lambda spec: located)),
                     cancel=SimpleNamespace(cancelled=cancelled),
                     games=games,
+                    each=pool.each,
+                    log=lambda *a, **k: None,
                 )
 
             names, notes = _names(ctx(kark, games=()), self.PlainOodle())  # no game plugin

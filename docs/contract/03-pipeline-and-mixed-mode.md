@@ -28,7 +28,10 @@ unpacked (UNPACK: one round per nesting depth; a round of 200 files or more is a
 counted, stage `identify`); the parts of a batch decoder (DECODE: WolvenKit's parts of 600
 files, each its own process and folder, as many at once as the budget and the memory allow,
 4 GB kept per tool; the first part runs alone, since a tool writes its settings on first
-use); the per-file decoders. What writes the workspace (COLLECT's moves) stays one writer.
+use); the per-file decoders; the members of an RDAR archive (read, inflated and written
+several at once, their names given in the members' order first). A plugin reaches the pool as
+`ctx.each(fn, items, cancel)` (never by importing the core); without a pool it runs one at a
+time. At most twice the worker count of results wait for their reader. What writes the workspace (COLLECT's moves) stays one writer.
 
 **Said as it happens** (owner): a stage says what it starts (what, how many, on how many
 workers) and nothing runs for more than a few seconds without a counted progress line.

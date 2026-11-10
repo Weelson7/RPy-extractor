@@ -4,6 +4,14 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.31 (2026-11-10)
+- RDAR archives unpack their members several at once and say where they are
+  ("basegame_4_gamedata.archive: 31,200/57,033 members", every second; before, one line when
+  the archive was done, minutes later). Measured on basegame_4_animation (5,648 members, the
+  machine busy): 15.7 s on one worker, 9.2 s on sixteen. Plugins reach the worker pool through
+  their context (`ctx.each`), never by importing the core; the pool holds at most twice its
+  worker count of results, and starts nothing after a cancel. Doc 3.1.
+
 ## 1.20.30 (2026-11-10)
 - Fix: trashing or renaming a large file in SORT failed ("in use"). For an audio file over
   20 MB the page fetched the file for its waveform, found it too large and left the download

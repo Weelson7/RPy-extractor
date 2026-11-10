@@ -9,6 +9,8 @@ from viwo.contracts.errors import ViwoError
 from viwo.contracts.plugin import ExtractionContext
 from viwo.contracts.types import CancelToken, DetectionResult
 
+from .pipeline.pool import each
+
 CORE = DetectionResult("core", 1.0, (), "core")
 
 
@@ -34,6 +36,7 @@ def core_context(rt, job: str, root: Path, work: Path, sink=None, cancel=None):
         {},
         sink or (lambda e: None),
         cancel or CancelToken(),
+        each=each,
     )
 
 

@@ -118,6 +118,8 @@ class ExtractionContext:
     probe: GameProbe | None = None  # the shared folder index (doc 2.3); None in tool contexts
     workspace: Path | None = None  # the run's workspace: what other arms left there (read-only)
     games: tuple = ()  # the run's game plugins of this engine (doc 2.10): what they supply
+    # the run's worker pool (doc 3.1): each(fn, items, cancel) -> results in the items' order
+    each: Callable = lambda fn, items, cancel=None: map(fn, items)  # no pool: one at a time
 
     def log(self, message: str, level: str = "info", stage: str = "") -> None:
         if self.progress:

@@ -9,6 +9,8 @@ found beside the archive; Windows only): ViWo authors no decompressor and fetche
 """
 
 import struct
+import threading
+import time
 from pathlib import Path
 
 from viwo.contracts import workspace as ws
@@ -52,19 +54,35 @@ class RdarBuiltin(Unarchiver):
         oodle = Oodle.beside(archive, ctx.os)
         names, notes = _names(ctx, oodle)
         skipped = unnamed = 0
-        out = ws.Names(dest)
+        out, handles, local = ws.Names(dest), [], threading.local()
+
+        def handle():  # the archive, opened once per worker: a shared handle cannot seek for two
+            if not hasattr(local, "fh"):
+                local.fh = open(archive, "rb")  # noqa: SIM115 (closed with `handles` below)
+                handles.append(local.fh)
+            return local.fh
+
         try:
             with open(archive, "rb") as fh:
-                rdar = Archive(fh)
-                for entry in rdar.entries():
-                    if ctx.cancel.cancelled:
-                        break
+                rdar, plan = Archive(fh), []
+                for entry in rdar.entries():  # names in the members' order: one writer
                     name = names.get(entry.name_hash) if names else None
                     unnamed += name is None
-                    skipped += not rdar.write(entry, out, oodle, name or "")
+                    plan.append((entry, Archive.place(out, name or "")))
+                one = lambda i: rdar.write(i[0], out, oodle, at=(i[1], handle()))  # noqa: E731
+                said = time.monotonic()
+                for done, written in enumerate(ctx.each(one, plan, ctx.cancel), 1):
+                    skipped += not written
+                    if ctx.cancel.cancelled:
+                        break
+                    if time.monotonic() - said >= 1:  # never silent: a large archive is minutes
+                        said = time.monotonic()
+                        ctx.log(f"{archive.name}: {done}/{len(plan)} members", stage="unpack")
         except (OSError, ValueError, struct.error) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"bad RDAR: {exc}")
         finally:
+            for opened in handles:
+                opened.close()
             if names:
                 names.close()
         if skipped:

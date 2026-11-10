@@ -75,12 +75,13 @@ class Archive:
                 raise ValueError("segment range out of range")
             yield Entry(name_hash, tuple(self._segment(s) for s in range(first, last)))
 
-    def _read(self, segment: tuple[int, int, int], oodle: "Oodle | None") -> bytes | None:
+    def _read(self, segment: tuple[int, int, int], oodle: "Oodle | None", fh=None) -> bytes | None:
         offset, packed, size = segment
         if size > LIMIT or packed > LIMIT or offset > FAR:
             raise ValueError("segment out of range")
-        self.fh.seek(offset)
-        data = self.fh.read(packed)
+        fh = fh or self.fh
+        fh.seek(offset)
+        data = fh.read(packed)
         if packed == size or not data.startswith(KARK):
             return data
         if oodle is None:
@@ -88,19 +89,20 @@ class Archive:
         (raw_size,) = struct.unpack_from("<I", data, 4)
         return oodle.decompress(data[8:], min(raw_size, size))
 
-    def write(self, entry: Entry, out, oodle: "Oodle | None", name: str = "") -> bool:
+    def write(self, entry: Entry, out, oodle: "Oodle | None", name: str = "", at=None) -> bool:
         """The game's own file at its path when the name is known (else `<hash>.<ext>`): the
         main segment inflated, then the buffer segments exactly as stored (the CR2W buffer
         table gives their on-disk sizes and the reader inflates them itself), the form the
-        game and the community tools read."""
+        game and the community tools read. `at` = (the place `place` gave it, this thread's own
+        handle on the archive): members written several at once (the extraction)."""
         if not entry.segments:
             return True
-        main = self._read(entry.segments[0], oodle)
+        target, source = at or (None, self.fh)
+        main = self._read(entry.segments[0], oodle, source)
         if main is None:
             return False
         out = out if isinstance(out, ws.Names) else ws.Names(out)  # a folder: its own record
-        named = bool(name) and ws.writable(name) is not None  # an escape: kept by its hash, not
-        target = out.target(name) if named else None  # counted as skipped (it is not)
+        target = target or (self.place(out, name) if at is None else None)
         if target is None:
             target = out.dest / f"{entry.name_hash:016x}.{extension(main)}"
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -109,9 +111,16 @@ class Archive:
             for offset, packed, size in entry.segments[1:]:
                 if offset > FAR or packed > LIMIT:
                     raise ValueError("segment out of range")
-                self.fh.seek(offset)
-                fh.write(self.fh.read(packed))
+                source.seek(offset)
+                fh.write(source.read(packed))
         return True
+
+    @staticmethod
+    def place(out: "ws.Names", name: str) -> Path | None:
+        """Where a named member goes (None: no name, or one that would leave the folder, which
+        keeps its hash). The names record is one writer: asked in the members' order."""
+        named = bool(name) and ws.writable(name) is not None  # an escape: kept by its hash, not
+        return out.target(name) if named else None  # counted as skipped (it is not)
 
 
 def extension(data: bytes) -> str:
