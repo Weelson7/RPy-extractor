@@ -12,7 +12,7 @@ ARMS = {
     "patching": ("you change its content", ("repack", "patch", "mod")),
     "system": ("tools, config, the web UI", SYSTEM),
 }
-VALUED = {"--ini", "--os", "--profile", "--features"}
+VALUED = {"--ini", "--os", "--profile", "--features", "--plugin", "--slot"}
 
 
 def first_word(argv: list[str]) -> int:

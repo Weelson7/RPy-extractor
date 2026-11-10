@@ -4,6 +4,11 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.48 (2026-11-10)
+- `viwo --plugin <id>=on|off` and `viwo --slot <slot>=<main>[,<spare>]` (before the command,
+  repeatable): a plugin or a slot's backends for one run, over the ini and the profile; the
+  source reads `cli` in `viwo info`. A bad id is said and the default used.
+
 ## 1.20.47 (2026-11-10)
 - The technical deck is built from the repository: `python tools/presentation/deck.py` writes
   the PowerPoint from the frames, the counts of the code and the CTF results; pptxgenjs is

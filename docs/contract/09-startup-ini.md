@@ -17,8 +17,11 @@ Precedence, lowest to highest:
 1. built-in defaults (slot defaults of doc 8.4, plugin defaults);
 2. the one `base =` file named in `[startup]` (a single level; chains and loops are errors);
 3. the ini itself;
-4. global CLI flags: `--os`, `--profile` (that distro's plugin set over the ini's), `--features
-   a,b`.
+4. global CLI flags, given before the command: `--os`, `--profile` (that distro's plugin set
+   over the ini's), `--features a,b`, `--plugin <id>=on|off` and `--slot
+   <slot>=<main>[,<spare>]` (both repeatable, for this run only, over the ini and the profile;
+   `none` empties a place; an unknown id is said and the default used, as for the ini). After
+   the command word `--slot` and `--plugin` are the command's own options.
 
 The effective configuration, with the source of every value (`default`, `base`, `ini`, `cli`),
 is returned by `viwo --json info` and `GET /api/distro`. `viwo --verbose <command>` also prints it.
@@ -111,8 +114,8 @@ The web UI's landing screen runs the same preflight as a job (kind `preflight`).
 
 ## 9.5 Not implemented
 
-`[slot_policy]` (policies other than failover), `[hooks]` lifecycle hooks, and the CLI flags
-`--plugin <id>=on|off` / `--slot <slot>=<main>[,<spare>]` are open (CONFORMANCE).
+`[slot_policy]` (policies other than failover) and `[hooks]` lifecycle hooks are open
+(CONFORMANCE).
 
 ## 9.6 Relationship to the UI
 

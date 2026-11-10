@@ -125,8 +125,8 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
    move up.
 3. **CONFORMANCE partials:** built-in plugins keep no inventory and ship no sanitizer rules
    (the hooks work; nothing needs them yet); `core/thirdparty.py` runs `msiexec` (recorded).
-4. **CONFORMANCE opens:** sanitizer phases 2-3, `[slot_policy]`, `[hooks]`, `--plugin`/`--slot`
-   overrides, `memory_image` targets, round-trip converters, the engines of doc 13.7, Kaitai
+4. **CONFORMANCE opens:** sanitizer phases 2-3, `[slot_policy]`, `[hooks]`,
+   `memory_image` targets, round-trip converters, the engines of doc 13.7, Kaitai
    plugins.
 5. **Indexes:** create the `vidya_wormhole_indexes` repository, split `indexes/` out
    (`docs/indexes.md`), publish its first release; add QuickBMS scripts pinned by checksum.

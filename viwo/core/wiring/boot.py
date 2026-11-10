@@ -2,7 +2,7 @@
 
 import re
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from viwo import CONTRACT_VERSION
@@ -100,16 +100,41 @@ def _apply_profile(config, profile: str) -> None:
     config.sources["startup.profile"] = "cli"
 
 
+def _apply_overrides(config, overrides: tuple[dict, dict]) -> None:
+    """`--plugin <id>=on|off` and `--slot <slot>=<main>[,<spare>]` (doc 9.1 value source 4): this
+    run's choices over the ini's and the profile's."""
+    plugins, slots = overrides
+    for plugin_id, on in plugins.items():
+        config.plugins[plugin_id], config.sources[f"plugins.{plugin_id}"] = on, "cli"
+    for slot, pair in slots.items():
+        config.slots[slot], config.sources[f"slots.{slot}"] = pair, "cli"
+
+
+def _plugins(config, os_id: str, home) -> tuple[dict, list[str]]:
+    """The enabled plugins, configured with their options; what could not be is said."""
+    plugins, problems = load_enabled(config.plugins, config.custom_dirs, os_id)
+    for plugin_id, plugin in plugins.items():
+        plugin.home = home
+        try:
+            plugin.configure(config.options.get(plugin_id, {}))
+        except Exception as exc:  # a bad option disables only that plugin's extras
+            problems.append(f"plugin {plugin_id}: options rejected: {exc}")
+    return plugins, problems
+
+
 def boot(
     ini_path: Path | None = None,
     os_id: str | None = None,
     temp_root: Path | None = None,
     profile: str | None = None,
     features: tuple[str, ...] | None = None,
+    overrides: tuple[dict, dict] | None = None,
 ) -> Runtime:
     config = load_ini(ini_path if ini_path is not None else DEFAULT_INI)
     if profile:
         _apply_profile(config, profile)
+    plugins_cli, slots_cli = overrides or ({}, {})
+    _apply_overrides(config, (plugins_cli, slots_cli))
     if features is not None:  # `--features` (doc 9.1 value source cli) over [startup] features
         config.features, config.sources["startup.features"] = tuple(features), "cli"
     home = thirdparty.home_of(config)
@@ -118,15 +143,11 @@ def boot(
     layer = select_os(os_id or config.os_id, tools)
     if os_id:
         config.sources["startup.os"] = "cli"
-    plugins, problems = load_enabled(config.plugins, config.custom_dirs, layer.os_id)
-    for plugin_id, plugin in plugins.items():
-        plugin.home = home
-        try:
-            plugin.configure(config.options.get(plugin_id, {}))
-        except Exception as exc:  # a bad option disables only that plugin's extras
-            problems.append(f"plugin {plugin_id}: options rejected: {exc}")
+    plugins, problems = _plugins(config, layer.os_id, home)
     slots, backends, clash = collect(*core_sources(), plugins)
     bindings, bind_problems = bind_all(slots, backends, config.slots, layer)
+    for slot in slots_cli.keys() & bindings.keys():
+        bindings[slot] = replace(bindings[slot], source="cli")
     for binding in bindings.values():
         problems += list(binding.reasons)
     root = temp_root or config.server.temp  # one answer for the CLI and the server

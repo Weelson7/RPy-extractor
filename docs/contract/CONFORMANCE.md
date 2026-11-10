@@ -224,7 +224,7 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 9.4 validation, secrets refused, `viwo config check` | implemented | `core/wiring/ini.py`, `core/wiring/distros.py` |
 | 9.5 `[slot_policy]` | open | - |
 | 9.5 `[hooks]` lifecycle hooks | open | - |
-| 9.5 `--plugin <id>=on\|off`, `--slot` CLI overrides | open | - |
+| 9.1 `--plugin <id>=on\|off`, `--slot <slot>=<main>[,<spare>]` for one run | implemented | `cli_boot.py`, `core/wiring/boot.py`; `tests/test_cli_overrides.py` |
 | 9.6 `/api/distro`, SETTINGS writes and reloads | implemented | `api/routes.py`, `core/wiring/settings.py`, `api/app.py` `reload` |
 
 ## 10 Pinned tools

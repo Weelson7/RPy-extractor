@@ -154,7 +154,7 @@ class SlotBinding:
     main: str  # backend id, "" when unbound
     spare: str = ""
     promoted: bool = False  # main was unavailable, spare acts as main
-    source: str = "default"  # "default" | "ini"
+    source: str = "default"  # "default" | "ini" | "cli"
     reasons: tuple[str, ...] = ()
 
     @property

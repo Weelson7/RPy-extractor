@@ -22,7 +22,8 @@ EPILOG = """examples:
   viwo capture D:/Games/Foo --exe Foo.exe --workspace out/foo --confirm
 
 global flags: --ini PATH, --os auto|linux|windows, --features a,b, --json (envelope on stdout),
---quiet (no progress lines on stderr), --verbose (also the effective ini and bindings).
+--quiet (no progress lines on stderr), --verbose (also the effective ini and bindings);
+before the command, for this run: --plugin ID=on|off, --slot SLOT=MAIN[,SPARE].
 exit codes: 0 ok | 1 failed or not found | 2 bad request or config | 3 refused (folder
 containment, unsupported OS layer) | 4 strict preflight failed | 130 cancelled (Ctrl+C).
 Errors print "viwo: <code>: <message>" and a hint; `--json` prints the envelope instead."""

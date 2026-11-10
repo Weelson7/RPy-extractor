@@ -1,6 +1,5 @@
 """`viwo replay`, `viwo unpack`, the tool commands, `viwo install` and plugin add-on commands."""
 
-import argparse
 import json
 import shutil
 import sys
@@ -19,7 +18,6 @@ from viwo.contracts.pipeline import (
 from viwo.core.context import core_context, for_owner
 from viwo.core.pipeline.runner import SECRET
 from viwo.core.pipeline.unpack import unpack_all
-from viwo.core.wiring.boot import boot
 from viwo.core.wiring.registry import cli_commands
 
 from .cli_dynamic import attach, capture, runtime
@@ -226,28 +224,6 @@ def _config(args) -> Envelope:
         hint = "; ".join(f"{f}: {p[0]}" for f, p in problems.items() if p)
         raise ViwoError("invalid_request", "config check failed", hint=hint)
     return Envelope.success({"checked": sorted(problems), "problems": problems})
-
-
-def split_features(args) -> tuple[str, ...] | None:
-    """`--features a,b` as a tuple (None when the flag is absent: the ini decides)."""
-    text = getattr(args, "features", None)
-    return tuple(f.strip() for f in text.split(",") if f.strip()) if text else None
-
-
-def boot_for_cli(argv: list[str]):
-    """Boot early so plugin add-on commands can join the parser (the global overrides
-    `--ini`, `--os`, `--profile` and `--features` are read first).
-    A bad configuration returns None here; the command itself reports it."""
-    pre = argparse.ArgumentParser(add_help=False)
-    pre.add_argument("--ini", type=Path)
-    pre.add_argument("--os", dest="os_id")
-    pre.add_argument("--profile")
-    pre.add_argument("--features")
-    known, _ = pre.parse_known_args(argv)
-    try:
-        return boot(known.ini, known.os_id, profile=known.profile, features=split_features(known))
-    except Exception:  # noqa: BLE001 (reported by the real boot in _run)
-        return None
 
 
 def add_plugin_commands(sub, common, rt) -> None:

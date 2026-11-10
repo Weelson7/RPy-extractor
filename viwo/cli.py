@@ -5,18 +5,16 @@ import contextlib
 import json
 import os
 import sys
-from pathlib import Path
 
 from viwo import cli_args, cli_arms, cli_format
+from viwo.cli_boot import boot_for_cli, boot_from, global_flags
 from viwo.cli_check import slots_check, unpack_forced
 from viwo.cli_extra import (
     TOOLS,
     add_plugin_commands,
-    boot_for_cli,
     event_printer,
     replay_request,
     run_plugin_command,
-    split_features,
     unpack_one,
     workspace_command,
 )
@@ -25,7 +23,6 @@ from viwo.contracts.pipeline import OnExisting
 from viwo.core.jobs import JobRunner
 from viwo.core.pipeline.probe import FolderProbe
 from viwo.core.pipeline.runner import detect_all, extract
-from viwo.core.wiring.boot import boot
 from viwo.core.wiring.memory import guard
 
 EXIT = {"invalid_request": 2, "needs_decision": 2, "refused": 3, "cancelled": 130}
@@ -39,16 +36,7 @@ def _parser(rt=None) -> argparse.ArgumentParser:
         epilog=cli_args.EPILOG,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    ap.add_argument("--ini", type=Path, help="startup ini (default: startup.ini)")
-    ap.add_argument("--os", dest="os_id", help="auto | linux | windows")
-    ap.add_argument(
-        "--profile",
-        help="renpy | unity | unreal | godot | custom | mixed: that distro's plugin set",
-    )
-    ap.add_argument(
-        "--features",
-        help="comma-separated [startup] features for this run (e.g. extraction,analysis)",
-    )
+    global_flags(ap)
     ap.add_argument("--json", action="store_true", help="print a JSON envelope")
     ap.add_argument("--quiet", action="store_true", help="no progress lines on stderr")
     ap.add_argument("--verbose", action="store_true", help="also print the ini and bindings")
@@ -96,7 +84,7 @@ def _verbose_header(rt, args) -> None:
 
 
 def _run(args, rt=None) -> Envelope:
-    rt = rt or boot(args.ini, args.os_id, profile=args.profile, features=split_features(args))
+    rt = rt or boot_from(args)
     _verbose_header(rt, args)
     plugin_command = getattr(args, "plugin_command", None)
     if plugin_command is not None:  # an add-on, possibly overriding a core command
