@@ -8,6 +8,7 @@ from pathlib import Path
 from viwo.contracts import workspace as ws
 
 from .pipeline.collect import sha256
+from .pipeline.pool import each
 from .provenance import entries
 
 ADDED_DIR = "_added"  # <workspace>/_added/<game-relative path> -> loose file in the patched copy
@@ -78,13 +79,19 @@ def added_files(workspace: Path) -> list[Edit]:
 def edit_set(workspace: Path) -> tuple[list[Edit], list[str]]:
     """Workspace files whose content differs from what extraction wrote, plus added files."""
     edits, skipped, missing = [], [], []
-    for entry in entries(workspace):
+
+    def look(entry: dict) -> tuple[dict, Path | None, str]:
         rel = ws.safe_member(entry["path"])
         file = workspace.joinpath(*rel.parts) if rel else None
-        if file is None or not file.is_file():
+        there = file is not None and file.is_file()
+        return entry, file if there else None, sha256(file) if there else ""
+
+    # hashed several at once (a large workspace took most of an hour one file at a time)
+    for entry, file, digest in each(look, entries(workspace)):
+        if file is None:
             missing.append(entry["path"])
             continue
-        if sha256(file) == entry["sha256"]:
+        if digest == entry["sha256"]:
             continue
         kind = entry.get("kind", "derived")
         member = entry.get("member", "")

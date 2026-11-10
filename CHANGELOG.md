@@ -4,6 +4,10 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.57 (2026-11-11)
+- Repack: the edit set is hashed several files at once (`repack --plan` took 47 minutes on a
+  183,000-file workspace, one file at a time).
+
 ## 1.20.56 (2026-11-10)
 - Memory budget: a run that fits goes ahead of a larger one still waiting, for 15 s at most
   (parts of a timed run waited three times longer for memory than their tools ran, behind
