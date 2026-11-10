@@ -1,18 +1,14 @@
-# Contract conformance (1.6.2)
+# Contract conformance
 
-Every normative item of the contract documents, by section, with its state against the code at
-v1.6.2: **implemented** (with the module or function), **partial** (what is missing), **open**
+Every normative item of the contract documents, by section, with its state against the code in
+this tree: **implemented** (with the module or function), **partial** (what is missing), **open**
 (not implemented). Paths are relative to `viwo/` unless they start with `tests/`, `tools/` or a
 top-level folder. Update a row in the commit that changes its state.
 
 ## Summary
 
-| State | Rows |
-|-------|------|
-| implemented | 166 |
-| partial | 5 |
-| open | 16 |
-| total | 187 |
+The row counts per state are not kept here by hand (they went stale): the technical PDF counts
+them from the tables below (`tools/presentation/reference.py`, `conformance()`).
 
 **Partial**, by cause: no built-in plugin keeps an inventory (0.4, 2.2); no built-in plugin
 ships sanitizer rules (5.1); no pinned QuickBMS script in the indexes (16.0b); coverage per file (17.5).

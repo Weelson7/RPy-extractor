@@ -4,6 +4,11 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.24 (2026-11-10)
+- CONFORMANCE keeps no hand-written counts or version: its summary table said 166 implemented,
+  5 partial, 16 open against 1.6.2, stale for a long time. The technical PDF counts the rows
+  from the tables (`tools/presentation/reference.py`).
+
 ## 1.20.23 (2026-11-10)
 - A commit never runs the whole suite by default (owner: it took most of the suite for a
   change deep in core). The selection is now the tests a change is close to: what a test
