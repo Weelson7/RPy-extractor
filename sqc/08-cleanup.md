@@ -9,13 +9,13 @@ duplicate, a truncated PNG). Rules: `core.zero_byte`, `core.junk`, `core.extensi
 
 Steps:
 1. `WORKSPACE > SWITCH` to `C:\sqc\dirty-workspace\ws`.
-2. `08 CLEANUP > 08.A SCAN`: recipe `Safe cleanup` (badges `LOSSLESS`, `NOTHING IS DELETED`),
+2. `CLEANUP > SCAN`: recipe `Safe cleanup` (badges `LOSSLESS`, `NOTHING IS DELETED`),
    click `SCAN`.
-3. In `08.B FINDINGS` untick the duplicate; click `APPLY SELECTED`.
-4. `08.C LAST CLEANUP > UNDO THIS CLEANUP`.
+3. In `FINDINGS` untick the duplicate; click `APPLY SELECTED`.
+4. `LAST CLEANUP > UNDO THIS CLEANUP`.
 
 Expected:
-- 2: progress `READING + HASHING WORKSPACE FILES…`; findings grouped `EMPTY FILES (1)`, `ENGINE /
+- 2: `FINDINGS` shows `SCANNING…` while the scan runs; progress `READING + HASHING WORKSPACE FILES…`; findings grouped `EMPTY FILES (1)`, `ENGINE /
   OS JUNK (2)`, `WRONG EXTENSION (1, rename .jpg -> .png)`, `EXACT DUPLICATES (1)`, `HEALTH (1,
   REPORT ONLY: truncated PNG)`; stats `SCANNED n`, `SELECTED 5`; `WHAT EACH RULE DOES` explains
   each rule.
@@ -57,7 +57,7 @@ checkbox; it is not moved or renamed.
 Steps: scan a freshly extracted `zip-basic` workspace; scan an empty marked workspace.
 
 Expected: `WORKSPACE IS CLEAN` (0 findings, `APPLY SELECTED` disabled); `WORKSPACE EMPTY` with
-`GO TO 01 EXTRACT`.
+`GO TO EXTRACT`.
 
 ## SQC-CLEAN-06 (P1) Undo twice and undo of a partially restored journal
 

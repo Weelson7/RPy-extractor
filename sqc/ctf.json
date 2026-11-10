@@ -1,5 +1,5 @@
 {
- "_comment": "CTF flags per Test-games/<slug> (sqc/17-ctf.md): five basic objectives per game plus up to one more per GB of game data, each a concrete asset a reverse engineer wants. A flag passes when one plain extraction leaves at least `min` files matching `glob` (relative to the workspace, ** allowed), or when the run's warnings contain `warning` (\\\"\\\" = no warning at all), or, with `analyze` (a target key from `viwo analyze --list`, optional `slot`), when that analysis leaves the files under `.analysis/`. The library games (pass-*) carry three shared baselines (run record, provenance, the executable collected) and then only objectives specific to that game. `subset` lists the files tools/games_pass.ps1 copies for a game too large to copy whole (the flags then describe that subset).",
+ "_comment": "CTF flags per Test-games/<slug> (sqc/17-ctf.md). The free titles carry about five basic objectives, each a concrete asset a reverse engineer wants. The library games (pass-*) carry three shared baselines (a run record, the provenance map, the executable collected) and then only objectives specific to that game; the title gives the count. A flag passes when one plain extraction leaves at least `min` files matching `glob` (relative to the workspace, ** allowed), or when the run's warnings contain `warning` (\"\" = no warning at all), or, with `analyze` (a target key from `viwo analyze --list`, optional `slot`), when that analysis leaves the files under `.analysis/`. That is all the runner reads (tools/integration_games.py check_flags): there is no 'at most' and no 'no warning about X'. Every flag must be able to fail: `min` is 1 or more, and the glob is no file every run writes. `subset` lists the files tools/games_pass.ps1 copies for a game too large to copy whole (the flags then describe that subset).",
  "DDLC-1.1.1-pc": {
   "title": "Doki Doki Literature Club (Ren'Py, 0.3 GB)",
   "flags": [
@@ -139,13 +139,13 @@
     "min": 1
    },
    {
-    "name": "the Unity resources file kept raw",
-    "glob": "**/unity_builtin_extra",
-    "min": 0
+    "name": "the level's meshes as OBJ, more than a handful",
+    "glob": "obj/*.obj",
+    "min": 10
    },
    {
-    "name": "shader or material names visible in the export map",
-    "glob": ".extraction_metadata/provenance.jsonl",
+    "name": "the .map file the build ships, collected",
+    "glob": "map/*.map",
     "min": 1
    }
   ]
@@ -283,17 +283,7 @@
     "min": 1
    },
    {
-    "name": "nothing else is invented",
-    "glob": "**/*.png",
-    "min": 0
-   },
-   {
-    "name": "no archive is claimed",
-    "glob": "pck/*.pck",
-    "min": 0
-   },
-   {
-    "name": "the run record names the Godot plugin",
+    "name": "a run record is written (Godot plugin: read it in the report)",
     "glob": ".extraction_metadata/runs/*.json",
     "min": 1
    }
@@ -312,32 +302,22 @@
     "min": 1
    },
    {
-    "name": "nothing else is invented",
-    "glob": "**/*.png",
-    "min": 0
-   },
-   {
-    "name": "no archive is claimed",
-    "glob": "pck/*.pck",
-    "min": 0
-   },
-   {
-    "name": "the run record names the Godot plugin",
+    "name": "a run record is written (Godot plugin: read it in the report)",
     "glob": ".extraction_metadata/runs/*.json",
     "min": 1
    }
   ]
  },
  "pass-aoe": {
-  "title": "Age of Empires II HD (Genie DRS, 5.5 GB: 5 + 5)",
+  "title": "Age of Empires II HD (Genie DRS, 5.5 GB: 3 baselines + 10)",
   "flags": [
    {
-    "name": "baseline: the run record names the genie plugin",
+    "name": "baseline: a run record is written (genie plugin: read it in the report)",
     "glob": ".extraction_metadata/runs/*.json",
     "min": 1
    },
    {
-    "name": "baseline: a provenance line per file",
+    "name": "baseline: the provenance map is written",
     "glob": ".extraction_metadata/provenance.jsonl",
     "min": 1
    },
@@ -401,15 +381,15 @@
   ]
  },
  "pass-approximately-up-build-25884550": {
-  "title": "Approximately Up (Unity IL2CPP, 5.5 GB: 5 + 5)",
+  "title": "Approximately Up (Unity IL2CPP, 5.5 GB: 3 baselines + 6)",
   "flags": [
    {
-    "name": "baseline: the run record names the unity plugin",
+    "name": "baseline: a run record is written (unity plugin: read it in the report)",
     "glob": ".extraction_metadata/runs/*.json",
     "min": 1
    },
    {
-    "name": "baseline: a provenance line per file",
+    "name": "baseline: the provenance map is written",
     "glob": ".extraction_metadata/provenance.jsonl",
     "min": 1
    },
@@ -448,23 +428,19 @@
     "analyze": "gameassembly",
     "glob": ".analysis/cpp2il/gameassembly/Assembly-CSharp.dll",
     "min": 1
-   },
-   {
-    "name": "antivirus-held files are a warning, not a crash",
-    "warning": "could not be read"
    }
   ]
  },
  "pass-schedule-i": {
-  "title": "Schedule I (Unity IL2CPP, 7.4 GB: 5 + 7)",
+  "title": "Schedule I (Unity IL2CPP, 7.4 GB: 3 baselines + 9)",
   "flags": [
    {
-    "name": "baseline: the run record names the unity plugin",
+    "name": "baseline: a run record is written (unity plugin: read it in the report)",
     "glob": ".extraction_metadata/runs/*.json",
     "min": 1
    },
    {
-    "name": "baseline: a provenance line per file",
+    "name": "baseline: the provenance map is written",
     "glob": ".extraction_metadata/provenance.jsonl",
     "min": 1
    },
@@ -499,8 +475,8 @@
     "min": 5
    },
    {
-    "name": "StreamingAssets collected",
-    "glob": "**/*",
+    "name": "the loose video files the game ships, collected",
+    "glob": "mov/*.mov",
     "min": 1
    },
    {
@@ -525,7 +501,7 @@
   ]
  },
  "pass-total-war-rome-ii": {
-  "title": "Total War: Rome II (Warscape packs; 36 GB, subset 4.1 GB: 5 + 4)",
+  "title": "Total War: Rome II (Warscape packs; 36 GB, subset 4.1 GB: 3 baselines + 9)",
   "subset": [
    "Rome2.exe",
    "data/data.pack",
@@ -540,12 +516,12 @@
   ],
   "flags": [
    {
-    "name": "baseline: the run record names the warscape plugin",
+    "name": "baseline: a run record is written (warscape plugin: read it in the report)",
     "glob": ".extraction_metadata/runs/*.json",
     "min": 1
    },
    {
-    "name": "baseline: a provenance line per file",
+    "name": "baseline: the provenance map is written",
     "glob": ".extraction_metadata/provenance.jsonl",
     "min": 1
    },
@@ -604,7 +580,7 @@
   ]
  },
  "pass-cyberpunk-2077": {
-  "title": "Cyberpunk 2077 (REDengine archives; 86 GB, subset 6.7 GB: 5 + 6)",
+  "title": "Cyberpunk 2077 (REDengine archives; 86 GB, subset 6.7 GB: 3 baselines + 13)",
   "subset": [
    "REDprelauncher.exe",
    "bin/x64/oo2ext_7_win64.dll",
@@ -618,12 +594,12 @@
   ],
   "flags": [
    {
-    "name": "baseline: the run record names the redengine plugin",
+    "name": "baseline: a run record is written (redengine plugin: read it in the report)",
     "glob": ".extraction_metadata/runs/*.json",
     "min": 1
    },
    {
-    "name": "baseline: a provenance line per file",
+    "name": "baseline: the provenance map is written",
     "glob": ".extraction_metadata/provenance.jsonl",
     "min": 1
    },
@@ -701,7 +677,7 @@
   ]
  },
  "pass-mount-blade-2-bannerlord": {
-  "title": "Mount & Blade II: Bannerlord (TaleWorlds TPAC; 92 GB, subset 5 GB: 5 + 5)",
+  "title": "Mount & Blade II: Bannerlord (TaleWorlds TPAC; 92 GB, subset 5 GB: 3 baselines + 8)",
   "subset": [
    "bin/Win64_Shipping_Client/Bannerlord.exe",
    "Modules/Native/AssetPackages/spawners.tpac",
@@ -713,12 +689,12 @@
   ],
   "flags": [
    {
-    "name": "baseline: the run record names the taleworlds plugin",
+    "name": "baseline: a run record is written (taleworlds plugin: read it in the report)",
     "glob": ".extraction_metadata/runs/*.json",
     "min": 1
    },
    {
-    "name": "baseline: a provenance line per file",
+    "name": "baseline: the provenance map is written",
     "glob": ".extraction_metadata/provenance.jsonl",
     "min": 1
    },
@@ -771,15 +747,15 @@
   ]
  },
  "pass-zipped-game-data": {
-  "title": "Returning to Mia (zipped game data, 18 GB: 5 + 5)",
+  "title": "Returning to Mia (Ren'Py, shipped as zipped game data, 18 GB: 3 baselines + 7)",
   "flags": [
    {
-    "name": "baseline: the run record names the the detected plugin",
+    "name": "baseline: a run record is written (renpy plugin: read it in the report)",
     "glob": ".extraction_metadata/runs/*.json",
     "min": 1
    },
    {
-    "name": "baseline: a provenance line per file",
+    "name": "baseline: the provenance map is written",
     "glob": ".extraction_metadata/provenance.jsonl",
     "min": 1
    },
@@ -804,19 +780,19 @@
     "min": 1
    },
    {
-    "name": "nested archives unpacked rather than copied",
-    "glob": "zip/*.zip",
-    "min": 0
+    "name": "nested archives unpacked rather than copied: the JPEG images out of the RPA archives",
+    "glob": "jpg/*.jpg",
+    "min": 10000
    },
    {
     "name": "fonts",
-    "glob": "**/*.ttf",
-    "min": 0
+    "glob": "ttf/*.ttf",
+    "min": 10
    },
    {
-    "name": "localization files",
-    "glob": "**/*.csv",
-    "min": 0
+    "name": "voice and music tracks as MP3",
+    "glob": "mp3/*.mp3",
+    "min": 1000
    },
    {
     "name": "Detect It Easy identifies the executable (returningtomia-exe)",
@@ -828,7 +804,7 @@
   ]
  },
  "pass-team-fortress-2": {
-  "title": "Team Fortress 2 (Source VPK; 32 GB, subset 0.9 GB: 5 + 1)",
+  "title": "Team Fortress 2 (Source VPK; 32 GB, subset 0.9 GB: 3 baselines + 6)",
   "subset": [
    "tf_win64.exe",
    "tf/tf2_misc_dir.vpk",
@@ -842,12 +818,12 @@
   ],
   "flags": [
    {
-    "name": "baseline: the run record names the source plugin",
+    "name": "baseline: a run record is written (source plugin: read it in the report)",
     "glob": ".extraction_metadata/runs/*.json",
     "min": 1
    },
    {
-    "name": "baseline: a provenance line per file",
+    "name": "baseline: the provenance map is written",
     "glob": ".extraction_metadata/provenance.jsonl",
     "min": 1
    },
@@ -877,9 +853,9 @@
     "min": 20
    },
    {
-    "name": "the English localization (tf_english.txt or resource/*.txt)",
-    "glob": "**/tf_english.txt",
-    "min": 0
+    "name": "resource text (.res) out of tf2_misc",
+    "glob": "res/*.res",
+    "min": 100
    },
    {
     "name": "Detect It Easy identifies the executable (tf-win64-exe)",

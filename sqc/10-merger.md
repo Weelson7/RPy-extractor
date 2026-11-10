@@ -8,8 +8,8 @@ UI workspace to it. Needs ffmpeg + ffprobe (pinned, installed by 01).
 ## SQC-MERGE-01 (P0) Groups, timeline, one build
 
 Steps:
-1. `06 MERGER`. Read `06.A GROUPS`.
-2. Select the group `walk` (5 frames + the mp4 if present). Read `06.B TIMELINE`.
+1. `MERGER`. Read `GROUPS`.
+2. Select the group `walk` (5 frames + the mp4 if present). Read `TIMELINE`.
 3. In the output panel: `OUTPUT NAME` = `walk-test`, `IMAGE HOLD (S)` = 0.5, `TRANSITION` =
    `CROSSFADE`, `CROSSFADE (S)` = 0.2, click `BUILD VIDEOS`.
 4. Open the output folder (`viwo-data\merged\`).
@@ -40,11 +40,11 @@ Steps: `OVERLAY AUDIO > BROWSE` = `C:\sqc\merger\loop.wav`, `VOLUME` 50 %, `HOLD
 Expected: the output has an audio track (ffprobe: 2 streams), total length = frames + 1 s hold;
 the audio fades at the end; a loop part repeats the overlay.
 
-## SQC-MERGE-04 (P1) Trash inputs after build, undo from 02 WORKSPACE
+## SQC-MERGE-04 (P1) Trash inputs after build, undo from WORKSPACE
 
 Steps: tick `trash inputs after build` (if present in the settings), build the `run` group.
 
-Expected: the 3 frames move to `.trash\merger\`; `02 WORKSPACE` shows them in the trash section
+Expected: the 3 frames move to `.trash\merger\`; `WORKSPACE` shows them in the trash section
 with `RESTORE`.
 
 ## SQC-MERGE-05 (P1) Group with failures
@@ -64,11 +64,11 @@ Expected: the build succeeds (the graph goes through `-filter_complex_script`, n
 ## SQC-MERGE-07 (P2) ffmpeg missing
 
 Steps: remove `third_party\ffmpeg` and `third_party\ffprobe`, make sure no system ffmpeg is on
-PATH, reload the page, `06 MERGER`.
+PATH, reload the page, `MERGER`.
 
-Expected: the view shows the note `Some of this needs an optional tool. See 05 SYSTEM for what to
-install →`; `BUILD VIDEOS` gives the error box `TOOL NOT INSTALLED` with the link to 05 SYSTEM.
-Cleanup: 05 SYSTEM > INSTALL both.
+Expected: the view shows the note `Some of this needs an optional tool. See SYSTEM for what to
+install →`; `BUILD VIDEOS` gives the error box `TOOL NOT INSTALLED` with the link to SYSTEM.
+Cleanup: SYSTEM > INSTALL both.
 
 ## Results
 

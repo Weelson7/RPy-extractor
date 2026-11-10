@@ -48,7 +48,7 @@ succeeds with warnings (exit 0).
 
 Steps:
 1. Create `C:\sqc\_ws\mine` with a file `keep.txt`. `viwo extract C:\sqc\zip-basic\game --workspace C:\sqc\_ws\mine --on-existing replace`
-2. UI: `WORKSPACE > SWITCH` to `C:\sqc\_ws\mine`; `02 WORKSPACE > CLEAR TRASH`.
+2. UI: `WORKSPACE > SWITCH` to `C:\sqc\_ws\mine`; `WORKSPACE > CLEAR TRASH`.
 
 Expected: 1: `refused: C:\sqc\_ws\mine is not empty and is not a ViWo workspace`, `keep.txt`
 untouched. 2: the view explains the folder is not a ViWo workspace (`NOT A VIWO WORKSPACE` state
@@ -69,8 +69,8 @@ never crashes. Cleanup: delete the workspace.
 Steps: start a long extraction into `C:\sqc\_ws\busy` from the UI; while it runs, from the CLI
 `viwo sanitize C:\sqc\_ws\busy`.
 
-Expected: `viwo: busy: ...`, exit 1; in the UI, 08 CLEANUP > SCAN on that workspace shows the
-error box `WORKSPACE BUSY` with the link `Open 04 JOBS →`.
+Expected: `viwo: busy: ...`, exit 1; in the UI, CLEANUP > SCAN on that workspace shows the
+error box `WORKSPACE BUSY` with the link `Open JOBS →`.
 
 ## SQC-SAFE-07 (P1) Interrupted run leaves a consistent workspace
 
@@ -87,6 +87,36 @@ Steps: run SQC-EXT-08 step 4 (AES key via `--option`), then
 
 Expected: no match anywhere; the record shows `"aes_key": "<secret>"`.
 
+## SQC-SAFE-09 (P0) Memory ceiling: ViWo's own process and its child tools
+
+Steps 1-2 need no game (smoke subset); 3-4 need the real games named and are run from a worktree
+at a committed version (`docs/HANDOFF.md`), with the ceiling ON.
+
+Steps:
+1. Shipped `startup.ini`: `viwo --verbose info`; then `viwo serve --no-browser` and read the
+   first lines of the terminal and of the activity console.
+2. A copy of the ini with `[startup] memory_limit = 0`: `viwo --ini <copy> --verbose info`.
+3. Unity IL2CPP (Schedule I): `viwo extract <game> --workspace W`, watching the machine's memory.
+4. Cyberpunk 2077 (the `ctf.json` subset): `viwo extract <game> --workspace W` with WolvenKit
+   installed, watching the WolvenKit processes' memory.
+
+Expected:
+- 1: `memory ceiling for ViWo's own process: <n> GB (50 % of the machine)` on stderr (`[CLI]`)
+  and as a `[SERVER]` line at start. Where the OS layer cannot set it the line reads `no memory
+  ceiling: <why>`, without `--verbose` too (never silent when unprotected).
+- 2: `memory ceiling off ([startup] memory_limit = 0)`.
+- 3: the machine stays up and ViWo's process stays under the ceiling. A Unity script whose
+  rebuilt layout does not fit its objects is counted and said once: `<n> script(s) have a rebuilt
+  layout that does not fit their objects (it asked for the machine's memory): their
+  MonoBehaviours are listed without fields, every other script keeps its fields`. Those
+  MonoBehaviours are in the export without fields; MonoBehaviours of the other scripts still
+  carry theirs (open one of each as JSON). The run ends with its assets out, not `internal`.
+- 4: no WolvenKit process passes its cap (4 GB each); as many run at once as fit in ViWo's share
+  of the machine (4 on a 32 GB machine); the decode says how many parts and how many at a time.
+  A WolvenKit that reaches its cap fails by itself: that part is one counted failure in the
+  slot's warning, the other parts and the run go on, the machine stays up. A cap that could not
+  be set is said (`no memory cap on this tool: <why>`).
+
 ## Results
 
 | ID | Result | Notes | Tester | Date |
@@ -99,3 +129,4 @@ Expected: no match anywhere; the record shows `"aes_key": "<secret>"`.
 | SQC-SAFE-06 | | | | |
 | SQC-SAFE-07 | | | | |
 | SQC-SAFE-08 | | | | |
+| SQC-SAFE-09 | NOT RUN | added at 1.20.40 | | |

@@ -77,7 +77,7 @@ Steps:
 
 Expected: `Launching ULTRAKILL.exe under RenderDoc; one frame captured after 45 s`, then
 `Trigger helper exit 0; stopped ULTRAKILL.exe` (the game is gone from the process list), one
-`Harvested viwo_frame<N>.rdc: ok`, PNG textures in `png\` and `shader_<id>_<stage>.txt`
+`Harvested viwo_frame<N>.rdc: ok`, the frame itself kept in `rdc\`, PNG textures in `png\` and `shader_<id>_<stage>.txt`
 disassemblies in `txt\`, all with provenance `capture:renderdoc:<stamp>`; `Captured N file(s), M
 new vs static`; `UI.config` now holds `Analytics_ManualCheck: true`; the game install
 is unchanged. `--auto 30` is the default; the attended variant (`--auto 0`, press F12, quit)
@@ -93,6 +93,21 @@ Expected: the warning about anti-cheat prints; ViWo launches anyway; the result 
 anti-cheat allows (a blocked launch is reported as `failed` with the stderr tail, not as a ViWo
 refusal). Record the outcome in the notes.
 
+## SQC-CAP-08 (P1) A capture keeps its frames; the RenderDoc workbook
+
+Preconditions: SQC-CAP-06 done (workspace `C:\sqc\_ws\real`).
+
+Steps:
+1. List `C:\sqc\_ws\real\rdc\`; open the frame in `third_party\renderdoccmd\qrenderdoc.exe`.
+2. UI: CAPTURE; read `TARGET` and the text under it; click `HOW TO: RENDERDOC`.
+
+Expected: 1: one `viwo_frame<N>.rdc` per capture, with its provenance line, beside the textures
+harvested from it (it is not deleted with the run's temporary folder); qrenderdoc opens it with
+its draws and textures. 2: the view says `every frame is kept (it opens in RenderDoc) with its
+textures as PNG, collected like extracted files`; WORKBOOKS opens on the tool `RENDERDOC` with
+"Read a captured frame: draws, textures, meshes, shaders"; no ViWo button opens qrenderdoc (the
+tool stays native, in its own window).
+
 ## Results
 
 | ID | Result | Notes | Tester | Date |
@@ -104,3 +119,4 @@ refusal). Record the outcome in the notes.
 | SQC-CAP-05 | | | | |
 | SQC-CAP-06 | PASS | 1.3.6: 89 textures + 30 shaders from ULTRAKILL, frame 7056, nothing pressed | agent | 2026-11-03 |
 | SQC-CAP-07 | | OPERATOR | | |
+| SQC-CAP-08 | NOT RUN | added at 1.20.40 | | |

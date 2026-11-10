@@ -29,15 +29,15 @@ log names the order). 2: every plugin whose detection fired (renpy, doom, generi
 enabled plugin runs, including `overwatch` and `quickbms`, each reporting 0 files where nothing
 matches; no plugin crashes the run (a plugin error becomes a warning).
 
-## SQC-MODE-04 (P0) UI: 01.C MODE mirrors the CLI
+## SQC-MODE-04 (P0) UI: MODE mirrors the CLI
 
-Steps: `01 EXTRACT`, target `C:\sqc\_mixed\game`, in `01.C MODE` try `AUTO`, `SINGLE` (pick
+Steps: `EXTRACT`, target `C:\sqc\_mixed\game`, in `MODE` try `AUTO`, `SINGLE` (pick
 `Doom engine`), `MIXED` (tick `Ren'Py` and `Doom engine`, `POLICY` = `only the plugins picked
 below`), run each.
 
 Expected: the action bar explains the choice (`AUTO: Ren'Py`, `SINGLE: Doom engine`, `MIXED: 2
-plugins · only the plugins picked below`); each run's `Selected plugin(s)` line in `01.E LIVE
-FEED` matches; `04 JOBS` shows three `EXTRACTION` jobs.
+plugins · only the plugins picked below`); each run's `Selected plugin(s)` line in `LIVE
+FEED` matches; `JOBS` shows three `EXTRACTION` jobs.
 
 ## SQC-MODE-05 (P0) Carve modes
 
@@ -55,7 +55,7 @@ executables included`, `nowhere (off)`.
 
 Steps:
 1. `viwo extract C:\sqc\zip-basic\game --workspace C:\sqc\_ws\f1 --on-existing replace --exts .png`
-2. UI: `01.D FILTER + OUTPUT > EXTENSION FILTER (OPTIONAL)` click the preset `IMAGES`, run; then
+2. UI: `FILTER + OUTPUT > EXTENSION FILTER (OPTIONAL)` click the preset `IMAGES`, run; then
    `CLEAR`, type `.ogg .txt`, run.
 
 Expected: 1: only `png\` exists (2 files); the run record lists `extensions: [".png"]`. 2: the
@@ -80,13 +80,13 @@ buttons `NEW`, `REPLACE`, `CANCEL`.
 
 Steps:
 1. `--option doom.raw_lumps=true` on the doom fixture.
-2. UI `01.C MODE > ENGINE OPTIONS` for Godot: the key field is a password field with the badge
+2. UI `MODE > ENGINE OPTIONS` for Godot: the key field is a password field with the badge
    `SECRET`; for Overwatch `modes` is a text field with the default
    `extract-unlocks,extract-general,extract-maps`.
 3. In `startup.ini` add `[options.godot] encryption_key = 00` and run `viwo config check startup.ini`.
 
 Expected: 1: `lmp\` group appears. 2: as described; the secret value is sent with the request and
-never shown in 04 JOBS or the run record (`<secret>`). 3: the check refuses secret-looking keys
+never shown in JOBS or the run record (`<secret>`). 3: the check refuses secret-looking keys
 in the ini: `options.godot.encryption_key looks like a secret` (exit 2).
 
 ## SQC-MODE-09 (P1) Replay a run record
@@ -105,6 +105,22 @@ in the action bar within 2 s.
 Expected: the feed ends with `CANCELLED`, the job state is `cancelled`, the partial workspace
 keeps its marker; the game folder is unchanged.
 
+## SQC-MODE-11 (P1) One worker budget; the same result on any count
+
+Steps:
+1. `$env:VIWO_WORKERS = "1"; viwo extract C:\sqc\nested-traversal\game --workspace C:\sqc\_ws\w1 --carve all --on-existing replace`
+2. `$env:VIWO_WORKERS = "16"; viwo extract C:\sqc\nested-traversal\game --workspace C:\sqc\_ws\w16 --carve all --on-existing replace`
+3. `Remove-Item Env:VIWO_WORKERS`; compare the two workspaces (file list, sizes, sha256) and their
+   `.extraction_metadata\provenance.jsonl`.
+4. The same pair on a real game with thousands of files (any of `games.md`).
+
+Expected: 1 and 2: `Looking for nested archives in N extracted file(s) on 1 workers` (then `on 16
+workers`) with a counter, and `Carving N unrecognized file(s) for embedded assets on W workers`
+when something is left to carve. 3: the same files under the same names in both, the carve
+folders numbered alike, every sha256 equal; the provenance differs only in times. Without the
+variable the count is 80 % of the logical processors. 4: the same, and no stretch of the run
+passes without a line (unpack, nested search, carve, collect, decode each count).
+
 ## Results
 
 | ID | Result | Notes | Tester | Date |
@@ -119,3 +135,4 @@ keeps its marker; the game folder is unchanged.
 | SQC-MODE-08 | | | | |
 | SQC-MODE-09 | | | | |
 | SQC-MODE-10 | | | | |
+| SQC-MODE-11 | NOT RUN | added at 1.20.40 | | |

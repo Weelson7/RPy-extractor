@@ -2,7 +2,7 @@
 
 Area code `RT`. Fixture: `roundtrip` (`loose\`, `rpa\`, `zip\`, `mv\`), plus `godot` and
 `unreal` with their fake-tool ini for the PCK and `_P.pak` strategies. Flow for each game:
-extract into a workspace, edit a file in the workspace with any editor, then `09 PATCHED COPY`
+extract into a workspace, edit a file in the workspace with any editor, then `PATCHED COPY`
 (or `viwo repack`) builds a separate copy of the game with the edit, verified by re-extraction.
 
 ## SQC-RT-01 (P0) Plan shows the edit set and the strategy
@@ -11,7 +11,7 @@ Steps:
 1. `viwo extract C:\sqc\roundtrip\rpa --workspace C:\sqc\_ws\rt-rpa --on-existing replace`
 2. Open `C:\sqc\_ws\rt-rpa\txt\script.txt` in an editor, change `original` to `patched`, save.
 3. `viwo repack C:\sqc\_ws\rt-rpa --plan`
-4. UI: `WORKSPACE > SWITCH` to that workspace; `09 PATCHED COPY > 09.A EDIT SET + STRATEGY > PLAN`.
+4. UI: `WORKSPACE > SWITCH` to that workspace; `PATCHED COPY > EDIT SET + STRATEGY > PLAN`.
 
 Expected: 3 and 4 list one edited file `txt\script.txt` with its origin `game\images.rpa`
 (provenance) and the strategy `Ren'Py RPA rebuild` (slot `pack.rpa`, backend `rpa-writer`);
@@ -21,14 +21,14 @@ unchanged files are not listed; the stats show `EDITED 1`, `CONTAINERS 1`. Nothi
 
 Steps:
 1. Snapshot `C:\sqc\roundtrip\rpa` (see 06).
-2. UI: `09.B TARGET FOLDER` = `C:\sqc\_patched\rpa` (`BROWSE` or type), `09.C BUILD > BUILD
+2. UI: `TARGET FOLDER` = `C:\sqc\_patched\rpa` (`BROWSE` or type), `BUILD > BUILD
    PATCHED COPY`.
 3. Compare the snapshot.
 4. `viwo extract C:\sqc\_patched\rpa --workspace C:\sqc\_ws\rt-check --on-existing replace`;
    read `txt\script.txt`.
 
 Expected: 2: progress `PATCHING` with the rail `plan › copy › pack › verify › report`, counter
-`GAME FILES COPIED`, final `PATCHED COPY READY · VERIFIED`; `09.D RESULT` with the badge
+`GAME FILES COPIED`, final `PATCHED COPY READY · VERIFIED`; `RESULT` with the badge
 `VERIFIED ✓`, the card `ORIGINAL: UNTOUCHED`, the target path, `OPEN FOLDER`. The target has the
 marker `.viwo-patched-copy` (or the equivalent marker file) and a rebuilt `game\images.rpa`.
 3: nothing differs. 4: the file reads `patched`.

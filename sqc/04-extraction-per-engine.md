@@ -2,7 +2,7 @@
 
 Area code `EXT`. Every plugin once, plus the encrypted / needs-key cases and nested archives.
 Unless stated, run from the CLI with `--on-existing replace` into `C:\sqc\_ws\<name>` and then
-verify the same run from `01 EXTRACT` (paste the game folder, `RUN EXTRACTION`, same target
+verify the same run from `EXTRACT` (paste the game folder, `RUN EXTRACTION`, same target
 workspace via the top-bar `WORKSPACE > SWITCH`). For every check also confirm:
 
 - the game folder hash set is unchanged (`Get-ChildItem <game> -Recurse -File | Get-FileHash`
@@ -76,7 +76,7 @@ Expected:
 
 Steps:
 1. `viwo --ini C:\sqc\ini\godot-fake.ini extract C:\sqc\godot\encrypted --workspace C:\sqc\_ws\godot5 --on-existing replace`
-2. UI: 01 EXTRACT on `C:\sqc\godot\encrypted`, `01.C MODE > ENGINE OPTIONS > PCK encryption key`
+2. UI: EXTRACT on `C:\sqc\godot\encrypted`, `MODE > ENGINE OPTIONS > PCK encryption key`
    = 64 zeros, run.
 
 Expected:
@@ -84,7 +84,7 @@ Expected:
   `godot.encryption_key`; nothing is extracted from that archive. The spare is NOT tried for
   needs-key.
 - Step 2: the fake tool accepts any 64-hex key and the run succeeds; the run record shows
-  `"encryption_key": "<secret>"`, never the value; the log (04 JOBS, activity console,
+  `"encryption_key": "<secret>"`, never the value; the log (JOBS, activity console,
   `viwo-data\logs\*.log`) never contains the key.
 
 ## SQC-EXT-08 (P0) Unreal: plain pak, key in the exe, locked pak, IoStore (fake tools)

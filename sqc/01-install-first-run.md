@@ -70,9 +70,9 @@ Expected:
 - Summary line at the end: `All <total> tools ready, <k> installed just now.` (or
   `<ready>/<total> tools ready, ...` when something is still missing); `ready` equals the found
   count plus `k`.
-- The landing stays at least 1.2 s even on a fast machine, then fades out; 01 EXTRACT is
+- The landing stays at least 1.2 s even on a fast machine, then fades out; EXTRACT is
   underneath with the top bar `FORMATS a/b READY` chip updated to the new count without a reload.
-- 04 JOBS shows one job of kind `STARTUP CHECK`, state `SUCCEEDED`.
+- JOBS shows one job of kind `STARTUP CHECK`, state `SUCCEEDED`.
 
 Cleanup: none (keep `third_party\` for 02).
 
@@ -139,10 +139,10 @@ Steps:
 
 Expected: the check lines run; `Installing missing tools (1/1): repak`; then a warn line
 `Could not install repak: ...`; summary `<n>/<total> tools ready, 1 could not be installed (see
-05 SYSTEM).` The landing hands off normally; the app works; 05 SYSTEM shows
+SYSTEM).` The landing hands off normally; the app works; SYSTEM shows
 `repak` with an INSTALL button.
 
-Cleanup: restore the network; 05 SYSTEM > INSTALL on repak.
+Cleanup: restore the network; SYSTEM > INSTALL on repak.
 
 ## SQC-INST-09 (P1) `auto_install = off`
 
@@ -151,7 +151,7 @@ Steps:
 2. New tab on the app.
 
 Expected: the landing lists `vgmstream ... missing` and installs nothing (no `Installing` lines);
-summary `<n>/<total> tools ready.` 05 SYSTEM offers INSTALL for it.
+summary `<n>/<total> tools ready.` SYSTEM offers INSTALL for it.
 
 Cleanup: `auto_install = on`, INSTALL vgmstream.
 

@@ -30,15 +30,15 @@ Expected: a table `ENGINE CONFIDENCE EVIDENCE`; the first row is, in order: `ren
 `_dir.vpk`, `Data/*.bsa`, `.build.info`, `UnityPlayer.dll`). `generic` is always present with
 confidence 0.00 or a low value. `quickbms` never leads (`any`, 0.00).
 
-## SQC-DET-02 (P0) 01 EXTRACT > 01.B DETECT shows the same result
+## SQC-DET-02 (P0) EXTRACT > DETECT shows the same result
 
 Steps:
-1. `01 EXTRACT > 01.A TARGET GAME FOLDER`: paste `C:\sqc\renpy\game`, press Enter (or `DETECT
+1. `EXTRACT > TARGET GAME FOLDER`: paste `C:\sqc\renpy\game`, press Enter (or `DETECT
    ENGINE`).
 2. Repeat with `C:\sqc\overwatch\Overwatch`.
 
 Expected:
-- Step 1: `01.B DETECT` lists the engines with a confidence meter; `Ren'Py` first; `01.C MODE`
+- Step 1: `DETECT` lists the engines with a confidence meter; `Ren'Py` first; `MODE`
   preselects `AUTO` with `Ren'Py` as the planned plugin; the action bar reads the target and
   `RUN EXTRACTION` is enabled.
 - Step 2: `Overwatch (DataTool)` first with the badge `TOS-SENSITIVE`; it IS the auto choice
@@ -77,19 +77,19 @@ Expected:
 - The folder `C:\sqc\library` is byte-identical before and after (`Get-ChildItem -Recurse |
   Get-FileHash` compare). Nothing is created inside it.
 
-## SQC-SUR-02 (P0) 07 SURVEY in the UI
+## SQC-SUR-02 (P0) SURVEY in the UI
 
 Steps:
-1. `07 SURVEY > 07.A GAME OR LIBRARY FOLDER`: `C:\sqc\library\lib`, depth `QUICK`, click `SURVEY`.
+1. `SURVEY > GAME OR LIBRARY FOLDER`: `C:\sqc\library\lib`, depth `QUICK`, click `SURVEY`.
 2. On the `Odd` card click `RUN DEEP SURVEY`.
 
 Expected:
-- Step 1: `07.B SURVEY RUN` shows the progress block `SURVEYING`, one rail node per game, counter
+- Step 1: `SURVEY RUN` shows the progress block `SURVEYING`, one rail node per game, counter
   `GAMES 2`, then `COMPLETE`. Stats row: `GAMES 2`, `FULLY COVERED 1`, `TOTAL DATA <bytes>`. Two
   cards with the badges `ENGINE <name>` / `NO ENGINE MATCH`, class counts and the unknown blob
   list with `DENSE` / `STRUCTURED` / `SMALL` badges and `NO TOOL` where a slot is unbound.
 - Step 2: the card re-runs with `DEEP` and shows `CARVABLE <n>` on `assets.bin`.
-- `07.C HOW TO READ A SURVEY` explains every badge used above.
+- `HOW TO READ A SURVEY` explains every badge used above.
 
 ## SQC-SUR-03 (P1) Survey of a single game folder and of an empty folder
 
@@ -102,7 +102,7 @@ gives `NO GAMES FOUND` with the hint to pick a game or a folder of games, no err
 
 Steps: survey your own games folder (10+ games), quick mode.
 
-Expected: progress advances game by game; cancelling from 04 JOBS stops within 5 s with state
+Expected: progress advances game by game; cancelling from JOBS stops within 5 s with state
 `CANCELLED`; no file is created inside any game folder.
 
 ## Results

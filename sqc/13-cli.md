@@ -13,7 +13,7 @@ Steps:
 
 Expected: 1: one JSON document on stdout: `ok: true`, `data.workspace`, `data.plugins[0].id` =
 `"generic"`, `data.copiedFiles`, `warnings: []`; the progress lines stay on stderr (`--quiet`
-removes them). 2: `viwo: invalid_request: ...` on stderr, exit 2. 3: `viwo: refused: ...`, exit 3.
+removes them) and stdout holds nothing but the document (SQC-CLI-15). 2: `viwo: invalid_request: ...` on stderr, exit 2. 3: `viwo: refused: ...`, exit 3.
 
 ## SQC-CLI-02 (P0) `viwo` (guide), `viwo -h`, `viwo <arm>`, `viwo <command> -h`
 
@@ -22,8 +22,8 @@ Steps: run `viwo`, `viwo -h`, `viwo static`, `viwo dynamic`, `viwo patching`, `v
 
 Expected: the guide (SQC-INST-01); `-h` lists the commands under `static`, `dynamic`, `patching`
 and `system` (static: survey detect extract replay unpack sanitize analyze diff; dynamic:
-capture dump trace agent record; patching: repack patch mod; system: serve info slots install
-config indexes diag); `viwo <arm>` lists only that arm; `viwo static detect ...` gives the same
+capture dump trace profile agent record attach; patching: repack patch mod; system: serve info
+slots install config indexes diag workbook runbook); `viwo <arm>` lists only that arm; `viwo static detect ...` gives the same
 result as `viwo detect ...`; each command's `-h` lists its options as in
 `docs/contract/12-core-cli-jobs.md` (12.4); `--json` is accepted both before and after the
 command (`viwo --json slots` and `viwo slots --json`).
@@ -119,6 +119,53 @@ Steps: copy `C:\sqc\zip-basic` to `C:\sqc\ゲーム folder\` and extract it into
 
 Expected: works end to end; the run record stores relative paths with forward slashes.
 
+## SQC-CLI-14 (P0) Durations: every stage, and the run's time
+
+Steps: `viwo extract C:\sqc\doom\game --workspace C:\sqc\_ws\cli14 --on-existing replace`; then
+the same on a real game (any of `games.md`).
+
+Expected: every progress line carries the time of day; a stage that lasted a second or more ends
+with `<stage> took <t>`; the run closes with `Time: <total>: <stage> <t>, ...` (the longest
+first, stages under a second left out, so the list can be empty on the fixture). The same lines
+are in the job's log in JOBS and in the activity console. On the real game no stretch passes
+without a line: the nested-archive search, the carve, the collect and the decode each say what
+they do and count; a child tool's own output lines are relayed during the decode.
+
+## SQC-CLI-15 (P0) `--json` keeps stdout clean
+
+Steps:
+1. `viwo --json extract C:\sqc\zip-basic\game --workspace C:\sqc\_ws\cli15 --on-existing replace > C:\sqc\_out.json 2> C:\sqc\_err.txt`
+2. `Get-Content C:\sqc\_out.json -Raw | ConvertFrom-Json`
+3. The same two on a Unity IL2CPP game (UnityPy's native layout generator prints there).
+
+Expected: `_out.json` parses as one JSON document, with nothing before or after it; the progress
+lines and every native print (`Error generating tree nodes` on IL2CPP) are in `_err.txt` only.
+
+## SQC-CLI-16 (P1) A commit runs only the tests close to its change
+
+Steps (restore each edit with `git checkout <file>`; commit nothing):
+1. Add a blank line to `CHANGELOG.md`; `python tools\affected.py`.
+2. Add a comment to `viwo\plugins\doom\__init__.py`; `python tools\affected.py`.
+3. Add a comment to `pyproject.toml`; `python tools\affected.py`.
+4. `python tools\run_tests.py` on the clean tree.
+
+Expected: 1: `none`, or only the test modules that name that file. 2: a short list: the tests
+that import or name the Doom plugin and the plugin-wide checks, far fewer than the suite. 3:
+`all`. 4: the whole suite, one process per test module on 80 % of the logical processors, the
+modules that bind a port or drive the browser alone at the end; green. `tools\version.py commit`
+runs the list of 1-3 and `--full` runs everything (do not commit from this check).
+
+## SQC-CLI-17 (P2) Distro profiles come from the plugins
+
+Steps:
+1. `viwo config generate C:\sqc\_distros2`; compare the folder with `<repo>\distros`.
+2. `python -m unittest tests.test_sealed`
+
+Expected: 1: twelve files, byte-identical to the shipped ones: the profiles renpy, unity, unreal
+and godot are each named by their plugin's manifest (`profile`), plus custom and mixed. 2: green:
+a new engine plugin added as one package gets its own `<os>-<profile>.ini`, is detected and
+extracts, with no change outside `viwo\plugins\` but the generated distro files.
+
 ## Results
 
 | ID | Result | Notes | Tester | Date |
@@ -136,3 +183,7 @@ Expected: works end to end; the run record stores relative paths with forward sl
 | SQC-CLI-11 | | | | |
 | SQC-CLI-12 | | | | |
 | SQC-CLI-13 | | | | |
+| SQC-CLI-14 | NOT RUN | added at 1.20.40 | | |
+| SQC-CLI-15 | NOT RUN | added at 1.20.40 | | |
+| SQC-CLI-16 | NOT RUN | added at 1.20.40 | | |
+| SQC-CLI-17 | NOT RUN | added at 1.20.40 | | |

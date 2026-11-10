@@ -19,7 +19,7 @@ Steps:
 1. Unzip to `C:\ViWo\`; `C:\ViWo\viwo.exe` (guide), `viwo.exe slots`, `viwo.exe info`.
 2. `viwo.exe serve` ; wait for the browser; let the landing install the tools.
 3. `Get-ChildItem C:\ViWo` ; `Get-ChildItem C:\ViWo\third_party`
-4. 01 EXTRACT `C:\sqc\renpy\game`; 03 SORT; 08 CLEANUP scan; 09 PATCHED COPY plan.
+4. EXTRACT `C:\sqc\renpy\game`; SORT; CLEANUP scan; PATCHED COPY plan.
 5. `viwo.exe extract C:\sqc\zip-basic\game --workspace C:\ViWo\viwo-data\ws1`
 
 Expected: 1: the guide; `slots` shows `unitypy found`, `py7zr found`, `unrpa found` (bundled) and

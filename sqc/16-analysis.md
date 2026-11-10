@@ -1,8 +1,8 @@
-# 16 Static analysis (12 ANALYSIS, `viwo analyze`)
+# 16 Static analysis (ANALYSIS, `viwo analyze`)
 
 Preconditions: a workspace, a game folder (any of `Test-games/`), `analysis` in
-`[startup] features` (11 SETTINGS > FEATURES > STATIC ANALYSIS, apply), Ghidra and the JDK
-installed (`viwo install ghidra`, about 800 MB, or 05 SYSTEM > INSTALL on `ghidra`).
+`[startup] features` (SETTINGS > FEATURES > STATIC ANALYSIS, apply), Ghidra and the JDK
+installed (`viwo install ghidra`, about 800 MB, or SYSTEM > INSTALL on `ghidra`).
 
 ## SQC-AN-01 (P1) Targets listed per engine
 1. `viwo analyze Test-games/ultrakill-prelude --list`.
@@ -22,10 +22,10 @@ installed (`viwo install ghidra`, about 800 MB, or 05 SYSTEM > INSTALL on `ghidr
    `strings.txt`, `symbols.tsv`, `record.json` (context with tool versions); the Ghidra project is
    `<ws>.ghidra/ultrakill-exe/viwo.gpr` beside the workspace (Ghidra refuses dot folders).
 3. Game folder hashes unchanged (`tools/integration_games.py` style check or `viwo diag`).
-4. Cancel mid-run (Ctrl+C or 04 JOBS > CANCEL): the Ghidra process tree is gone within seconds.
+4. Cancel mid-run (Ctrl+C or JOBS > CANCEL): the Ghidra process tree is gone within seconds.
 
 ## SQC-AN-04 (P1) Continue in Ghidra
-1. 12 ANALYSIS > LIST TARGETS > CONTINUE IN GHIDRA on the analysed target.
+1. ANALYSIS > LIST TARGETS > CONTINUE IN GHIDRA on the analysed target.
 2. Expected: Ghidra opens the `viwo` project with the binary imported; the toast shows the pid.
 3. Stop `viwo serve` (Ctrl+C): Ghidra closes with it (tracked child).
 4. Before any run: the button answers "no Ghidra project yet: run the analysis first".
@@ -56,7 +56,7 @@ chunks (`\x1bLua` header; `luac -o init.luac init.lua` makes one).
 ## SQC-AN-07 (P1) Identify the binary before decompiling it (Detect It Easy)
 Preconditions: `viwo install die` (25 MB).
 1. `viwo analyze Test-games\ultrakill-prelude --list`: the `ultrakill-exe` row lists
-   `extras: [analysis.protector / die]`; 12 ANALYSIS shows a DETECT IT EASY button next to ANALYZE.
+   `extras: [analysis.protector / die]`; ANALYSIS shows a DETECT IT EASY button next to ANALYZE.
 2. `viwo analyze Test-games\ultrakill-prelude --workspace C:\sqc\_ws\an --target ultrakill-exe --slot analysis.protector`
 3. Expected: `.analysis\die\ultrakill-exe\identify.txt` lists the linker, compiler (MSVC),
    `Library: Unity Engine` and the tool; the notes say `no packer or protector detected`; on a

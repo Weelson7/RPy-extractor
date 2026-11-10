@@ -7,24 +7,25 @@ steps and exact expected results, so two testers get the same verdict.
 | File | Area |
 |------|------|
 | 01-install-first-run.md | install, first start, startup installer, landing screen |
-| 02-dependencies.md | tools: `viwo slots`, `viwo install`, 05 SYSTEM, pinned tools |
-| 03-detection-survey.md | engine detection, 07 SURVEY, `viwo survey` |
+| 02-dependencies.md | tools: `viwo slots`, `viwo install`, SYSTEM, pinned tools |
+| 03-detection-survey.md | engine detection, SURVEY, `viwo survey` |
 | 04-extraction-per-engine.md | every plugin, encrypted / needs-key cases, nested archives |
 | 05-modes-options.md | auto / single / mixed, policies, carve modes, filter, on-existing |
 | 06-game-integrity-safety.md | game folder unchanged, workspace marker, hostile names |
-| 07-workspace-sort-trash.md | 02 WORKSPACE, 03 SORT, trash areas, undo |
-| 08-cleanup.md | 08 CLEANUP: sanitizer plan, apply, undo |
-| 09-round-trip.md | 09 PATCHED COPY: plan, build, verify, UNTOUCHED |
-| 10-merger.md | 06 MERGER |
+| 07-workspace-sort-trash.md | WORKSPACE, SORT, trash areas, undo, SWITCH and CONVERT INTO WORKSPACE |
+| 08-cleanup.md | CLEANUP: sanitizer plan, apply, undo |
+| 09-round-trip.md | PATCHED COPY: plan, build, verify, UNTOUCHED |
+| 10-merger.md | MERGER |
 | 11-capture.md | runtime capture (RenderDoc), warnings and confirmation |
-| 12-ui-ux.md | every view of the three arms and the global strip at four widths, every error code, keyboard, reduced motion |
+| 12-ui-ux.md | every view of the three arms and the global strip at four widths, every error code, failures said, the reload after a restart, keyboard, reduced motion |
 | 13-cli.md | every `viwo` command, `tools/version.py` |
 | 14-security.md | token, Host, JSON-only, preview containment, pinned downloads |
 | 15-release-package.md | portable zip, wheel |
-| 16-analysis.md | 12 ANALYSIS: targets, Ghidra headless run, Continue in Ghidra, managed and bytecode analyzers, Detect It Easy, version diff, emulate and solve, feature switch |
+| 16-analysis.md | ANALYSIS: targets, Ghidra headless run, Continue in Ghidra, managed and bytecode analyzers, Detect It Easy, version diff, emulate and solve, feature switch |
 | 17-ctf.md | CTF flags per game (`ctf.json`): one plain extraction must reach the named assets |
 | 18-patching.md | patch sets (plan, apply, AOB, assembly) and mod packages |
 | 19-dynamic.md | Continue in x64dbg / Cheat Engine, memory dump, API trace, runtime agents, audio loopback |
+| 20-guides.md | WORKBOOKS, RUNBOOKS, the workflow recorder (`viwo workbook`, `viwo runbook`) |
 
 ## Real games: `games.md` and the automated integration run
 
@@ -53,7 +54,9 @@ from a worktree at a committed version, with the CTF flags of `ctf.json` (`17-ct
   first row of each file.
 - Paths: `<out>` is the fixture folder (below), `<repo>` the checkout, `<ws>` the active ViWo
   workspace shown in the top bar. UI paths read `view > panel > control`, with the labels the UI
-  shows, for example `05 SYSTEM > 05.A OPTIONAL TOOLS BY ENGINE > INSTALL`.
+  shows, for example `SYSTEM > OPTIONAL TOOLS BY ENGINE > INSTALL`. Views and panels are named, never numbered: the
+  tab codes in front of them are computed and change when a view is added. The strip shows
+  SYSTEM, WORKBOOKS, RUNBOOKS, SETTINGS; JOBS opens from the job chip.
 - Commands are PowerShell from `<repo>` with the venv active unless stated otherwise. Linux:
   same commands with forward slashes and `python3`.
 - Nothing in the suite needs a commercial game except the OPERATOR checks. Where a real game
@@ -65,7 +68,7 @@ from a worktree at a committed version, with the CTF flags of `ctf.json` (`17-ct
    ```powershell
    py -3.13 -m venv .venv; .venv\Scripts\Activate.ps1
    pip install -e ".[unity,sevenzip,renpy,lz4,dev]"
-   python -m unittest discover -s tests -t .      # must be green before any manual check
+   python tools\run_tests.py                      # the whole suite in parallel; green before any manual check
    ```
 2. Build the fixtures (synthetic, no game data):
    ```powershell
@@ -84,7 +87,7 @@ from a worktree at a committed version, with the CTF flags of `ctf.json` (`17-ct
    ```
    `startup.ini` is the one in `<repo>`; `third_party\` and `viwo-data\` appear next to it.
 
-## P0 smoke subset (about 45 minutes)
+## P0 smoke subset (about 75 minutes)
 
 Run these first, in this order. All must PASS before anything else is worth running.
 
@@ -95,19 +98,20 @@ Run these first, in this order. All must PASS before anything else is worth runn
 | 3 | SQC-DEP-01, SQC-DEP-03 | every pinned tool binds, `viwo install --all` is idempotent |
 | 4 | SQC-DET-01, SQC-SUR-01 | detection and survey on fixtures |
 | 5 | SQC-EXT-01, SQC-EXT-02, SQC-EXT-04, SQC-EXT-06 | zip, nested, Ren'Py, Godot (fake tools) |
-| 6 | SQC-SAFE-01, SQC-SAFE-03 | game folder unchanged, hostile names contained |
-| 7 | SQC-WS-01, SQC-SORT-01, SQC-SORT-04 | workspace groups, sort keep/trash, undo |
+| 6 | SQC-SAFE-01, SQC-SAFE-03, SQC-SAFE-09 (steps 1-2) | game folder unchanged, hostile names contained, the memory ceiling said |
+| 7 | SQC-WS-01, SQC-WS-05, SQC-WS-06, SQC-SORT-01, SQC-SORT-04, SQC-SORT-08 | workspace groups, convert a folder, group restore after SORT, sort keep/trash, undo, no preview holds a file |
 | 8 | SQC-CLEAN-01, SQC-CLEAN-02 | cleanup plan, apply, undo |
 | 9 | SQC-RT-01, SQC-RT-02 | patched copy plan and build, original UNTOUCHED |
 | 10 | SQC-MERGE-01 | one merger build |
 | 11 | SQC-CAP-01, SQC-CAP-02 | capture switch and confirmation (no refusals) |
-| 12 | SQC-UI-01, SQC-UI-05 | every view at 1920, one error box per code |
-| 13 | SQC-CLI-01, SQC-CLI-09 | `viwo extract --json`, `tools/version.py verify` |
+| 12 | SQC-UI-01, SQC-UI-05, SQC-UI-13, SQC-UI-15 | every view at 1920, one error box per code, failures said, the strip and the job chip |
+| 13 | SQC-CLI-01, SQC-CLI-09, SQC-CLI-14, SQC-CLI-15 | `viwo extract --json`, `tools/version.py verify`, stage durations and `Time:`, a clean stdout |
 | 14 | SQC-SEC-01, SQC-SEC-04 | token and checksum refusal |
 | 15 | SQC-REL-01 | portable bundle starts and serves |
+| 16 | SQC-GUIDE-01, SQC-GUIDE-02, SQC-GUIDE-03 | workbooks, a runbook run, a workflow recorded and replayed |
 
 ## Reporting
 
 Fill the result table at the end of each file. For a FAIL, attach the run record from
-`<ws>\.extraction_metadata\runs\` (extractions), the job log from 04 JOBS, or the terminal
+`<ws>\.extraction_metadata\runs\` (extractions), the job log from JOBS, or the terminal
 output, and the ViWo version. File issues against the SQC ID.

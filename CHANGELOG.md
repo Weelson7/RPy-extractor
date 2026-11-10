@@ -4,6 +4,12 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.46 (2026-11-10)
+- SQC suite brought up to the current build: view numbers dropped (codes are computed), stale
+  lines fixed, new checks for guides, workspace conversion, SORT's group trash, the UI's
+  failure lines, the memory ceiling, the console's stage lines and `attach.net`, each marked
+  NOT RUN until an operator runs it; CTF flags rewritten so none passes on an empty result.
+
 ## 1.20.45 (2026-11-10)
 - Rung D4, network: `attach.net` opens mitmproxy (pinned third-party tool, MIT, installed by
   itself into `third_party/`) as a tracked child from RUNTIME or `viwo attach`: a regular

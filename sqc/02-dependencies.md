@@ -1,4 +1,4 @@
-# 02 Dependencies (pinned tools, `viwo install`, 05 SYSTEM)
+# 02 Dependencies (pinned tools, `viwo install`, SYSTEM)
 
 Area code `DEP`. Reference: `viwo\data\tools.json` (pins), `viwo\core\thirdparty.py`
 (installer), `viwo\core\preflight.py` (check and install events).
@@ -23,6 +23,7 @@ Pinned tools (version / kind / how it runs), for the checks below:
 | rdpython | 1.47 | alias of renderdoccmd | `qrenderdoc.exe --py` |
 | unrpyc | 2.0.4 | zip | `.rpyc` to `.rpy` (decode and analysis) |
 | cp77-hashes | 95074158 | data | WolvenKit's Cyberpunk path list, pinned by commit |
+| wolvenkit | 9.1.0 | zip, needs `dotnet` | WolvenKit's console for Cyberpunk CR2W (GPL-3, a process); every run under a 4 GB memory cap (SQC-SAFE-09) |
 | jdk | 25.0.5+8 | zip | Temurin JDK for Ghidra and unluac |
 | ghidra | 12.2 | zip, on demand | `viwo install ghidra` only, never by the preflight |
 | unicorn | 2.1.4 | worker | pip into `third_party\unicorn\`, never imported |
@@ -58,7 +59,7 @@ Steps:
 9. Windows: `& third_party\datatool\DataTool.exe` (usage)
 
 Expected: step 1 shows `found` for all of them with the exact version from the table in the
-`WHERE / HOW` column context (05 SYSTEM shows the version under the tool name); each command
+`WHERE / HOW` column context (SYSTEM shows the version under the tool name); each command
 prints its banner or usage and none fails with a missing DLL or runtime error. Step 5 prints
 AssetStudioModCLI help (no "You must install .NET" message).
 
@@ -102,13 +103,13 @@ Steps:
 Expected: step 2 prints `FAILED repak: repak_cli-...zip: checksum mismatch, not installed`;
 `third_party\repak` does not exist; no temp folder remains under `third_party\`.
 
-## SQC-DEP-05 (P0) 05 SYSTEM: INSTALL per tool, INSTALL ALL MISSING, RE-CHECK
+## SQC-DEP-05 (P0) SYSTEM: INSTALL per tool, INSTALL ALL MISSING, RE-CHECK
 
 Preconditions: app running; delete `third_party\vgmstream` and `third_party\godotpcktool`, then
 reload the page (F5).
 
 Steps:
-1. Open `05 SYSTEM`. Read the stats row and `05.A OPTIONAL TOOLS BY ENGINE`.
+1. Open `SYSTEM`. Read the stats row and `OPTIONAL TOOLS BY ENGINE`.
 2. In the `vgmstream-cli` row click `INSTALL`.
 3. Click `INSTALL ALL MISSING (1)`.
 4. Click `RE-CHECK`.
@@ -126,7 +127,7 @@ Expected:
   `MISSING`, `INSTALLED`; godotpcktool installs; toast `<total>/<total> tools ready, 1 installed`;
   button becomes `NOTHING TO INSTALL` (disabled).
 - Step 4: `CHECKING` run with `INSTALLED 0`; toast `<total>/<total> tools ready, 0 installed`.
-- 04 JOBS lists `TOOL INSTALL` and `STARTUP CHECK` jobs, all `SUCCEEDED`.
+- JOBS lists `TOOL INSTALL` and `STARTUP CHECK` jobs, all `SUCCEEDED`.
 
 ## SQC-DEP-06 (P1) `[tools]` wins over `third_party\`, which wins over PATH
 
