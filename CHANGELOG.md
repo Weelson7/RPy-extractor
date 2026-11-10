@@ -4,6 +4,11 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.16 (2026-11-10)
+- The top bar fits: JOBS leaves the strip (owner), the job chip (RUNNING or JOB IDLE) opens it;
+  the strip is SYSTEM, WORKBOOKS, RUNBOOKS, SETTINGS (00 to 03). A global view registered with
+  `strip: false` is routed but has no chip and no number; its panels carry its `tag` (JOB).
+
 ## 1.20.15 (2026-11-10)
 - CONVERT INTO WORKSPACE (owner): the switch dialog turns a folder of your own files into a
   ViWo workspace. It says first what moves (files, groups by type), then moves every file into

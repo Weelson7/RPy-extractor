@@ -128,5 +128,5 @@ function hide() {
 import { registerView, code, tab } from "../registry.js";
 
 const VIEW = { mount, show, hide };
-registerView({ id: "jobs", arm: "global", order: 20, title: "JOBS", subtitle: "runs and their logs", ...VIEW });
+registerView({ id: "jobs", arm: "global", order: 20, title: "JOBS", subtitle: "runs and their logs", strip: false, tag: "JOB", ...VIEW });
 export default VIEW;

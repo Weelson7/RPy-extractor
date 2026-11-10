@@ -1,9 +1,10 @@
-// App shell: theme, the global strip (SYSTEM, JOBS, SETTINGS, game, workspace), the three arms
+// App shell: theme, the global strip (SYSTEM, WORKBOOKS, RUNBOOKS, SETTINGS, the job chip, game,
+// workspace), the three arms
 // (STATIC, DYNAMIC, PATCHING) with a registry-driven rail per arm, router, status chips, dock.
 import { api, hasToken } from "./api.js";
 import * as ui from "./ui.js";
 import { h, $, fill, pref, logLine, bus, emit, toastErr, seg } from "./ui.js";
-import { ARMS, views, view, armViews, loadPluginModules, addonPanels, code } from "./registry.js";
+import { ARMS, views, view, armViews, stripViews, loadPluginModules, addonPanels, code } from "./registry.js";
 import { currentGame, pickGame } from "./game.js";
 import "./views/home.js";
 import { setTheme } from "./theme.js";
@@ -37,7 +38,7 @@ const link = (v) => h("a", { href: `#${v.id}`, "data-view": v.id, title: `${v.ti
 function buildShell() {
   state.armSeg = seg(ARMS.map((a) => [a.id, a.title]), "", (id) => { location.hash = `#${id}`; }, { "aria-label": "Arms" });
   fill($("#arms"), state.armSeg);
-  fill($("#strip"), armViews("global").map((v) => h("a", { class: "chip", href: `#${v.id}`, "data-view": v.id, title: v.subtitle },
+  fill($("#strip"), stripViews().map((v) => h("a", { class: "chip", href: `#${v.id}`, "data-view": v.id, title: v.subtitle },
     h("i", {}), h("b", {}, `${code(v.id)} ${v.title}`))));
   fill($("#main"), views().map((v) => h("section", { class: "view", id: `view-${v.id}`, hidden: true })));
 }

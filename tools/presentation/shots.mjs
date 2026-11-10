@@ -52,7 +52,7 @@ await send("Page.reload");
 await sleep(3500);
 await go("static");
 await shot("static-home", "STATIC: the game is not running. The path, step by step.",
-  "Each arm opens on its end-to-end path. The top bar holds the shared game selector and the workspace, SYSTEM, JOBS, WORKBOOKS, RUNBOOKS and SETTINGS (00 to 04); the rail lists the arm's views, numbered S0, S1... as plugins add them.");
+  "Each arm opens on its end-to-end path. The top bar holds the shared game selector and the workspace, SYSTEM, WORKBOOKS, RUNBOOKS and SETTINGS (00 to 03) and the job chip, which opens JOBS; the rail lists the arm's views, numbered S0, S1... as plugins add them.");
 await go("survey"); await press("survey", "SURVEY"); await sleep(1500); await idle(); await sleep(1500);
 await shot("survey", "SURVEY: what ViWo can pull from this game, read-only.",
   "A read-only coverage report: the engine found, which files each tool can open, what needs a key, and the dense unknown blobs the carver would scan. It runs on one game or a whole library.");

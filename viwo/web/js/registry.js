@@ -11,7 +11,9 @@ export const ARMS = [
   { id: "patching", title: "PATCHING", subtitle: "you change its content" },
 ];
 
-/** Register a view: {id, arm, order, title, subtitle, mount(root), show?(), hide?()}. */
+/** Register a view: {id, arm, order, title, subtitle, mount(root), show?(), hide?()}; a global view
+ * with `strip: false` is routed (#id) but has no chip in the strip and no number: its panels carry
+ * its `tag` (JOBS: the top bar's job chip opens it). */
 export function registerView(view, { override = false } = {}) {
   if (!view?.id || typeof view.mount !== "function") throw new Error("registerView: id and mount are required");
   if (VIEWS.has(view.id) && !override) throw new Error(`view "${view.id}" exists; pass {override: true} to replace it`);
@@ -34,12 +36,14 @@ export const views = () => [...VIEWS.values()].sort(byOrder);
 /**
  * A view's tab code, computed from its arm and its place in it (never written by a view):
  * S0, S1… in STATIC, D0… in DYNAMIC, P0… in PATCHING (the arm home is 0), 00, 01… for the global
- * strip (SYSTEM, JOBS, SETTINGS). Add-on views and reordering renumber everything by themselves.
+ * strip (SYSTEM, WORKBOOKS, RUNBOOKS, SETTINGS). Add-on views and reordering renumber everything by
+ * themselves.
  */
 export function code(id) {
   const v = VIEWS.get(id);
   if (!v) return "";
-  const i = armViews(v.arm).findIndex((x) => x.id === id);
+  if (!inStrip(v)) return v.tag || "";
+  const i = armViews(v.arm).filter(inStrip).findIndex((x) => x.id === id);
   return v.arm === "global" ? String(i).padStart(2, "0") : `${v.arm[0].toUpperCase()}${i}`;
 }
 
@@ -47,6 +51,9 @@ export function code(id) {
 export const tab = (id) => (VIEWS.get(id) ? `${code(id)} ${VIEWS.get(id).title}` : id.toUpperCase());
 export const view = (id) => VIEWS.get(id) || null;
 export const armViews = (arm) => views().filter((v) => v.arm === arm);
+const inStrip = (v) => v.arm !== "global" || v.strip !== false;
+/** The views of the top bar's strip, in order. */
+export const stripViews = () => armViews("global").filter(inStrip);
 export const panels = (viewId) => [...(PANELS.get(viewId)?.values() || [])].sort(byOrder);
 
 /** Render the add-on panels of a view (each render error is isolated and reported). */
