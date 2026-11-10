@@ -4,6 +4,18 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.30 (2026-11-10)
+- Fix: trashing or renaming a large file in SORT failed ("in use"). For an audio file over
+  20 MB the page fetched the file for its waveform, found it too large and left the download
+  unread, so the server kept the file open and Windows refused the move. The page now aborts
+  that download, and the server no longer depends on the page: every preview stream is closed
+  before anything is written into the workspace (`App.release_previews`), so no open preview
+  blocks a trash, a rename, a group move or a cleanup.
+- Never silent (owner): every failure a route answers is a line in the log and the activity
+  console, with its route, message and hint (`[FAILED] POST /api/sort-trash: ...`,
+  `App.said`). Before, a refused or failed action showed only in its toast. The toast no longer
+  points to JOBS for something JOBS did not hold.
+
 ## 1.20.29 (2026-11-10)
 - The WolvenKit decode runs several parts at once (owner): one WolvenKit process used one
   core of twenty for 100 minutes on the Cyberpunk demo subset. The parts of 600 files now run

@@ -4,13 +4,22 @@ import { h, fill, cssVar, bars } from "../ui.js";
 const BARS = 64;
 const MAX_BYTES = 20 * 1024 * 1024; // larger files keep the flat line instead of being decoded
 let decoder = null;
+let pending = null;
+
+/** Abort the waveform download in flight: an unread response keeps the file open on the server. */
+export function stopAudio() { pending?.abort(); pending = null; }
 
 const clock = (s) => `${Math.floor((s || 0) / 60)}:${((s || 0) % 60).toFixed(1).padStart(4, "0")}`;
 
 /** Peak amplitude per bar, normalised to 0..1. Throws when the file is too large or undecodable. */
 async function peaks(url) {
-  const res = await fetch(url);
-  if (!res.ok || Number(res.headers.get("content-length") || 0) > MAX_BYTES) throw new Error("not decodable here");
+  stopAudio();
+  const mine = (pending = new AbortController());
+  const res = await fetch(url, { signal: mine.signal });
+  if (!res.ok || Number(res.headers.get("content-length") || 0) > MAX_BYTES) {
+    mine.abort();  // too large to decode here: the body is not left unread and open
+    throw new Error("not decodable here");
+  }
   const buf = await res.arrayBuffer();
   if (buf.byteLength > MAX_BYTES) throw new Error("too large");
   decoder ||= new OfflineAudioContext(1, 1, 44100);

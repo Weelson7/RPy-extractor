@@ -30,6 +30,7 @@ class App:
         self.history: list[dict] = []
         self.recording: Any = None  # the workflow being recorded (api/recording.py, doc 19.3)
         self._log: deque[str] = deque(maxlen=2000)
+        self._previews: set = set()  # the files open for a preview stream (server._preview)
         self._lock = threading.Lock()
         for folder in (server.logs, server.temp, server.workspace, server.merged):
             folder.mkdir(parents=True, exist_ok=True)  # a fresh install works out of the box
@@ -48,6 +49,33 @@ class App:
                     fh.write(stamped + "\n")
             except OSError:
                 pass  # logging must never break a request
+
+    def preview(self, handle, opened: bool) -> None:
+        with self._lock:
+            (self._previews.add if opened else self._previews.discard)(handle)
+
+    def release_previews(self) -> int:
+        """Close every preview stream before the workspace is written: Windows refuses to move
+        a file, or a folder holding one, that is open, and a page may hold a stream open for
+        as long as it likes. The page asks again for what it still needs."""
+        with self._lock:
+            handles, self._previews = list(self._previews), set()
+        for handle in handles:
+            handle.close()
+        return len(handles)
+
+    def said(self, route: str, answer) -> None:
+        """Never silent: every failure a route answers is a line in the log and the console,
+        with its route, message and hint. A question (needs_decision) and a closed picker
+        (cancelled) are not failures."""
+        if not isinstance(answer, dict) or answer.get("success", answer.get("ok", True)):
+            return
+        err = answer.get("error")
+        info = err if isinstance(err, dict) else {"message": err, **answer}
+        if info.get("code") in ("needs_decision", "cancelled"):
+            return
+        hint = f" ({info['hint']})" if info.get("hint") else ""
+        self.log(f"[FAILED] {route}: {info.get('message') or 'no message'}{hint}")
 
     def logs(self) -> list[str]:
         with self._lock:
@@ -118,6 +146,8 @@ class App:
                     )
                 return fn()
             with workspace_lock(target):
+                if writes:
+                    self.release_previews()
                 return fn()
         except ViwoError as exc:
             return failure(exc)

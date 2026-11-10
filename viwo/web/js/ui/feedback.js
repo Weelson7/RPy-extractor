@@ -13,7 +13,7 @@ export const ERRORS = {
   unavailable: ["Tool not installed", "A tool this needs is missing. Install it with one click in SYSTEM, then try again.", ["#system", "SYSTEM"]],
   needs_key: ["Encryption key needed", "These files are encrypted. Enter the key under ENGINE OPTIONS, then run again.", ["#extract", "EXTRACT"]],
   needs_decision: ["Your choice is needed", "Answer the question ViWo asked, then run again."],
-  failed: ["It did not work", "The message above says why. The full log is in JOBS.", ["#jobs", "JOBS"]],
+  failed: ["It did not work", "The message above says why; the same line is in the activity console below."],
   cancelled: ["Cancelled", "Stopped on request. Run it again whenever you are ready."],
   refused: ["Refused for safety", "ViWo only writes into an empty folder or one it created, never into a game folder. Pick another folder."],
   internal: ["Something broke inside ViWo", "This is a bug, not your mistake. JOBS has the details; please report it.", ["#jobs", "JOBS"]],

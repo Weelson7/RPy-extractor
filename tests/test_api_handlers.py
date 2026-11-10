@@ -16,6 +16,7 @@ from unittest import mock
 from tests.helpers import runtime
 from viwo.api.app import App
 from viwo.api.handlers import GET, POST
+from viwo.core.workspace import claim
 
 GROUPS = ("png", "ogg", "txt", "json", "dds")
 
@@ -220,6 +221,61 @@ class ToolJobRouteTests(unittest.TestCase):
             ):
                 self.assertEqual(POST["/api/preflight/install"](app, {"id": "x"})["installed"], "x")
             reload.assert_called_once()
+
+
+class NeverBlockedNeverSilentTests(unittest.TestCase):
+    def test_a_writing_call_closes_previews_and_every_failure_is_logged(self) -> None:
+        rng = random.Random(17)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "ws" / "flac").mkdir(parents=True)
+            app = App(runtime(root))
+            claim(root / "ws")
+            app.set_workspace(root / "ws")
+            for case in range(20):
+                files = [
+                    root / "ws" / "flac" / f"{case}-{i}.flac" for i in range(rng.randint(1, 4))
+                ]
+                handles = []
+                for path in files:
+                    path.write_bytes(b"f" * rng.randint(1, 2000))
+                    handles.append(path.open("rb"))  # a page holding its preview stream open
+                    app.preview(handles[-1], True)
+                writes = rng.random() < 0.7
+                target = root / "ws" / f"moved-{case}"
+
+                def move(target=target):  # Windows refuses this while a file inside is open
+                    (root / "ws" / "flac").rename(target)
+                    target.rename(root / "ws" / "flac")
+                    return {"success": True}
+
+                answer = app.locked(move if writes else lambda: {"success": True}, None, writes)
+                self.assertTrue(answer["success"], (case, answer))
+                self.assertEqual([h.closed for h in handles], [writes] * len(handles), case)
+                for handle in handles:
+                    handle.close()
+                    app.preview(handle, False)
+            before = len(app.logs())
+            for answer, logged in (
+                ({"success": True}, False),
+                (
+                    {
+                        "success": False,
+                        "error": "file in use",
+                        "code": "failed",
+                        "hint": "close it",
+                    },
+                    True,
+                ),
+                ({"ok": False, "error": {"message": "no tool", "code": "unavailable"}}, True),
+                ({"success": False, "error": "replace?", "code": "needs_decision"}, False),
+                ({"success": False, "error": "No folder selected", "code": "cancelled"}, False),
+            ):
+                app.said("POST /api/x", answer)
+                self.assertEqual(len(app.logs()) - before, int(logged), answer)
+                before = len(app.logs())
+            self.assertIn("[FAILED] POST /api/x: no tool", app.logs()[-1])
+            self.assertIn("file in use (close it)", app.logs()[-2])
 
 
 if __name__ == "__main__":

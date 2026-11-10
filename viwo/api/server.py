@@ -103,12 +103,16 @@ class Handler(BaseHTTPRequestHandler):
         try:
             bridged = routed(path, arg)
             if bridged is not None:
+                self.app.said(f"{self.command} {path}", bridged[0])
                 self.send_json(*bridged)
             elif path in table:
-                self.send_json(table[path](self.app, arg))
+                answer = table[path](self.app, arg)
+                self.app.said(f"{self.command} {path}", answer)
+                self.send_json(answer)
             else:
                 self.send_json({"success": False, "error": f"Unknown route {path}"}, 404)
         except ViwoError as exc:  # a legacy handler's refusal or bad request is said, not a 500
+            self.app.said(f"{self.command} {path}", failure(exc))
             self.send_json(failure(exc), routes.STATUS.get(exc.code, 400))
         except Exception as exc:  # internal errors never crash the server
             self.app.log(f"[ERROR] {self.command} {path}: {type(exc).__name__}: {exc}")
@@ -179,13 +183,16 @@ class Handler(BaseHTTPRequestHandler):
             handle = path.open("rb")
         except (ViwoError, OSError):
             return self.send_error(404)
+        self.app.preview(handle, True)
         try:
             with handle:
                 self._stream(handle, path.name, head)
         except ABORTED:
             pass
-        except OSError:  # gone mid-stream: the headers are out, the connection ends
-            self.close_connection = True
+        except (OSError, ValueError):  # gone, or released for a move (App.release_previews),
+            self.close_connection = True  # mid-stream: the headers are out, the connection ends
+        finally:
+            self.app.preview(handle, False)
 
     def _stream(self, handle, name: str, head: bool) -> None:
         size = os.fstat(handle.fileno()).st_size

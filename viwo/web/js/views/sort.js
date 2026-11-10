@@ -1,7 +1,7 @@
 // SORT: keyboard-first triage of workspace assets with a large preview stage.
 import { api } from "../api.js";
 import { h, fill, btn, panel, meter, viewHead, empty, errorBox, toast, toastErr, promptBox, modal, fmtBytes, fmtNum, pad, bus, emit, goBtn, pref } from "../ui.js";
-import { audioStage } from "./sort-audio.js";
+import { audioStage, stopAudio } from "./sort-audio.js";
 import { skeleton, withSkeleton } from "../progress.js";
 
 const LIMIT = 100;
@@ -168,6 +168,7 @@ const binary = (t = "") => (t.match(/[\uFFFD\x00-\x08\x0E-\x1F]/g) || []).length
 /** Stop the preview and drop its source before the file moves: the server streams it, and
  * Windows refuses to move a file that is open (error 32). */
 function release() {
+  stopAudio();
   el.stage.querySelectorAll("audio, video").forEach((m) => { m.pause(); m.removeAttribute("src"); m.load(); });
 }
 
