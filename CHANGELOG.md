@@ -4,6 +4,11 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.38 (2026-11-10)
+- Games pass rerun: Schedule I passes 12 of 12 flags at 1.20.37 (7 of 12 on 2026-11-03),
+  Age of Empires II HD 13 of 13 at 1.20.34, Approximately Up 9 of 10 at 1.20.36. CONFORMANCE:
+  extract reads "real" for Unity and Age of Empires.
+
 ## 1.20.37 (2026-11-10)
 - Fix: extracting Schedule I (Unity, IL2CPP) took the owner's machine down, twice. A
   MonoBehaviour read with a layout rebuilt from Cpp2IL's stand-ins did not fit its object; the
