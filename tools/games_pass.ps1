@@ -5,7 +5,8 @@ param(
     [string]$Source = "C:\Users\weel-\Games",
     [double]$SkipExtractOverGB = 40,
     [string[]]$Skip = @("ApproximatelyUp-Modding", "CYPMods", "bannerlord", "AU"),
-    [string[]]$Only = @()
+    [string[]]$Only = @(),
+    [string]$Deep = ""   # e.g. "static,patching": run tools/deep_pass.py with these arms instead
 )
 $ErrorActionPreference = "Continue"
 $root = Split-Path -Parent $PSScriptRoot
@@ -52,7 +53,12 @@ foreach ($dir in Get-ChildItem $Source -Directory) {
     $extra = @()
     if ($size -gt $SkipExtractOverGB) { $extra = @("--skip-extract") }
     Say "run $slug $extra"
-    & $python (Join-Path $root "tools\integration_games.py") --games $games --out $out --only $slug @extra 2>&1 | Select-Object -Last 3 | ForEach-Object { Say "  $_" }
+    if ($Deep) {
+        $deepOut = Join-Path $root "viwo-data\deep-pass\$slug"
+        & $python (Join-Path $root "tools\deep_pass.py") $copy --arms $Deep --out $deepOut 2>&1 | Select-Object -Last 40 | ForEach-Object { Say "  $_" }
+    } else {
+        & $python (Join-Path $root "tools\integration_games.py") --games $games --out $out --only $slug @extra 2>&1 | Select-Object -Last 3 | ForEach-Object { Say "  $_" }
+    }
     Remove-Item -Recurse -Force $copy -ErrorAction SilentlyContinue
     Get-ChildItem $out -Directory -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue  # workspaces, keep report.*
     Say "done $slug (copy and workspace removed)"

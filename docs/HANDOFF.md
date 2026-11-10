@@ -72,7 +72,9 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
   ffprobe), a contact sheet of sampled images, cleanup plan/apply/undo, every analysis target,
   a real edit per container type repacked and read back, an AOB patch set, a mod packed,
   checked and applied, and with `--dynamic` capture, the engine agent, a dump, a trace and the
-  game's sound. Reports in `viwo-data/deep-pass/<slug>/` (`report.md`, `report.json`,
+  game's sound; `--arms static,patching` runs part of it, `--workspace` reuses an extraction, and
+  `tools/games_pass.ps1 -Deep static,patching -Only <folder>` does it on the copy of an
+  installed game. Reports in `viwo-data/deep-pass/<slug>/` (`report.md`, `report.json`,
   `contact.png`); the game folder is only read (checked). A patched copy is skipped, and said,
   when the disk cannot hold one.
 

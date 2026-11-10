@@ -135,7 +135,7 @@ def _note(data) -> str:
     return re.sub(r"\s+", " ", text)[:300]
 
 
-def main(argv=None) -> int:
+def _arguments(argv):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawTextHelpFormatter)
     ap.add_argument("game", type=Path)
     ap.add_argument("--out", type=Path)
@@ -143,16 +143,35 @@ def main(argv=None) -> int:
     ap.add_argument("--exe", type=Path, help="the game's executable (default: the largest)")
     ap.add_argument("--analysis-timeout", type=int, default=3600)
     ap.add_argument("--keep", action="store_true", help="keep the workspace and copies")
+    ap.add_argument(
+        "--arms",
+        default="static,analysis,patching",
+        help="which parts run: static,analysis,patching (patching alone needs --workspace)",
+    )
+    ap.add_argument("--workspace", type=Path, help="an extraction of this game to reuse")
     args = ap.parse_args(argv)
+    arms = {a.strip() for a in args.arms.split(",") if a.strip()}
+    if unknown := arms - {"static", "analysis", "patching"}:
+        ap.error(f"--arms: unknown {sorted(unknown)}")
+    return args, arms
+
+
+def main(argv=None) -> int:
+    args, arms = _arguments(argv)
     game = args.game.resolve()
     slug = re.sub(r"[^a-z0-9]+", "-", game.name.lower()).strip("-")
     out = (args.out or ROOT / "viwo-data" / "deep-pass" / slug).resolve()
     out.mkdir(parents=True, exist_ok=True)
     p, before = Pass(game, out), snapshot(game)
-    print(f"== deep pass {game}", flush=True)
-    static(p)
-    analyses(p, args.analysis_timeout)
-    patching(p, args.exe)
+    if args.workspace:  # an extraction made before: only read and edited, never deleted here
+        p.ws = args.workspace.resolve()
+    print(f"== deep pass {game} ({', '.join(sorted(arms))})", flush=True)
+    if "static" in arms:
+        static(p)
+    if "analysis" in arms:
+        analyses(p, args.analysis_timeout)
+    if "patching" in arms:
+        patching(p, args.exe)
     if args.dynamic:
         dynamic(p, args.exe)
     changed = change_warning(before, snapshot(game), "the deep pass")
@@ -160,7 +179,7 @@ def main(argv=None) -> int:
     (out / "report.json").write_text(json.dumps(p.steps, indent=1, default=str), encoding="utf-8")
     (out / "report.md").write_text(report_md(p), encoding="utf-8")
     if not args.keep:
-        for folder in (p.ws, out / "copy", out / "patched"):
+        for folder in (out / "ws", out / "copy", out / "patched"):
             shutil.rmtree(folder, ignore_errors=True)
     print(f"report: {out / 'report.md'}")
     return 0 if all(s["ok"] for s in p.steps.values()) else 1
