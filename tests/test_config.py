@@ -9,6 +9,7 @@ from pathlib import Path
 from viwo.contracts import ViwoError
 from viwo.core.wiring.distros import MARKER, NAME, OSES, PROFILES, check, generate, render
 from viwo.core.wiring.ini import load_ini
+from viwo.os import select_os
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -84,7 +85,8 @@ class CheckTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             generate(Path(tmp) / "distros")
-            for name in ("windows-unreal.ini", "windows-godot.ini"):  # this host's OS layer
+            host = select_os().os_id  # a distro boots on its own OS layer only
+            for name in (f"{host}-unreal.ini", f"{host}-godot.ini"):
                 rt = boot(Path(tmp) / "distros" / name, temp_root=Path(tmp) / "t")
                 self.assertFalse([p for p in rt.problems if "unknown backend" in p], rt.problems)
             text = (Path(tmp) / "distros" / "windows-unreal.ini").read_text()

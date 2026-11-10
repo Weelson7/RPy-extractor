@@ -14,6 +14,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
+from tests.helpers import needs
 from viwo.backends.archives import Py7zrBackend, SevenZipCli, UnrarCli, ZipBackend
 from viwo.contracts.slots import SlotDefinition
 from viwo.contracts.types import OutcomeKind
@@ -95,6 +96,7 @@ class ArchiveBackendTests(unittest.TestCase):
             )
             self.assertTrue(UnrarCli().argv(dest / "a.rar", dest)[-1].endswith("/"))
 
+    @needs("py7zr")
     def test_py7zr_names_an_encrypted_archive_and_unsafe_zip_names_are_counted(self) -> None:
         import zipfile
 

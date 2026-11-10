@@ -117,7 +117,11 @@ class SurveyPropertyTests(unittest.TestCase):
             from tests.test_unity import fake_unitypy, make_unity_game
             from viwo.core.survey import _examine, _rel, games_in, survey_game
 
-            with mock.patch.dict("sys.modules", {"UnityPy": fake_unitypy()}):
+            bound = mock.Mock(bound=True)  # bound at boot only when UnityPy is installed
+            with (
+                mock.patch.dict("sys.modules", {"UnityPy": fake_unitypy()}),
+                mock.patch.dict(rt.bindings, {"export.unity": bound}),
+            ):
                 unity = survey_game(rt, make_unity_game(root)).to_dict()
             self.assertIn("engine", unity["categories"])  # what its exporter decodes
             self.assertEqual(_rel(GameSurvey(None, "g", 0, ()), root / "x.bin"), "x.bin")

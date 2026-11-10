@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import io
 import tarfile
 import time
+import unittest
 import zipfile
 from pathlib import Path
 
@@ -13,6 +15,19 @@ from viwo.contracts import Outcome, OutcomeKind, Unarchiver
 from viwo.core.wiring.boot import boot
 
 ROOT = Path(__file__).resolve().parent.parent
+
+
+def needs(module: str):
+    """Skip a test whose module (an optional extra: UnityPy, lz4, py7zr) is not installed."""
+    found = importlib.util.find_spec(module) is not None
+    return unittest.skipUnless(found, f"{module} not installed")
+
+
+def homes(tmp) -> dict[str, str]:
+    """The config and data homes of both OS layers (Windows and XDG) inside tmp, for
+    mock.patch.dict(os.environ, ...): a test never writes into the real user's folders."""
+    names = ("APPDATA", "LOCALAPPDATA", "XDG_CONFIG_HOME", "XDG_DATA_HOME")
+    return {name: str(Path(tmp) / name.lower()) for name in names}
 
 
 def cleanup(tmp, seconds: float = 10.0) -> None:

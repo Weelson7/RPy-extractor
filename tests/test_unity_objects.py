@@ -15,6 +15,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
+from tests.helpers import needs
 from viwo.plugins.unity import objects
 
 
@@ -85,6 +86,7 @@ class MediaTests(unittest.TestCase):
     def ctx(self, tmp: str):
         return SimpleNamespace(staging=Path(tmp))
 
+    @needs("UnityPy")  # patches UnityPy's own resource reader
     def test_fonts_videos_and_shaders_in_their_own_formats(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             ctx, obj = self.ctx(tmp), SimpleNamespace(assets_file=None)
@@ -113,6 +115,7 @@ class MediaTests(unittest.TestCase):
 
 
 class LayoutTests(unittest.TestCase):
+    @needs("UnityPy")  # patches UnityPy's own layout generator
     def test_managed_assemblies_give_layouts_and_every_other_case_says_why(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             game = Path(tmp)
@@ -203,6 +206,7 @@ class LayoutTests(unittest.TestCase):
             self.assertEqual(other[0]["data"]["m_Name"], "é")
 
 
+@needs("UnityPy")  # patches UnityPy.load
 class ExporterTests(unittest.TestCase):
     def env(self):
         def obj(i, kind, parsed=None, tree=None, fails=False):

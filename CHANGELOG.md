@@ -4,6 +4,16 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.12 (2026-11-10)
+- The suite on Linux without the optional extras: the seven tests that need UnityPy, lz4 or
+  py7zr skip with the module named (`tests.helpers.needs`), as the others already did. Four
+  tests that assumed Windows hold on both: the config boot test boots the host's own distros;
+  the agent test's rewritten fake game keeps its shebang; the sort test's refused name is one no
+  OS accepts (`bad/name`); the Ghidra and RenderDoc first-run tests put every config and data
+  home, Windows and XDG, in a temporary folder (`tests.helpers.homes`; on Linux they wrote into
+  the real home). The survey's Unity case binds its exporter for the fake UnityPy instead of
+  relying on UnityPy being installed at boot.
+
 ## 1.20.11 (2026-11-10)
 - A commit runs only the tests its change can affect (owner: no tests on code that has not
   changed). `tools/affected.py` builds the import graph of `viwo`, `tests`, `tools` and

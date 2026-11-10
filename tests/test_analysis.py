@@ -13,7 +13,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tests.helpers import cleanup, runtime, tree_hashes
+from tests.helpers import cleanup, homes, runtime, tree_hashes
 from viwo.contracts import ViwoError
 from viwo.core.analysis import (
     AnalysisRequest,
@@ -313,8 +313,8 @@ for f in [Path(v) for k, v in pairs if k == "--decompile"]:
             self.assertEqual((report["backend"], report["artifacts"]), (backend, [artifact]), key)
 
     def test_gui_prompts_pre_answered_other_preferences_kept(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {"APPDATA": tmp}):
-            prefs = Path(tmp) / "ghidra" / "ghidra_12.2_PUBLIC" / "preferences"
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, homes(tmp)):
+            prefs = select_os().config_home() / "ghidra" / "ghidra_12.2_PUBLIC" / "preferences"
             prefs.parent.mkdir(parents=True)
             prefs.write_text("Theme=x\nSHOW_TIPS=true\n", encoding="utf-8")
             for _ in range(2):  # idempotent: a second handoff changes nothing

@@ -15,6 +15,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
+from tests.helpers import needs
 from viwo.contracts import CancelToken
 from viwo.contracts.types import OutcomeKind
 
@@ -42,6 +43,7 @@ def bsa105(files: dict[str, bytes], embed: bool) -> bytes:
 
 
 class Bsa105Tests(unittest.TestCase):
+    @needs("lz4")
     def test_lz4_entries_with_and_without_embedded_names(self) -> None:
         from viwo.plugins.bethesda.archives import bsa_data, bsa_entries
 

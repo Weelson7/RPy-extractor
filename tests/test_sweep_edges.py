@@ -15,6 +15,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
+from tests.helpers import needs
 from viwo.contracts import ViwoError
 from viwo.contracts.types import OutcomeKind
 
@@ -64,6 +65,7 @@ class PatchSetFileTests(unittest.TestCase):
 
 
 class TaleWorldsSegmentTests(unittest.TestCase):
+    @needs("lz4")
     def test_lz4_segments_inflate_or_are_skipped(self) -> None:
         import lz4.block
 

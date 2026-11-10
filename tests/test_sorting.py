@@ -80,7 +80,7 @@ class SortSequenceTests(unittest.TestCase):
                         )
                     else:
                         before = len(history)
-                        other = rng.choice(files).name if action == "rename-clash" else "bad:name?"
+                        other = rng.choice(files).name if action == "rename-clash" else "bad/name"
                         path = sorting.resolve(ws, encoded)
                         if action == "rename-clash" and (path.parent / other) == path:
                             continue

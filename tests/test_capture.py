@@ -11,7 +11,7 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from tests.helpers import make_png, runtime, tree_hashes
+from tests.helpers import homes, make_png, runtime, tree_hashes
 from viwo.contracts import CancelToken, ExtractionRequest, ViwoError
 from viwo.core.capture import CaptureRequest, capture, renderdoc
 from viwo.core.capture.policy import check
@@ -56,7 +56,7 @@ def script(folder: Path, name: str, body: str) -> Path:
 
 class QuietUiTests(unittest.TestCase):
     def test_first_run_prompts_answered_once_user_choice_kept(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, {"APPDATA": tmp}):
+        with tempfile.TemporaryDirectory() as tmp, mock.patch.dict(os.environ, homes(tmp)):
             quiet_ui(select_os())
             cfg = json.loads(renderdoc.ui_config(select_os()).read_text(encoding="utf-8"))
             self.assertTrue(cfg["Analytics_ManualCheck"] and cfg["Tips_HasSeenFirst"])

@@ -128,7 +128,7 @@ class AgentTests(unittest.TestCase):
             first = run_agent(rt, RuntimeRequest(root / "ws", game=game, exe=exe, timeout=60))
             win64 = Path(first["copy"]) / "Foo" / "Binaries" / "Win64"
             inert = win64 / "Foo-Win64-Shipping.py"
-            inert.write_text("import time\ntime.sleep(60)\n")
+            inert.write_text(f"#!{sys.executable}\nimport time\ntime.sleep(60)\n")
             if sys.platform == "win32":  # the copy's wrapper runs the copy's own script
                 wrapper = win64 / "Foo-Win64-Shipping.cmd"
                 wrapper.write_text(f'@"{sys.executable}" "{inert}" %*\r\n')
