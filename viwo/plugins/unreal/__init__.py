@@ -27,6 +27,7 @@ MANIFEST = PluginManifest(
     "Unreal Engine",
     "0.1.0",
     engine_type="unreal",
+    profile="unreal",
     priority=18,
     options=(
         PluginOption("aes_key", "AES-256 key (hex or base64), if the paks are encrypted", "secret"),

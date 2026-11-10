@@ -29,6 +29,7 @@ MANIFEST = PluginManifest(
     "Godot",
     "0.1.0",
     engine_type="godot",
+    profile="godot",
     priority=15,
     options=(
         PluginOption("encryption_key", "PCK encryption key (64 hex chars)", "secret"),

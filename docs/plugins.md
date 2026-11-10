@@ -28,9 +28,10 @@ the engine's own file signatures; a game plugin detects its title (its executabl
 with its engine, and offers what the engine's backends read from `ctx.games` (REDengine reads
 `name_lists`). Adding a title's tooling = adding a folder under its engine's `games/`.
 
-The distro profiles are derived the same way (`viwo/core/wiring/distros.py`): `mixed` enables
-everything, an engine profile (`renpy`, `unity`, `unreal`, `godot`) enables that engine, and
-`custom` enables every other built-in. Commented `[tools]` examples come from each dependency's
+The distro profiles come from the plugins too (`viwo/core/wiring/distros.py`): a built-in that
+names a `profile` in its manifest gets its own (`renpy`, `unity`, `unreal` and `godot` do), which
+enables only it; `custom` enables every other built-in and `mixed` everything. Core lists no
+engine: a new plugin with a profile gets its two distro files from `viwo config generate`. Commented `[tools]` examples come from each dependency's
 own executable and install-folder names.
 
 ## Writing a drop-in plugin

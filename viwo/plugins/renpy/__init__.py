@@ -16,6 +16,7 @@ MANIFEST = PluginManifest(
     "Ren'Py",
     "0.2.0",
     engine_type="renpy",
+    profile="renpy",
     priority=10,
     options=(PluginOption("decompile", "decompile .rpyc scripts to .rpy (unrpyc)", "bool", "on"),),
 )

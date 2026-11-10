@@ -92,10 +92,10 @@ class Runtime:
 
 def _apply_profile(config, profile: str) -> None:
     """`--profile` (doc 9.1 value source 4): that distro's plugin set over the ini's."""
-    from .distros import PROFILES, enabled_for
+    from .distros import enabled_for, profiles
 
-    if profile not in PROFILES:
-        raise ViwoError("invalid_request", f"unknown profile {profile!r}; one of {PROFILES}")
+    if profile not in (known := profiles()):
+        raise ViwoError("invalid_request", f"unknown profile {profile!r}; one of {known}")
     config.profile, config.plugins = profile, {**config.plugins, **enabled_for(profile)}
     config.sources["startup.profile"] = "cli"
 

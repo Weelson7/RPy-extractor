@@ -20,6 +20,7 @@ MANIFEST = PluginManifest(
     "Unity",
     "0.1.0",
     engine_type="unity",
+    profile="unity",
     priority=20,
     options=(
         PluginOption(

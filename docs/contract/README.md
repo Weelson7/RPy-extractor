@@ -128,6 +128,6 @@ Referenced by code as `D<n>`.
 ## Distros
 
 A distro is an ini file: one OS layer plus one profile (doc 9). `viwo config generate` writes the
-twelve files in `distros/` (`linux|windows` x `renpy|unity|unreal|godot|custom|mixed`): `mixed`
-enables every plugin, an engine profile enables that engine plus `generic`, `custom` enables every
-other built-in.
+files in `distros/`: `linux|windows` x the profiles (a built-in's own, named in its manifest:
+`godot|renpy|unity|unreal` today; then `custom|mixed`). `mixed` enables every plugin, a plugin's
+own profile that plugin plus `generic`, `custom` every other built-in.

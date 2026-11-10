@@ -8,7 +8,8 @@ paths, server settings) is declared in one ini file (`viwo/core/wiring/ini.py`,
 
 ```
 startup.ini                  the active file (default; `viwo --ini PATH` picks another)
-distros/<os>-<profile>.ini   twelve generated files (`viwo config generate`)
+distros/<os>-<profile>.ini   generated (`viwo config generate`): 2 OS layers x the profiles
+                             the built-ins name in their manifests, plus custom and mixed
 ```
 
 Precedence, lowest to highest:

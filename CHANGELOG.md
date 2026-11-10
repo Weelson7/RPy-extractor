@@ -4,6 +4,12 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.14 (2026-11-10)
+- Core lists no engine for the distros: a built-in names its own distro profile in its manifest
+  (`PluginManifest.profile`; renpy, unity, unreal and godot do), and `distros.py` reads the
+  profiles from the plugins (`profiles()`, `own_profiles()`) instead of its fixed list. The
+  twelve generated files are byte-identical. Docs 2 and 9.
+
 ## 1.20.13 (2026-11-10)
 - README: "crackers, cheaters" taken out of the audience list (owner: legal exposure). The
   wording only: the tool does exactly what it did.

@@ -22,6 +22,8 @@ PluginManifest
   dependencies   dependency ids for people (backends declare the real DependencySpec)
   os_layers      empty = every OS layer; else a subset of linux, windows
   engine         a game plugin (2.10): the id of the engine plugin it belongs to; "" otherwise
+  profile        a built-in's own distro profile (doc 9): `<os>-<profile>.ini` with only it
+                 on; "" = it joins the shared `custom` profile
 
 PluginOption { key, label, kind: string|secret|bool|int|float|choice|path, default, choices, help }
 ```

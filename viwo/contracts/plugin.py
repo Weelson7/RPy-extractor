@@ -57,6 +57,7 @@ class PluginManifest:
     dependencies: tuple[str, ...] = ()
     os_layers: tuple[str, ...] = ()
     engine: str = ""  # a game plugin (doc 2.10): the engine plugin it belongs to
+    profile: str = ""  # its own distro profile (doc 9), only it on; "" = the shared "custom"
 
 
 @dataclass(frozen=True)

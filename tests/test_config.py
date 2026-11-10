@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 
 from viwo.contracts import ViwoError
-from viwo.core.wiring.distros import MARKER, NAME, OSES, PROFILES, check, generate, render
+from viwo.core.wiring.distros import MARKER, NAME, OSES, check, generate, profiles, render
 from viwo.core.wiring.ini import load_ini
 from viwo.os import select_os
 
@@ -19,7 +19,7 @@ class GeneratorTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             out = Path(tmp)
             report = generate(out)
-            self.assertEqual(len(report), len(OSES) * len(PROFILES))
+            self.assertEqual(len(report), len(OSES) * len(profiles()))
             self.assertFalse(any(report.values()), report)
             first = {p.name: p.read_bytes() for p in out.iterdir()}
             generate(out)
@@ -47,7 +47,7 @@ class GeneratorTests(unittest.TestCase):
 
     def test_shipped_distros_match_the_generator(self) -> None:
         for os_id in OSES:
-            for profile in PROFILES:
+            for profile in profiles():
                 shipped = (ROOT / "distros" / f"{os_id}-{profile}.ini").read_bytes()
                 self.assertEqual(
                     shipped.decode("utf-8"),
