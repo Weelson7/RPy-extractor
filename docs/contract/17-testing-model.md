@@ -4,16 +4,18 @@ The suite uses the stdlib `unittest` (`python -m unittest discover -s tests -t .
 selected by environment variables, not markers. Tests that need a real tool or an optional
 package skip with its name when it is absent.
 
-A commit runs only the tests its change can affect (`tools/version.py`, `tools/affected.py`): the
-test modules that import a changed module, directly or through others (a module that imports
-the registry depends on every plugin, which it loads by discovery), the changed test modules,
-and the tests whose code, or the code they import, names a changed file (a doc, a data file
-under `viwo/data/<folder>`, the web UI, a script run as a process). A change no test can see
-runs none; a change to the pipeline or to `pyproject.toml`, or `--full`, runs the whole suite.
+A commit never runs the whole suite by default (owner): it runs the tests its change is close
+to (`tools/version.py`, `tools/affected.py`). A test module is picked when it is itself changed;
+when it imports a changed module, or imports a module that imports it (two steps: its reach;
+`tests.helpers`, `boot` and the registry are reached but not passed through, since nearly every
+test goes through them); when it, or a module in its reach, names a changed file (a doc, a data
+file or folder under `viwo/data/`, the web UI, a script run as a process). A plugin change also
+picks the tests that name the plugin and the plugin-wide checks (registry, conformance kit,
+distro config, the sealed-plugin test). A change no test is close to runs none; only
+`pyproject.toml`, or `--full` (before a merge to main or a tag), runs the whole suite.
 The selected modules run in parallel (`tools/run_tests.py`): one `python -m unittest` process
 per module on a pool of workers, 80 % of the logical processors counted at the start of the run
-on any OS (owner's cap; `VIWO_TEST_WORKERS` overrides),
-the largest first; the modules in its `SERIAL` list (a fixed port, a browser, child processes
+on any OS (owner's cap; `VIWO_TEST_WORKERS` overrides), the largest first; the modules in its `SERIAL` list (a fixed port, a browser, child processes
 timed or killed on a timer) run alone after the pool, so a loaded machine cannot make them
 flaky. `python tools/run_tests.py` runs the whole suite the same way.
 

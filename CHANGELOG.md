@@ -4,6 +4,16 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.23 (2026-11-10)
+- A commit never runs the whole suite by default (owner: it took most of the suite for a
+  change deep in core). The selection is now the tests a change is close to: what a test
+  imports and what those import, `tests.helpers`, `boot` and the registry reached but not
+  passed through; a plugin change adds the tests that name the plugin and four plugin-wide
+  checks; a change to the pipeline runs the pipeline's own tests; a file counts as named only
+  by a string in code, never by a docstring or a comment. For the IL2CPP change of
+  1.20.21 that is 6 test modules instead of 91. Only `pyproject.toml`, or `--full` before a
+  merge or a tag, runs everything. Doc 17.
+
 ## 1.20.22 (2026-11-10)
 - The plugin system is held sealed by a test (`tests/test_sealed.py`): a new engine plugin
   added as one package where discovery looks is discovered, loaded, bound to its slot, given

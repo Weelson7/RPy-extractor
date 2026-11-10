@@ -28,7 +28,7 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
 ```
 
 - **Commits** only through `tools/version.py commit`: it runs format, lint, caps and the tests
-  the change can affect (`tools/affected.py`, doc 17; `--full` runs them all),
+  the change is close to (`tools/affected.py`, doc 17; `--full` before a merge or a tag),
   bumps `va.b.c`, commits and tags; the pre-commit hook refuses a version not past the latest
   tag. No model names in messages. CI and the release workflow run only on `vN.0.0` tags or by
   hand; never dispatch them without the owner.

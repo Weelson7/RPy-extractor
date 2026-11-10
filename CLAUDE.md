@@ -50,8 +50,9 @@ python tools/run_tests.py                    # the whole suite in parallel; real
 viwo serve                                   # web UI, opens the browser
 viwo config check startup.ini distros/*.ini  # strict config validation
 ```
-`tools/version.py commit` runs format, lint, caps and the tests the change can affect (doc 17;
-`--full` for the whole suite); don't run the suite by hand on code that has not changed.
+`tools/version.py commit` runs format, lint, caps and only the tests the change is close to
+(doc 17), never the whole suite by default; `--full` runs it all, before a merge to main or a
+tag. Don't run the suite by hand on code that has not changed.
 After changing plugins or slots run `viwo config generate`; after changing a tool pin run
 `python tools/notices.py`.
 Real-game passes run from a worktree at a committed version (`tools/games_pass.ps1`,
