@@ -46,7 +46,7 @@ function mount(root) {
 function targetPanel() {
   const browse = browseBtn(el.path, (path) => { setGame(path); detect(); });
   return panel(`${code("extract")}.A`, "TARGET GAME FOLDER", badge("READ-ONLY SOURCE", "ok"),
-    h("label", { class: "lbl", for: "game-path" }, "GAME FOLDER PATH"),
+    h("label", { class: "lbl", for: "game-path" }, "GAME FOLDER"),
     h("div", { class: "row" }, el.path, browse),
     h("p", { class: "note" }, "ViWo copies assets out into its workspace. Nothing inside this folder is written, moved or deleted."));
 }

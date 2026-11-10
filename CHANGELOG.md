@@ -4,6 +4,10 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.55 (2026-11-10)
+- UI: example paths in the fields read as this machine writes paths (`C:\path\to\game` on
+  Windows); the game folder field has one name on every view.
+
 ## 1.20.54 (2026-11-10)
 - WolvenKit: only its first run goes alone (it was the whole first part of 600 files, twelve
   minutes of a timed run with one tool at work); each part says how many runs it took, their

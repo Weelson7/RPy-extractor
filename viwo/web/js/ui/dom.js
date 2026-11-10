@@ -2,6 +2,9 @@
 // preferences, formatting, the cross-view event bus. Views never touch `.style` or classes for
 // visual state: `cssVar` and `state` are the only doors, and they live here.
 
+/** An example path as this machine writes paths (`/path/to/game` is `C:\path\to\game` on Windows). */
+const hint = (text) => (/^win/i.test(globalThis.navigator?.platform || "") && text.startsWith("/path/") ? "C:" + text.replaceAll("/", "\\") : text);
+
 /** Build an element. Strings become text nodes, so server data is never parsed as HTML. */
 export function h(tag, props = {}, ...kids) {
   const el = document.createElement(tag);
@@ -9,6 +12,7 @@ export function h(tag, props = {}, ...kids) {
     if (v == null || v === false) continue;
     if (k === "class") el.className = v;
     else if (k === "text") el.textContent = v;
+    else if (k === "placeholder") el.placeholder = hint(String(v));
     else if (k.startsWith("on")) el.addEventListener(k.slice(2), v);
     else if (k in el && typeof v !== "string") el[k] = v;
     else el.setAttribute(k, v === true ? "" : v);
