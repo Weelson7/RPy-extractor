@@ -4,6 +4,10 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.13 (2026-11-10)
+- README: "crackers, cheaters" taken out of the audience list (owner: legal exposure). The
+  wording only: the tool does exactly what it did.
+
 ## 1.20.12 (2026-11-10)
 - The suite on Linux without the optional extras: the seven tests that need UnityPy, lz4 or
   py7zr skip with the module named (`tests.helpers.needs`), as the others already did. Four

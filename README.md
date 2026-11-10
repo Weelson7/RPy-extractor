@@ -17,8 +17,8 @@ Ghidra / x64dbg / Cheat Engine") that ViWo opens pre-loaded as a tracked child p
    scripts (`indexes/`). MIT, forkable; the community decides what it becomes.
 2. **Who it is for.** Everyone who wants to look inside a game: reverse engineers, modders,
    artists (fan art, references, texture and model study), translators, data miners, researchers,
-   preservationists, competitive players, crackers, cheaters, the curious. The tool does not judge
-   the user or the purpose.
+   preservationists, competitive players, the curious. The tool does not judge the user or the
+   purpose.
 3. **No boundaries, no safeguards in the tool.** ViWo refuses nothing because of what a game is,
    which plugin runs, or what you intend. No blocking lists, no plugin that detection may not
    pick, no refusals for anti-cheat or online titles. Anti-cheat and online detection stay as
