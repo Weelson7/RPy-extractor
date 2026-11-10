@@ -9,6 +9,7 @@ from pathlib import Path
 
 from viwo.contracts import workspace as ws
 
+from .pool import each
 from .ticker import Ticker
 
 SKIP_DIRS = {".git", ".venv", "__pycache__"}
@@ -91,30 +92,37 @@ def collect(
             todo.append((source, src))
     if say is not None:
         say(f"Collecting {len(todo):,} files from {len(sources)} source folder(s)")
-    ticker = Ticker(say, "Scanned files:", total=len(todo))
+    picked = []  # (source, file, its group folder): what the filters leave
     for source, src in todo:
-        if cancel.cancelled:
-            return report
-        report.scanned += 1
-        ticker.tick(note=f"{report.collected:,} collected")
         if src.suffix.lower() in source.exclude or src.name.lower() in source.exclude:
             continue
         ext = ws.ext_of(src)
-        group = ws.ext_folder(ext)
         if selected is not None and ext not in selected:
-            report.skipped_by_ext[group] += 1
+            report.skipped_by_ext[ws.ext_folder(ext)] += 1
             continue
-        _take(src, workspace / group, source, report)
+        picked.append((source, src, workspace / ws.ext_folder(ext)))
+    ticker = Ticker(say, "Scanned files:", total=len(todo))
+    ticker.done = report.scanned = len(todo) - len(picked)
+    # hashed several at once (the slow part); placed one at a time, in order: one writer
+    for (source, src, folder), digest in zip(picked, each(_digest, picked, cancel)):
+        report.scanned += 1
+        ticker.tick(note=f"{report.collected:,} collected")
+        _take(src, digest, folder, source, report)
     return report
 
 
-def _take(src: Path, folder: Path, source: Source, report) -> None:
+def _digest(item) -> str | OSError:
+    try:
+        return sha256(item[1])
+    except OSError as exc:  # refused or gone: named by _take, never a crash
+        return exc
+
+
+def _take(src: Path, digest, folder: Path, source: Source, report) -> None:
     """Collect one file; a source the OS refuses or that vanishes (an antivirus hold or a
     quarantine) is a named warning, never a crash. Workspace-side errors still raise."""
-    try:
-        digest = sha256(src)
-    except OSError as exc:
-        report.unreadable.append(f"{src.name} ({exc.strerror or exc.errno})")
+    if isinstance(digest, OSError):
+        report.unreadable.append(f"{src.name} ({digest.strerror or digest.errno})")
         return
     try:
         _collect_one(src, digest, folder, source, report)

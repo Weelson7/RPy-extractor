@@ -4,6 +4,11 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.34 (2026-11-10)
+- COLLECT hashes its files several at once (the slow part of 160,000 files on the Cyberpunk
+  demo subset); they are still placed one at a time, in order, so names and provenance are
+  the same on every run.
+
 ## 1.20.33 (2026-11-10)
 - Never silent: after the decode, the decoded files (73,000 on the Cyberpunk demo subset) were
   hashed and moved into the workspace without a line, for more than ten minutes. It is said,
