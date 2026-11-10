@@ -4,6 +4,10 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.44 (2026-11-10)
+- Packaging: the build looks for packages in `viwo` only. It walked `viwo-data` too and failed
+  when a running job's temporary folders changed under it.
+
 ## 1.20.43 (2026-11-10)
 - UI review, first fixes: error toasts stay until dismissed; the closed log dock shows the
   last line; the top bar fits narrow windows (labels dropped up to 1500 px); buttons say what

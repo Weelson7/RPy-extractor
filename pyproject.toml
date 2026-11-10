@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "viwo"
-version = "1.20.43"
+version = "1.20.44"
 description = "Vidya Wormhole: cross-platform game asset extraction and curation framework"
 readme = "README.md"
 requires-python = ">=3.11"
@@ -25,7 +25,7 @@ dev = ["ruff==0.17.3"]
 viwo = "viwo.cli:main"
 
 [tool.setuptools.packages.find]
-include = ["viwo*"]
+include = ["viwo", "viwo.*"]  # not viwo-data: a build must not walk a running job's files
 
 [tool.setuptools.package-data]
 viwo = ["web/**/*", "data/**/*"]  # data/: tools.json, the Ghidra script, worker scripts
