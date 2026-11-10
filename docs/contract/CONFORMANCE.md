@@ -14,7 +14,7 @@ them from the tables below (`tools/presentation/reference.py`, `conformance()`).
 ships sanitizer rules (5.1); no pinned QuickBMS script in the indexes (16.0b); coverage per file (17.5).
 
 **Open:** the completeness contract per engine (16.0c); rung D4 (`hook.overlay`); sanitizer phases
-2-3; `[slot_policy]`; `[hooks]`; `--plugin`/`--slot` CLI overrides; `memory_image` targets;
+2-3; the `supplement` slot policy; `[hooks]`; `memory_image` targets;
 `keys.*` slots; asset converters for round trip; Unreal asset export and the engines of 13.7;
 declarative (Kaitai) plugins; the indexes repository split.
 
@@ -38,7 +38,7 @@ Linux build pinned. A row closes only when every cell reads `real` (doc 16.0c).
 | Engine | Extract | Edit + repack | Verify (read back) | Game loads it | Linux |
 |--------|---------|---------------|--------------------|---------------|-------|
 | REDengine (Cyberpunk 2077) | real: Cyberpunk 2077 (games pass 2026-11-03: 11 of 11 flags; demo subset 1.20.27: 183,621 files; audio CTF 1.20.15) | tests (`pack.archive`, WolvenKit) | tests | open: an `archive/pc/mod` override not yet run in the game | tests; WolvenKit pinned for Linux |
-| Unity | real: Schedule I (games pass 1.20.37: 12 of 12 flags; 3,638 textures, 1,292 sounds, 4,510 meshes); Approximately Up 9 of 10 (1.20.36; the flag left needs an antivirus-held file in the run). MonoBehaviour fields from rebuilt layouts are still open (16.0c): switched off when one does not fit | tests (`pack.unity`, UnityPy) | tests | open | tests (UnityPy optional); Cpp2IL, BepInEx Windows only |
+| Unity | real: Schedule I (games pass 1.20.37: 12 of 12 flags; 3,638 textures, 1,292 sounds, 4,510 meshes); Approximately Up 9 of 10 (1.20.36; the flag left needs an antivirus-held file in the run). MonoBehaviour fields from rebuilt layouts are kept, a script whose layout misfits is set aside and counted (1.20.41, tests; not rerun on a real game since) | tests (`pack.unity`, UnityPy) | tests | open | tests (UnityPy optional); Cpp2IL, BepInEx Windows only |
 | Unreal | tests (pak, IoStore, UnrealAssetScout) | tests (`pack.upak`, repak) | tests | open | tests; repak and retoc pinned for Linux, UnrealAssetScout Windows only |
 | Godot | tests (no Godot game with its data at hand) | tests (`pack.pck`) | tests | open | tests; GDRE and GodotPckTool pinned for Linux |
 | Ren'Py | real: a Ren'Py title (games pass 2026-11-04: 10 of 10 flags) | tests (`pack.rpa`) | tests | open | tests |
@@ -202,7 +202,8 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 8.1 definitions, declarations, self-check | implemented | `contracts/slots.py` |
 | 8.1 dependency-only backends | implemented | `core/capture/runtime.py` `FridaTrace`, `core/capture/audio.py` `LoopbackRecorder` |
 | 8.2 failover, outcome kinds, `needs_key` not retried | implemented | `core/pipeline/failover.py`, `contracts/types.py` |
-| 8.2 policies other than failover | open | `[slot_policy]` (`main_only`, `supplement`) |
+| 8.2 `main_only` policy | implemented | `core/wiring/binder.py` `bind_slot`; `tests/test_slot_policy.py` |
+| 8.2 `supplement` policy | open | - |
 | 8.2 binding, promotion, unbound, bad ini entries | implemented | `core/wiring/binder.py` |
 | 8.2 never silent: `Outcome.fallback` in every stage | implemented | `core/pipeline/failover.py`; stages in `core/pipeline/`, `core/analysis/`, `core/capture/` |
 | 8.3 interfaces | implemented | `contracts/slots.py`, `contracts/analysis.py`, `contracts/runtime.py`, `core/patch_tools.py` |
@@ -222,7 +223,7 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 9.2 `extraction`, `sorting`, `merger` switches | implemented | checked (see 0.2) |
 | 9.3 boot sequence, exit codes 2/3/4 | implemented | `core/wiring/boot.py`, `cli.py`, `api/server.py` |
 | 9.4 validation, secrets refused, `viwo config check` | implemented | `core/wiring/ini.py`, `core/wiring/distros.py` |
-| 9.5 `[slot_policy]` | open | - |
+| 9.2 `[slot_policy]` (`failover`, `main_only`) | implemented | `core/wiring/ini.py` `_read_policies`; shown by `viwo slots` and `viwo info` |
 | 9.5 `[hooks]` lifecycle hooks | open | - |
 | 9.1 `--plugin <id>=on\|off`, `--slot <slot>=<main>[,<spare>]` for one run | implemented | `cli_boot.py`, `core/wiring/boot.py`; `tests/test_cli_overrides.py` |
 | 9.6 `/api/distro`, SETTINGS writes and reloads | implemented | `api/routes.py`, `core/wiring/settings.py`, `api/app.py` `reload` |

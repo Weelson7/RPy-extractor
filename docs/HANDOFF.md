@@ -1,6 +1,7 @@
 # Handoff
 
-State at **v1.20.27** (branch `makeover`; local `main` fast-forwarded to it). History is in [CHANGELOG.md](../CHANGELOG.md); the
+State at **v1.20.52** (branch `makeover`, pushed; `main` is at v1.20.27 and takes `makeover`
+after a `--full` commit). History is in [CHANGELOG.md](../CHANGELOG.md); the
 design in [docs/contract/](contract/README.md); what is open in
 [CONFORMANCE.md](contract/CONFORMANCE.md) and below.
 
@@ -41,7 +42,7 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
   half-edited module). Make a worktree at a committed version with its own venv, then run the
   pass there:
   ```powershell
-  git worktree add ..\viwo-pass v1.20.27
+  git worktree add ..\viwo-pass <tag>
   cd ..\viwo-pass; py -3.13 -m venv .venv; .venv\Scripts\pip install -e ".[unity,sevenzip,renpy,lz4]"
   powershell -File tools\games_pass.ps1 -Source C:\Users\<you>\Games [-Only <folder>,...]
   ```
@@ -78,6 +79,25 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
   `contact.png`); the game folder is only read (checked). A patched copy is skipped, and said,
   when the disk cannot hold one.
 
+## How a run behaves (since 1.20.28)
+
+- **Parallel pipeline:** the stages share one worker count, 80 % of the processors
+  (`core/pipeline/pool.py`, `VIWO_WORKERS`); results keep the items' order (doc 3.1).
+- **Memory:** ViWo's own process runs under `[startup] memory_limit` (default 50 % of the
+  machine; a job object on Windows). Child tools that keep what they convert run under a cap
+  held out of one budget of the same size (`ctx.memory`, `run_capped`), in the order asked.
+  WolvenKit's runs are sized from the files' sizes (doc 8); the numbers were measured with
+  `wkbench`-style single runs under caps, and a run that fails is run again once with twice
+  the room. A Unity MonoBehaviour whose rebuilt layout misfits is read with the ceiling at
+  what ViWo holds plus 1 GB and its script set aside.
+- **Console:** every stage says what it does, counts, and how long it took; the run closes
+  with its time per stage; a child tool's lines are relayed live. `--json` keeps stdout clean.
+- **Tests at a commit:** only those the change reaches (`tools/affected.py`), in parallel at
+  80 % of the processors (`VIWO_TEST_WORKERS`); a change to `pyproject.toml` or `--full` runs
+  all of them.
+- **Real-game runs** go under a watchdog that ends the process tree past a memory limit (the
+  machine went down twice before the ceiling existed); keep one when reproducing a memory bug.
+
 ## Gotchas that still apply
 
 - Bash heredocs on the owner's machine halve backslashes: write files with the file tools.
@@ -102,10 +122,15 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
 
 ## Open work
 
-- **Waiting on GitHub** (unreachable since 2026-11-05; the owner says when it is back): push
-  `makeover` and `main` with every tag from v1.20.10 on (`git push origin makeover main --tags`),
-  then rename the repository from `RPy-extractor` to `ViWo` (GitHub redirects the old URL) and
-  point `origin` and the URLs in `pyproject.toml` and the README at the new name.
+- **Waiting on the owner:** rename the repository from `RPy-extractor` to `ViWo` in GitHub's
+  settings (GitHub redirects the old URL); then point `origin`, `viwo/core/diag.py` `REPO`,
+  `tests/test_diag.py`, `indexes/README.md` and the URLs in `pyproject.toml` and the README at
+  the new name. Create the `vidya_wormhole_indexes` repository: the history of `indexes/` is
+  ready on the local branch `indexes-main` (`git subtree split -P indexes`), to push there.
+  The `v2.0.0` tag (item 9).
+- **Linux:** the suite passed there at 1.20.13; since then the memory ceiling, the child cap
+  and `memory_room` have a Linux side that was written and never run (`viwo/os/linux.py`).
+  No Linux environment is at hand (the owner had WSL removed).
 0. **UI capabilities (doc 16.4, spec in doc 19; owner flagged, in this order):** workbooks
    shipped (1.18.0: four, for x64dbg, Ghidra and Cheat Engine; 1.20.8: RenderDoc, on the frames
    a capture now keeps; more tools and topics by reach, e.g. WolvenKit, whose GUI ViWo does not
@@ -122,13 +147,14 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
    CAPCOM's copy protection by default (the owner's call) and MangoHud's release installs into
    `/usr` with `sudo` (doc 11.7). D4 is served by third-party tools only.
 2. **Coverage** (in progress): owner's target 98 % line / 95 % branch per file; measured 98.6 %
-   line / 95.3 % branch overall at 1.6.23 (child processes counted); 72 files are still under
-   the per-file target, most by one or two branches. Tests are property checks over random
+   line / 95.3 % branch overall at 1.6.23 (child processes counted); 83 files were under the
+   per-file target at the last count (1.20.27), most by one or two branches; not measured
+   again since the parallel pipeline. Tests are property checks over random
    inputs, never assertions for their own sake. The CI floors (`tools/coverage_check.py`) only
    move up.
 3. **CONFORMANCE partials:** built-in plugins keep no inventory and ship no sanitizer rules
    (the hooks work; nothing needs them yet); `core/thirdparty.py` runs `msiexec` (recorded).
-4. **CONFORMANCE opens:** sanitizer phases 2-3, `[slot_policy]`, `[hooks]`,
+4. **CONFORMANCE opens:** sanitizer phases 2-3, the `supplement` slot policy, `[hooks]`,
    `memory_image` targets, round-trip converters, the engines of doc 13.7, Kaitai
    plugins.
 5. **Indexes:** create the `vidya_wormhole_indexes` repository, split `indexes/` out
