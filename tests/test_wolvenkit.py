@@ -380,7 +380,7 @@ class BatchTests(unittest.TestCase):
             mock.patch.object(decode, "_decode_batch", return_value=(None, "")) as batched,
         ):
             decode.decode_all(run, Path("ws"), collected)
-        self.assertEqual(batched.call_args[0][3], ["a.xbm"])  # the batch slot got its files
+        batched.assert_not_called()  # nothing starts once the run is cancelled
         self.assertEqual(collected.warnings, [])  # cancelled is not a failure
         self.assertEqual(len(collected.provenance), 2)  # nothing was added
 

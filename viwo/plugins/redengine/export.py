@@ -6,6 +6,8 @@ are written off screen into its own copy under third_party (minimal prompts); ot
 
 import contextlib
 import json
+import threading
+import time
 from pathlib import Path
 from typing import Callable, Iterator, NamedTuple
 
@@ -32,6 +34,7 @@ EXPORT_COST, SERIAL_COST, ANIM_COST = 15, 10, 250
 START = 2 << 30  # the room a run is planned for, and its cap (doc 9.2)
 SECOND = 10  # files per run when what failed is run again, with twice the room
 ALONE = 6  # runs of one file under ViWo's whole share one call may spend
+_FIRST, _RAN = threading.Lock(), set()  # the tools that have run once in this process
 
 
 def quiet_settings(folder: Path) -> None:
@@ -64,14 +67,19 @@ class WolvenKitExport(Decoder):
         else:
             ctx.log("WolvenKit settings left as they are (not ViWo's copy): textures may be DDS")
         dest.mkdir(parents=True, exist_ok=True)
-        runs = _Runs(ctx, tool, dest)
-        for run in plans(paths, ctx.game_root):
+        runs, planned = _Runs(ctx, tool, dest), plans(paths, ctx.game_root)
+        with _FIRST:  # WolvenKit writes its own files on its first run: that one goes alone
+            if (alone := tool.path not in _RAN) and planned:
+                runs.first(planned[0])
+                _RAN.add(tool.path)
+        for run in planned[1:] if alone else planned:
             runs.first(run)
         runs.second()
         files = sum(1 for p in dest.rglob("*") if p.is_file())
         if not files:
             return Outcome(OutcomeKind.FAILED, error=runs.said or "WolvenKit wrote nothing")
         note = f"{len(paths)} CR2W file(s) through WolvenKit: {files} PNG/glTF/JSON file(s)"
+        note += f" in {runs.count} run(s), {runs.ran:.0f} s (waited {runs.waited:.0f} s for memory)"
         partial = f"WolvenKit could not convert {runs.failed} file(s)" if runs.failed else ""
         partial = f"{partial}, e.g. {runs.said.strip()}" if partial and runs.said else partial
         return Outcome(OutcomeKind.OK, files, error=partial, notes=(note,))
@@ -110,6 +118,7 @@ class _Runs:
         self.hold = budget.hold if budget else (lambda amount: contextlib.nullcontext())
         self.share = budget.share if budget else START
         self.again, self.alone, self.failed, self.said = [], ALONE, 0, ""
+        self.count, self.ran, self.waited = 0, 0.0, 0.0  # said with the result
 
     def cap(self, run: Run, scale: int = 1) -> int:
         return min(self.share, scale * max(START, run.need()))
@@ -119,7 +128,9 @@ class _Runs:
         reason). A run that ended badly and named none lost them all."""
         names = [str(p) for p in run.files]
         argv = [*self.tool.argv_prefix, *run.head, *names, *run.tail, "-o", str(self.dest)]
+        asked = time.monotonic()
         with self.hold(cap):
+            started = time.monotonic()
             result = self.ctx.os.process.run_capped(
                 cap,
                 [*argv, "-v", "Minimal"],
@@ -128,6 +139,8 @@ class _Runs:
                 cancel=self.ctx.cancel,
                 on_line=self.ctx.tool_output("decode", every=5.0),  # WolvenKit's lines, live
             )
+        self.count, self.waited = self.count + 1, self.waited + started - asked
+        self.ran += time.monotonic() - started
         text = result.stdout + result.stderr
         lines = [ln for ln in text.splitlines() if "Failed to " in ln or "Exception" in ln]
         said = {p: [ln for ln in lines if str(p) in ln or p.name in ln] for p in run.files}

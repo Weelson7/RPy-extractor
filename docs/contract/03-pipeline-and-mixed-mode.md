@@ -28,8 +28,9 @@ unpacked (UNPACK: one round per nesting depth; a round of 200 files or more is a
 counted, stage `identify`); the parts of a batch decoder (DECODE: WolvenKit's parts of 600
 files, each its own process and folder, as many at once as the workers and the memory
 budget allow (doc 9.2: a capped tool holds its cap out of ViWo's share while it runs, and
-waits while the share is out); the first part runs alone, since a tool writes its settings
-on first use); the per-file decoders; the members of an RDAR archive (read, inflated and written
+waits while the share is out); a tool that writes its own files on first use runs its
+first run alone and sees to that itself; each part says its runs, their time and how long
+they waited for memory); the per-file decoders; the members of an RDAR archive (read, inflated and written
 several at once, their names given in the members' order first); CARVE (the check for
 files nothing recognizes, then the carving, its folders numbered in the files' order);
 COLLECT's hashing (the files are then placed one at a time, in order). A plugin reaches the pool as

@@ -10,7 +10,6 @@ A file no backend could decode is counted per slot in one warning (never silent)
 import shutil
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
-from itertools import chain
 from pathlib import Path
 
 from viwo.contracts.plugin import option_bool
@@ -221,9 +220,8 @@ def _decode_parts(run, ctx, workspace: Path, rels: list[str], slot: str, ticker)
         f"{slot}: {len(rels):,} file(s) in {len(parts)} part(s), up to {count} at once", "decode"
     )
     one = lambda part: _decode_batch(run, ctx, workspace, part, slot)  # noqa: E731
-    first = (one(part) for part in parts[:1])  # alone: a tool writes its settings on first use
-    sources, errors = [], []
-    for part, (source, error) in zip(parts, chain(first, each(one, parts[1:], run.cancel, count))):
+    sources, errors = [], []  # a tool that must run once alone first sees to it itself
+    for part, (source, error) in zip(parts, each(one, parts, run.cancel, count)):
         sources += [source] if source is not None else []
         errors += [error] if error else []
         ticker.tick(len(part))
