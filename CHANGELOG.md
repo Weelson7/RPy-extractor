@@ -4,6 +4,14 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.25 (2026-11-10)
+- CONFORMANCE tracks what "done" means per engine (owner): extract, edit + repack, verify (read
+  back) and the game loading the change, each cell either proven on a real game (named, with
+  its date or version), covered by tests only, or open; plus a Linux column (the suite and the
+  pinned Linux builds; no real game run on Linux yet). Extract is proven on eight engines;
+  edit, repack and read-back only on Doom (Freedoom); no engine has the game loading a change
+  proven yet. A row closes only when every cell reads real (doc 16.0c).
+
 ## 1.20.24 (2026-11-10)
 - CONFORMANCE keeps no hand-written counts or version: its summary table said 166 implemented,
   5 partial, 16 open against 1.6.2, stale for a long time. The technical PDF counts the rows

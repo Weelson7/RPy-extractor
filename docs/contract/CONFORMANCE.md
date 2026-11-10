@@ -18,6 +18,44 @@ ships sanitizer rules (5.1); no pinned QuickBMS script in the indexes (16.0b); c
 `keys.*` slots; asset converters for round trip; Unreal asset export and the engines of 13.7;
 declarative (Kaitai) plugins; the indexes repository split.
 
+## Done, per engine and arm (owner)
+
+What "done" means for an engine: **extract** (every file out, its formats decoded), **edit +
+repack** (a change in the workspace written back into the engine's own container or override),
+**verify** (the repacked output read back with the change in it), **game loads it** (the game
+runs with the change). Each cell says how far it is proven:
+
+- **real: <game>** (date or version): done end to end on a real install, on Windows;
+- **tests**: implemented and covered by synthetic fixtures only (no real game run yet);
+- **open**: not implemented.
+
+On **Linux** no real game has been run yet: the column says whether the suite covers the
+engine there (`tests`: the suite passes on Linux without the optional extras since 1.20.12;
+tests that need UnityPy, lz4 or py7zr skip and say so) and whether the engine's tools have a
+Linux build pinned. A row closes only when every cell reads `real` (doc 16.0c).
+
+| Engine | Extract | Edit + repack | Verify (read back) | Game loads it | Linux |
+|--------|---------|---------------|--------------------|---------------|-------|
+| REDengine (Cyberpunk 2077) | real: Cyberpunk 2077 (games pass 2026-11-03; demo subset 1.20.9: 183,621 files; audio CTF 1.20.15) | tests (`pack.archive`, WolvenKit) | tests | open: an `archive/pc/mod` override not yet run in the game | tests; WolvenKit pinned for Linux |
+| Unity | real: Schedule I (games pass 2026-11-03); open finding: Approximately Up's extraction failed | tests (`pack.unity`, UnityPy) | tests | open | tests (UnityPy optional); Cpp2IL, BepInEx Windows only |
+| Unreal | tests (pak, IoStore, UnrealAssetScout) | tests (`pack.upak`, repak) | tests | open | tests; repak and retoc pinned for Linux, UnrealAssetScout Windows only |
+| Godot | tests (no Godot game with its data at hand) | tests (`pack.pck`) | tests | open | tests; GDRE and GodotPckTool pinned for Linux |
+| Ren'Py | real: a Ren'Py title (games pass 2026-11-04) | tests (`pack.rpa`) | tests | open | tests |
+| RPG Maker | tests (MV/MZ, RGSSAD) | tests (`pack.rpgmaker`, `pack.rgssad`) | tests | open | tests |
+| KiriKiri | tests | tests (`pack.xp3`) | tests | open | tests |
+| Source | real: Team Fortress 2 (games pass 2026-11-04) | tests (`pack.vpk` override) | tests | open | tests |
+| Bethesda | tests (no Bethesda game at hand) | tests (loose files in `Data/`) | tests | open | tests |
+| Doom | real: Freedoom (deep pass 1.16.1) | real: Freedoom (a repainted sprite, 1.16.4) | real: Freedoom (read back) | open | tests |
+| Electron | tests | tests (`pack.asar`) | tests | open | tests |
+| Age of Empires (genie) | real: AoE II HD (SLP to PNG, 1.6.0; the games pass of 2026-11-03 predates genie detection by signature, 1.20.6) | tests (`pack.drs`) | tests | open | tests |
+| Total War (warscape) | real: Rome II (games pass 2026-11-04) | tests (`pack.pack`, movie packs) | tests | open | tests |
+| Bannerlord (taleworlds) | real: Mount & Blade II: Bannerlord (games pass 2026-11-03; textures 188 of 190, 1.6.0) | open (no packer) | open | open | tests |
+| QuickBMS | tests (no real archive run) | open | open | open | tests; QuickBMS pinned for Linux |
+| Overwatch (DataTool) | tests (real data is the independent operator's, doc 17.4b) | - (read only) | - | - | DataTool Windows only |
+
+The dynamic arm (capture, agents, dump, trace, attach) and the analysis arm are tracked in 11.2
+and 6; `viwo attach` on a running game is still to be verified on real data (HANDOFF).
+
 ## README (principles, layers, decisions)
 
 | Item | State | Where / missing |
