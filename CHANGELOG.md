@@ -4,6 +4,12 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.35 (2026-11-10)
+- CONFORMANCE corrected against the passes' own flags: Unity and Age of Empires were written
+  as proven on a real game, but Schedule I passed 7 of 12 flags, Approximately Up 1 of 10 and
+  AoE 0 of 1 (2026-11-03). They read "partial" with what was missed; "real" now requires every
+  flag of the game's pass. The three passes are being rerun at 1.20.34.
+
 ## 1.20.34 (2026-11-10)
 - COLLECT hashes its files several at once (the slow part of 160,000 files on the Cyberpunk
   demo subset); they are still placed one at a time, in order, so names and provenance are

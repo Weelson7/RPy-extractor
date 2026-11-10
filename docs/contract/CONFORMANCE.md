@@ -25,7 +25,8 @@ repack** (a change in the workspace written back into the engine's own container
 **verify** (the repacked output read back with the change in it), **game loads it** (the game
 runs with the change). Each cell says how far it is proven:
 
-- **real: <game>** (date or version): done end to end on a real install, on Windows;
+- **real: <game>** (date or version): done end to end on a real install, on Windows, every
+  flag of its `sqc/ctf.json` pass met; **partial** says which flags were missed;
 - **tests**: implemented and covered by synthetic fixtures only (no real game run yet);
 - **open**: not implemented.
 
@@ -36,20 +37,20 @@ Linux build pinned. A row closes only when every cell reads `real` (doc 16.0c).
 
 | Engine | Extract | Edit + repack | Verify (read back) | Game loads it | Linux |
 |--------|---------|---------------|--------------------|---------------|-------|
-| REDengine (Cyberpunk 2077) | real: Cyberpunk 2077 (games pass 2026-11-03; demo subset 1.20.9: 183,621 files; audio CTF 1.20.15) | tests (`pack.archive`, WolvenKit) | tests | open: an `archive/pc/mod` override not yet run in the game | tests; WolvenKit pinned for Linux |
-| Unity | real: Schedule I (games pass 2026-11-03); open finding: Approximately Up's extraction failed | tests (`pack.unity`, UnityPy) | tests | open | tests (UnityPy optional); Cpp2IL, BepInEx Windows only |
+| REDengine (Cyberpunk 2077) | real: Cyberpunk 2077 (games pass 2026-11-03: 11 of 11 flags; demo subset 1.20.27: 183,621 files; audio CTF 1.20.15) | tests (`pack.archive`, WolvenKit) | tests | open: an `archive/pc/mod` override not yet run in the game | tests; WolvenKit pinned for Linux |
+| Unity | partial: Schedule I passed 7 of 12 flags (games pass 2026-11-03: 138 files; textures, audio, meshes and text not out); Approximately Up's extraction failed (1 of 10 flags); both being rerun at 1.20.34 | tests (`pack.unity`, UnityPy) | tests | open | tests (UnityPy optional); Cpp2IL, BepInEx Windows only |
 | Unreal | tests (pak, IoStore, UnrealAssetScout) | tests (`pack.upak`, repak) | tests | open | tests; repak and retoc pinned for Linux, UnrealAssetScout Windows only |
 | Godot | tests (no Godot game with its data at hand) | tests (`pack.pck`) | tests | open | tests; GDRE and GodotPckTool pinned for Linux |
-| Ren'Py | real: a Ren'Py title (games pass 2026-11-04) | tests (`pack.rpa`) | tests | open | tests |
+| Ren'Py | real: a Ren'Py title (games pass 2026-11-04: 10 of 10 flags) | tests (`pack.rpa`) | tests | open | tests |
 | RPG Maker | tests (MV/MZ, RGSSAD) | tests (`pack.rpgmaker`, `pack.rgssad`) | tests | open | tests |
 | KiriKiri | tests | tests (`pack.xp3`) | tests | open | tests |
-| Source | real: Team Fortress 2 (games pass 2026-11-04) | tests (`pack.vpk` override) | tests | open | tests |
+| Source | real: Team Fortress 2 (games pass 2026-11-04: 9 of 9 flags) | tests (`pack.vpk` override) | tests | open | tests |
 | Bethesda | tests (no Bethesda game at hand) | tests (loose files in `Data/`) | tests | open | tests |
 | Doom | real: Freedoom (deep pass 1.16.1) | real: Freedoom (a repainted sprite, 1.16.4) | real: Freedoom (read back) | open | tests |
 | Electron | tests | tests (`pack.asar`) | tests | open | tests |
-| Age of Empires (genie) | real: AoE II HD (SLP to PNG, 1.6.0; the games pass of 2026-11-03 predates genie detection by signature, 1.20.6) | tests (`pack.drs`) | tests | open | tests |
-| Total War (warscape) | real: Rome II (games pass 2026-11-04) | tests (`pack.pack`, movie packs) | tests | open | tests |
-| Bannerlord (taleworlds) | real: Mount & Blade II: Bannerlord (games pass 2026-11-03; textures 188 of 190, 1.6.0) | open (no packer) | open | open | tests |
+| Age of Empires (genie) | partial: AoE II HD's graphics.drs decoded (SLP to PNG, 1.6.0), but the games pass of 2026-11-03 detected it as generic and passed 0 of 1 flag (before detection by signature, 1.20.6); being rerun at 1.20.34 | tests (`pack.drs`) | tests | open | tests |
+| Total War (warscape) | real: Rome II (games pass 2026-11-04: 12 of 12 flags) | tests (`pack.pack`, movie packs) | tests | open | tests |
+| Bannerlord (taleworlds) | real: Mount & Blade II: Bannerlord (games pass 2026-11-03: 11 of 11 flags; textures 188 of 190, 1.6.0) | open (no packer) | open | open | tests |
 | QuickBMS | tests (no real archive run) | open | open | open | tests; QuickBMS pinned for Linux |
 | Overwatch (DataTool) | tests (real data is the independent operator's, doc 17.4b) | - (read only) | - | - | DataTool Windows only |
 
