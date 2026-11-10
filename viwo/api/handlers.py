@@ -3,13 +3,13 @@
 from pathlib import Path
 from typing import Any, Callable
 
-from viwo.contracts import workspace as ws
 from viwo.contracts.errors import ViwoError
 from viwo.core.curation import sorting, trash
 from viwo.core.merger import media
 from viwo.core.merger.build import Settings, build
 
 from .app import App, failure, path_param, picked, safe
+from .handlers_workspace import adopt_workspace, open_workspace, workspace
 from .plugin_assets import ui_modules
 
 DEFAULTS = Settings()  # the merger's own defaults, once
@@ -30,28 +30,6 @@ def status(app: App, q: dict) -> dict:
         "assetPath": str(folder),
         "allExtensions": trash.all_extensions(folder),
     }
-
-
-def workspace(app: App, q: dict) -> dict:
-    folder = app.workspace
-    return {
-        "success": True,
-        "path": str(folder),
-        "isDefault": folder.resolve() == app.server.workspace.resolve(),
-        "owned": folder.is_dir() and ws.has_marker(folder),
-    }
-
-
-def open_workspace(app: App, d: dict) -> dict:
-    path = path_param(d, "path")
-    if path is None:
-        return failure(ViwoError("not_found", "give the workspace as an absolute folder"))
-    if path.resolve() == app.server.workspace.resolve():
-        path.mkdir(parents=True, exist_ok=True)
-    if not path.is_dir():
-        return {"success": False, "error": f"Folder not found: {path}", "code": "not_found"}
-    app.set_workspace(path.resolve())
-    return workspace(app, {})
 
 
 def dependencies(app: App, q: dict) -> dict:
@@ -284,6 +262,7 @@ GET: dict[str, Callable[[App, dict], Any]] = {
 POST: dict[str, Callable[[App, dict], Any]] = {
     "/api/extract": lambda app, d: app.extract(d),
     "/api/workspace": open_workspace,
+    "/api/workspace/adopt": adopt_workspace,
     "/api/trash": _group("move_to_trash", trash.trash_group),
     "/api/restore": _group("restore_from_trash", trash.restore_group),
     "/api/delete": _group("delete_from_trash", trash.delete_group),

@@ -22,7 +22,7 @@ goes to the log); invalid JSON is 400.
 | envelope | `/api/distro`, `/api/plugins`, `/api/jobs`, `/api/jobs/<id>`, `/api/jobs/<id>/events?from=N` | `/api/detect`, `/api/jobs/<id>/cancel` |
 | jobs | | `/api/jobs` `{kind, params}` (doc 12.5) |
 | extraction | | `/api/extract` |
-| workspace | `/api/status`, `/api/workspace`, `/api/assets-window?offset&limit`, `/api/assets-window-preview?path`, `/api/browse-folder?initialPath`, `/api/browse-file?initialPath` | `/api/workspace`, `/api/trash`, `/api/restore`, `/api/delete`, `/api/clear-trash`, `/api/keep-selected`, `/api/sort-keep`, `/api/sort-trash`, `/api/sort-undo`, `/api/sort-rename`, `/api/save-remaining-assets`, `/api/open-folder` |
+| workspace | `/api/status`, `/api/workspace`, `/api/assets-window?offset&limit`, `/api/assets-window-preview?path`, `/api/browse-folder?initialPath`, `/api/browse-file?initialPath` | `/api/workspace`, `/api/workspace/adopt`, `/api/trash`, `/api/restore`, `/api/delete`, `/api/clear-trash`, `/api/keep-selected`, `/api/sort-keep`, `/api/sort-trash`, `/api/sort-undo`, `/api/sort-rename`, `/api/save-remaining-assets`, `/api/open-folder` |
 | merger | `/api/media-merger/state` | `/api/media-merger/list`, `/api/media-merger/build`, `/api/media-merger/browse-overlay` |
 | survey, cleanup, repack | `/api/surveys`, `/api/survey-report?id`, `/api/sanitizer/recipes` | `/api/survey`, `/api/sanitizer/plan`, `/api/sanitizer/apply`, `/api/sanitizer/undo`, `/api/repack` |
 | patching | | `/api/patch` (T1 patch sets), `/api/mod` (T2 mod packages) |
@@ -98,6 +98,14 @@ onDemand}`; `category` is the owning plugin or `core`.
 - **Ownership:** ViWo clears or replaces content only inside a folder holding a marker it wrote.
   Extracting into a non-empty folder without the marker is refused; an empty folder is claimed.
   The configured default workspace (`[server] workspace`) is claimed without the check.
+- **Converting a folder** (`core/adopt.py`; `POST /api/workspace/adopt {path, confirm}`, CONVERT
+  INTO WORKSPACE in the switch dialog): a folder of the user's own files becomes a workspace.
+  Without `confirm` the route answers what would happen (`files`, `moves`, `groups`, `owned`,
+  `refused`); with it every file moves into the group of its type, its original path, sha256 and
+  size recorded in provenance (`kind: adopted`, `member` = the original path), the folders the
+  moves emptied are removed, and the marker is written last; the folder becomes the active
+  workspace. Nothing is deleted, duplicates included; top-level dot-entries stay; a drive root or
+  the home folder is refused; an owned folder is left as it is.
 - **Re-extraction (ask every time):** into an owned, non-empty workspace the user chooses **new**
   (`<name>-<n>`), **replace** (the extension groups are replaced; `.extraction_metadata/runs/`,
   `.sanitizer/` and `.trash/` stay) or **cancel**. CLI: `--on-existing`; without it the command

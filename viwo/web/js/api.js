@@ -73,6 +73,7 @@ export const api = {
   saveAll: (destinationPath) => v1("POST", "/api/save-remaining-assets", { all: true, destinationPath }),
   workspace: () => v1("GET", "/api/workspace"),
   setWorkspace: (path) => v1("POST", "/api/workspace", { path }),
+  adoptWorkspace: (path, confirm = false) => v1("POST", "/api/workspace/adopt", { path, confirm }),
   mergerState: () => v1("GET", "/api/media-merger/state"),
   mergerList: (body) => v1("POST", "/api/media-merger/list", body),
   mergerBuild: (body) => v1("POST", "/api/media-merger/build", body),

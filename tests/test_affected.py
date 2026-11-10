@@ -30,10 +30,13 @@ class AffectedTests(unittest.TestCase):
             picked = set(affected.select([path_of(module)]))
             reach = {t for t in TESTS if module in affected.closure(t, EDGES)}
             self.assertTrue(reach <= picked, module)  # every test that imports it
-            named = Path(path_of(module)).name
-            for test in picked - reach:  # the rest name the file (a script run as a process)
+            rel = Path(path_of(module))
+            names = {rel.name}  # the rest name the file (a script run as a process) ...
+            if rel.parts[:2] in (("viwo", "data"), ("viwo", "web")) and len(rel.parts) > 3:
+                names.add(f'"{rel.parts[2]}"')  # ... or the data folder it is read from
+            for test in picked - reach:
                 mods = affected.closure(test, EDGES)
-                self.assertTrue(any(named in TEXT[m] for m in mods), (module, test))
+                self.assertTrue(any(n in TEXT[m] for m in mods for n in names), (module, test))
 
     def test_a_plugin_reaches_every_test_that_boots_the_registry(self) -> None:
         picked = set(affected.select(["viwo/plugins/renpy/__init__.py"]))

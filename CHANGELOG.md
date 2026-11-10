@@ -4,6 +4,15 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.15 (2026-11-10)
+- CONVERT INTO WORKSPACE (owner): the switch dialog turns a folder of your own files into a
+  ViWo workspace. It says first what moves (files, groups by type), then moves every file into
+  the group of its type with its original path, sha256 and size in the provenance (`kind:
+  adopted`), removes the folders the moves emptied and writes the marker last. Nothing is
+  deleted, duplicates included; a drive root or the home folder is refused. `core/adopt.py`,
+  `POST /api/workspace/adopt`; the workspace handlers moved to `api/handlers_workspace.py`.
+  Doc 4.3.
+
 ## 1.20.14 (2026-11-10)
 - Core lists no engine for the distros: a built-in names its own distro profile in its manifest
   (`PluginManifest.profile`; renpy, unity, unreal and godot do), and `distros.py` reads the
