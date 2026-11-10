@@ -1,5 +1,7 @@
 """Unity engine plugin (doc 2.7, D3, D7): UnityPy main, AssetStudioModCLI spare."""
 
+from pathlib import Path
+
 from viwo.contracts.analysis import AnalysisTarget
 from viwo.contracts.plugin import (
     EnginePlugin,
@@ -63,6 +65,13 @@ STRONG = (
 )
 
 
+def il2cpp_layout(exe: Path) -> tuple[str, str, str]:
+    """Where Cpp2IL expects GameAssembly.dll, the metadata and the executable (it reads the
+    Unity version from the executable): a Unity player's own layout."""
+    meta = f"{exe.stem}_Data/il2cpp_data/Metadata/global-metadata.dat"
+    return ("GameAssembly.dll", meta, exe.name)
+
+
 class UnityPlugin(EnginePlugin):
     manifest = MANIFEST
 
@@ -86,8 +95,9 @@ class UnityPlugin(EnginePlugin):
         meta = probe.find("global-metadata.dat", limit=1)
         exes = [p for p in probe.with_suffix(".exe") if (p.parent / f"{p.stem}_Data").is_dir()]
         if assembly and meta and exes:  # the executable carries the Unity version (Cpp2IL)
-            paths = (assembly[0], meta[0], exes[0])
-            out.append(AnalysisTarget("gameassembly", "il2cpp", paths, "unity", "IL2CPP"))
+            paths, exe = (assembly[0], meta[0], exes[0]), exes[0]
+            out.append(AnalysisTarget("gameassembly", "il2cpp", paths, "unity", "IL2CPP",
+                                      layout=il2cpp_layout(exe)))  # fmt: skip
         for dll in probe.find("Assembly-CSharp.dll", limit=1):
             out.append(AnalysisTarget("assembly-csharp", "dotnet_assembly", (dll,), "unity"))
         return out

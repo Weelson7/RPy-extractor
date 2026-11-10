@@ -51,22 +51,18 @@ class IlSpy(Analyzer):
         return Outcome(OutcomeKind.OK, sources, notes=(f"{sources} C# files (project mode)",))
 
 
-def il2cpp_layout(target: AnalysisTarget, folder: Path) -> Path | None:
-    """Cpp2IL wants the game's own layout (`<Game>.exe`, `GameAssembly.dll`,
-    `<Game>_Data/il2cpp_data/Metadata/global-metadata.dat`) and reads the Unity version from
-    the executable: rebuilt here from the copied inputs, which are ViWo's to move."""
-    by_name = {p.name.lower(): p for p in target.paths}
-    exe = next((p for p in target.paths if p.suffix.lower() == ".exe"), None)
-    assembly, meta = by_name.get("gameassembly.dll"), by_name.get("global-metadata.dat")
-    if exe is None or assembly is None or meta is None:
+def laid_out(target: AnalysisTarget, folder: Path) -> Path | None:
+    """The copied inputs moved where the tool expects them: the target's `layout` (doc 6.1), the
+    engine's own folder structure as its plugin declares it. None when the target gives none or
+    a place would leave the folder."""
+    places = [ws.safe_member(rel) for rel in target.layout]
+    if not places or len(places) != len(target.paths) or None in places:
         return None
-    metadata = folder / f"{exe.stem}_Data" / "il2cpp_data" / "Metadata"
-    metadata.mkdir(parents=True, exist_ok=True)
-    for src, dst in (
-        (exe, folder / exe.name),
-        (assembly, folder / assembly.name),
-        (meta, metadata),
-    ):
+    for src, rel in zip(target.paths, places):
+        dst = folder.joinpath(*rel.parts)
+        dst.parent.mkdir(parents=True, exist_ok=True)
+        if not ws.inside(folder, dst):
+            return None
         shutil.move(str(src), str(dst))
     return folder
 
@@ -84,12 +80,10 @@ class Cpp2Il(Analyzer):
     def analyze(self, target: AnalysisTarget, ctx) -> Outcome:
         if (tool := ctx.os.tools.locate(CPP2IL)) is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=CPP2IL.hint)
-        game = il2cpp_layout(target, ctx.scratch / "il2cpp")
+        game = laid_out(target, ctx.scratch / "il2cpp")
         if game is None:
-            return Outcome(
-                OutcomeKind.FAILED,
-                error="il2cpp needs GameAssembly.dll, global-metadata.dat and the game executable",
-            )
+            why = "the il2cpp target gives no layout for its inputs (its plugin's analysis_targets)"
+            return Outcome(OutcomeKind.FAILED, error=why)
         argv = [*tool.argv_prefix, "--game-path", str(game), "--output-as", "dummydll"]
         argv += ["--output-to", str(ctx.staging)]
         ctx.log("Cpp2IL: rebuilding stub assemblies from the IL2CPP binary", stage="analyze")

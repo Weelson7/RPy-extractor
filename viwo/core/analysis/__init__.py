@@ -9,7 +9,7 @@ import re
 import shutil
 import tempfile
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from viwo.contracts.analysis import ANALYSIS_DIR, AnalysisTarget
@@ -160,7 +160,7 @@ def _copy_inputs(target: AnalysisTarget, scratch: Path) -> AnalysisTarget:
         taken.add(name)
         copies.append(Path(shutil.copy2(path, folder / name)))
     copies = tuple(copies)
-    return AnalysisTarget(target.key, target.kind, copies, target.owner, target.label, target.hints)
+    return replace(target, paths=copies)  # every other field (hints, layout) as it was
 
 
 def analyze(rt, req: AnalysisRequest, sink=None, cancel: CancelToken | None = None) -> dict:

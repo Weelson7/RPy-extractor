@@ -4,6 +4,14 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.21 (2026-11-10)
+- Core knows no engine's file layout: an analysis target declares where a tool expects each of
+  its paths (`AnalysisTarget.layout`, doc 6.1), and core rebuilds that folder from the copied
+  inputs (`managed.laid_out`, every place through `safe_member` and `inside`). The Unity plugin
+  declares its player's layout for Cpp2IL (`il2cpp_layout`); `core/analysis/managed.py` no
+  longer names `GameAssembly.dll` or `il2cpp_data`. The analysis copy keeps every field of the
+  target (`dataclasses.replace`).
+
 ## 1.20.20 (2026-11-10)
 - After a server restart the open page reloads itself: the old page's API token is refused
   (`code: "token"` on the 403), so it fetches the new one instead of failing every poll with a

@@ -20,6 +20,10 @@ AnalysisTarget  (WHAT; from EnginePlugin.analysis_targets(probe))
           | script_vm | memory_image
   paths   primary file first, companions after
   owner   plugin id or "user";  label;  hints { engine_version, ... }
+  layout  where a tool expects each path, relative to one folder (POSIX, one per path): the
+          engine's own structure, declared by the plugin that proposes the target; empty = the
+          paths as they are. Core rebuilds it from the copied inputs (`laid_out`, every place
+          through `safe_member` and `inside`) and knows no engine's structure itself.
 
 Analyzer (HOW; a backend in an analysis.* slot)
   kinds                 the target kinds it accepts
@@ -33,7 +37,7 @@ kind (`viwo analyze --slot analysis.protector`, one button per extra in ANALYSIS
 | Plugin | Targets |
 |--------|---------|
 | generic | executables up to two folders down (`native_binary`); Lua bytecode chunks (`\x1bLua`, `script_vm`) |
-| unity | `GameAssembly.dll` + `global-metadata.dat` + the player exe (`il2cpp`); `Assembly-CSharp.dll` (`dotnet_assembly`) |
+| unity | `GameAssembly.dll` + `global-metadata.dat` + the player exe (`il2cpp`, with the player's layout for Cpp2IL: `<Game>_Data/il2cpp_data/Metadata/`); `Assembly-CSharp.dll` (`dotnet_assembly`) |
 | unreal | `*-Shipping.exe` with any `.usmap` (`native_binary`) |
 | godot | every `.gdc` (`gdscript_bytecode`), engine version from the executable |
 | renpy | every `.rpyc` (`python_bytecode`) |

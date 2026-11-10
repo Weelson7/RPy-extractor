@@ -35,6 +35,9 @@ class AnalysisTarget:
     owner: str  # plugin id or "user"
     label: str = ""
     hints: Mapping[str, str] = field(default_factory=dict)  # arch, engine_version, ...
+    # where a tool expects each path, relative to one folder (POSIX, one per path): the engine's
+    # own layout, known to the plugin that proposes the target; empty = the paths as they are
+    layout: tuple[str, ...] = ()
 
     def to_dict(self) -> dict:
         return {
@@ -44,6 +47,7 @@ class AnalysisTarget:
             "owner": self.owner,
             "label": self.label or self.paths[0].name,
             "hints": dict(self.hints),
+            "layout": list(self.layout),
         }
 
 
