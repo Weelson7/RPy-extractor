@@ -122,5 +122,32 @@ class PreflightTests(unittest.TestCase):
                 self.assertEqual(preflight._version(rt, tool), "9.9")  # the pin, not a run
 
 
+class FeatureToolsTests(unittest.TestCase):
+    def test_a_feature_names_the_missing_installable_tools_of_its_main_backends(self) -> None:
+        """Whatever is found or missing: each id once; only tools that are missing and can
+        install themselves; only those the default main backends of the feature's slots
+        need; a feature without tools of its own names none."""
+        rng = random.Random(58)
+        with tempfile.TemporaryDirectory() as tmp:
+            rt = runtime(Path(tmp))
+            for _ in range(12):
+                feature = rng.choice(["analysis", "capture", "sorting", "nosuch"])
+                gone = {d["id"] for d in rt.dependency_report() if rng.random() < 0.6}
+
+                def locate(spec, gone=gone):
+                    return None if spec.dep_id in gone else object()
+
+                with mock.patch.object(rt.os.tools, "locate", locate):
+                    asked = preflight.feature_tools(rt, feature)
+                families = preflight.FEATURE_FAMILIES.get(feature, ())
+                mains = [rt.backends.get(s.default_main) for s in rt.slots.values()
+                         if s.family in families]  # fmt: skip
+                needed = {spec.dep_id: spec for b in mains if b for spec in b.dependencies()}
+                want = {i for i, spec in needed.items()
+                        if i in gone and thirdparty.installable(i, spec.kind)}  # fmt: skip
+                self.assertEqual((sorted(asked), len(asked)), (sorted(want), len(want)))
+                self.assertEqual(asked == [], not want)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -146,10 +146,12 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
    game): open is the overlay (`hook.overlay`). Special K is not pinned because it works around
    CAPCOM's copy protection by default (the owner's call) and MangoHud's release installs into
    `/usr` with `sudo` (doc 11.7). D4 is served by third-party tools only.
-2. **Coverage** (in progress): owner's target 98 % line / 95 % branch per file; measured 98.6 %
-   line / 95.3 % branch overall at 1.6.23 (child processes counted); 83 files were under the
-   per-file target at the last count (1.20.27), most by one or two branches; not measured
-   again since the parallel pipeline. Tests are property checks over random
+2. **Coverage** (in progress): owner's target 98 % line / 95 % branch per file; measured 98.2 %
+   line / 95.0 % branch overall at 1.20.58 (child processes counted, browser tests off: `coverage
+   run -m unittest discover -s tests -t .`, `coverage combine`, `coverage json`); 84 of 200 files
+   are under the per-file target, most by one to three lines; the furthest are `os/linux.py`
+   (not run on Linux here), `contracts/paths.py` (links need rights Windows does not give by
+   default) and the packers' error paths. Tests are property checks over random
    inputs, never assertions for their own sake. The CI floors (`tools/coverage_check.py`) only
    move up.
 3. **CONFORMANCE partials:** built-in plugins keep no inventory and ship no sanitizer rules

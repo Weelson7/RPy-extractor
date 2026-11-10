@@ -80,5 +80,41 @@ class AdoptTests(unittest.TestCase):
             self.assertEqual(err.exception.code, "refused")
 
 
+class RouteTests(unittest.TestCase):
+    def test_the_route_previews_then_converts_and_switches_to_the_folder(self) -> None:
+        """POST /api/workspace/adopt: without `confirm` nothing moves and the answer is the
+        plan; with it the folder is converted and becomes the active workspace; a missing
+        path and a refused folder are failures with their reason, and change nothing."""
+        from tests.helpers import runtime
+        from viwo.api.app import App
+        from viwo.api.handlers_workspace import adopt_workspace, workspace
+
+        rng = random.Random(58)
+        with tempfile.TemporaryDirectory() as tmp:
+            app = App(runtime(Path(tmp)), Path(tmp) / "test.ini")
+            was = app.workspace
+            for case in range(6):
+                root = Path(tmp) / f"mine{case}"
+                root.mkdir()
+                before = tree(root, rng)
+                names = sorted(p.relative_to(root).as_posix() for p in root.rglob("*"))
+                plan = adopt_workspace(app, {"path": str(root)})
+                self.assertTrue(plan["success"])
+                self.assertEqual(plan["files"], sum(before.values()))
+                self.assertEqual(
+                    sorted(p.relative_to(root).as_posix() for p in root.rglob("*")), names
+                )
+                self.assertEqual(app.workspace, was)  # a preview switches nothing
+                done = adopt_workspace(app, {"path": str(root), "confirm": True})
+                self.assertEqual((done["success"], done["files"]), (True, plan["files"]))
+                self.assertEqual(app.workspace, root.resolve())
+                self.assertTrue(workspace(app, {})["owned"])
+                was = app.workspace
+            self.assertEqual(adopt_workspace(app, {})["code"], "not_found")
+            refused = adopt_workspace(app, {"path": str(Path.home()), "confirm": True})
+            self.assertEqual((refused["success"], refused["code"]), (False, "refused"))
+            self.assertEqual(app.workspace, was)
+
+
 if __name__ == "__main__":
     unittest.main()
