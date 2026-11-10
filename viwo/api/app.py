@@ -121,12 +121,22 @@ class App:
                 return fn()
         except ViwoError as exc:
             return failure(exc)
-        except OSError as exc:  # a read-only or vanished folder: said, not a 500
-            return failure(ViwoError("failed", f"{target}: {exc.strerror or exc}"))
+        except OSError as exc:  # a read-only, vanished or open file: said, not a 500
+            return failure(ViwoError("failed", f"{exc.filename or target}: {in_use(exc)}"))
 
     def locked_job(self, kind: str, folder: Path, fn: Callable[..., dict], writes: bool = True):
         """fn(sink, cancel) runs as a job under the workspace lock."""
         return self.locked(lambda: self.job(kind, lambda jid, s, c: fn(s, c)), folder, writes)
+
+
+def in_use(exc: OSError) -> str:
+    """Why an OS call failed, in words: Windows error 32 names who may hold the file."""
+    if getattr(exc, "winerror", 0) == 32:
+        return (
+            "in use by another program (a preview playing it, a player or an editor): "
+            "close it, then try again"
+        )
+    return exc.strerror or str(exc)
 
 
 def foreign(folder: Path) -> bool:

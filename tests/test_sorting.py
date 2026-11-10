@@ -127,5 +127,38 @@ class SortSequenceTests(unittest.TestCase):
             self.assertFalse(clash.exists())
 
 
+class ReleasedMoveTests(unittest.TestCase):
+    def test_a_file_let_go_in_time_moves_once_and_one_held_longer_says_so(self) -> None:
+        from unittest import mock
+
+        from viwo.api.app import in_use
+
+        rng = random.Random(32)
+        for _ in range(30):
+            held, tries = rng.randint(0, 6), rng.randint(1, 5)
+            calls = []
+
+            def move(src, dst, held=held, calls=calls):
+                calls.append(src)
+                if len(calls) <= held:  # the preview stream still has it open
+                    raise PermissionError(13, "in use")
+
+            with (
+                mock.patch.object(sorting.shutil, "move", move),
+                mock.patch.object(sorting.time, "sleep"),
+            ):
+                if held < tries:
+                    sorting.move_released(Path("a"), Path("b"), tries)
+                    self.assertEqual(len(calls), held + 1)  # moved once, as soon as it was let go
+                else:
+                    with self.assertRaises(PermissionError):
+                        sorting.move_released(Path("a"), Path("b"), tries)
+                    self.assertEqual(len(calls), tries)
+        locked = PermissionError(13, "The process cannot access the file")
+        locked.winerror = 32
+        self.assertIn("in use by another program", in_use(locked))
+        self.assertEqual(in_use(FileNotFoundError(2, "gone")), "gone")
+
+
 if __name__ == "__main__":
     unittest.main()

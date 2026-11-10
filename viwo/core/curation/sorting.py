@@ -5,6 +5,7 @@ workspace-relative; every resolved path must stay inside the workspace.
 """
 
 import shutil
+import time
 from pathlib import Path
 from urllib.parse import quote, unquote
 
@@ -81,12 +82,24 @@ def keep(workspace: Path, encoded: str, history: list[dict]) -> dict:
     return {"success": True, "action": "keep", "path": encoded, "name": path.name}
 
 
+def move_released(src: Path, dest: Path, tries: int = 10):
+    """shutil.move that waits up to ~2 s for a file another reader just let go of (a preview
+    stream closing): Windows refuses to move an open file (error 32)."""
+    for attempt in range(tries):
+        try:
+            return shutil.move(str(src), str(dest))
+        except PermissionError:
+            if attempt == tries - 1:
+                raise
+            time.sleep(0.2)
+
+
 def trash_item(workspace: Path, encoded: str, history: list[dict]) -> dict:
     path = resolve(workspace, encoded)
     rel = path.relative_to(workspace.resolve())
     target = ws.next_free(area(workspace, "items") / rel)
     target.parent.mkdir(parents=True, exist_ok=True)
-    shutil.move(str(path), str(target))
+    move_released(path, target)
     provenance.moved(workspace, path, target)
     history.append({"action": "trash", "source": str(path), "target": str(target)})
     return {"success": True, "action": "trash", "path": encoded, "name": rel.name}
@@ -102,7 +115,7 @@ def rename(
     target = path.parent / new_name
     if target.exists() and target != path:
         raise ViwoError("invalid_request", f"File already exists: {new_name}")
-    path.rename(target)
+    move_released(path, target)
     provenance.moved(workspace, path, target)
     history.append({"action": "rename", "old_path": str(path), "new_path": str(target)})
     return {

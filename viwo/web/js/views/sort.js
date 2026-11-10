@@ -165,6 +165,12 @@ function stageFor(p, a) {
 /** The server reads unknown types as text: treat mostly-unprintable content as binary. */
 const binary = (t = "") => (t.match(/[\uFFFD\x00-\x08\x0E-\x1F]/g) || []).length > Math.max(4, t.length * 0.02);
 
+/** Stop the preview and drop its source before the file moves: the server streams it, and
+ * Windows refuses to move a file that is open (error 32). */
+function release() {
+  el.stage.querySelectorAll("audio, video").forEach((m) => { m.pause(); m.removeAttribute("src"); m.load(); });
+}
+
 async function act(fn) {
   if (S.busy) return;
   S.busy = true;
@@ -192,6 +198,7 @@ function trash() {
   const a = current();
   if (!a) return;
   return act(async () => {
+    release();
     await api.sort("trash", { path: a.path });
     S.items.splice(S.idx, 1);
     S.total -= 1;
@@ -227,6 +234,7 @@ async function rename() {
   const name = await promptBox("RENAME ASSET", "New file name (same folder):", a.name, "RENAME", "FILE NAME");
   if (!name || name === a.name) return;
   return act(async () => {
+    release();
     const res = await api.sort("rename", { path: a.path, newName: name });
     await load(true);  // re-list so the type tag follows the new extension
     const at = S.items.findIndex((x) => x.path === res.newPath);

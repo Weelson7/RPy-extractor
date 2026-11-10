@@ -4,6 +4,13 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.18 (2026-11-10)
+- Fix: trashing or renaming in SORT the song its preview was playing failed with Windows error
+  32 ("being used by another process"), named against the whole workspace folder. SORT now
+  stops its preview and drops the source before the file moves, the move waits up to two
+  seconds for the stream to let go (`sorting.move_released`), and a file still in use is named
+  with what may hold it (`api.app.in_use`).
+
 ## 1.20.17 (2026-11-10)
 - Fix: RESTORE and DELETE on a WORKSPACE group answered "No trashed folder" when the group's
   trashed files had been trashed one by one in SORT (`.trash/items/<ext>/`): the trashed count
