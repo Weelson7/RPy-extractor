@@ -95,23 +95,6 @@ class ChildCapTests(unittest.TestCase):
         self.assertIn("fine", runner.run_capped(400 << 20, modest).stdout)
         self.assertIn("took it", runner.run(hungry).stdout)  # the cap ended with its call
 
-    def test_export_runs_are_small_and_every_file_is_in_one(self) -> None:
-        from viwo.plugins.redengine import export
-
-        rng = random.Random(20)
-        for _ in range(30):
-            paths = [Path(f"f{i}{rng.choice(export.SUFFIXES)}") for i in range(rng.randint(0, 400))]
-            runs = export.commands(paths, Path("game"))
-            exported = [a for r in runs if r[0] == "export" for a in r[1:-2]]
-            self.assertEqual(
-                exported, [str(p) for p in paths if p.suffix.lower() in export.EXPORTS]
-            )
-            self.assertTrue(
-                all(len(r) - 3 <= export.EXPORT_BATCH for r in runs if r[0] == "export")
-            )
-            serialized = [a for r in runs if r[0] == "convert" for a in r[2:]]
-            self.assertEqual(serialized, [str(p) for p in paths])
-
 
 ROOM_PROBE = """
 from viwo.os import select_os

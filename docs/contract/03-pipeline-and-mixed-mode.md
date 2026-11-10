@@ -26,13 +26,14 @@ in the items' order, so names, provenance and the report are the same on every r
 starts nothing more. On the pool today: the search for nested archives among the files just
 unpacked (UNPACK: one round per nesting depth; a round of 200 files or more is announced and
 counted, stage `identify`); the parts of a batch decoder (DECODE: WolvenKit's parts of 600
-files, each its own process and folder, as many at once as the budget and the memory allow,
-4 GB kept per tool; the first part runs alone, since a tool writes its settings on first
-use); the per-file decoders; the members of an RDAR archive (read, inflated and written
+files, each its own process and folder, as many at once as the workers and the memory
+budget allow (doc 9.2: a capped tool holds its cap out of ViWo's share while it runs, and
+waits while the share is out); the first part runs alone, since a tool writes its settings
+on first use); the per-file decoders; the members of an RDAR archive (read, inflated and written
 several at once, their names given in the members' order first); CARVE (the check for
 files nothing recognizes, then the carving, its folders numbered in the files' order);
 COLLECT's hashing (the files are then placed one at a time, in order). A plugin reaches the pool as
-`ctx.each(fn, items, cancel)` (never by importing the core); without a pool it runs one at a
+`ctx.each(fn, items, cancel)` and the memory budget as `ctx.memory` (never by importing the core); without a pool it runs one at a
 time. At most twice the worker count of results wait for their reader. What writes the workspace (COLLECT's moves) stays one writer.
 
 **Said as it happens** (owner): a stage says what it starts (what, how many, on how many

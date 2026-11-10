@@ -120,6 +120,9 @@ class ExtractionContext:
     games: tuple = ()  # the run's game plugins of this engine (doc 2.10): what they supply
     # the run's worker pool (doc 3.1): each(fn, items, cancel) -> results in the items' order
     each: Callable = lambda fn, items, cancel=None: map(fn, items)  # no pool: one at a time
+    memory: Any = (
+        None  # the run's memory budget (doc 9.2): .share bytes, .hold(bytes) around a tool
+    )
 
     def log(self, message: str, level: str = "info", stage: str = "") -> None:
         if self.progress:

@@ -4,6 +4,14 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.42 (2026-11-10)
+- One memory budget for the tools that run at once (`ctx.memory`, doc 9.2): a capped tool
+  holds its cap out of ViWo's share of the machine and waits while the share is out.
+- WolvenKit's runs adapt: 150 files a run (ten animations count as a run), 2 GB to start;
+  what failed for want of memory is run again beside fewer files, then alone with twice the
+  room, up to the share; what WolvenKit cannot read is not run again. Decode was 86 % of a
+  timed Cyberpunk extraction with fixed 20-file runs under 4 GB.
+
 ## 1.20.41 (2026-11-10)
 - Unity IL2CPP: MonoBehaviour fields are kept. A rebuilt layout that does not fit no longer
   switches every rebuilt layout off: the one script is remembered and skipped, every other

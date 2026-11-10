@@ -45,8 +45,11 @@ memory_limit     = 50            ; percent of the machine's memory ViWo's own pr
                                  ; job object, child tools left out; Linux: the soft data limit.
                                  ; The console says at start whether it holds.
                                  ; A child tool known to keep what it converts runs under a cap of
-                                 ; its own (`ProcessRunner.run_capped`; WolvenKit: 4 GB a process),
-                                 ; and as many run at once as fit in this share of the machine.
+                                 ; its own (`ProcessRunner.run_capped`), held out of one budget:
+                                 ; this share of the machine (`ctx.memory`; 50 % when 0). A run
+                                 ; waits while the share is out, so the tools together never ask
+                                 ; for more. WolvenKit starts at 2 GB a run and gets more, up to
+                                 ; the share, only for what failed for want of memory (doc 8).
                                  ; Around one doubtful read (a Unity MonoBehaviour with a rebuilt
                                  ; layout) the ceiling is what ViWo holds plus 1 GB (`memory_room`).
 

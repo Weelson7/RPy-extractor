@@ -149,8 +149,11 @@ spare `ffmpeg-decode`; Wwise, FMOD, CRI, XACT and console audio to WAV); `decode
 (`ffmpeg-image`, DDS to PNG); `decode.video` (`ffmpeg-video`, Bink to MP4, opt-in); `decode.bink2` (`bink-game`: Bink 2 to MP4
 through the game's own `bink2w64.dll` in a helper process, frames piped into ffmpeg, opt-in with
 video); `decode.cr2w` (`wolvenkit-export`, redengine: WolvenKit's console, GPL-3.0 as its own
-process, one run per batch (150 files for `convert serialize`, 20 for `export`, which keeps
-what it exports in memory until it exits; each run capped at 4 GB, doc 9.2): `export` turns textures into PNG and meshes, morph
+process, one run per batch of 150 files (ten animations count as a whole `export` run: WolvenKit
+keeps what it exports in memory until it exits). Each run starts under a 2 GB cap held out of the
+memory budget (doc 9.2); what WolvenKit could not convert for want of memory is run again, beside
+fewer files, then alone under twice the cap, up to ViWo's whole share, twelve extra runs at most
+per call; what it cannot read at all is not run again: `export` turns textures into PNG and meshes, morph
 targets, cubemaps and animations into glTF, `convert serialize` turns every CR2W resource into
 JSON; ViWo writes the export settings it needs into WolvenKit's `appsettings.json` off screen and
 every file WolvenKit could not convert is counted; the core hands a batch backend 600 files per

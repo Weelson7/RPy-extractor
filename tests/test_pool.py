@@ -7,6 +7,7 @@ announced, finds what a serial search finds, and a zip inside a zip is still unp
 import os
 import random
 import tempfile
+import threading
 import time
 import unittest
 import zipfile
@@ -130,6 +131,48 @@ class StageTimeTests(unittest.TestCase):
                 self.assertLessEqual(run.took.get(stage, 0.0), seconds + 1e-6, stage)
             closed = sum(run.took.values())
             self.assertLessEqual(closed, now[0] - 1000.0 + 1e-6)
+
+
+class BudgetTests(unittest.TestCase):
+    def test_what_is_held_at_once_never_passes_the_share(self) -> None:
+        rng = random.Random(42)
+        for _ in range(5):
+            share = rng.randint(4, 40)
+            budget, held, peak, lock = pool.Budget(share), [0], [0], threading.Lock()
+            asks = [rng.randint(1, share + 5) for _ in range(rng.randint(1, 40))]
+
+            def one(ask, budget=budget, held=held, peak=peak, share=share):
+                with budget.hold(ask):
+                    with lock:
+                        held[0] += min(ask, share)  # more than the share is the whole share
+                        peak[0] = max(peak[0], held[0])
+                    time.sleep(0.001)
+                    with lock:
+                        held[0] -= min(ask, share)
+                return ask
+
+            self.assertEqual(list(pool.each(one, asks, count=8)), asks)  # every one got its turn
+            self.assertLessEqual(peak[0], share)
+            self.assertEqual((held[0], budget._free), (0, share))  # all handed back
+
+    def test_a_failed_run_hands_its_part_back_and_the_share_follows_the_machine(self) -> None:
+        budget = pool.Budget(10)
+        with self.assertRaises(ValueError), budget.hold(10):
+            raise ValueError("the tool crashed")
+        with budget.hold(10):  # would wait for ever if the part were lost
+            pass
+        for total, percent, want in (
+            (32 << 30, 50, 16 << 30),
+            (32 << 30, 0, 16 << 30),
+            (0, 25, 4 << 30),
+            (64 << 30, 90, (64 << 30) * 9 // 10),
+        ):
+            rt = SimpleNamespace(
+                os=SimpleNamespace(memory_bytes=lambda total=total: total),
+                config=SimpleNamespace(memory_limit=percent),
+            )
+            self.assertEqual(pool.budget(rt).share, want)
+            self.assertIs(pool.budget(rt), pool.budget(rt))  # one for the process
 
 
 if __name__ == "__main__":

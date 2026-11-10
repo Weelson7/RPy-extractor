@@ -2,7 +2,9 @@
 process may use, counted when asked, on any OS; VIWO_WORKERS overrides. One number for the
 whole pipeline, so stages never oversubscribe the machine."""
 
+import contextlib
 import os
+import threading
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, Iterable, Iterator
@@ -43,3 +45,37 @@ def each(fn: Callable, items: Iterable, cancel=None, count: int = 0) -> Iterator
         finally:
             for future in ahead:
                 future.cancel()
+
+
+class Budget:
+    """ViWo's share of the machine's memory, handed out to the tools that run at once (doc 9.2):
+    a run holds what its cap allows it to take and waits while the share is out, so however
+    many run, together they cannot ask for more than the share."""
+
+    def __init__(self, share: int) -> None:
+        self.share, self._free, self._turn = share, share, threading.Condition()
+
+    @contextlib.contextmanager
+    def hold(self, amount: int):
+        amount = min(amount, self.share)
+        with self._turn:
+            while self._free < amount:
+                self._turn.wait(0.5)
+            self._free -= amount
+        try:
+            yield
+        finally:
+            with self._turn:
+                self._free += amount
+                self._turn.notify_all()
+
+
+_BUDGETS: dict[int, Budget] = {}
+
+
+def budget(rt) -> Budget:
+    """The one budget of this process: memory_limit percent of the machine (50 when the owner
+    lifted ViWo's own ceiling: tools are still scheduled), 8 GB when the machine cannot tell."""
+    total = rt.os.memory_bytes() or 16 << 30
+    share = total * (rt.config.memory_limit or 50) // 100
+    return _BUDGETS.setdefault(share, Budget(share))

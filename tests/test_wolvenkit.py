@@ -22,6 +22,7 @@ from tests.test_redengine import cr2w, rdar
 from viwo.contracts import CancelToken, ExtractionRequest
 from viwo.contracts.types import Outcome, OutcomeKind
 from viwo.core import decode
+from viwo.core.pipeline import pool
 from viwo.core.pipeline.runner import extract
 from viwo.plugins.redengine import export
 from viwo.plugins.redengine.export import BATCH, EXPORTS, SETTINGS, SUFFIXES, WolvenKitExport
@@ -69,6 +70,8 @@ class CommandTests(unittest.TestCase):
                 self.assertLessEqual(len(run), BATCH + 3)  # the command line stays short
                 if run[0] == "export":
                     self.assertEqual(run[-2:], ["-gp", "GAME"])  # the game supplies the rest
+                    heavy = sum(a.endswith(tuple(export.HEAVY)) for a in run[1:-2])
+                    self.assertLessEqual(heavy, 10)  # the ones WolvenKit keeps in memory
 
 
 class SettingsTests(unittest.TestCase):
@@ -147,6 +150,48 @@ class DecodeTests(unittest.TestCase):
                     self.assertIn(f"t{min(broken)}.xbm", out.error)  # the first one named
                 else:
                     self.assertEqual(out.error, "")
+
+    def test_what_lacked_memory_is_run_again_with_more_and_the_rest_is_not(self) -> None:
+        """A model of WolvenKit under a cap: it keeps what it read, and a file that no longer
+        fits fails by name. Every file that fits ViWo's share comes out, under caps that never
+        pass the share; one that cannot fit and one WolvenKit cannot read are counted once."""
+        rng, gb = random.Random(8), 1 << 30
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for round_ in range(12):
+                dest, share = root / f"o{round_}", rng.choice((8, 16)) * gb
+                need = {root / f"s{i}.xbm": gb // 10 for i in range(rng.randint(2, 9))}
+                need[root / "big.anims"] = rng.choice((3, 5)) * gb
+                need[root / "huge.anims"] = share + gb
+                need[root / "odd.xbm"] = -1  # not a memory matter
+                paths = rng.sample(sorted(need), len(need))
+                caps, seen = [], []
+
+                def capped(cap, argv, **kw):
+                    caps.append(cap)
+                    seen.append([a for a in argv if a.endswith((".xbm", ".anims"))])
+                    used, said = 0, ""
+                    for name in seen[-1] if argv[1] == "export" else []:
+                        if need[Path(name)] < 0:
+                            said += f"[ 0: Warning ] - Failed to export {name}.\n"
+                        elif used + need[Path(name)] > cap:
+                            said += f"[ 0: Error ] - {Path(name).name} - OutOfMemoryException\n"
+                        else:
+                            used += need[Path(name)]
+                            (dest / f"{Path(name).name}.glb").write_text("x")
+                    return SimpleNamespace(ok=True, stdout=said, stderr="")
+
+                ctx = self.ctx(root, None)
+                ctx.os.process.run_capped, ctx.memory = capped, pool.Budget(share)
+                out = WolvenKitExport().decode_many(paths, dest, ctx)
+                self.assertEqual(out.files, len(paths) - 2)  # all but the two that cannot
+                self.assertTrue((dest / "big.anims.glb").is_file())
+                self.assertIn("could not convert 2 file(s)", out.error)
+                self.assertLessEqual(max(caps), share)
+                self.assertEqual(caps[0], export.START)
+                alone = [c for c, run in zip(caps, seen) if run == [str(root / "odd.xbm")]]
+                self.assertLessEqual(alone, [export.START])  # never given more room
+                self.assertLessEqual(len(caps), 2 + export.RETRIES)
 
     def test_a_missing_tool_and_a_silent_crash_are_named(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
