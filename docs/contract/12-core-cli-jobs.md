@@ -93,7 +93,9 @@ Commands are grouped by arm; `viwo -h` lists them, `viwo <arm>` lists one arm, a
 | system | `diag [--out ZIP]` | logs, run records and tool status for a bug report, secrets stripped |
 
 Global flags: `--ini PATH`, `--os auto|linux|windows`, `--profile P`, `--features a,b`,
-`--json` (envelope on stdout; progress stays on stderr), `--quiet` (no progress lines),
+`--json` (envelope on stdout and nothing else there: while the command runs, the process's
+stdout is pointed at stderr, so a native library or a child tool that prints cannot break the
+document; progress stays on stderr), `--quiet` (no progress lines),
 `--verbose` (also the effective ini and bindings). Bare `viwo` prints a short guide with the
 philosophy paragraph. Plugins add commands (`cli_commands()`; drop-ins only with `"cli": true`).
 

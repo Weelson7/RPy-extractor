@@ -16,7 +16,8 @@ New-Item -ItemType Directory -Force $reports | Out-Null
 $log = Join-Path $reports "pass.log"
 $ctf = Get-Content (Join-Path $root "sqc\ctf.json") -Raw | ConvertFrom-Json
 
-function Say($text) { $line = "{0} {1}" -f (Get-Date -Format "HH:mm:ss"), $text; $line | Tee-Object -FilePath $log -Append }
+# UTF-8 said outright: Tee-Object writes the shell's default (UTF-16 in some hosts) into the log
+function Say($text) { $line = "{0} {1}" -f (Get-Date -Format "HH:mm:ss"), $text; Add-Content -Path $log -Value $line -Encoding utf8; $line }
 
 foreach ($dir in Get-ChildItem $Source -Directory) {
     if ($Skip -contains $dir.Name) { Say "skip $($dir.Name)"; continue }

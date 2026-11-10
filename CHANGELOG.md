@@ -4,6 +4,17 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.36 (2026-11-10)
+- Fix: `viwo --json` could answer text before its JSON. On a Unity IL2CPP game UnityPy's
+  native layout generator prints "Error generating tree nodes" straight to the process's
+  stdout; the games pass then could not read the extraction's answer and recorded a failed
+  step with no plugins and no warnings (Approximately Up, 2026-11-03 and 2026-11-10). While a
+  `--json` command runs, the process's stdout is now pointed at stderr and restored for the
+  one document. Doc 12.4.
+- `tools/games_pass.ps1` writes its log as UTF-8 whatever the shell's default is.
+- Games pass rerun at 1.20.34: Age of Empires II HD passes 13 of 13 flags (genie detected,
+  3,923 SLP sprites as PNG).
+
 ## 1.20.35 (2026-11-10)
 - CONFORMANCE corrected against the passes' own flags: Unity and Age of Empires were written
   as proven on a real game, but Schedule I passed 7 of 12 flags, Approximately Up 1 of 10 and

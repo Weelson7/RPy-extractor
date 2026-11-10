@@ -1,7 +1,9 @@
 """`viwo` command line (doc 12.4)."""
 
 import argparse
+import contextlib
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -126,6 +128,29 @@ def _run(args, rt=None) -> Envelope:
     return Envelope.success(job.result.to_legacy_dict(), list(job.result.warnings))
 
 
+@contextlib.contextmanager
+def _only_the_answer(json_mode: bool):
+    """`--json` promises one JSON document on stdout. A native library (UnityPy's layout
+    generator) or a child tool may print straight to the process's stdout, under Python: while
+    the command runs, that stream is pointed at stderr, and restored for the answer."""
+    try:
+        fd = sys.stdout.fileno() if json_mode else -1
+    except (AttributeError, OSError, ValueError):  # captured in memory (tests): nothing under it
+        fd = -1
+    if fd < 0:
+        yield
+        return
+    sys.stdout.flush()
+    saved = os.dup(fd)
+    os.dup2(sys.stderr.fileno(), fd)
+    try:
+        yield
+    finally:
+        sys.stdout.flush()
+        os.dup2(saved, fd)
+        os.close(saved)
+
+
 def main(argv: list[str] | None = None) -> int:
     arm, argv = cli_arms.split_arm(list(sys.argv[1:] if argv is None else argv))
     rt = boot_for_cli(argv) if argv else None  # add-ons need the runtime; bare `viwo` stays fast
@@ -142,7 +167,8 @@ def main(argv: list[str] | None = None) -> int:
 
         return serve(args.ini, args.host, args.port, not args.no_browser)
     try:
-        envelope = _run(args, rt)
+        with _only_the_answer(args.json):
+            envelope = _run(args, rt)
     except ViwoError as exc:
         envelope = Envelope.failure(exc)
     except KeyboardInterrupt:
