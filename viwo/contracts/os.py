@@ -36,6 +36,10 @@ class ProcessRunner(ABC):
         the whole process tree is killed and timed_out=True is returned. on_line, when
         given, receives every stdout/stderr line as it arrives (output is still captured)."""
 
+    def run_capped(self, ceiling: int, argv: Sequence[str], **options) -> ProcessResult:
+        """run(), the tool held under `ceiling` bytes of memory where the OS layer can."""
+        return self.run(argv, **options)
+
     def running_images(self) -> set[str]:
         """Lowercase image names of the running processes (best effort; empty when unknown)."""
         return set()

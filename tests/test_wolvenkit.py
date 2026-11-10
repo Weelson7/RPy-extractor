@@ -107,7 +107,7 @@ class DecodeTests(unittest.TestCase):
         tool = SimpleNamespace(argv_prefix=("wk",), path=str(where / "WolvenKit.CLI.dll"))
         host = SimpleNamespace(
             tools=SimpleNamespace(locate=lambda s: tool if located else None),
-            process=SimpleNamespace(run=run),
+            process=SimpleNamespace(run=run, run_capped=lambda cap, argv, **kw: run(argv, **kw)),
         )
         self.logs = []
         relay = lambda stage, every=0.5: self.logs.append  # noqa: E731  (the tool's lines, live)
@@ -262,7 +262,7 @@ class BatchTests(unittest.TestCase):
             calls, said = [], []
             run = SimpleNamespace(
                 cancel=SimpleNamespace(cancelled=False),
-                rt=SimpleNamespace(os=machine),
+                rt=SimpleNamespace(os=machine, config=SimpleNamespace(memory_limit=50)),
                 log=lambda m, stage, level="info", said=said: said.append(m),
             )
 
@@ -300,6 +300,7 @@ class BatchTests(unittest.TestCase):
                 bindings={s: SimpleNamespace(main=s) for s in ("decode.cr2w", "decode.audio")},
                 backends={"decode.cr2w": batch, "decode.audio": object()},
                 os=SimpleNamespace(memory_bytes=lambda: 8 << 30),
+                config=SimpleNamespace(memory_limit=50),
             ),
             ctx=lambda owner: SimpleNamespace(options={}),
             cancel=SimpleNamespace(cancelled=True),

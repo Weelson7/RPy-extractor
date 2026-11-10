@@ -37,6 +37,9 @@ class SubprocessRunner(ProcessRunner):
         self._popen_kwargs = popen_kwargs
         self._kill_tree = kill_tree
         self.processes = lister  # the per-OS process listing (running_images, pids_of)
+        self.cap_child = lambda proc, ceiling: "no memory cap for child tools on this OS layer"
+        self.capped_kwargs: dict = {}  # how a tool that will be capped is started (suspended)
+        self._cap = threading.local()  # the ceiling of the run_capped call in this thread
 
     def running_images(self) -> set[str]:
         try:
@@ -79,7 +82,10 @@ class SubprocessRunner(ProcessRunner):
             text=True,
             encoding="utf-8",
             errors="replace",
-            **self._popen_kwargs,
+            **{
+                **self._popen_kwargs,
+                **(self.capped_kwargs if getattr(self._cap, "bytes", 0) else {}),
+            },
         )
 
     def run(self, argv, cwd=None, timeout=None, cancel=None, env=None, on_line=None):
@@ -87,8 +93,21 @@ class SubprocessRunner(ProcessRunner):
         grandchild that keeps the pipes open (the adb server qrenderdoc leaves behind) cannot
         hang it the way `communicate()` would."""
         proc = self._popen(argv, cwd, env)
+        ceiling = getattr(self._cap, "bytes", 0)
+        why = self.cap_child(proc, ceiling) if ceiling else ""
+        if why and on_line:  # never silent: the tool runs, but nothing holds it
+            on_line(f"no memory cap on this tool: {why}")
         deadline = time.monotonic() + timeout if timeout else None
         return self._stream(proc, deadline, cancel, on_line or (lambda line: None))
+
+    def run_capped(self, ceiling: int, argv, **options):
+        """run(), the tool held under `ceiling` bytes of memory (doc 9.2): a tool that keeps
+        what it converts (WolvenKit took 13 GB in 30 s on one batch) fails by itself."""
+        self._cap.bytes = ceiling
+        try:
+            return self.run(argv, **options)
+        finally:
+            self._cap.bytes = 0
 
     def _stream(self, proc, deadline, cancel, on_line) -> ProcessResult:
         """Capture stdout/stderr while handing every line to on_line as it arrives."""

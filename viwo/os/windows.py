@@ -33,6 +33,12 @@ def _wrap(path: Path) -> tuple[str, ...]:
     return (str(path),)
 
 
+def _cap_child(proc, ceiling: int) -> str:
+    from ._win_memory import cap_child
+
+    return cap_child(proc, ceiling)
+
+
 class WindowsFs(FileSystemPolicy):
     @property
     def case_sensitive(self) -> bool:
@@ -198,6 +204,8 @@ class WindowsOS(HostOS):
     def __init__(self, tool_overrides: Mapping[str, str | Sequence[str]] | None = None) -> None:
         flags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
         self._process = SubprocessRunner(32767, {"creationflags": flags}, _kill_tree, _processes)
+        self._process.cap_child = _cap_child
+        self._process.capped_kwargs = {"creationflags": flags | 0x4}  # CREATE_SUSPENDED
         suffixes = [".exe", ".bat", ".cmd", ""]
         self._tools = Locator(tool_overrides or {}, _install_roots(), suffixes, _wrap, "windows")
         self._fs = WindowsFs()

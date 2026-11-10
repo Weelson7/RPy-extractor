@@ -44,6 +44,9 @@ memory_limit     = 50            ; percent of the machine's memory ViWo's own pr
                                  ; up; a damaged file can otherwise ask for all of it. Windows: a
                                  ; job object, child tools left out; Linux: the soft data limit.
                                  ; The console says at start whether it holds.
+                                 ; A child tool known to keep what it converts runs under a cap of
+                                 ; its own (`ProcessRunner.run_capped`; WolvenKit: 4 GB a process),
+                                 ; and as many run at once as fit in this share of the machine.
 
 [plugins]
 generic     = on                 ; always on

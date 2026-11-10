@@ -28,7 +28,8 @@ AUDIO = (".wem", ".fsb", ".bnk", ".xwm", ".xma", ".at3", ".at9", ".adx", ".hca",
 AUDIO += (".acb", ".bfstm", ".bcstm", ".brstm", ".bfwav", ".lopus", ".xwb", ".sab", ".msf")
 AUDIO += (".binka", ".bank")  # .bank: FMOD Studio banks (FSB5 inside)
 PART = 600  # files per call of a batch backend: the counter moves between calls
-HEAVY = 4 << 30  # memory kept per batch tool running at once (WolvenKit holds about 1 GB)
+HEAVY = 4 << 30  # memory one batch tool may take (its cap, doc 9.2); as many run at once as
+# fit in ViWo's share of the machine (memory_limit)
 SLOTS = (
     SlotDefinition(
         "decode.audio", "decode", "core", "vgmstream-cli", "ffmpeg-decode", suffixes=AUDIO
@@ -217,7 +218,8 @@ def _decode_parts(run, ctx, workspace: Path, rels: list[str], slot: str, ticker)
     process and folder; as many as the worker budget and the memory allow), results in order:
     (sources, one warning or ""). The counter moves as parts finish (never silent)."""
     parts = [rels[start : start + PART] for start in range(0, len(rels), PART)]
-    count = min(workers(), len(parts), max(1, run.rt.os.memory_bytes() // HEAVY))
+    share = run.rt.os.memory_bytes() * (run.rt.config.memory_limit or 50) // 100
+    count = min(workers(), len(parts), max(1, share // HEAVY))
     run.log(f"{slot}: {len(rels):,} file(s) in {len(parts)} part(s), {count} at a time", "decode")
     one = lambda part: _decode_batch(run, ctx, workspace, part, slot)  # noqa: E731
     first = (one(part) for part in parts[:1])  # alone: a tool writes its settings on first use

@@ -22,6 +22,17 @@ def _kill_group(proc: subprocess.Popen) -> None:
         proc.kill()
 
 
+def _cap_child(proc, ceiling: int) -> str:
+    """The child's data limit, set from outside right after it starts (prlimit)."""
+    try:
+        import resource
+
+        resource.prlimit(proc.pid, resource.RLIMIT_DATA, (ceiling, ceiling))
+    except (ImportError, AttributeError, ValueError, OSError) as exc:
+        return f"the data limit could not be set ({exc})"
+    return ""
+
+
 class PosixFs(FileSystemPolicy):
     @property
     def case_sensitive(self) -> bool:
@@ -123,6 +134,7 @@ class LinuxOS(HostOS):
         self._process = SubprocessRunner(
             max(4096, arg_max // 2), {"start_new_session": True}, _kill_group, _processes
         )
+        self._process.cap_child = _cap_child
         self._tools = Locator(
             tool_overrides or {}, _install_roots(), [""], lambda p: (str(p),), "linux"
         )

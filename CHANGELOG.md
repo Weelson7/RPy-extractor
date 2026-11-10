@@ -4,6 +4,19 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.40 (2026-11-10)
+- Fix: WolvenKit could take the machine's memory. Its `export` keeps everything it converts
+  until the process ends: one batch of 150 animation files took 13 GB in 30 seconds (measured
+  under a watchdog; a timed run was stopped at 20 GB with 1.6 GB left free). `export` now gets
+  20 files a run, and every WolvenKit runs under a 4 GB cap.
+- Child tools can be capped (`ProcessRunner.run_capped`): Windows, a job object per tool;
+  Linux, the child's data limit (written, not yet run on Linux). A tool past its cap fails by
+  itself and is counted; a cap that could not be set is said.
+- The decode runs as many WolvenKit at once as fit in ViWo's share of the machine
+  (`memory_limit`): 4 on a 32 GB machine, not 7. Docs 8 and 9.2.
+- Checked: the parallel RDAR unpack writes the same bytes as the serial one (two real
+  archives, 9,937 files, compared by sha256).
+
 ## 1.20.39 (2026-11-10)
 - Always said (owner): a stage that ends says how long it took, and every extraction closes
   with its total and the time per stage. CLI progress lines carry the time of day. WolvenKit's

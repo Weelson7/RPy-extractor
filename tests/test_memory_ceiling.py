@@ -80,6 +80,39 @@ class CeilingTests(unittest.TestCase):
             self.assertEqual(load_ini(None).memory_limit, 50)
 
 
+class ChildCapTests(unittest.TestCase):
+    def test_a_capped_tool_fails_by_itself_and_the_next_one_is_free_again(self) -> None:
+        from viwo.os import select_os
+
+        runner = select_os().process
+        hungry = [sys.executable, "-c", "b = bytearray(2 << 30); print('took it')"]
+        modest = [sys.executable, "-c", "b = bytearray(32 << 20); print('fine')"]
+        said = []
+        capped = runner.run_capped(400 << 20, hungry, on_line=said.append)
+        if any("no memory cap" in line for line in said):
+            self.skipTest("this OS layer could not cap the child: " + said[0])
+        self.assertNotIn("took it", capped.stdout)  # the tool failed, the machine did not
+        self.assertIn("fine", runner.run_capped(400 << 20, modest).stdout)
+        self.assertIn("took it", runner.run(hungry).stdout)  # the cap ended with its call
+
+    def test_export_runs_are_small_and_every_file_is_in_one(self) -> None:
+        from viwo.plugins.redengine import export
+
+        rng = random.Random(20)
+        for _ in range(30):
+            paths = [Path(f"f{i}{rng.choice(export.SUFFIXES)}") for i in range(rng.randint(0, 400))]
+            runs = export.commands(paths, Path("game"))
+            exported = [a for r in runs if r[0] == "export" for a in r[1:-2]]
+            self.assertEqual(
+                exported, [str(p) for p in paths if p.suffix.lower() in export.EXPORTS]
+            )
+            self.assertTrue(
+                all(len(r) - 3 <= export.EXPORT_BATCH for r in runs if r[0] == "export")
+            )
+            serialized = [a for r in runs if r[0] == "convert" for a in r[2:]]
+            self.assertEqual(serialized, [str(p) for p in paths])
+
+
 class UnityExhaustedTests(unittest.TestCase):
     def test_an_exhausted_read_is_counted_and_the_layouts_go_off_once(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

@@ -21,7 +21,10 @@ SETTINGS = {
 }
 # what `export` turns into a real file format; for any other class it only dumps raw buffers
 EXPORTS = frozenset({".xbm", ".mesh", ".morphtarget", ".cubemap", ".anims", ".texarray"})
-BATCH = 150  # files per run: the command line stays far under the Windows limit
+BATCH = 150  # files per `convert serialize` run: far under the Windows command-line limit
+EXPORT_BATCH = 20  # files per `export` run: WolvenKit keeps what it exports until it exits
+# (measured on Cyberpunk 2077: 150 animation files took 13 GB in 30 s, about 85 MB a file)
+CAP = 4 << 30  # memory one WolvenKit may take (doc 9.2): past it that run fails, said
 
 
 def quiet_settings(folder: Path) -> None:
@@ -56,7 +59,8 @@ class WolvenKitExport(Decoder):
         dest.mkdir(parents=True, exist_ok=True)
         said, failed = "", 0
         for command in commands(paths, ctx.game_root):
-            result = ctx.os.process.run(
+            result = ctx.os.process.run_capped(
+                CAP,
                 [*tool.argv_prefix, *command, "-o", str(dest), "-v", "Minimal"],
                 cwd=str(dest),  # whatever it writes beside its output stays in the run
                 timeout=6 * 3600,
@@ -85,8 +89,8 @@ def commands(paths: list[Path], game_root) -> list[list[str]]:
     """`export` for the classes it converts, `convert serialize` for all, in batches."""
     runs = []
     exports = [str(p) for p in paths if p.suffix.lower() in EXPORTS]
-    for start in range(0, len(exports), BATCH):
-        runs.append(["export", *exports[start : start + BATCH], "-gp", str(game_root)])
+    for start in range(0, len(exports), EXPORT_BATCH):
+        runs.append(["export", *exports[start : start + EXPORT_BATCH], "-gp", str(game_root)])
     for start in range(0, len(paths), BATCH):
         runs.append(["convert", "serialize", *(str(p) for p in paths[start : start + BATCH])])
     return runs
