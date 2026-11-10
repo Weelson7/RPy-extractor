@@ -153,8 +153,8 @@ process, one run per batch of 150 files: `export` turns textures into PNG and me
 targets, cubemaps and animations into glTF, `convert serialize` turns every CR2W resource into
 JSON; ViWo writes the export settings it needs into WolvenKit's `appsettings.json` off screen and
 every file WolvenKit could not convert is counted; the core hands a batch backend 600 files per
-call (`decode.PART`), so the decode counter moves between calls and a cancel stops after the
-part running, and the parts' failures become one warning per slot: the first, and how many
+call (`decode.PART`), several calls at once on the worker pool (doc 3.1), so the decode counter
+moves as parts finish and a cancel starts no further part, and the parts' failures become one warning per slot: the first, and how many
 other parts failed); `decode.redscripts` (`redscript-decompile`, redengine, option `decompile`:
 redscript's console, MIT, Windows build, decompiles `final.redscripts` into one `.script` file per
 stored script); `decode.rpyc`

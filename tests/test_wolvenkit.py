@@ -246,32 +246,44 @@ class BatchTests(unittest.TestCase):
                     self.assertEqual(why, "2 file(s): WolvenKit crashed")
             self.assertEqual(len(list(Path(tmp).glob("dec-*"))), 1)  # the failed one is removed
 
-    def test_parts_move_the_counter_and_say_every_failure_once(self) -> None:
+    def test_parts_run_once_in_order_and_say_every_failure_once(self) -> None:
+        """Parts run several at once: each exactly once when nothing cancels, results and the
+        counter in the parts' order, one warning; after a cancel only a prefix is handed on."""
         rng = random.Random(16)
+        machine = SimpleNamespace(memory_bytes=lambda: 64 << 30)
         for _ in range(40):
-            rels = [f"f{i}.xbm" for i in range(rng.randint(1, 3 * decode.PART + 7))]
+            rels = [f"f{i}.xbm" for i in range(rng.randint(1, 5 * decode.PART + 7))]
             parts = -(-len(rels) // decode.PART)
             bad = {k for k in range(parts) if rng.random() < 0.4}
             stop = rng.choice([None, rng.randrange(parts)])
-            calls = []
-            run = SimpleNamespace(cancel=SimpleNamespace(cancelled=False))
+            calls, said = [], []
+            run = SimpleNamespace(
+                cancel=SimpleNamespace(cancelled=False),
+                rt=SimpleNamespace(os=machine),
+                log=lambda m, stage, level="info", said=said: said.append(m),
+            )
 
             def one(run, ctx, ws, part, slot, bad=bad, stop=stop, calls=calls):
-                calls.append(part)
-                run.cancel.cancelled = len(calls) - 1 == stop  # the user cancels during it
-                return (None, f"part {len(calls) - 1}") if len(calls) - 1 in bad else ("s", "")
+                k = int(part[0][1:-4]) // decode.PART
+                calls.append(k)
+                if k == stop:
+                    run.cancel.cancelled = True  # the user cancels during it
+                return (None, f"part {k}") if k in bad else (f"s{k}", "")
 
             ticker = SimpleNamespace(done=0)
             ticker.tick = lambda n, t=ticker: setattr(t, "done", t.done + n)
             with mock.patch.object(decode, "_decode_batch", one):
                 sources, why = decode._decode_parts(run, None, Path("ws"), rels, "s", ticker)
-            ran = parts if stop is None else stop + 1
-            self.assertEqual(len(calls), ran)  # nothing runs after a cancel
-            self.assertEqual(sum(calls, []), rels[: sum(len(c) for c in calls)])
-            self.assertTrue(all(len(c) <= decode.PART for c in calls))
-            self.assertEqual(ticker.done, sum(len(c) for c in calls))  # every file counted
-            failed = sorted(k for k in bad if k < ran)
-            self.assertEqual(len(sources), ran - len(failed))
+            self.assertEqual(len(calls), len(set(calls)))  # no part twice
+            self.assertIn(f"{parts} part(s)", said[0])  # said before it starts
+            handed = -(-ticker.done // decode.PART)  # the parts handed on: a prefix
+            self.assertEqual(ticker.done, len(rels[: handed * decode.PART]))
+            if stop is None:
+                self.assertEqual((sorted(calls), handed), (list(range(parts)), parts))
+            else:
+                self.assertLessEqual(handed, parts)
+            failed = sorted(k for k in bad if k < handed)
+            self.assertEqual(sources, [f"s{k}" for k in range(handed) if k not in bad])
             if not failed:
                 self.assertEqual(why, "")
                 continue
@@ -284,6 +296,7 @@ class BatchTests(unittest.TestCase):
             rt=SimpleNamespace(
                 bindings={s: SimpleNamespace(main=s) for s in ("decode.cr2w", "decode.audio")},
                 backends={"decode.cr2w": batch, "decode.audio": object()},
+                os=SimpleNamespace(memory_bytes=lambda: 8 << 30),
             ),
             ctx=lambda owner: SimpleNamespace(options={}),
             cancel=SimpleNamespace(cancelled=True),

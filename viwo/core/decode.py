@@ -7,10 +7,10 @@ core.decode=off, core.decode_video=on.
 A file no backend could decode is counted per slot in one warning (never silent).
 """
 
-import os
 import shutil
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
+from itertools import chain
 from pathlib import Path
 
 from viwo.contracts.plugin import option_bool
@@ -21,12 +21,14 @@ from .decode_bink import BINK_HELPER, BinkGame, bink_dll  # noqa: F401  (decode'
 from .merger.ffmpeg import FFMPEG, FFPROBE
 from .pipeline.collect import Source, collect
 from .pipeline.failover import run_with_failover
+from .pipeline.pool import each, workers
 from .pipeline.ticker import Ticker
 
 AUDIO = (".wem", ".fsb", ".bnk", ".xwm", ".xma", ".at3", ".at9", ".adx", ".hca", ".vag", ".awb")
 AUDIO += (".acb", ".bfstm", ".bcstm", ".brstm", ".bfwav", ".lopus", ".xwb", ".sab", ".msf")
 AUDIO += (".binka", ".bank")  # .bank: FMOD Studio banks (FSB5 inside)
 PART = 600  # files per call of a batch backend: the counter moves between calls
+HEAVY = 4 << 30  # memory kept per batch tool running at once (WolvenKit holds about 1 GB)
 SLOTS = (
     SlotDefinition(
         "decode.audio", "decode", "core", "vgmstream-cli", "ffmpeg-decode", suffixes=AUDIO
@@ -211,12 +213,16 @@ def _decode_batch(run, ctx, workspace: Path, rels: list[str], slot: str):
 
 
 def _decode_parts(run, ctx, workspace: Path, rels: list[str], slot: str, ticker):
-    """A batch backend called PART files at a time, so the counter moves between its runs
-    (WolvenKit takes hours on a large game; never silent): (sources, one warning or "")."""
+    """A batch backend called PART files at a time, several parts at once (each call its own
+    process and folder; as many as the worker budget and the memory allow), results in order:
+    (sources, one warning or ""). The counter moves as parts finish (never silent)."""
+    parts = [rels[start : start + PART] for start in range(0, len(rels), PART)]
+    count = min(workers(), len(parts), max(1, run.rt.os.memory_bytes() // HEAVY))
+    run.log(f"{slot}: {len(rels):,} file(s) in {len(parts)} part(s), {count} at a time", "decode")
+    one = lambda part: _decode_batch(run, ctx, workspace, part, slot)  # noqa: E731
+    first = (one(part) for part in parts[:1])  # alone: a tool writes its settings on first use
     sources, errors = [], []
-    for start in range(0, len(rels), PART):
-        part = rels[start : start + PART]
-        source, error = _decode_batch(run, ctx, workspace, part, slot)
+    for part, (source, error) in zip(parts, chain(first, each(one, parts[1:], run.cancel, count))):
         sources += [source] if source is not None else []
         errors += [error] if error else []
         ticker.tick(len(part))
@@ -237,7 +243,7 @@ def _why(outcome) -> str:
 
 def _decode_files(run, ctx, workspace: Path, jobs: list, ticker) -> tuple[list, dict]:
     sources, failed = [], {}
-    with ThreadPoolExecutor(max_workers=min(8, os.cpu_count() or 2)) as pool:
+    with ThreadPoolExecutor(max_workers=workers()) as pool:
         done = pool.map(lambda job: _decode_one(run, ctx, workspace, *job), jobs)
         for (_, slot), (source, error) in zip(jobs, done):  # in order; a tick per file
             ticker.tick()

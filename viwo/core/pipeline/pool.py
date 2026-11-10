@@ -14,12 +14,13 @@ def workers() -> int:
     return max(1, int(count * 0.8))
 
 
-def each(fn: Callable, items: Iterable, cancel=None) -> Iterator:
-    """fn over items on the worker pool, results in the items' order (so what follows is the
-    same on every run); a cancel drops what has not started and ends the results early."""
-    with ThreadPoolExecutor(workers()) as pool:
+def each(fn: Callable, items: Iterable, cancel=None, count: int = 0) -> Iterator:
+    """fn over items on the worker pool (`count` workers when given), results in the items'
+    order (so what follows is the same on every run); after a cancel the result in hand is
+    still handed on, then what has not started is dropped and the results end."""
+    with ThreadPoolExecutor(count or workers()) as pool:
         for result in pool.map(fn, items):
+            yield result
             if cancel is not None and cancel.cancelled:
                 pool.shutdown(wait=True, cancel_futures=True)
                 return
-            yield result

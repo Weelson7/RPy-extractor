@@ -25,7 +25,10 @@ may use, counted when a stage starts, on any OS (`VIWO_WORKERS` overrides). Resu
 in the items' order, so names, provenance and the report are the same on every run; a cancel
 starts nothing more. On the pool today: the search for nested archives among the files just
 unpacked (UNPACK: one round per nesting depth; a round of 200 files or more is announced and
-counted, stage `identify`). What writes the workspace (COLLECT's moves) stays one writer.
+counted, stage `identify`); the parts of a batch decoder (DECODE: WolvenKit's parts of 600
+files, each its own process and folder, as many at once as the budget and the memory allow,
+4 GB kept per tool; the first part runs alone, since a tool writes its settings on first
+use); the per-file decoders. What writes the workspace (COLLECT's moves) stays one writer.
 
 **Said as it happens** (owner): a stage says what it starts (what, how many, on how many
 workers) and nothing runs for more than a few seconds without a counted progress line.

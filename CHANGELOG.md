@@ -4,6 +4,14 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.29 (2026-11-10)
+- The WolvenKit decode runs several parts at once (owner): one WolvenKit process used one
+  core of twenty for 100 minutes on the Cyberpunk demo subset. The parts of 600 files now run
+  on the worker pool, as many as the budget and the memory allow (4 GB kept per tool: 8 at once
+  on a 32 GB machine), results in the parts' order; the run says how many parts and how many
+  at a time, then each part as it finishes. The per-file decoders use the same budget (they
+  were fixed at 8 threads). Docs 3.1 and 8.
+
 ## 1.20.28 (2026-11-10)
 - The silent 20 to 38 minutes after UNPACK on Cyberpunk 2077 are found and gone: every
   extracted file (87,000) was checked for being a nested archive, one at a time, with no log
