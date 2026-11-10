@@ -4,6 +4,12 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.22 (2026-11-10)
+- The plugin system is held sealed by a test (`tests/test_sealed.py`): a new engine plugin
+  added as one package where discovery looks is discovered, loaded, bound to its slot, given
+  its own distro profile, detected and its archive extracted, with no change to core. The only
+  files outside `viwo/plugins/` that a new engine changes are the generated distro files.
+
 ## 1.20.21 (2026-11-10)
 - Core knows no engine's file layout: an analysis target declares where a tool expects each of
   its paths (`AnalysisTarget.layout`, doc 6.1), and core rebuilds that folder from the copied

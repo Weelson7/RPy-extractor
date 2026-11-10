@@ -31,7 +31,12 @@ with its engine, and offers what the engine's backends read from `ctx.games` (RE
 The distro profiles come from the plugins too (`viwo/core/wiring/distros.py`): a built-in that
 names a `profile` in its manifest gets its own (`renpy`, `unity`, `unreal` and `godot` do), which
 enables only it; `custom` enables every other built-in and `mixed` everything. Core lists no
-engine: a new plugin with a profile gets its two distro files from `viwo config generate`. Commented `[tools]` examples come from each dependency's
+engine: a new plugin with a profile gets its two distro files from `viwo config generate`.
+
+`tests/test_sealed.py` holds this to account: it adds a whole engine plugin as one new package
+where discovery looks and, with no change to core, sees it discovered, loaded, bound to its
+slot, given its own distro profile, detected on a game and its archive extracted by its own
+backend. The only files outside `viwo/plugins/` a new engine changes are the generated distros. Commented `[tools]` examples come from each dependency's
 own executable and install-folder names.
 
 ## Writing a drop-in plugin
