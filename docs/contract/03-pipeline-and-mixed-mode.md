@@ -36,7 +36,10 @@ COLLECT's hashing (the files are then placed one at a time, in order). A plugin 
 time. At most twice the worker count of results wait for their reader. What writes the workspace (COLLECT's moves) stays one writer.
 
 **Said as it happens** (owner): a stage says what it starts (what, how many, on how many
-workers) and nothing runs for more than a few seconds without a counted progress line.
+workers) and nothing runs for more than a few seconds without a counted progress line. When
+the work moves to another stage, the one it leaves says how long it took (`unpack took 8 min
+02 s`), and the run closes with its total and the time per stage (`Time: ...`). The CLI puts
+the time of day before every progress line; WolvenKit's own output is relayed as it comes.
 
 ## 3.2 Request
 

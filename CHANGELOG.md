@@ -4,6 +4,11 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.39 (2026-11-10)
+- Always said (owner): a stage that ends says how long it took, and every extraction closes
+  with its total and the time per stage. CLI progress lines carry the time of day. WolvenKit's
+  own output lines are relayed live during the decode. Doc 3.1.
+
 ## 1.20.38 (2026-11-10)
 - Games pass rerun: Schedule I passes 12 of 12 flags at 1.20.37 (7 of 12 on 2026-11-03),
   Age of Empires II HD 13 of 13 at 1.20.34, Approximately Up 9 of 10 at 1.20.36. CONFORMANCE:

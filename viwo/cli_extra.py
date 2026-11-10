@@ -5,6 +5,7 @@ import json
 import shutil
 import sys
 import tempfile
+import time
 from pathlib import Path
 
 from viwo.contracts.errors import Envelope, ViwoError
@@ -143,11 +144,11 @@ def workspace_command(rt, args) -> Envelope:
 
 
 def event_printer(args):
-    """Progress lines on stderr, also with --json (the envelope is on stdout); --quiet only
-    silences them (doc 12.4)."""
+    """Progress lines on stderr, each with the time of day, also with --json (the envelope is
+    on stdout); --quiet only silences them (doc 12.4)."""
     if getattr(args, "quiet", False):
         return None
-    return lambda e: print(e.legacy_line(), file=sys.stderr)
+    return lambda e: print(f"{time.strftime('%H:%M:%S')} {e.legacy_line()}", file=sys.stderr)
 
 
 def _system(rt, args) -> Envelope:

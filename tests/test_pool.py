@@ -99,5 +99,38 @@ class NestedSearchTests(unittest.TestCase):
             self.assertTrue(any("Looking for nested archives" in e.message for e in events))
 
 
+class StageTimeTests(unittest.TestCase):
+    def test_a_stage_left_says_its_time_and_the_run_sums_them(self) -> None:
+        from viwo.contracts.types import ProgressEvent
+        from viwo.core.pipeline import runner
+        from viwo.core.pipeline.ticker import clock
+
+        self.assertEqual([clock(s) for s in (0.4, 8, 59.6, 200, 3725)],
+                         ["0 s", "8 s", "1 min 00 s", "3 min 20 s", "1 h 02 min"])  # fmt: skip
+        rng = random.Random(21)
+        for _ in range(30):
+            now, seen = [1000.0], []
+            run = runner.Run(None, None, "j", seen.append, None, Path("g"), Path("w"))
+            with mock.patch.object(runner.time, "monotonic", lambda now=now: now[0]):
+                run.at[1] = now[0]
+                spent, last = {}, ""
+                for _ in range(rng.randint(1, 25)):
+                    stage = rng.choice(["unpack", "carve", "collect", "decode", ""])
+                    step = rng.choice([0.0, 0.3, 2.0, 75.0])
+                    now[0] += step
+                    if last:
+                        spent[last] = spent.get(last, 0.0) + step
+                    before = len(seen)
+                    run.emit(ProgressEvent("working", "info", "core", stage))
+                    said = [e.message for e in seen[before:-1]]
+                    last = stage or last
+                    self.assertTrue(all(" took " in m for m in said), said)
+                self.assertEqual(seen[-1].message, "working")
+            for stage, seconds in spent.items():  # a stage's total never exceeds its time
+                self.assertLessEqual(run.took.get(stage, 0.0), seconds + 1e-6, stage)
+            closed = sum(run.took.values())
+            self.assertLessEqual(closed, now[0] - 1000.0 + 1e-6)
+
+
 if __name__ == "__main__":
     unittest.main()

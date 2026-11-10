@@ -3,6 +3,7 @@
 import json
 import shutil
 import tempfile
+import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -28,6 +29,7 @@ from .guard import change_warning, refuse_writes_inside, snapshot
 from .probe import FolderProbe, detect_all
 from .select import select_plugins, with_games
 from .sources import claimed, sources_for
+from .ticker import clock
 from .unpack import files_under, unpack_all
 
 SECRET = "<secret>"
@@ -46,10 +48,26 @@ class Run:
     logs: list[str] = field(default_factory=list)
     probe: FolderProbe | None = None  # the shared index (doc 2.3), built once by DETECT
     chosen: tuple[str, ...] = ()  # the plugins selected for this game
+    took: dict[str, float] = field(default_factory=dict)  # stage -> seconds spent in it
+    at: list = field(default_factory=lambda: ["", time.monotonic(), threading.Lock()])
 
     def emit(self, event: ProgressEvent) -> None:
-        self.logs.append(event.legacy_line())
-        self.sink(event)
+        for line in (*self._turn(event.stage), event):
+            self.logs.append(line.legacy_line())
+            self.sink(line)
+
+    def _turn(self, stage: str) -> tuple[ProgressEvent, ...]:
+        """Never silent about time: when the work moves to another stage, the one it leaves
+        says how long it took (stages of a second or more); the totals close the run."""
+        with self.at[2]:
+            last, since, now = self.at[0], self.at[1], time.monotonic()
+            if not stage or stage == last:
+                return ()
+            self.at[:2] = [stage, now]
+            self.took[last] = self.took.get(last, 0.0) + now - since
+        if not last or now - since < 1:
+            return ()
+        return (ProgressEvent(f"{last} took {clock(now - since)}", "info", "core", last),)
 
     def log(self, message: str, stage: str, level: str = "info") -> None:
         self.emit(ProgressEvent(message, level, "core", stage))
@@ -233,6 +251,9 @@ def _report(run: Run, workspace: Path, result: ExtractionResult, provenance: lis
     }
     write_atomic(record_path, json.dumps(record, indent=2, sort_keys=True))
     run.log(f"Run record: {record_path.relative_to(workspace)} ({meta.name})", "report")
+    spent = sorted(((s, t) for s, t in run.took.items() if s and t >= 1), key=lambda i: -i[1])
+    total = clock(sum(run.took.values()))
+    run.log(f"Time: {total}: " + ", ".join(f"{s} {clock(t)}" for s, t in spent), "report")
     return ExtractionResult(
         **{**result.__dict__, "run_record": str(record_path), "logs": tuple(run.logs)}
     )

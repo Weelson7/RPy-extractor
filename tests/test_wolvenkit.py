@@ -110,7 +110,10 @@ class DecodeTests(unittest.TestCase):
             process=SimpleNamespace(run=run),
         )
         self.logs = []
-        return SimpleNamespace(os=host, game_root=tmp, cancel=None, log=self.logs.append)
+        relay = lambda stage, every=0.5: self.logs.append  # noqa: E731  (the tool's lines, live)
+        return SimpleNamespace(
+            os=host, game_root=tmp, cancel=None, log=self.logs.append, tool_output=relay
+        )
 
     def test_every_failure_is_counted_and_an_empty_run_fails(self) -> None:
         rng = random.Random(5)
@@ -121,7 +124,7 @@ class DecodeTests(unittest.TestCase):
                 dest = root / f"out{rng.random()}"
                 broken = rng.sample(range(len(paths)), rng.choice((0, 1, 4, 9)))
 
-                def run(argv, cwd=None, timeout=None, cancel=None):
+                def run(argv, cwd=None, timeout=None, cancel=None, on_line=None):
                     self.assertEqual(cwd, str(dest))  # nothing lands beside ViWo
                     said = ""
                     for i, p in enumerate(paths):

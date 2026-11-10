@@ -18,3 +18,13 @@ class Ticker:
             self.last = now
             of = f" / {self.total:,}" if self.total else ""
             self.say(f"{self.label} {self.done:,}{of}" + (f" ({note})" if note else ""))
+
+
+def clock(seconds: float) -> str:
+    """A duration as a person says it: 8 s, 3 min 20 s, 1 h 02 min."""
+    whole = int(round(seconds))
+    if whole < 60:
+        return f"{whole} s"
+    if whole < 3600:
+        return f"{whole // 60} min {whole % 60:02d} s"
+    return f"{whole // 3600} h {whole % 3600 // 60:02d} min"

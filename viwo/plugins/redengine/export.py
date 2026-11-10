@@ -61,6 +61,7 @@ class WolvenKitExport(Decoder):
                 cwd=str(dest),  # whatever it writes beside its output stays in the run
                 timeout=6 * 3600,
                 cancel=ctx.cancel,
+                on_line=ctx.tool_output("decode", every=5.0),  # WolvenKit's own lines, live
             )
             text = result.stdout + result.stderr
             lines = [
