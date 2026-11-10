@@ -6,7 +6,6 @@ layouts come from the game's managed assemblies when they ship (Mono), else (IL2
 stand-in assemblies Cpp2IL rebuilds from GameAssembly and the metadata (a separate process, MIT),
 once per export, into the run's scratch folder."""
 
-import gc
 import json
 from pathlib import Path
 
@@ -17,6 +16,7 @@ CPP2IL = DependencySpec.of("cpp2il")
 
 FONT_EXT = {b"OTTO": ".otf", b"true": ".ttf", b"\x00\x01\x00\x00": ".ttf", b"ttcf": ".ttc"}
 BLOB = 4096  # raw byte fields above this size are summarised, not inlined as hex
+ROOM = 1 << 30  # memory one MonoBehaviour read with a rebuilt layout may add (doc 9.2)
 
 
 def _plain(value):
@@ -68,21 +68,49 @@ class Dump:
     and reopened to append, so thousands of bundles never exhaust the descriptors. Counts what
     had no layout."""
 
-    def __init__(self, staging: Path) -> None:
+    def __init__(self, staging: Path, host=None) -> None:
         self.folder = staging / "data"
         self.paths: dict[str, Path] = {}  # serialized file -> its JSON
         self.counts: dict[str, int] = {}
         self.open: dict[str, object] = {}
         self.written = 0
         self.no_layout: dict[str, int] = {}
-        self.exhausted = False  # a layout asked for more memory than ViWo may take
+        self.host = host  # the OS layer: the memory ceiling is tightened around a doubtful read
+        self.misfits: set = set()  # scripts whose rebuilt layout asked for the machine's memory
+
+    def _script(self, obj, kind: str):
+        """The script a MonoBehaviour is an instance of (its layout is rebuilt per script)."""
+        if kind != "MonoBehaviour" or self.host is None:
+            return None
+        try:
+            ref = obj.parse_monobehaviour_head().m_Script
+            return (ref.m_FileID, ref.m_PathID)
+        except Exception:  # noqa: BLE001  (no readable head: read as any other object)
+            return None
+
+    def _read(self, obj, script) -> dict:
+        """The object's fields. A rebuilt layout that does not fit its object reads a garbage
+        length and asks for the machine's memory: with the ceiling at what ViWo holds plus
+        ROOM, that read fails at once, and the script is not tried again."""
+        if script is None:
+            return obj.read_typetree()
+        if script in self.misfits:
+            raise ValueError("its script's rebuilt layout does not fit (listed without fields)")
+        self.host.memory_room(ROOM)
+        try:
+            return obj.read_typetree()
+        except MemoryError:
+            self.misfits.add(script)
+            raise ValueError("its script's rebuilt layout does not fit: it asked for the memory")
+        finally:
+            self.host.memory_room(None)
 
     def add(self, obj, kind: str) -> None:
         source = Path(str(getattr(obj.assets_file, "name", "") or "unknown")).name
         try:
-            entry = {"path_id": obj.path_id, "type": kind, "data": obj.read_typetree()}
+            data = self._read(obj, self._script(obj, kind))
+            entry = {"path_id": obj.path_id, "type": kind, "data": data}
         except Exception as exc:  # noqa: BLE001  (a stripped layout, or damage: listed, counted)
-            self.exhausted = self.exhausted or isinstance(exc, MemoryError)
             self.no_layout[kind] = self.no_layout.get(kind, 0) + 1
             entry = {"path_id": obj.path_id, "type": kind, "unread": str(exc)[:160] or "memory"}
         text = _json(entry)  # made before anything is written: a failure leaves the file whole
@@ -119,22 +147,13 @@ class Dump:
             mono = kind == "MonoBehaviour"
             why = "their script layout is not in the build" if mono else "unreadable"
             notes.append(f"{n} {kind}(s) listed without their fields: {why}")
+        if self.misfits:  # never silent: which layouts were dropped, and that the rest is kept
+            notes.append(
+                f"{len(self.misfits)} script(s) have a rebuilt layout that does not fit their "
+                "objects (it asked for the machine's memory): their MonoBehaviours are listed "
+                "without fields, every other script keeps its fields"
+            )
         return (summary if self.written else ""), notes
-
-
-def layouts_off(env, dump, shared: dict) -> list[str]:
-    """A rebuilt layout that does not fit its object reads a garbage length and asks for the
-    machine's memory; the ceiling (doc 9.2) stops it. After one, the rebuilt layouts are not
-    trusted for the rest of the export: said once, the remaining objects listed without fields."""
-    if dump is None or not dump.exhausted or shared.get("generator") is None:
-        return []
-    shared["generator"] = env.typetree_generator = None
-    gc.collect()
-    return [
-        "a rebuilt MonoBehaviour layout did not fit its object and asked for more memory than "
-        "ViWo may take ([startup] memory_limit): the remaining MonoBehaviours are listed "
-        "without their fields"
-    ]
 
 
 def assemblies(game_root: Path, ctx) -> tuple[Path | None, str]:

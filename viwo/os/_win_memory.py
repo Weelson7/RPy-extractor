@@ -8,6 +8,7 @@ from ctypes import wintypes
 PROCESS_MEMORY, SILENT_BREAKAWAY = 0x100, 0x1000  # JOB_OBJECT_LIMIT_*
 EXTENDED = 9  # JobObjectExtendedLimitInformation
 SUSPENDED = 0x4  # CREATE_SUSPENDED
+_BASE = [0]  # the ceiling limit() set, which room(None) goes back to
 _JOBS: list = []  # the job's handle, kept for the life of the process
 
 
@@ -67,7 +68,40 @@ def limit(ceiling: int) -> str:
     if not _job(k, job, ceiling, PROCESS_MEMORY | SILENT_BREAKAWAY, process):
         return f"Windows refused the job object (error {ctypes.get_last_error()})"
     _JOBS[:] = [job]
+    _BASE[0] = ceiling
     return ""
+
+
+class _Counters(ctypes.Structure):  # PROCESS_MEMORY_COUNTERS
+    _fields_ = (
+        [("cb", wintypes.DWORD), ("PageFaultCount", wintypes.DWORD)]
+        + [
+            (name, ctypes.c_size_t)
+            for name in ("PeakWorkingSet", "WorkingSet", "PeakPaged", "Paged", "PeakNonPaged")
+        ]
+        + [
+            ("NonPaged", ctypes.c_size_t),
+            ("Commit", ctypes.c_size_t),
+            ("PeakCommit", ctypes.c_size_t),
+        ]
+    )
+
+
+def room(extra: int | None) -> None:
+    """While one doubtful read runs: the ceiling at what the process holds now plus `extra`
+    bytes (never above the one limit() set), so a read that asks for the machine fails at
+    once; None puts the set ceiling back. Nothing without a ceiling (the owner lifted it)."""
+    if not _JOBS:
+        return
+    k = _kernel()
+    ceiling = _BASE[0]
+    if extra is not None:
+        held = _Counters()
+        held.cb = ctypes.sizeof(held)
+        k.K32GetProcessMemoryInfo.argtypes = [wintypes.HANDLE, ctypes.c_void_p, wintypes.DWORD]
+        if k.K32GetProcessMemoryInfo(k.GetCurrentProcess(), ctypes.byref(held), held.cb):
+            ceiling = min(ceiling, held.Commit + extra)
+    _job(k, _JOBS[0], ceiling, PROCESS_MEMORY | SILENT_BREAKAWAY, None)
 
 
 def cap_child(proc, ceiling: int) -> str:

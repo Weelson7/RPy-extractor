@@ -176,7 +176,6 @@ def _export_env(ctx, env, label: str, record: dict) -> tuple[int, list[str]]:
             exported += _one(ctx, obj, label, record)
         except Exception as exc:  # one broken object must not stop the export
             notes.append(f"{label}#{obj.path_id} ({obj.type.name}): {exc}"[:200])
-        notes += objects.layouts_off(env, record["dump"], shared)
     return exported, notes
 
 
@@ -221,7 +220,11 @@ class UnityPyExporter(Exporter):
         if _flag(ctx, "include_cache", False):
             roots += cache_roots(ctx.game_root)
         exported, notes, mapping = 0, [], {}
-        dump = objects.Dump(ctx.staging) if _flag(ctx, "objects", True) else None
+        dump = (
+            objects.Dump(ctx.staging, getattr(ctx, "os", None))
+            if _flag(ctx, "objects", True)
+            else None
+        )
         extra = {"dump": dump}
         try:
             for root in roots:

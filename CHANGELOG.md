@@ -4,6 +4,13 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.41 (2026-11-10)
+- Unity IL2CPP: MonoBehaviour fields are kept. A rebuilt layout that does not fit no longer
+  switches every rebuilt layout off: the one script is remembered and skipped, every other
+  script keeps its fields, and the export says how many scripts were dropped. Each such read
+  runs with the memory ceiling at what ViWo holds plus 1 GB (`OS.memory_room`), so a misfit
+  fails at once instead of climbing to the ceiling first.
+
 ## 1.20.40 (2026-11-10)
 - Fix: WolvenKit could take the machine's memory. Its `export` keeps everything it converts
   until the process ends: one batch of 150 animation files took 13 GB in 30 seconds (measured

@@ -156,6 +156,10 @@ class OS(ABC):
         (MemoryError), the machine stays up. "" when it holds, else why not."""
         return "this OS layer cannot limit its memory"
 
+    def memory_room(self, extra: int | None) -> None:
+        """Around one doubtful read: the ceiling at what the process holds now plus `extra`
+        bytes, so a read that asks for the machine fails at once; None restores the ceiling."""
+
     def pids_of(self, image: str) -> list[int]:
         """Process ids whose image name is `image` (case-insensitive)."""
         return []

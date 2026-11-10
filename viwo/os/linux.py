@@ -173,6 +173,26 @@ class LinuxOS(HostOS):
             return f"the data limit could not be set ({exc})"
         return ""
 
+    def memory_room(self, extra: int | None) -> None:
+        """The soft data limit at what the process holds plus `extra`; None: back to the hard
+        one or the ceiling limit_memory set (kept in the soft limit's first value)."""
+        try:
+            import resource
+
+            soft, hard = resource.getrlimit(resource.RLIMIT_DATA)
+            self._base = getattr(self, "_base", soft)
+            if extra is not None:
+                with open("/proc/self/statm", encoding="ascii") as fh:
+                    held = int(fh.read().split()[5]) * os.sysconf("SC_PAGE_SIZE")
+                soft = (
+                    held + extra
+                    if self._base == resource.RLIM_INFINITY
+                    else min(self._base, held + extra)
+                )
+            resource.setrlimit(resource.RLIMIT_DATA, (self._base if extra is None else soft, hard))
+        except (ImportError, ValueError, OSError, IndexError):
+            pass  # no tighter ceiling on this host: the process ceiling still holds
+
     def memory_bytes(self) -> int:
         try:
             return os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES")

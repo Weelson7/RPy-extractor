@@ -261,6 +261,11 @@ class WindowsOS(HostOS):
 
         return limit(ceiling)
 
+    def memory_room(self, extra: int | None) -> None:
+        from ._win_memory import room
+
+        room(extra)
+
     def memory_bytes(self) -> int:
         import ctypes
 

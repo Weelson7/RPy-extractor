@@ -47,6 +47,8 @@ memory_limit     = 50            ; percent of the machine's memory ViWo's own pr
                                  ; A child tool known to keep what it converts runs under a cap of
                                  ; its own (`ProcessRunner.run_capped`; WolvenKit: 4 GB a process),
                                  ; and as many run at once as fit in this share of the machine.
+                                 ; Around one doubtful read (a Unity MonoBehaviour with a rebuilt
+                                 ; layout) the ceiling is what ViWo holds plus 1 GB (`memory_room`).
 
 [plugins]
 generic     = on                 ; always on

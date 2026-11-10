@@ -240,6 +240,7 @@ class ExporterTests(unittest.TestCase):
             selected_exts=None,
             cancel=CancelToken(),
             log=lambda m, **k: logs.append(m),
+            os=SimpleNamespace(memory_room=lambda extra: None),
         )
         ctx.staging.mkdir()
         with mock.patch("UnityPy.load", return_value=self.env()):

@@ -113,38 +113,68 @@ class ChildCapTests(unittest.TestCase):
             self.assertEqual(serialized, [str(p) for p in paths])
 
 
-class UnityExhaustedTests(unittest.TestCase):
-    def test_an_exhausted_read_is_counted_and_the_layouts_go_off_once(self) -> None:
-        with tempfile.TemporaryDirectory() as tmp:
-            dump = objects.Dump(Path(tmp))
+ROOM_PROBE = """
+from viwo.os import select_os
+host = select_os()
+assert host.limit_memory(6 << 30) == ""
+host.memory_room(300 << 20)
+try:
+    bytearray(2 << 30)
+    print("NOT TIGHT")
+except MemoryError:
+    print("tight")
+host.memory_room(None)
+print("restored", len(bytearray(2 << 30)) >> 30)
+"""
 
-            def obj(i, error=None):
-                def read():
-                    if error:
-                        raise error
-                    return {"m_Name": f"o{i}"}
 
-                return SimpleNamespace(
-                    path_id=i, assets_file=SimpleNamespace(name="level0"), read_typetree=read
-                )
+class UnityMisfitTests(unittest.TestCase):
+    def test_the_ceiling_tightens_for_one_read_and_comes_back(self) -> None:
+        done = subprocess.run(
+            [sys.executable, "-c", ROOM_PROBE],
+            cwd=ROOT,
+            capture_output=True,
+            text=True,
+            timeout=120,
+        )
+        if sys.platform == "win32":
+            self.assertEqual(done.stdout.split(), ["tight", "restored", "2"], done.stderr)
 
-            env = SimpleNamespace(typetree_generator="rebuilt layouts")
-            shared = {"generator": "rebuilt layouts"}
-            dump.add(obj(1), "MonoBehaviour")
-            dump.add(obj(2, ValueError("stripped")), "MonoBehaviour")
-            self.assertEqual(objects.layouts_off(env, dump, shared), [])  # nothing exhausted yet
-            dump.add(obj(3, MemoryError()), "MonoBehaviour")
-            self.assertTrue(dump.exhausted)
-            said = objects.layouts_off(env, dump, shared)
-            self.assertEqual(len(said), 1)
-            self.assertIn("memory_limit", said[0])
-            self.assertIsNone(env.typetree_generator)
-            self.assertIsNone(shared["generator"])
-            self.assertEqual(objects.layouts_off(env, dump, shared), [])  # said once
-            self.assertEqual(objects.layouts_off(env, None, shared), [])
-            self.assertEqual(dump.no_layout, {"MonoBehaviour": 2})
-            summary, _ = dump.close()
-            self.assertIn("3 object(s)", summary)  # every object is still listed
+    def test_a_misfit_script_loses_its_fields_and_every_other_keeps_them(self) -> None:
+        rng = random.Random(77)
+        for _ in range(25):
+            with tempfile.TemporaryDirectory() as tmp:
+                rooms = []
+                host = SimpleNamespace(memory_room=rooms.append)
+                dump = objects.Dump(Path(tmp), host)
+                scripts = list(range(rng.randint(1, 6)))
+                misfit = {s for s in scripts if rng.random() < 0.4}
+                reads, expect_fields, n = {s: 0 for s in scripts}, 0, rng.randint(1, 40)
+                for i in range(n):
+                    script = rng.choice(scripts)
+
+                    def read(script=script):
+                        reads[script] += 1
+                        if script in misfit:
+                            raise MemoryError()
+                        return {"m_Name": "x"}
+
+                    head = SimpleNamespace(m_Script=SimpleNamespace(m_FileID=0, m_PathID=script))
+                    obj = SimpleNamespace(
+                        path_id=i, assets_file=SimpleNamespace(name="level0"),
+                        read_typetree=read, parse_monobehaviour_head=lambda head=head: head,
+                    )  # fmt: skip
+                    dump.add(obj, "MonoBehaviour")
+                    expect_fields += script not in misfit
+                for script in misfit:  # a misfit layout is tried once, never again
+                    self.assertLessEqual(reads[script], 1)
+                self.assertEqual(dump.misfits, {(0, s) for s in misfit if reads[s]})
+                self.assertEqual(dump.no_layout.get("MonoBehaviour", 0), n - expect_fields)
+                self.assertEqual(rooms.count(None), sum(reads.values()))  # always restored
+                self.assertTrue(all(r in (None, objects.ROOM) for r in rooms))
+                summary, notes = dump.close()
+                self.assertIn(f"{n} object(s)", summary)  # every object is still listed
+                self.assertEqual(any("does not fit" in x for x in notes), bool(dump.misfits))
 
 
 if __name__ == "__main__":
