@@ -210,7 +210,7 @@ class DecodeTests(unittest.TestCase):
                 self.assertTrue((dest / "big.anims.glb").is_file())
                 self.assertIn("could not convert 2 file(s)", out.error)
                 self.assertIn("Failed to export", out.error)  # a reason of one still failing
-                self.assertEqual((caps[0], max(caps)), (export.START, share))
+                self.assertEqual((caps[0], max(caps)), (export.FLOOR, share))
                 alone = [c for c, run in zip(caps, seen) if run == [str(root / "odd.xbm")]]
                 self.assertEqual(alone, [])  # what WolvenKit cannot read is not given the share
                 self.assertLessEqual(len(caps), 3 + 2)  # two commands, one more pass, two alone

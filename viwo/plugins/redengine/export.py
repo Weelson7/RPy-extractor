@@ -31,7 +31,8 @@ BATCH = 150  # files per run at most: far under the Windows command-line limit
 # (animations unfold the most: 8 MB needs 4 GB, 32 MB 8 GB) and ten times while it serializes.
 BASE = 1200 << 20
 EXPORT_COST, SERIAL_COST, ANIM_COST = 15, 10, 250
-START = 2 << 30  # the room a run is planned for, and its cap (doc 9.2)
+START = 2 << 30  # the room a run is planned for (doc 9.2)
+FLOOR = 1536 << 20  # the least cap WolvenKit works under (at 1 GB it cannot start)
 SECOND = 10  # files per run when what failed is run again, with twice the room
 ALONE = 6  # runs of one file under ViWo's whole share one call may spend
 _FIRST, _RAN = threading.Lock(), set()  # the tools that have run once in this process
@@ -121,7 +122,7 @@ class _Runs:
         self.count, self.ran, self.waited = 0, 0.0, 0.0  # said with the result
 
     def cap(self, run: Run, scale: int = 1) -> int:
-        return min(self.share, scale * max(START, run.need()))
+        return min(self.share, scale * max(FLOOR, run.need()))
 
     def once(self, run: Run, cap: int) -> tuple[list[Path], set[Path], str]:
         """One run: (the files it could not convert, those of them short of memory, the first

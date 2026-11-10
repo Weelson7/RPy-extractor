@@ -155,24 +155,27 @@ class BudgetTests(unittest.TestCase):
             self.assertLessEqual(peak[0], share)
             self.assertEqual((held[0], budget._free), (0, share))  # all handed back
 
-    def test_a_large_ask_is_not_passed_by_small_ones(self) -> None:
-        budget, order, threads = pool.Budget(10), [], []
+    def test_small_asks_pass_a_large_one_until_it_has_waited_long_enough(self) -> None:
+        for patience, want in ((60.0, ["small", "smaller", "large"]), (0.0, ["large"])):
+            budget, order, threads = pool.Budget(10), [], []
 
-        def ask(name, amount):
-            with budget.hold(amount):
-                order.append(name)
+            def ask(name, amount, budget=budget, order=order):
+                with budget.hold(amount):
+                    order.append(name)
 
-        with budget.hold(6):
-            for name, amount in (("large", 10), ("small", 2), ("smaller", 1)):
-                threads.append(threading.Thread(target=ask, args=(name, amount)))
-                threads[-1].start()
-                while len(budget._line) < len(threads):  # in line before the next one asks
-                    time.sleep(0.001)
-            time.sleep(0.05)
-            self.assertEqual(order, [])  # the small ones would fit, and wait their turn
-        for thread in threads:
-            thread.join(10)
-        self.assertEqual(order, ["large", "small", "smaller"])
+            with mock.patch.object(pool, "PATIENCE", patience), budget.hold(6):
+                for name, amount in (("large", 10), ("small", 2), ("smaller", 1)):
+                    threads.append(threading.Thread(target=ask, args=(name, amount)))
+                    threads[-1].start()
+                    time.sleep(0.05)  # asked, in this order
+                time.sleep(0.6)
+                waiting = [n for n in ("large", "small", "smaller") if n not in order]
+                # patient: the small ones fit beside what is held; overdue: nothing passes it
+                self.assertEqual(waiting, ["large"] if patience else ["large", "small", "smaller"])
+            for thread in threads:
+                thread.join(10)
+            self.assertEqual(order[: len(want)], want)
+            self.assertEqual((sorted(order), budget._free), (["large", "small", "smaller"], 10))
 
     def test_a_failed_run_hands_its_part_back_and_the_share_follows_the_machine(self) -> None:
         budget = pool.Budget(10)

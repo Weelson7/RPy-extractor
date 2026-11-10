@@ -155,7 +155,8 @@ video); `decode.cr2w` (`wolvenkit-export`, redengine: WolvenKit's console, GPL-3
 process. A run takes up to 150 files, as many as are estimated to fit 2 GB: about 1.2 GB before
 WolvenKit reads a file, then per byte of file 250 bytes for an animation and 15 for the rest
 while it exports, 10 while it serializes (measured under caps on Cyberpunk 2077 2.x; a file
-that does not fit runs alone, capped at its estimate). Each run's cap is held out of the memory
+that does not fit runs alone, capped at its estimate; no run under 1.5 GB, below which
+WolvenKit cannot start). Each run's cap is held out of the memory
 budget (doc 9.2). What a run could not convert is run again once, ten files at a time with
 twice the room; what then fails for want of memory gets ViWo's whole share, alone, six times
 at most per call: `export` turns textures into PNG and meshes, morph

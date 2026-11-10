@@ -5,6 +5,7 @@ whole pipeline, so stages never oversubscribe the machine."""
 import contextlib
 import os
 import threading
+import time
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, Iterable, Iterator
@@ -47,24 +48,35 @@ def each(fn: Callable, items: Iterable, cancel=None, count: int = 0) -> Iterator
                 future.cancel()
 
 
+PATIENCE = 15.0  # seconds a large ask lets smaller ones pass it
+
+
 class Budget:
     """ViWo's share of the machine's memory, handed out to the tools that run at once (doc 9.2):
     a run holds what its cap allows it to take and waits while the share is out, so however
-    many run, together they cannot ask for more than the share. Served in the order asked: a
-    large run is not passed by small ones for ever."""
+    many run, together they cannot ask for more than the share. An ask that fits goes ahead
+    of a larger one still waiting, until that one has waited PATIENCE: then nothing passes
+    it, so a large run is never put off for ever and a line of small ones never stands idle
+    behind it."""
 
     def __init__(self, share: int) -> None:
         self.share, self._free, self._turn = share, share, threading.Condition()
-        self._line: deque = deque()
+        self._line: list[list] = []  # [since, amount] of those waiting, in the order asked
+
+    def _may(self, mine: list) -> bool:
+        late = time.monotonic() - PATIENCE
+        ahead = self._line[: self._line.index(mine)]
+        return self._free >= mine[1] and not any(since <= late for since, _ in ahead)
 
     @contextlib.contextmanager
     def hold(self, amount: int):
-        amount, ticket = min(amount, self.share), object()
+        amount = min(amount, self.share)
+        mine = [time.monotonic(), amount]
         with self._turn:
-            self._line.append(ticket)
-            while self._line[0] is not ticket or self._free < amount:
+            self._line.append(mine)
+            while not self._may(mine):
                 self._turn.wait(0.5)
-            self._line.popleft()
+            self._line.remove(mine)
             self._free -= amount
             self._turn.notify_all()  # the next in line may fit beside this one
         try:

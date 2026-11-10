@@ -4,6 +4,11 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.56 (2026-11-10)
+- Memory budget: a run that fits goes ahead of a larger one still waiting, for 15 s at most
+  (parts of a timed run waited three times longer for memory than their tools ran, behind
+  single large runs). WolvenKit's runs are capped at their estimate, 1.5 GB at least.
+
 ## 1.20.55 (2026-11-10)
 - UI: example paths in the fields read as this machine writes paths (`C:\path\to\game` on
   Windows); the game folder field has one name on every view.
