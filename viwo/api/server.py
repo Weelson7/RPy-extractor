@@ -81,13 +81,15 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(body)
 
-    def _reject(self, status: int, message: str) -> None:
+    def _reject(self, status: int, message: str, code: str = "") -> None:
         """Refused before the body is read: answer, then take in what the client already sent
         (at most 1 MiB, 0.2 s), so closing is a clean close and not a reset that can reach the
         client before the answer does (Windows sends RST over unread data)."""
         self.app.log(f"[SECURITY] {self.command} {self.path} rejected: {message}")
         self.close_connection = True
-        self.send_json({"success": False, "error": message}, status)
+        self.send_json(
+            {"success": False, "error": message, **({"code": code} if code else {})}, status
+        )
         self.wfile.flush()
         self.connection.settimeout(0.2)
         try:
@@ -119,7 +121,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._reject(403, "Host not allowed")
         if path.startswith("/api/"):
             if not self._token_ok():
-                return self._reject(403, "Missing or invalid API token")
+                return self._reject(403, "Missing or invalid API token", "token")
             query = {k: v[0] for k, v in parse_qs(url.query).items()}  # scalars for handlers
             return self._api(GET, routes.handle_get, path, query)
         if path.startswith("/preview/"):  # resolve() decodes once: pass the raw path
@@ -133,7 +135,7 @@ class Handler(BaseHTTPRequestHandler):
         if not self._host_ok():
             return self._reject(403, "Host not allowed")
         if not self._token_ok():
-            return self._reject(403, "Missing or invalid API token")
+            return self._reject(403, "Missing or invalid API token", "token")
         kind = str(self.headers.get("Content-Type", "")).split(";", 1)[0].strip().lower()
         if kind != "application/json":
             return self._reject(415, "Content-Type must be application/json")

@@ -13,6 +13,16 @@ export class ApiError extends Error {
   }
 }
 
+/** The server that served this page refused its token: it restarted with a new one. The page
+ * reloads itself to fetch it (no prompt), at most once a minute so a missing token cannot loop. */
+function staleToken() {
+  let last = 0;
+  try { last = Number(sessionStorage.getItem("viwo.tokenReload")) || 0; } catch { /* storage off */ }
+  if (Date.now() - last < 60000) return;
+  try { sessionStorage.setItem("viwo.tokenReload", String(Date.now())); } catch { /* storage off */ }
+  location.reload();
+}
+
 async function request(method, url, body) {
   const opts = { method, headers: { "X-VIWO-Token": TOKEN } };
   if (body !== undefined) {
@@ -28,6 +38,7 @@ async function request(method, url, body) {
   let json = null;
   try { json = await res.json(); } catch { /* non-JSON body */ }
   if (!json) throw new ApiError(`HTTP ${res.status} ${res.statusText}`, { code: "http" });
+  if (json.code === "token") staleToken();
   return json;
 }
 

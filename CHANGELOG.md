@@ -4,6 +4,11 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.20 (2026-11-10)
+- After a server restart the open page reloads itself: the old page's API token is refused
+  (`code: "token"` on the 403), so it fetches the new one instead of failing every poll with a
+  SECURITY line in the log; at most once a minute, so a missing token cannot loop.
+
 ## 1.20.19 (2026-11-10)
 - Faster commits (owner): the tests a commit runs go in parallel (`tools/run_tests.py`), one
   process per test module on a pool of 80 % of the logical processors (owner's cap, counted at

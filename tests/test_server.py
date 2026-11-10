@@ -137,11 +137,13 @@ class ServerTests(unittest.TestCase):
 
     def test_security_model(self) -> None:
         self.assertEqual(self.call("POST", "/api/logs/clear", {}, **{"X-VIWO-Token": None})[0], 403)
-        self.assertEqual(self.call("GET", "/api/logs", **{"X-VIWO-Token": "wrong"})[0], 403)
+        status, body = self.call("GET", "/api/logs", **{"X-VIWO-Token": "wrong"})
+        self.assertEqual((status, body.get("code")), (403, "token"))  # the page reloads for it
         self.assertEqual(
             self.call("POST", "/api/logs/clear", {}, **{"Content-Type": "text/plain"})[0], 415
         )
-        self.assertEqual(self.call("POST", "/api/logs/clear", {}, Host="evil.example")[0], 403)
+        status, body = self.call("POST", "/api/logs/clear", {}, Host="evil.example")
+        self.assertEqual((status, body.get("code")), (403, None))  # a foreign host: no reload
         self.assertEqual(self.call("GET", "/..%2f..%2fpyproject.toml")[0], 404)
         self.assertEqual(self.call("GET", "/preview/..%2f..%2fstartup.ini")[0], 404)
         self.assertEqual(self.call("POST", "/api/logs/clear", {})[0], 200)
