@@ -13,7 +13,7 @@ them from the tables below (`tools/presentation/reference.py`, `conformance()`).
 **Partial**, by cause: no built-in plugin keeps an inventory (0.4, 2.2); no built-in plugin
 ships sanitizer rules (5.1); no pinned QuickBMS script in the indexes (16.0b); coverage per file (17.5).
 
-**Open:** the completeness contract per engine (16.0c); rung D4 (`hook.inject`, `hook.overlay`, `net.*`); sanitizer phases
+**Open:** the completeness contract per engine (16.0c); rung D4 (`hook.overlay`); sanitizer phases
 2-3; `[slot_policy]`; `[hooks]`; `--plugin`/`--slot` CLI overrides; `memory_image` targets;
 `keys.*` slots; asset converters for round trip; Unreal asset export and the engines of 13.7;
 declarative (Kaitai) plugins; the indexes repository split.
@@ -244,7 +244,7 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 
 | Item | State | Where / missing |
 |------|-------|-----------------|
-| 11.1 `capture` switch for capture, dump, trace, profile, agent, record, attach | implemented | `core/capture/policy.py` `check`, `core/capture/runtime.py` `_enabled` |
+| 11.1 `capture` switch for capture, dump, trace, hook, profile, agent, record, attach | implemented | `core/capture/policy.py` `check`, `core/capture/runtime.py` `_enabled` |
 | 11.1 confirmation once per game | implemented | `core/capture/policy.py` `remember`, `confirmed_games` |
 | 11.1 warnings: markers, services, online titles, sensitive plugins, network | implemented | `core/capture/policy.py` `warnings_for`, `data/capture_policy.json` |
 | 11.1 debugger and memory attach tools as dynamic actions | implemented | `core/capture/attach.py` `attach`: only the `capture` switch (not `analysis`), one confirmation per game (`--confirm`, the UI's confirm box), the warnings (`tests/test_attach.py`) |
@@ -259,8 +259,8 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 11.4 temporary antivirus exclusions | implemented | `core/scan_exclusions.py` |
 | 11.5 agents in a patched copy; pending-journal restore | implemented | `core/capture/agents.py`, `core/capture/journal.py` |
 | 11.6 network declarations, `VIWO_OFFLINE` | implemented | backend `network`, `core/capture/renderdoc.py` |
-| 11.7 D4 `hook.inject` (a user's hook script, hot reload) | open | through the pinned Frida, not first-party code |
-| 11.7 D4 `hook.overlay` | open | third-party only: Special K (Windows), MangoHud (Linux), in a patched copy |
+| 11.7 D4 `hook.inject` (a user's hook script, hot reload) | implemented | `core/capture/hook.py`: the pinned Frida's own command line as a tracked child, its lines relayed live and kept in `.runtime/hook/`; `viwo hook`, `/api/runtime/hook`, RUNTIME (`tests/test_hook.py`, with a stand-in tool). Verified on a real process that is not a game (the pinned Frida 17.25.2 installed by `viwo install`, a script listing the modules of a sleeping Python process, saved again mid-run and reloaded; Windows, 2026-11-10); not run on a game, not run on Linux |
+| 11.7 D4 `hook.overlay` | open | third-party only, and neither candidate fits the rules (11.7): Special K works around CAPCOM's copy protection by default (the owner's call) and shows its licence screen in the game; MangoHud's release tarball installs into `/usr` with `sudo`. Both downloads were checked (size, sha256), nothing is pinned |
 | 11.7 D4 `net.*` (own-traffic proxy) | implemented | `attach.net` / `mitmproxy-gui`, `core/capture/nettools.py` (pinned mitmproxy as a tracked child, regular mode; `tests/test_nettools.py`; a real request passed through it at 1.20.43). Per-process capture and raw packet capture are not used: both need elevation |
 | 11.7 D4 `profile.sample` | implemented | `os/_win_probe.py`, `os/_linux_probe.py` `sample_threads`; `core/capture/profile.py`; `viwo profile`, `/api/runtime/profile` |
 

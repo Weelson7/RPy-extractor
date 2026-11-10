@@ -70,6 +70,7 @@ files anything can open.
 | `viwo agent <game> --exe <exe> --workspace <ws>` | the engine's runtime agent in a patched copy: UE4SS (Unreal mappings, object dump), BepInEx (Unity IL2CPP interop assemblies) |
 | `viwo dump --name <image> --workspace <ws>` | memory dump of a running game |
 | `viwo trace --name <image> --workspace <ws> [--functions ...]` | API calls through Frida |
+| `viwo hook --name <image> --script <your.js> --workspace <ws> [--seconds S]` | your own Frida script in the running game, reloaded when you save it, its output in the console |
 | `viwo record --workspace <ws> [--seconds S]` | the game's sound from the system output, to WAV |
 | `viwo attach <game> --target <key> --workspace <ws> --confirm [--tool cheatengine-gui] [--pid N]` | continue in x64dbg on the game's own process (attached when it runs, started otherwise: live patching), or in Cheat Engine with a ViWo table; no `--target` lists the targets |
 

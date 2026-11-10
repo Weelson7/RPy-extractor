@@ -48,6 +48,18 @@ show a first-run dialog: a dialog is a FAIL (owner's rule).
 1. `viwo install soundcard`; play any sound; `viwo --features extraction,capture record
    --workspace W --seconds 5`: a WAV under `.runtime\audio\`, `peak` above 0.
 
+## SQC-DYN-07 (P1) Your own hook script (Frida)
+1. `viwo install frida-tools`. Save `mods.js` with the one line
+   `Process.enumerateModules().forEach(m => console.log(m.name, m.base));`. With the game
+   running: `viwo --features extraction,capture hook --name ULTRAKILL.exe --script mods.js
+   --seconds 20 --workspace C:\sqc\_ws\d`.
+2. Expected: the console names the script, the pid and the seconds, then the game's modules
+   line by line as they come. Add `console.log("again");` to `mods.js` and save it while the
+   run lasts: the lines come again, with `again`. The run ends by itself within 30 s; the game
+   keeps running; `.runtime\hook\<pid>-<time>\hook.log` holds the same lines.
+3. `--pid 999999`: `failed: Frida could not run mods.js in process 999999` with Frida's words,
+   at once. Without the feature: `refused: the dynamic arm is off`.
+
 | ID | Result | Version | Notes |
 |----|--------|---------|-------|
 | SQC-DYN-01 | NOT RUN | 1.17.0 | steps changed in 1.17.0 (`viwo attach`, the game's own process); passed 1.4.7 as `analyze --open` on a debug copy |
@@ -56,3 +68,4 @@ show a first-run dialog: a dialog is a FAIL (owner's rule).
 | SQC-DYN-04 | PASS | 1.4.7 | agent, 2026-11-03: Void's Cave, 1.3 MB usmap, 12 MB dump |
 | SQC-DYN-05 | BLOCKED | 1.4.7 | both IL2CPP titles here are online-fix builds Defender holds; tests cover the agent |
 | SQC-DYN-06 | PASS | 1.4.7 | agent, 2026-11-03: peak 0.48 |
+| SQC-DYN-07 | NOT RUN | NEXT | new; an agent ran steps 1-3 on a sleeping Python process (not a game), 2026-11-10: modules listed, reload seen, the pid refused at once |

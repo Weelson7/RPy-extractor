@@ -4,6 +4,18 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.50 (2026-11-10)
+- Rung D4, hook scripts: `viwo hook --pid|--name --script FILE --seconds S --workspace W` (and
+  RUNTIME, RUN HOOK SCRIPT; `/api/runtime/hook`) runs your own Frida script in a running game
+  through the pinned Frida's own command line, a tracked child. Frida loads the script again
+  each time you save it; every line it prints shows in the console as it comes and is kept in
+  `.runtime/hook/<pid>-<time>/hook.log`. ViWo ships no script and no loader, attaches only and
+  asks for no elevation; a running anti-cheat service is said as a warning. Verified on a real
+  process that is not a game.
+- Rung D4, overlay: still open, with the reasons written down (doc 11.7). Special K is not
+  pinned: by default it works around CAPCOM's copy protection, and it shows its licence screen
+  inside the game. MangoHud's release tarball installs into `/usr` with `sudo`.
+
 ## 1.20.49 (2026-11-10)
 - WolvenKit's runs are sized before they start: each is planned to fit 2 GB from the files'
   sizes (an animation unfolds about 250 times, measured), a large file runs alone under its

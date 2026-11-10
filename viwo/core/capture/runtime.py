@@ -3,7 +3,7 @@ it: a full minidump on Windows, the readable mappings on Linux) and an API trace
 frida-trace (wxWindows licence; a separate process, its Python packages pinned), for a set
 number of seconds. Both read a running process and write only into the workspace, behind the
 `capture` feature switch like the rest of the dynamic arm. `run` is the one dispatch the CLI
-(`viwo dump|trace|record|agent`) and the API (POST /api/runtime/<kind>) share."""
+(`viwo dump|trace|hook|record|agent`) and the API (POST /api/runtime/<kind>) share."""
 
 import os
 import sys
@@ -25,7 +25,8 @@ FRIDA = DependencySpec.of("frida-tools")
 @dataclass(frozen=True)
 class RuntimeRequest:
     """One headless dynamic run; each kind reads the fields it needs (dump, trace, profile:
-    pid or name; trace, profile, record: seconds; agent: game, exe, copy, timeout)."""
+    pid or name; trace, hook, profile, record: seconds; hook: script; agent: game, exe, copy,
+    timeout)."""
 
     workspace: Path
     pid: int = 0
@@ -35,17 +36,20 @@ class RuntimeRequest:
     game: Path = Path()
     exe: Path = Path()
     copy: Path | None = None  # the agent's patched copy (default: beside the workspace)
+    script: Path = Path()  # hook: the user's own Frida script
     timeout: float = 600
 
 
 def run(rt, kind: str, req: RuntimeRequest, sink=None, cancel=None) -> dict:
     from .agents import run_agent
     from .audio import record
+    from .hook import hook
     from .profile import profile
 
     runs = {
         "dump": lambda: dump(rt, req.workspace, req.pid, req.name),
         "trace": lambda: trace(rt, req, cancel),
+        "hook": lambda: hook(rt, req, sink, cancel),
         "agent": lambda: run_agent(rt, req, sink, cancel),
         "record": lambda: record(rt, req.workspace, req.seconds),
         "profile": lambda: profile(rt, req, cancel),
@@ -110,6 +114,14 @@ def dump(rt, workspace: Path, pid: int = 0, image: str = "") -> dict:
     return {"pid": pid, "dump": str(path), "size": path.stat().st_size, "outputDir": str(out)}
 
 
+def frida(rt, module: str) -> tuple[list[str], dict]:
+    """One of the pinned Frida's own command-line tools as a separate process: how it starts
+    and the environment that makes it find its packages under third_party/."""
+    folder = thirdparty.python_dir(thirdparty.home_of(rt.config))
+    path = os.pathsep.join([str(folder), os.environ.get("PYTHONPATH", "")])
+    return [sys.executable, "-m", f"frida_tools.{module}"], {"PYTHONPATH": path}
+
+
 def trace(rt, req: RuntimeRequest, cancel=None) -> dict:
     """frida-trace -p <pid> -i <function>... for `seconds`, its log in the workspace."""
     _enabled(rt)
@@ -117,23 +129,10 @@ def trace(rt, req: RuntimeRequest, cancel=None) -> dict:
         raise ViwoError("invalid_request", "give at least one function to trace")
     pid = resolve_pid(rt, req.pid, req.name)
     out = run_dir(req.workspace, "trace", pid)
-    home = thirdparty.home_of(rt.config)
-    argv = [
-        sys.executable,
-        "-m",
-        "frida_tools.tracer",
-        "-p",
-        str(pid),
-        "-o",
-        str(out / "trace.log"),
-    ]
+    argv, env = frida(rt, "tracer")
+    argv += ["-p", str(pid), "-o", str(out / "trace.log")]
     for name in req.functions:
         argv += ["-i", name]
-    env = {
-        "PYTHONPATH": os.pathsep.join(
-            [str(thirdparty.python_dir(home)), os.environ.get("PYTHONPATH", "")]
-        )
-    }
     result = rt.os.process.run(argv, cwd=out, timeout=req.seconds, cancel=cancel, env=env)
     log = out / "trace.log"
     if not log.is_file():
@@ -146,8 +145,8 @@ def trace(rt, req: RuntimeRequest, cancel=None) -> dict:
 
 class FridaTrace(Backend):
     """Owns the Frida dependency so preflight, SYSTEM and `viwo install` see it. It serves no
-    slot: trace() above is the one way to run frida-trace (a separate process); there is no
-    other tracer to bind or fail over to."""
+    slot: trace() above and hook() (hook.py) are the ways to run Frida's own tools (separate
+    processes); there is no other tool to bind or fail over to."""
 
     backend_id, license, isolation = "frida-trace", "wxWindows-3.1", "subprocess"
 

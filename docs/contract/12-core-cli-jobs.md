@@ -80,6 +80,7 @@ Commands are grouped by arm; `viwo -h` lists them, `viwo <arm>` lists one arm, a
 | dynamic | `capture GAME --exe EXE --workspace W [--confirm] [--auto SECONDS]` | RenderDoc capture (doc 11) |
 | dynamic | `dump (--pid PID \| --name NAME) --workspace W` | memory dump |
 | dynamic | `trace (--pid \| --name) --workspace W [--functions GLOBS] [--seconds S]` | frida-trace (comma-separated globs, default `CreateFileW`; an empty list is refused) |
+| dynamic | `hook (--pid \| --name) --script FILE --workspace W [--seconds S]` | the user's own Frida script in the running process, its lines relayed (doc 11.7) |
 | dynamic | `agent GAME --exe EXE --workspace W [--copy DIR] [--timeout S]` | the engine's runtime agent |
 | dynamic | `record --workspace W [--seconds S]` | system sound to WAV |
 | patching | `repack WORKSPACE [--out DIR] [--plan]` | patched copy with the edited files (doc 18) |

@@ -27,7 +27,7 @@ goes to the log); invalid JSON is 400.
 | survey, cleanup, repack | `/api/surveys`, `/api/survey-report?id`, `/api/sanitizer/recipes` | `/api/survey`, `/api/sanitizer/plan`, `/api/sanitizer/apply`, `/api/sanitizer/undo`, `/api/repack` |
 | patching | | `/api/patch` (T1 patch sets), `/api/mod` (T2 mod packages) |
 | analysis | `/api/analysis/targets?gamePath` | `/api/analysis/run`, `/api/analysis/open`, `/api/analysis/diff` |
-| dynamic | `/api/runtime/attach?gamePath` | `/api/capture/warnings`, `/api/capture`, `/api/runtime/dump`, `/api/runtime/trace`, `/api/runtime/profile`, `/api/runtime/agent`, `/api/runtime/record`, `/api/runtime/attach` |
+| dynamic | `/api/runtime/attach?gamePath` | `/api/capture/warnings`, `/api/capture`, `/api/runtime/dump`, `/api/runtime/trace`, `/api/runtime/hook`, `/api/runtime/profile`, `/api/runtime/agent`, `/api/runtime/record`, `/api/runtime/attach` |
 | guides (doc 19) | `/api/workbooks`, `/api/runbooks`, `/api/recording` | `/api/runbooks/step`, `/api/runbooks/save`, `/api/runbooks/delete`, `/api/recording` |
 | system | `/api/dependencies`, `/api/settings`, `/api/updates`, `/api/ui-modules`, `/api/logs` | `/api/preflight`, `/api/preflight/install`, `/api/settings`, `/api/diag`, `/api/indexes/update`, `/api/logs/clear` |
 

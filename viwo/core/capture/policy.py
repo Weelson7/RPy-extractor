@@ -45,6 +45,12 @@ def network_reachable() -> bool:
         return False
 
 
+def services_running(rt, policy: dict | None = None) -> list[str]:
+    """The anti-cheat services running on this machine now, by name (the OS layer's list)."""
+    services = (policy or load_policy()).get("anti_cheat_services", {})
+    return sorted(services[n] for n in rt.os.process.running_images() if n in services)
+
+
 def warnings_for(game: Path, sensitive: list[str], rt=None) -> list[str]:
     """What the user should know before capturing this game (never a refusal)."""
     policy = load_policy()
@@ -55,10 +61,7 @@ def warnings_for(game: Path, sensitive: list[str], rt=None) -> list[str]:
             f"anti-cheat present: {'; '.join(found[:3])}. ViWo does not evade it: the capture may "
             "be blocked, and running a capture tool next to it can get an account banned"
         )
-    services = policy.get("anti_cheat_services", {})
-    images = rt.os.process.running_images() if rt is not None else set()  # OS layer (principle 3)
-    running = sorted(services[n] for n in images if n in services)
-    if running:
+    if running := services_running(rt, policy) if rt is not None else []:
         out.append(f"anti-cheat service running now: {', '.join(running)}")
     title = next((v for k, v in policy["online_titles"].items() if k in game.name.lower()), "")
     if title:

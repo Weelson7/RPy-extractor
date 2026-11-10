@@ -1,9 +1,10 @@
 # 11. Dynamic arm
 
 Work that runs or attaches to the game: GPU frame capture, runtime agents, memory dumps, API
-traces, audio loopback, and the debugger and memory-editor attach tools (`viwo/core/capture/`,
+traces, the user's own hook scripts, audio loopback, and the debugger and memory-editor
+attach tools (`viwo/core/capture/`,
 `viwo/contracts/runtime.py`, `viwo/cli_dynamic.py`, `viwo/api/handlers_capture.py`). CLI arm
-`viwo dynamic`: `capture`, `dump`, `trace`, `profile`, `agent`, `record`, `attach`. UI:
+`viwo dynamic`: `capture`, `dump`, `trace`, `hook`, `profile`, `agent`, `record`, `attach`. UI:
 CAPTURE, RUNTIME.
 
 ## 11.1 Model: warnings and one opt-in, no gate (D22)
@@ -13,7 +14,7 @@ the user switches it on; what it knows about a game is said as warnings.
 
 | Step | Applies to | Result |
 |------|------------|--------|
-| `capture` in `[startup] features` (SETTINGS) | capture, dump, trace, profile, agent, record, attach | off by default; off answers `refused` with the hint to enable it |
+| `capture` in `[startup] features` (SETTINGS) | capture, dump, trace, hook, profile, agent, record, attach | off by default; off answers `refused` with the hint to enable it |
 | confirmation once per game folder (`--confirm`, the UI checkbox or confirm box; remembered in `viwo-data/capture/confirmed.json`) | capture, attach | without it: `needs_decision` with the confirmation text (exit 2) |
 | anti-cheat markers in the game folder, an anti-cheat service running, a title on the online/competitive list, a `tos_sensitive` plugin detected, the network reachable | capture, attach | warnings in the result and the log; never a refusal |
 
@@ -34,6 +35,7 @@ attach tools (11.2) need only the `capture` switch, never `analysis`.
 | record (D2) | `soundcard-loopback` (no slot) | soundcard (WASAPI loopback, PulseAudio monitor) | `--seconds` of the default output device, 16-bit WAV | `.runtime/audio/loopback-<stamp>.wav` |
 | dump (D3) | OS layer `dump_process` | Windows `MiniDumpWriteDump`; Linux `/proc/<pid>/mem` | a full dump of a running process (`--pid` or `--name`) | `.runtime/dump/<pid>-<stamp>/` |
 | trace (D3) | `frida-trace` (no slot) | frida-tools 14.11.0 / frida 17.25.2 | `frida-trace -p <pid> -i <glob>...` for `--seconds` | `.runtime/trace/<pid>-<stamp>/trace.log` |
+| hook (D4) | the `frida-trace` backend's tool (no slot) | frida-tools 14.11.0 / frida 17.25.2 | `frida -q -t <seconds> -p <pid> -l <the user's script>`: Frida loads the user's own script into the running process and again each time the file is saved; every line it prints is relayed to the console (11.7) | `.runtime/hook/<pid>-<stamp>/hook.log` |
 | attach (D3) | `attach.debug` / `x64dbg-gui` | x64dbg (GPL-3, a separate process) | Continue in x64dbg (doc 8.3a) on the game's own process: attached to the one process running the target's executable (or `--pid`), else the game's own executable started under the debugger; a patch made live lands in the real process | - |
 | attach (D3) | `attach.memory` / `cheatengine-gui` | Cheat Engine 7.6 | Continue in Cheat Engine with a ViWo table that attaches to the game | `.runtime/cheatengine-gui/<key>/<exe>.CT` |
 | attach (D4) | `attach.net` / `mitmproxy-gui` | mitmproxy 12.3.1 | Continue in mitmproxy: its own web interface as a local proxy (regular mode, this machine only) for the game's own HTTP(S) traffic; the user points the game at it and decides about its certificate (11.7) | `.runtime/mitmproxy-gui/<key>/flows.mitm` |
@@ -47,7 +49,7 @@ for it. API: `GET /api/runtime/attach?gamePath` -> `{targets (with attach), enab
 `POST /api/runtime/attach {gamePath, targetKey, tool?, pid?, confirm?}` -> `{handoff, label, pid,
 target, attached, warnings}` (`attached`: the pid the debugger attached to, 0 when it started the
 game). UI: RUNTIME, DEBUGGER AND MEMORY (the pid of RUNNING PROCESS when it is a number).
-Every dump, trace and profile run writes a new `<pid>-<stamp>` folder (`_1`, `_2`... for runs in
+Every dump, trace, hook and profile run writes a new `<pid>-<stamp>` folder (`_1`, `_2`... for runs in
 the same second) and every recording a new WAV: a run never reads or overwrites an earlier run's.
 
 ## 11.3 Runtime agents
@@ -70,7 +72,7 @@ are named (`notCopied`).
 
 ## 11.4 Jobs
 
-Each kind is a job (`capture`, `agent`, `dump`, `trace`, `record`) through its route
+Each kind is a job (`capture`, `agent`, `dump`, `trace`, `hook`, `profile`, `record`) through its route
 (`POST /api/capture`, `POST /api/runtime/<kind>`) or `POST /api/jobs`; the CLI runs the same
 code (`viwo/core/capture/runtime.py` `run`). Capture steps: POLICY -> CAPTURE -> HARVEST -> GATHER into the workspace -> DIFF against static extraction (by content
 hash) -> REPORT. Capture, analysis and extraction jobs add temporary antivirus exclusions for
@@ -111,7 +113,37 @@ says how and to remove it after); a game that pins its certificates cannot be re
 Not used, because they need elevation (the minimal-prompts rule): mitmproxy's per-process
 capture mode, and raw packet capture (Wireshark needs an administrator-installed driver).
 
-Open: `hook.inject` (a user's hook script in the running game: Frida, already pinned, is the
-tool for it) and `hook.overlay` (Special K on Windows and MangoHud on Linux are the candidates;
-both are loaded into the game, so they belong in a patched copy like the D2 agents; ReShade
-ships only as an installer).
+Shipped: the user's own hook script, `hook.inject` (`viwo hook --pid|--name --script FILE
+[--seconds S] --workspace W`, `/api/runtime/hook {pid|name, scriptPath, seconds}`, RUNTIME, RUN
+HOOK SCRIPT; `core/capture/hook.py`). The tool is the pinned Frida's own command line, a separate
+process started from `third_party/python` (`python -m frida_tools.repl -q -t SECONDS -p PID -l
+SCRIPT`): Frida attaches to the running process, loads the script, loads it again each time the
+file is saved (its own hot reload) and detaches after the seconds. ViWo relays every line Frida
+prints to the console as it comes and keeps them in `.runtime/hook/<pid>-<stamp>/hook.log`.
+ViWo ships no script and no loader: the script is the user's, for example
+`Process.enumerateModules().forEach(m => console.log(m.name, m.base));`. An anti-cheat service running on the
+machine is said as a warning before the script loads (never a gate, 11.1). It attaches only (it
+never starts the game), asks for no elevation (a process Frida may not open answers Frida's own
+refusal) and sits behind the `capture` switch like the trace, which attaches the same way. It
+has no slot: one tool, the dependency the `frida-trace` backend declares. A refused attach ends
+the run at once with Frida's words. On Windows Frida's process can stay about 30 s after it
+detached, so ViWo stops it 10 s after the script's time; an error the script threw is then in
+the console and the log, and fails the run only where Frida exits by itself.
+
+Open: `hook.overlay`. Checked on 2026-11-10, neither candidate can be wired within the rules:
+
+- Special K (Windows; `SK_26_10_10`, `SpecialK.7z`, GPL-3.0, two DLLs, 6,150,167 bytes, sha256
+  `4dcaf920740cbae2fc8cdf75f7b5ed6aa72280fdbf1cfa9e3d5eb53f23f38fcd`) is not pinned. With no setting of the
+  user's it switches on its "CAPCOM DRM workaround" for every executable signed by CAPCOM
+  (`src/config.cpp`: it copies the game's `steam_api64.dll` and loads the copy), and ViWo
+  neither authors nor switches on a copy-protection workaround (11.1): pinning it is the
+  owner's call. Besides: its licence screen shows inside the game on the first start and must be
+  clicked, it fetches from its own servers, and it is loaded from the game's folder, so it
+  would need a whole patched copy like the D2 agents.
+- MangoHud (Linux; `v0.8.4`, `MangoHud-0.8.4.r0.g992103e.tar.gz`, MIT, 10,282,346 bytes, sha256
+  `aa0b2a009552f5e7c50baabf361267a79ea5e5c0fea440786f3b202d51f57753`): the release tarball installs into `/usr`
+  through `sudo` (`mangohud-setup.sh`), and its Vulkan layer manifests name
+  `/usr/lib/mangohud/...`, so it does not run from `third_party/` without elevation or without
+  ViWo rewriting the manifests. A `mangohud` the user installed with their distribution could
+  be started as the game's wrapper, unpinned; not built, and not verifiable on Windows.
+- ReShade ships only as an installer.

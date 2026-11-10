@@ -35,7 +35,7 @@ SlotBinding { slot_id, main, spare, promoted, source: default|ini, reasons }
 ```
 
 A backend may serve no slot and exist only to declare a dependency so preflight, SYSTEM and
-`viwo install` see it: `frida-trace` (`viwo trace`) and `soundcard-loopback` (`viwo record`),
+`viwo install` see it: `frida-trace` (`viwo trace`, `viwo hook`) and `soundcard-loopback` (`viwo record`),
 each the one tool for its job.
 
 ## 8.2 Failover and resolution

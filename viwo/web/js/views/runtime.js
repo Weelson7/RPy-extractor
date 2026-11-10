@@ -1,6 +1,7 @@
 // RUNTIME (dynamic arm): the engine's agent in a patched copy (UE4SS, BepInEx), the game's
-// sound, a memory dump and an API trace of the running game, and x64dbg or Cheat Engine on the
-// game itself. Each run is a job; the outputs land in the active workspace under .runtime/.
+// sound, a memory dump, an API trace and your own Frida script on the running game, and x64dbg
+// or Cheat Engine on the game itself. Each run is a job; the outputs land in the active
+// workspace under .runtime/.
 import { api } from "../api.js";
 import { h, fill, btn, panel, badge, viewHead, kv, toast, toastErr, pref, emit, browseBtn, errorBox, openBtn, assure, busy, table, confirmBox } from "../ui.js";
 import { jobProgress } from "../progress.js";
@@ -17,14 +18,16 @@ function mount(root) {
   el.exe = input("rt-exe", "/path/to/game/Game.exe", "rtExe");
   el.proc = input("rt-proc", "Game.exe or a pid", "rtProc");
   el.funcs = input("rt-funcs", "CreateFileW, ReadFile", "rtFuncs");
+  el.script = input("rt-script", "/path/to/your-hook.js", "rtScript");
   el.secs = h("input", { class: "input mono", id: "rt-secs", type: "number", min: "1", value: pref("rtSecs") || "10", oninput: (e) => pref("rtSecs", e.target.value) });
   el.progHost = h("div", {});
   el.result = h("div", {});
   el.attach = h("div", {}, h("p", { class: "dim" }, "LIST TARGETS names the game's executables x64dbg and Cheat Engine can take."));
   el.buttons = [btn("RUN AGENT", () => run("agent"), "primary"), btn("DUMP MEMORY", () => run("dump"), ""),
-    btn("TRACE CALLS", () => run("trace"), ""), btn("PROFILE CPU", () => run("profile"), ""), btn("RECORD SOUND", () => run("record"), "")];
+    btn("TRACE CALLS", () => run("trace"), ""), btn("PROFILE CPU", () => run("profile"), ""), btn("RECORD SOUND", () => run("record"), ""),
+    btn("RUN HOOK SCRIPT", () => run("hook"), "")];
   root.append(
-    viewHead(code("runtime"), "RUNTIME", "The game is running: load the engine's agent into a patched copy, record what it plays, dump its memory, trace its API calls, or continue in x64dbg or Cheat Engine on the game itself. Each run is a job; the outputs land in the workspace under .runtime/."),
+    viewHead(code("runtime"), "RUNTIME", "The game is running: load the engine's agent into a patched copy, record what it plays, dump its memory, trace its API calls, run your own Frida script in it, or continue in x64dbg or Cheat Engine on the game itself. Each run is a job; the outputs land in the workspace under .runtime/."),
     assure([["GAME FOLDER READ-ONLY", "the agent goes into a marked patched copy beside it, never into the game"],
       ["UNATTENDED", "first-run questions of the tools are answered before launch; nothing to click"],
       ["YOUR CALL", "anti-cheat and online titles only produce warnings; you are responsible"]]),
@@ -39,8 +42,11 @@ function mount(root) {
         panel(`${code("runtime")}.B`, "RUNNING PROCESS", null,
           h("label", { class: "lbl", for: "rt-proc" }, "PROCESS (IMAGE NAME OR PID)"), h("div", { class: "row" }, el.proc),
           h("label", { class: "lbl", for: "rt-funcs" }, "FUNCTIONS TO TRACE (FRIDA GLOBS, COMMA-SEPARATED)"), h("div", { class: "row" }, el.funcs),
-          h("label", { class: "lbl", for: "rt-secs" }, "SECONDS (TRACE AND RECORDING)"), h("div", { class: "row" }, el.secs),
-          h("div", { class: "row" }, el.buttons[1], el.buttons[2], el.buttons[3], el.buttons[4])),
+          h("label", { class: "lbl", for: "rt-secs" }, "SECONDS (TRACE, HOOK SCRIPT, PROFILE AND RECORDING)"), h("div", { class: "row" }, el.secs),
+          h("label", { class: "lbl", for: "rt-script" }, "YOUR HOOK SCRIPT (FRIDA, JAVASCRIPT)"), h("div", { class: "row" }, el.script,
+            browseBtn(el.script, (p) => pref("rtScript", p), (p) => api.browseFile(p).then((r) => r.path))),
+          h("p", { class: "note" }, "Frida loads your script into the process for the seconds above and loads it again each time you save it; what it prints shows in the run's log and lands in .runtime/hook/. ViWo ships no script: you write it."),
+          h("div", { class: "row" }, el.buttons[1], el.buttons[2], el.buttons[3], el.buttons[4], el.buttons[5])),
         panel(`${code("runtime")}.E`, "DEBUGGER AND MEMORY", h("div", { class: "row" }, badge("THE GAME ITSELF", "warn"),
           howToBtn("x64dbg", "HOW TO: X64DBG"), howToBtn("cheatengine", "HOW TO: CHEAT ENGINE")),
           h("p", { class: "note" }, "x64dbg attaches to the running game (the pid above, else the process of the target's executable) or starts it: a patch made live lands in the real process. Cheat Engine opens a table that attaches as soon as the game runs."),
@@ -81,6 +87,7 @@ function body(kind) {
   const target = /^\d+$/.test(proc) ? { pid: Number(proc) } : { name: proc };
   if (kind === "agent") return { gamePath: el.game.value.trim(), exePath: el.exe.value.trim() };
   if (kind === "record") return { seconds };
+  if (kind === "hook") return { ...target, seconds, scriptPath: el.script.value.trim() };
   return { ...target, seconds, functions: el.funcs.value.split(",").map((f) => f.trim()).filter(Boolean) };
 }
 
@@ -88,7 +95,8 @@ function body(kind) {
 function blocker(kind) {
   if (S.running) return `${S.running} is running`;
   if (kind === "agent") return !el.game.value.trim() ? "enter the game folder" : !el.exe.value.trim() ? "pick the executable" : "";
-  return kind !== "record" && !el.proc.value.trim() ? "enter the process name or pid" : "";
+  if (kind !== "record" && !el.proc.value.trim()) return "enter the process name or pid";
+  return kind === "hook" && !el.script.value.trim() ? "pick your Frida script" : "";
 }
 
 async function run(kind) {

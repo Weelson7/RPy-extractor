@@ -131,7 +131,7 @@ then `pause`, `continue`, `note {title, text}` (adds a step you do: what you did
 tool), `stop` (saves) or `discard`; `GET /api/recording` -> `{recording: {title, game, paused,
 steps} | null}`. While it runs and is not paused, every action route that answers success adds
 a step: extract, survey, repack, patch, mod, capture, analysis run, cleanup plan/apply/undo and
-the runtime kinds (dump, trace, profile, agent, record), as `{title, do, with, expect}` with the
+the runtime kinds (dump, trace, hook, profile, agent, record), as `{title, do, with, expect}` with the
 same parameters the route got. Whether an action is recorded is decided when it starts (a
 pause or stop meanwhile does not drop or add it); `stop` is refused (`busy`) while a recorded
 action is still running. A failed action is not added (the recording replays what worked); a
@@ -156,7 +156,7 @@ its volatile parts dropped (keys ending in Id or Token, times, stamps, durations
 counts, `success`, `jobId`, a process id, a survey's numbered report path, a run record, log
 lines, a mod's `made` and `viwo` version, the record `context` with ViWo's version) and the game
 and workspace paths replaced by their `{name}`. Capture and the runtime kinds (dump, trace,
-profile, agent, record) carry no expectation: what a running game does differs on every run,
+hook, profile, agent, record) carry no expectation: what a running game does differs on every run,
 so they proceed; `facts` are its scalar values (dotted
 keys, three levels, a list as its length, at most 60) to name what changed. On replay
 (`/api/runbooks/step`, `viwo runbook --run`) a step with `expect` answers `differs: [what

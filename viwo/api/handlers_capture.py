@@ -58,9 +58,9 @@ def run_capture(app: App, d: dict) -> dict:
 
 
 def runtime_job(app: App, d: dict, kind: str) -> dict:
-    """POST /api/runtime/<kind>: dump {pid|name}, trace {pid|name, functions, seconds}, agent
-    {gamePath, exePath}, record {seconds}; jobs that write under the active workspace's
-    .runtime/."""
+    """POST /api/runtime/<kind>: dump {pid|name}, trace {pid|name, functions, seconds}, hook
+    {pid|name, scriptPath, seconds}, agent {gamePath, exePath}, record {seconds}; jobs that
+    write under the active workspace's .runtime/."""
     from viwo.core.capture.runtime import RuntimeRequest, run
 
     try:
@@ -69,7 +69,7 @@ def runtime_job(app: App, d: dict, kind: str) -> dict:
     except ViwoError as exc:
         return failure(exc)
     name = str(d.get("name", ""))
-    if kind in ("dump", "trace", "profile") and not pid and not name:
+    if kind in ("dump", "trace", "hook", "profile") and not pid and not name:
         return failure(ViwoError("invalid_request", "give pid or name"))
     req = RuntimeRequest(
         app.workspace,
@@ -79,6 +79,7 @@ def runtime_job(app: App, d: dict, kind: str) -> dict:
         seconds,
         path_param(d, "gamePath") or Path(""),
         path_param(d, "exePath") or Path(""),
+        script=path_param(d, "scriptPath") or Path(""),
     )
     return app.job(kind, lambda jid, s, c: {"success": True, **run(app.rt, kind, req, s, c)})
 
@@ -110,7 +111,7 @@ def _ours(app: App) -> None:
 
 def runtime_routes(prefix: str) -> dict[str, Callable[[App, dict], Any]]:
     """`<prefix><kind>` -> runtime_job for every dynamic-arm kind (routes and job kinds)."""
-    kinds = ("dump", "trace", "profile", "agent", "record")
+    kinds = ("dump", "trace", "hook", "profile", "agent", "record")
     return {f"{prefix}{k}": (lambda app, d, k=k: runtime_job(app, d, k)) for k in kinds}
 
 

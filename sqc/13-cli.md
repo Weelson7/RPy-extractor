@@ -22,7 +22,7 @@ Steps: run `viwo`, `viwo -h`, `viwo static`, `viwo dynamic`, `viwo patching`, `v
 
 Expected: the guide (SQC-INST-01); `-h` lists the commands under `static`, `dynamic`, `patching`
 and `system` (static: survey detect extract replay unpack sanitize analyze diff; dynamic:
-capture dump trace profile agent record attach; patching: repack patch mod; system: serve info
+capture dump trace hook profile agent record attach; patching: repack patch mod; system: serve info
 slots install config indexes diag workbook runbook); `viwo <arm>` lists only that arm; `viwo static detect ...` gives the same
 result as `viwo detect ...`; each command's `-h` lists its options as in
 `docs/contract/12-core-cli-jobs.md` (12.4); `--json` is accepted both before and after the

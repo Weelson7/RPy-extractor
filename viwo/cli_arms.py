@@ -7,7 +7,7 @@ ARMS = {
     "static": ("the game is not running", STATIC),
     "dynamic": (
         "the game is running",
-        ("capture", "dump", "trace", "profile", "agent", "record", "attach"),
+        ("capture", "dump", "trace", "hook", "profile", "agent", "record", "attach"),
     ),
     "patching": ("you change its content", ("repack", "patch", "mod")),
     "system": ("tools, config, the web UI", SYSTEM),

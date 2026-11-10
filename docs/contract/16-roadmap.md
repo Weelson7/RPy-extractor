@@ -30,7 +30,7 @@ every engine format is decoded into a form a person or a standard tool can use (
 DDS/PNG, meshes, rigs and animations to glTF, audio to WAV, video to MP4 or frames, compiled
 scripts decompiled, game databases and localization to JSON/YAML/TSV, everything else to
 readable JSON). On every engine the three arms apply where the engine allows: static (extract,
-decode, analyse its executables and scripts), dynamic (capture, agent, dump, trace, profile,
+decode, analyse its executables and scripts), dynamic (capture, agent, dump, trace, hook, profile,
 record) and patching (repack into its own containers, patch sets, mod packages). A format that
 is not decoded yet is an open row below and is reported in the run (never silent); it is never
 skipped quietly. Decoding uses, in this order of preference: ViWo's own code; the game's own
@@ -67,7 +67,7 @@ feature switch where it is heavy. Sequencing by owner's call.
 | dynamic | D1 | unattended GPU capture, shader disassembly | RenderDoc | shipped 1.3.6 |
 | dynamic | D2 | `runtime.unreal`, `runtime.unity` agents; audio loopback | UE4SS, BepInEx, soundcard | shipped 1.4.7 (BepInEx verified 1.6.0) |
 | dynamic | D3 | `attach.debug`, `attach.memory` (`viwo attach`, RUNTIME; x64dbg on the game's own process since 1.17); memory dump; API trace | x64dbg, Cheat Engine, OS layer, Frida | shipped 1.4.7 |
-| dynamic | D4 | `hook.inject` (hook loader with hot reload), `hook.overlay`, `net.*` (own-traffic capture and proxy), `profile.sample` (CPU sampling) | OS layer (profile) | `profile.sample` shipped 1.6.1; the rest **open**; the plaintext network capture and the DLL injection loader are the owner's call and are not authored by the assistant |
+| dynamic | D4 | `hook.inject` (hook loader with hot reload), `hook.overlay`, `net.*` (own-traffic capture and proxy), `profile.sample` (CPU sampling) | OS layer (profile) | `profile.sample` shipped 1.6.1, `net.*` (`attach.net`, mitmproxy) and `hook.inject` (`viwo hook`, the pinned Frida) through third-party tools; `hook.overlay` **open** (11.7); the plaintext network capture and the DLL injection loader are the owner's call and are not authored by the assistant |
 | patching | T1 | patch sets: offset, RVA and AOB addresses, Keystone assembly, capstone plans, whole-file verify, diff and AOB export | Keystone (`kstool`), capstone | shipped 1.4.5-1.4.6 |
 | patching | T2 | mod packages: pack, check (with the AOB update check), ordered and conflict-checked apply | - | shipped 1.4.5-1.4.6; the in-game half (loader, hook API, overlay, crash handler) is what the pinned runtime loaders do |
 | patching | T3 | **interactive / live patching** | x64dbg, Ghidra | **the child does it natively, ViWo does not reimplement it** (owner's principle: what a child can do natively, let it do natively). x64dbg patches live memory and writes to the file (Patches dialog); Ghidra edits bytes and exports. ViWo's role is the handoff that opens the child pre-loaded (D3 `attach.debug`: x64dbg attached to the game's own process, so a live patch lands in the real process; A1 Continue in Ghidra). ViWo's own patch sets (T1) stay for scripted, reproducible patches. Verified by hand on real software (Free Download Manager: lifted a hardcoded 20-connection per-server cap via one `cmp` byte, found through ViWo's Ghidra analysis). Note: the x64dbg attach tool is the dynamic arm's (the `capture` feature); interactive patching should also be reachable from the patching arm. |

@@ -21,7 +21,7 @@ Code and tests cite sections as "doc N.M"; section numbers are stable.
 | 8 | [08-backend-slots.md](08-backend-slots.md) | slots, backends, failover, handoffs, the slot table |
 | 9 | [09-startup-ini.md](09-startup-ini.md) | the startup ini, distros, boot sequence |
 | 10 | [10-third-party-submodules.md](10-third-party-submodules.md) | pinned third-party tools and their installer |
-| 11 | [11-runtime-capture.md](11-runtime-capture.md) | dynamic arm: capture, agents, dump, trace, record, debugger and memory attach tools |
+| 11 | [11-runtime-capture.md](11-runtime-capture.md) | dynamic arm: capture, agents, dump, trace, hook scripts, record, debugger and memory attach tools |
 | 12 | [12-core-cli-jobs.md](12-core-cli-jobs.md) | headless core, jobs, envelope, CLI |
 | 13 | [13-landscape.md](13-landscape.md) | the tools ViWo wraps and the engines it covers |
 | 14 | [14-prototype.md](14-prototype.md) | product scope and the structural choices behind it |

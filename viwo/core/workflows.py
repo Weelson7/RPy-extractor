@@ -20,7 +20,15 @@ _VOLATILE = re.compile(
 _HEX = re.compile(r"[0-9a-f]{64}")
 _KEY = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
 CARRIED = re.compile(r"step\d+_[a-z0-9_]+")  # the `{name}` of a value an earlier step answered
-UNEXPECTED = {"capture", "dump", "trace", "profile", "agent", "record"}  # a running game's kinds
+UNEXPECTED = {
+    "capture",
+    "dump",
+    "trace",
+    "hook",
+    "profile",
+    "agent",
+    "record",
+}  # a running game's kinds
 MAX_FACTS = 60
 
 

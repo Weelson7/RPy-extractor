@@ -7,7 +7,7 @@ const STATE_KIND = { running: "live", queued: "warn", succeeded: "ok", failed: "
 export const KIND = { extract: ["EXTRACTION", "#extract"], survey: ["SURVEY", "#survey"], merge: ["MERGER BUILD", "#merger"],
   repack: ["PATCHED COPY", "#repack"], preflight: ["STARTUP CHECK", "#system"], install: ["TOOL INSTALL", "#system"],
   capture: ["CAPTURE", "#capture"], indexes: ["INDEXES UPDATE", "#system"], cleanup: ["CLEANUP", "#cleanup"],
-  analyze: ["ANALYSIS", "#analysis"], patch: ["PATCH SET", "#patches"], mod: ["MOD PACKAGE", "#patches"], dump: ["MEMORY DUMP", "#runtime"], trace: ["API TRACE", "#runtime"], agent: ["RUNTIME AGENT", "#runtime"], record: ["AUDIO RECORDING", "#runtime"], profile: ["CPU PROFILE", "#runtime"] };
+  analyze: ["ANALYSIS", "#analysis"], patch: ["PATCH SET", "#patches"], mod: ["MOD PACKAGE", "#patches"], dump: ["MEMORY DUMP", "#runtime"], trace: ["API TRACE", "#runtime"], hook: ["HOOK SCRIPT", "#runtime"], agent: ["RUNTIME AGENT", "#runtime"], record: ["AUDIO RECORDING", "#runtime"], profile: ["CPU PROFILE", "#runtime"] };
 const kindName = (k) => KIND[k]?.[0] || String(k).toUpperCase();
 const when = (j) => `${new Date(j.started * 1000).toLocaleTimeString()} · ${span(Number(j.elapsed || 0))}`;
 /** 8.2 s, 3 min 20 s, 3 h 28 min: a duration as a person says it. */

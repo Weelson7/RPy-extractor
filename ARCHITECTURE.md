@@ -61,7 +61,7 @@ viwo/
     workflows.py recorded runbooks (doc 19.3): portable parameters, secret inputs, the
                  expected answers a replay compares with; the recorder is api/recording.py
     capture/     dynamic arm: policy (warnings, confirmation), RenderDoc capture and harvest,
-                 runtime agents, dump, trace, profile, audio loopback, attach (x64dbg on the
+                 runtime agents, dump, trace, hook, profile, audio loopback, attach (x64dbg on the
                  game's own process, Cheat Engine)
     roundtrip.py, roundtrip_edits.py   edit set, plan, patched copy, pack, verify
     patchsets.py, patch_tools.py       T1 patch sets (offset, RVA, AOB, Keystone, capstone)

@@ -1,15 +1,15 @@
 """The dynamic arm's commands (doc 11, 16.2b D1-D3): `viwo capture`, `viwo dump`, `viwo trace`,
-`viwo agent`, `viwo record`, `viwo attach`."""
+`viwo hook`, `viwo agent`, `viwo record`, `viwo attach`."""
 
 import sys
 
 from viwo.contracts.errors import Envelope, ViwoError
 
-FIELDS = ("pid", "name", "seconds", "game", "exe", "copy", "timeout")
+FIELDS = ("pid", "name", "seconds", "game", "exe", "copy", "timeout", "script")
 
 
 def runtime(rt, args, printer) -> Envelope:
-    """dump, trace, agent, record: the options each command has fill one RuntimeRequest."""
+    """dump, trace, hook, agent, record: the options each command has fill one RuntimeRequest."""
     from viwo.core.capture.runtime import RuntimeRequest, run
 
     given = {f: getattr(args, f) for f in FIELDS if getattr(args, f, None) is not None}

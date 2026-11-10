@@ -24,7 +24,7 @@ steps and exact expected results, so two testers get the same verdict.
 | 16-analysis.md | ANALYSIS: targets, Ghidra headless run, Continue in Ghidra, managed and bytecode analyzers, Detect It Easy, version diff, emulate and solve, feature switch |
 | 17-ctf.md | CTF flags per game (`ctf.json`): one plain extraction must reach the named assets |
 | 18-patching.md | patch sets (plan, apply, AOB, assembly) and mod packages |
-| 19-dynamic.md | Continue in x64dbg / Cheat Engine, memory dump, API trace, runtime agents, audio loopback |
+| 19-dynamic.md | Continue in x64dbg / Cheat Engine, memory dump, API trace, hook script, runtime agents, audio loopback |
 | 20-guides.md | WORKBOOKS, RUNBOOKS, the workflow recorder (`viwo workbook`, `viwo runbook`) |
 
 ## Real games: `games.md` and the automated integration run

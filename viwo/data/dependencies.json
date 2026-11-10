@@ -110,7 +110,7 @@
   "hint": "install ffmpeg (with ffprobe)"
  },
  "frida-tools": {
-  "label": "Frida (frida-trace)",
+  "label": "Frida (API trace, your own hook scripts)",
   "kind": "python",
   "import_name": "frida_tools",
   "hint": "install Frida: `viwo install frida-tools` (and `frida`)"

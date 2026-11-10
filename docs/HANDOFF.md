@@ -114,10 +114,11 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
    note the user writes). Embedded child GUIs are dropped (owner, 2026-11-05): native tools stay
    native, in their own windows (doc 19.4). Open here: more workbooks by reach, a structured
    runbook step editor.
-1. **Rung D4** (partly shipped: CPU profiling, `viwo profile`, 1.6.1): open are the hook loader
-   with hot reload (`hook.inject`), the overlay (`hook.overlay`) and own-traffic network tooling
-   (`net.*`). The network plaintext capture and the DLL injection loader are the owner's call and
-   are not authored by the assistant.
+1. **Rung D4** (shipped: CPU profiling `viwo profile`; own traffic `attach.net`, mitmproxy;
+   the user's hook script `viwo hook`, the pinned Frida, verified on a process that is not a
+   game): open is the overlay (`hook.overlay`). Special K is not pinned because it works around
+   CAPCOM's copy protection by default (the owner's call) and MangoHud's release installs into
+   `/usr` with `sudo` (doc 11.7). D4 is served by third-party tools only.
 2. **Coverage** (in progress): owner's target 98 % line / 95 % branch per file; measured 98.6 %
    line / 95.3 % branch overall at 1.6.23 (child processes counted); 72 files are still under
    the per-file target, most by one or two branches. Tests are property checks over random

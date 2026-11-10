@@ -54,10 +54,12 @@ def core_commands(command) -> None:
 
 
 def runtime_commands(command) -> None:
-    """viwo dump / viwo trace (D3): a running game's memory, or its API calls through Frida."""
+    """viwo dump / viwo trace (D3): a running game's memory, or its API calls through Frida;
+    viwo hook / viwo profile (D4): the user's own Frida script in it, where its CPU time goes."""
     texts = {
         "dump": "write a memory dump of a running game (D3)",
         "trace": "trace a running game's API calls with Frida (D3)",
+        "hook": "run your own Frida script in a running game (D4)",
         "profile": "sample where a running game spends its CPU time (D4)",
     }
     for name, text in texts.items():
@@ -67,6 +69,8 @@ def runtime_commands(command) -> None:
         cmd.add_argument("--workspace", type=Path, required=True, help="where .runtime/ lands")
         if name == "trace":
             cmd.add_argument("--functions", default="CreateFileW", help="frida-trace -i globs")
+        if name == "hook":
+            cmd.add_argument("--script", type=Path, required=True, help="your Frida script (.js)")
         if name != "dump":
             cmd.add_argument("--seconds", type=float, default=10, help="how long to run")
 

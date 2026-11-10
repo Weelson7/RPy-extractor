@@ -24,7 +24,10 @@ ROUTES = {  # action route -> (job kind, the parameters the route itself implies
     "/api/capture": ("capture", {}),
     "/api/analysis/run": ("analyze", {}),
     **{f"/api/sanitizer/{op}": ("cleanup", {"op": op}) for op in ("plan", "apply", "undo")},
-    **{f"/api/runtime/{k}": (k, {}) for k in ("dump", "trace", "profile", "agent", "record")},
+    **{
+        f"/api/runtime/{k}": (k, {})
+        for k in ("dump", "trace", "hook", "profile", "agent", "record")
+    },
 }
 
 
