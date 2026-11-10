@@ -27,8 +27,8 @@ CHECKS = (
     [sys.executable, "-m", "ruff", "format", "viwo", "tests", "tools", "packaging"],
     [sys.executable, "-m", "ruff", "check", "viwo", "tests", "tools", "packaging"],
     [sys.executable, "tools/loc_count.py"],
-    [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-t", "."],
 )
+SUITE = [sys.executable, "-m", "unittest", "discover", "-s", "tests", "-t", "."]
 HOOK = "#!/bin/sh\n# ViWo: every commit must bump the version (tools/version.py)\n"
 HOOK += 'exec "${VIWO_PYTHON:-python}" tools/version.py verify\n'
 
@@ -93,8 +93,24 @@ def install_hook() -> None:
         hook.chmod(hook.stat().st_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
 
-def run_checks() -> None:
-    for argv in CHECKS:
+def tests_argv(full: bool) -> list[str] | None:
+    """The whole suite, or only the tests the change can affect (tools/affected.py); None when
+    no test can see the change."""
+    if full:
+        return SUITE
+    sys.path.insert(0, str(ROOT / "tools"))
+    import affected  # noqa: PLC0415 (a sibling script, found through the path set above)
+
+    picked = affected.select(affected.changed())
+    if picked is None:
+        return SUITE
+    print(f"tests affected by the change: {', '.join(picked) or 'none'}", flush=True)
+    return [sys.executable, "-m", "unittest", *picked] if picked else None
+
+
+def run_checks(full: bool = False) -> None:
+    suite = tests_argv(full)
+    for argv in (*CHECKS, *([suite] if suite else [])):
         print("+", " ".join(argv[1:]), flush=True)
         code = subprocess.run(argv, cwd=ROOT).returncode
         if code:  # say which check, so the cause is in the last line of the output
@@ -106,7 +122,7 @@ def commit(args: argparse.Namespace) -> None:
     if git("status", "--porcelain") == "":
         sys.exit("version: nothing to commit")
     if not args.no_checks:
-        run_checks()
+        run_checks(args.full)
     version = next_version(
         current(), "major" if args.major else "feature" if args.feature else "tweak"
     )
@@ -136,6 +152,7 @@ def main(argv: list[str] | None = None) -> None:
     cp.add_argument("--feature", action="store_true", help="bump b (new feature or overhaul)")
     cp.add_argument("--major", action="store_true", help="bump a (roadmap finished)")
     cp.add_argument("--no-checks", action="store_true", help="skip format/lint/caps/tests")
+    cp.add_argument("--full", action="store_true", help="run the whole suite, not the affected")
     cp.add_argument("--push", action="store_true", help="push the branch and all tags")
     args = ap.parse_args(argv)
     if args.cmd == "show":

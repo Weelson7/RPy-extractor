@@ -50,8 +50,10 @@ python -m unittest discover -s tests -t .    # 567 tests, ~19 min; real-tool tes
 viwo serve                                   # web UI, opens the browser
 viwo config check startup.ini distros/*.ini  # strict config validation
 ```
-Always run format, lint, caps and the full test suite before committing. After changing plugins
-or slots run `viwo config generate`; after changing a tool pin run `python tools/notices.py`.
+`tools/version.py commit` runs format, lint, caps and the tests the change can affect (doc 17;
+`--full` for the whole suite); don't run the suite by hand on code that has not changed.
+After changing plugins or slots run `viwo config generate`; after changing a tool pin run
+`python tools/notices.py`.
 Real-game passes run from a worktree at a committed version (`tools/games_pass.ps1`,
 `docs/HANDOFF.md`), never from a tree being edited.
 

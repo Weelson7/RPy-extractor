@@ -4,6 +4,13 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.11 (2026-11-10)
+- A commit runs only the tests its change can affect (owner: no tests on code that has not
+  changed). `tools/affected.py` builds the import graph of `viwo`, `tests`, `tools` and
+  `packaging` and picks the test modules that reach a changed module, the changed tests, and
+  the tests whose code names a changed file. A docs-only change runs no tests; a change to the
+  pipeline or `pyproject.toml`, or `--full`, runs them all. Doc 17.
+
 ## 1.20.10 (2026-11-05)
 - Presentation: the RUNTIME debugger frame scrolls to the DEBUGGER AND MEMORY panel by its
   title (a positional selector had matched another panel). The recapture at 1.20.9 came out

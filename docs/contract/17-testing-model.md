@@ -1,8 +1,15 @@
 # 17. Testing model
 
 The suite uses the stdlib `unittest` (`python -m unittest discover -s tests -t .`); levels are
-selected by environment variables, not markers. At 1.16.6: 567 tests, 13 skipped without the real
-tools (about 10 minutes on Windows including the browser smoke).
+selected by environment variables, not markers. Tests that need a real tool or an optional
+package skip with its name when it is absent.
+
+A commit runs only the tests its change can affect (`tools/version.py`, `tools/affected.py`): the
+test modules that import a changed module, directly or through others (a module that imports
+the registry depends on every plugin, which it loads by discovery), the changed test modules,
+and the tests whose code, or the code they import, names a changed file (a doc, a data file
+under `viwo/data/<folder>`, the web UI, a script run as a process). A change no test can see
+runs none; a change to the pipeline or to `pyproject.toml`, or `--full`, runs the whole suite.
 
 ## 17.1 Principles
 
