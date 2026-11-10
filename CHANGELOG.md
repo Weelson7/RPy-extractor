@@ -4,6 +4,13 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.17 (2026-11-10)
+- Fix: RESTORE and DELETE on a WORKSPACE group answered "No trashed folder" when the group's
+  trashed files had been trashed one by one in SORT (`.trash/items/<ext>/`): the trashed count
+  included them, the actions did not. RESTORE now brings back the newest trashed version of the
+  group and every file of it trashed in SORT (each to its own place, its provenance entry
+  following); DELETE removes everything of the group in the trash, as its confirmation says.
+
 ## 1.20.16 (2026-11-10)
 - The top bar fits: JOBS leaves the strip (owner), the job chip (RUNNING or JOB IDLE) opens it;
   the strip is SYSTEM, WORKBOOKS, RUNBOOKS, SETTINGS (00 to 03). A global view registered with

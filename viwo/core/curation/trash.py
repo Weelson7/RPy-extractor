@@ -12,6 +12,8 @@ from pathlib import Path
 from viwo.contracts import workspace as ws
 from viwo.contracts.workspace import count_files
 
+from ..provenance import moved
+
 AREAS = ("groups", "items", "merger")
 
 
@@ -83,29 +85,53 @@ def trash_group(workspace: Path, ext: str) -> tuple[bool, str]:
     return True, f"Moved {ext} to trash as {target.name} ({count} files)"
 
 
+def _items(workspace: Path, ext: str) -> list[Path]:
+    """The group's files trashed one by one in SORT (`.trash/items/<ext>/...`): the trashed
+    count of a group includes them, so its RESTORE and DELETE take them too."""
+    folder = area(workspace, "items") / ext
+    return sorted(p for p in folder.rglob("*") if p.is_file()) if folder.is_dir() else []
+
+
+def _restore_items(workspace: Path, ext: str) -> int:
+    """Each item back to its own place (its provenance entry follows, as in SORT's undo)."""
+    items, base = _items(workspace, ext), area(workspace, "items")
+    for src in items:
+        dest = ws.next_free(workspace / src.relative_to(base))
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        shutil.move(str(src), str(dest))
+        moved(workspace, src, dest)
+    shutil.rmtree(base / ext, ignore_errors=True)  # only the emptied folders are left there
+    return len(items)
+
+
 def restore_group(workspace: Path, ext: str) -> tuple[bool, str]:
+    """The newest trashed version of the group, and every file of it trashed in SORT."""
     if not group_name(ext):
         return False, f"Invalid group name: {ext!r}"
-    versions = _group_versions(workspace, ext)
-    if not versions:
-        return False, f"No trashed folder for {ext}"
-    target = workspace / ext
-    index = 1
-    while target.exists():
-        target, index = workspace / f"{ext}__{index}", index + 1
-    shutil.move(str(versions[0]), str(target))
-    return True, f"Restored {versions[0].name} from trash as {target.name}"
+    versions, said = _group_versions(workspace, ext), []
+    if not versions and not _items(workspace, ext):
+        return False, f"Nothing of {ext} in the trash"
+    if versions:
+        target = ws.next_free(workspace / ext)  # a kept group of that name: <ext>__N
+        shutil.move(str(versions[0]), str(target))
+        said.append(f"Restored {versions[0].name} from trash as {target.name}")
+    if items := _restore_items(workspace, ext):
+        said.append(f"restored {items} file(s) trashed in SORT")
+    return True, "; ".join(said)
 
 
 def delete_group(workspace: Path, ext: str) -> tuple[bool, str]:
+    """Every trashed version of the group and every file of it trashed in SORT, for good."""
     if not group_name(ext):
         return False, f"Invalid group name: {ext!r}"
-    versions = _group_versions(workspace, ext)
-    if not versions:
-        return False, f"No trashed folder for {ext}"
-    count = count_files(versions[0])  # counted before deleting (v1 F9 reported 0)
-    shutil.rmtree(versions[0])
-    return True, f"Permanently deleted {versions[0].name} ({count} files)"
+    versions, items = _group_versions(workspace, ext), _items(workspace, ext)
+    if not versions and not items:
+        return False, f"Nothing of {ext} in the trash"
+    count = sum(count_files(v) for v in versions) + len(items)  # before deleting (v1 F9)
+    for version in versions:
+        shutil.rmtree(version)
+    shutil.rmtree(area(workspace, "items") / ext, ignore_errors=True)
+    return True, f"Permanently deleted the trashed {ext} ({count} files)"
 
 
 def clear(workspace: Path) -> tuple[int, list[str]]:

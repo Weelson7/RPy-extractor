@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import random
 import tempfile
 import unittest
+from collections import Counter
 from pathlib import Path
 
 from tests.helpers import write_ini
@@ -47,6 +49,33 @@ class GroupTrashTests(unittest.TestCase):
             ok, message = trash.delete_group(ws, "pngx")
             self.assertIn("(1 files)", message)  # counted before deletion (v1 F9)
             self.assertFalse(trash.trash_group(ws, ".extraction_metadata")[0])
+
+    def test_a_trashed_count_is_always_restorable_and_deletable(self) -> None:
+        """What the summary counts as a type's trash (whole groups and files trashed in SORT),
+        RESTORE and DELETE on that type act on: they never answer "nothing" for it."""
+        rng = random.Random(29)
+        for case in range(40):
+            with tempfile.TemporaryDirectory() as tmp:
+                ws = make_workspace(Path(tmp))
+                history = []
+                for _ in range(rng.randint(1, 5)):
+                    files = sorting.asset_files(ws)
+                    if files and rng.random() < 0.6:
+                        sorting.trash_item(
+                            ws, sorting.encode(ws.resolve(), rng.choice(files)), history
+                        )
+                    elif kept := trash.kept(ws):
+                        trash.trash_group(ws, rng.choice(sorted(kept)))
+                before = Counter(p.read_text() for p in ws.rglob("*") if p.is_file())
+                for ext, count in trash.trashed(ws).items():
+                    action = rng.choice([trash.restore_group, trash.delete_group])
+                    ok, message = action(ws, ext)
+                    self.assertTrue(ok, (case, ext, message))
+                    if action is trash.delete_group:
+                        self.assertIn(f"({count} files)", message)
+                        self.assertNotIn(ext, trash.trashed(ws))
+                after = Counter(p.read_text() for p in ws.rglob("*") if p.is_file())
+                self.assertTrue(after <= before, case)  # restore moves, delete only removes
 
     def test_group_names_cannot_leave_the_workspace(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
