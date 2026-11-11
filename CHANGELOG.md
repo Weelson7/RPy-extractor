@@ -4,6 +4,11 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.61 (2026-11-11)
+- CONFORMANCE: edit, repack and read-back proven on real games for REDengine, Unity, Unreal
+  (pak), Ren'Py, KiriKiri, Source, Genie and Warscape, beside Doom (deep passes at 1.20.56).
+  The game loading a change stays open on every engine.
+
 ## 1.20.60 (2026-11-11)
 - Reclaim pass, plugins: 186 counted lines fewer (4,814 to 4,628) with every test unchanged:
   BSA and BA2 extraction share one loop, the asar reader and writer one tree walk, Doom's

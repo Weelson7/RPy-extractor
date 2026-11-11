@@ -194,8 +194,9 @@ python tools/version.py commit -m "..." [--feature|--major] [--push]
    uncompressed archives come close to the free disk), so the demo runs on the subset the
    games pass already defines (`sqc/ctf.json` `pass-cyberpunk-2077`: seven archives, 6.7 GB)
    plus the executable and `final.redscripts`, copied to `Test-games/cyberpunk-2077-demo`
-   (owner's approval, 2026-11-05); its extraction takes about 2 h 20 min (87,000 files, of
-   which 62,653 CR2W through WolvenKit for about 100 minutes), the walk waits up to four hours
+   (owner's approval, 2026-11-05); its extraction took about 2 h 20 min and takes 1 h 14 min
+   since 1.20.56 (183,515 files; 62,653 CR2W through WolvenKit in 55 minutes, about five
+   tools at once: the memory budget of 50 % is the limit), the walk waits up to four hours
    for it and for every view to finish loading, and `frames.py` cancels and waits for any job
    still running, so no staging is left behind. The first capture (at 1.20.6) ran out of its
    two hours in the WolvenKit decode, whose counter did not move (fixed at 1.20.9); the capture
