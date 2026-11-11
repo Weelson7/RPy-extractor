@@ -4,6 +4,13 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.62 (2026-11-11)
+- UI review, more fixes: SYSTEM says what the tools not found are (on demand, not installable
+  here) and its subtitles follow the numbers; a long stat value wraps instead of being cut; a
+  path field shows its tail after editing; example text in fields is dimmed and italic;
+  disabled buttons and off switches are easier to see; "1 FILE" in MERGER; the antivirus
+  warning says the job goes on.
+
 ## 1.20.61 (2026-11-11)
 - CONFORMANCE: edit, repack and read-back proven on real games for REDengine, Unity, Unreal
   (pak), Ren'Py, KiriKiri, Source, Genie and Warscape, beside Doom (deep passes at 1.20.56).

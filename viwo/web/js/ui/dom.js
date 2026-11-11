@@ -17,6 +17,7 @@ export function h(tag, props = {}, ...kids) {
     else if (k in el && typeof v !== "string") el[k] = v;
     else el.setAttribute(k, v === true ? "" : v);
   }
+  if (tag === "input") el.addEventListener("blur", () => { el.scrollLeft = el.scrollWidth; }); // a path shows its tail
   el.append(...kids.flat(9).filter((c) => c != null && c !== false).map((c) => (c instanceof Node ? c : String(c))));
   return el;
 }

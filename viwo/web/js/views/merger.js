@@ -85,7 +85,7 @@ function renderList() {
     h("input", { type: "checkbox", checked: S.sel.has(c.name), onchange: (e) => toggle(c, e.target.checked), "aria-label": `${c.name}, ${c.count} files` }),
     h("b", {}, c.name), h("span", { class: "mono dim" }, span(c)),
     c.conflicts.length ? h("span", { title: "Several files share one number: you pick their order" }, badge(`${c.conflicts.length} SAME-NUMBER`, "warn")) : null,
-    badge(`${c.count} FILES`, "mute"))),
+    badge(`${c.count} FILE${c.count === 1 ? "" : "S"}`, "mute"))),
   S.total > LIMIT ? h("div", { class: "row pager" },
     btn("‹ PREV", () => { S.offset -= LIMIT; reload(); }, "sm ghost", { disabled: S.offset === 0 }),
     h("span", { class: "mono" }, `${S.offset + 1}–${Math.min(S.total, S.offset + LIMIT)} / ${S.total}`),

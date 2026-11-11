@@ -38,7 +38,7 @@ body::after { background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.18) 0 
 .btn.danger { --b: var(--red); --f: repeating-linear-gradient(-45deg, #2a0d0f 0 6px, #140909 6px 12px); color: #ff8b80; }
 .btn.ghost { --f: #120909; color: var(--text-2); }
 .input { border: 1px solid var(--line); border-left: 2px solid var(--red); background: rgba(10, 5, 6, 0.9); color: var(--text); font-size: 13px; }
-.input::placeholder { color: #a8827d; }
+.input::placeholder { color: #a8827d; font-style: italic; opacity: 0.7; }
 .input:focus, .input:focus-visible { outline: none; border-color: var(--coral); box-shadow: 0 0 0 1px var(--coral), 0 0 16px rgba(255, 59, 59, 0.25); }
 .seg { border: 1px solid var(--line); background: rgba(10, 5, 6, 0.8); }
 .seg button:hover, .pick:hover { color: #fff; background: rgba(255, 59, 59, 0.1); }
@@ -165,7 +165,7 @@ body::after { background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.18) 0 
 @keyframes lout { to { opacity: 0; transform: scale(1.02); filter: brightness(1.4); } }
 /* ---------- CAPTURE, SETTINGS, 05.E MAINTENANCE ---------- */
 .warnlist li { border-left: 2px solid var(--amber); background: rgba(255, 179, 64, 0.08); font-size: 13px; }
-.switch .sw { border: 1px solid var(--line); background: var(--bg-3); transition: background 0.2s; }
+.switch .sw { border: 1px solid var(--dim); background: var(--bg-3); transition: background 0.2s; }
 .switch .sw::after { background: var(--dim); transition: transform 0.2s, background 0.2s; }
 .switch input:checked + .sw::after { background: #fff; transform: translateX(18px); box-shadow: 0 0 8px var(--red); }
 .switch input:focus-visible + .sw { outline: 2px solid #ffd3cc; }

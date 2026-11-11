@@ -59,7 +59,7 @@ function mount(root) {
   el.prog = jobProgress("install", { logClass: "feed short" });
   el.progHost = h("div", { class: "install-prog", hidden: true }, el.prog.el);
   el.all = btn("INSTALL ALL MISSING", (e) => busy(e.currentTarget, installAll), "primary");
-  el.recheck = btn("RE-CHECK", (e) => busy(e.currentTarget, recheck), "ghost");
+  el.recheck = btn("RE-CHECK", (e) => busy(e.currentTarget, installAll), "ghost");
   root.append(
     viewHead(code("system"), "SYSTEM", "What this ViWo install can do. Missing tools install themselves into third_party/ (pinned versions, checksums verified); nothing is installed anywhere else.",
       btn("REFRESH", (e) => busy(e.currentTarget, load), "ghost")),
@@ -118,18 +118,17 @@ async function runJob(kind, work, label) {
 
 const installOne = (d) => runJob("install", () => api.installTool(d.id), () => `${d.label} installed`);
 const installAll = () => runJob("preflight", api.preflight, (r) => `${r.ready}/${r.total} tools ready, ${r.installed.length} installed${r.failed.length ? `, ${r.failed.length} failed` : ""}`);
-const recheck = installAll;
 
 function renderStats(d, deps) {
   const slots = Object.values(d.slots || {});
   const bound = slots.filter((s) => s.main).length;
-  const list = deps?.dependencies || [];
+  const list = deps?.dependencies || [], gone = list.filter((x) => !x.available);
   el.stats.replaceChildren(
     stat("OS", String(d.os).toUpperCase(), `contract ${d.contract || "?"}`, "ok"),
-    stat("TOOLS FOUND", deps ? `${list.filter((x) => x.available).length}/${list.length}` : "?", "all optional"),
-    stat("FORMATS READY", `${bound}/${slots.length}`, "the rest need a tool", bound < slots.length ? "warn" : "ok"),
+    stat("TOOLS FOUND", deps ? `${list.length - gone.length}/${list.length}` : "?", gone.length ? `${gone.filter((x) => x.onDemand).length} on demand, ${gone.filter((x) => !x.installable).length} not installable here` : "every tool found"),
+    stat("FORMATS READY", `${bound}/${slots.length}`, bound < slots.length ? "the rest need a tool" : "every format has its tool", bound < slots.length ? "warn" : "ok"),
     stat("PLUGINS", fmtNum(d.plugins.length), "engines ViWo knows"),
-    stat("STARTUP NOTES", fmtNum(d.problems.length), "mostly tools not installed", d.problems.length ? "warn" : "ok"));
+    stat("STARTUP NOTES", fmtNum(d.problems.length), d.problems.length ? "listed under STARTUP" : "nothing to report", d.problems.length ? "warn" : "ok"));
 }
 
 function toolRow(d) {

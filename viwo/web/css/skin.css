@@ -40,7 +40,7 @@ main:focus { outline: none; }
 .lbl { font: 600 11px var(--f-head); letter-spacing: 0.17em; text-transform: uppercase; color: var(--dim); }
 .btn.sm { font-size: 11px; }
 .btn.lg { font-size: 15px; letter-spacing: 0.22em; }
-.btn:disabled { opacity: 0.38; }
+.btn:disabled { opacity: 0.55; }
 input[type="checkbox"] { accent-color: var(--red); }
 .seg button, .pick { border: 0; background: none; color: var(--text-2); font: 700 12px var(--f-head); letter-spacing: 0.15em; text-transform: uppercase; }
 .seg button { border-right: 1px solid var(--line-soft); }

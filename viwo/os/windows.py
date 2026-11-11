@@ -232,10 +232,8 @@ class WindowsOS(HostOS):
         normal ViWo says so once and scanning stays on. Folders already excluded by the user
         are left out (and so are never removed afterwards)."""
         if not _is_admin():
-            return (
-                [],
-                "antivirus exclusions skipped: Defender takes them from an elevated ViWo only",
-            )
+            why = "Defender takes them from an elevated ViWo only; the job goes on, scanned"
+            return [], f"antivirus exclusions skipped: {why}"
         listed = self._ps("(Get-MpPreference).ExclusionPath")
         known = {line.strip().lower() for line in listed.stdout.splitlines()}
         new = [Path(p) for p in paths if str(p).lower() not in known]

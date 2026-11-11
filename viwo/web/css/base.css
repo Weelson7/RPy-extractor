@@ -102,7 +102,7 @@ input[type="checkbox"] { width: 16px; height: 16px; margin: 0; }
 .panel .stats { margin-bottom: 14px; grid-template-columns: repeat(auto-fit, minmax(104px, 1fr)); }
 .stat { --c: 9px; display: flex; flex-direction: column; gap: 2px; padding: 10px 14px 11px; min-width: 0; }
 .stat .lbl { margin: 0; }
-.stat b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stat b { overflow-wrap: anywhere; }
 /* ---------- extract ---------- */
 .det { padding: 10px 0 11px; }
 .det:first-child { padding-top: 0; }
