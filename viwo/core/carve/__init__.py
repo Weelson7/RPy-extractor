@@ -13,6 +13,7 @@ from pathlib import Path
 from viwo.contracts.slots import Carver
 from viwo.contracts.types import Outcome, OutcomeKind
 
+from ..pipeline.identify import copy_range
 from . import formats as f
 from . import formats2 as g
 from .streams import Stream, find_streams, is_text
@@ -83,15 +84,8 @@ def scan(path: Path, cancel) -> list[Hit]:
 
 
 def _copy(src, hit: Hit, target: Path) -> None:
-    src.seek(hit.offset)
     with open(target, "wb") as out:
-        remaining = hit.size
-        while remaining:
-            chunk = src.read(min(1 << 20, remaining))
-            if not chunk:
-                break
-            out.write(chunk)
-            remaining -= len(chunk)
+        copy_range(src, out, hit.offset, hit.size)
 
 
 def _write_stream(stream: Stream, stem: str, dest: Path, cancel) -> int:

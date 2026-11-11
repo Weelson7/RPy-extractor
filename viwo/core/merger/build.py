@@ -147,10 +147,8 @@ def build_one(tg: Target, rels: list[str], s: Settings, name: str) -> dict:
     argv = _argv(list(tool.argv_prefix), files, timeline, overlay)
     tail = ["-map", f"[{video}]", "-map", f"[{audio}]", *ENCODE, "-t", f"{total:.3f}", str(target)]
     with tempfile.TemporaryDirectory(dir=rt.temp_root) as tmp:
-        if (
-            sum(len(a) + 1 for a in argv + tail) + len(graph)
-            > rt.os.process.max_command_length // 2
-        ):
+        length = sum(len(a) + 1 for a in argv + tail) + len(graph)
+        if length > rt.os.process.max_command_length // 2:
             script = Path(tmp) / "graph.txt"  # long graphs (v1 WinError 206) go to a file
             script.write_text(graph, encoding="utf-8")
             argv += ["-filter_complex_script", str(script)]

@@ -9,29 +9,9 @@ BLOCK8 = {b"DXT1", b"ATI1", b"BC4U", b"BC4S"}
 BLOCK16 = {b"DXT2", b"DXT3", b"DXT4", b"DXT5", b"ATI2", b"BC5U", b"BC5S"}
 DXGI = {n: 8 for n in (*range(70, 73), *range(79, 82))}  # BC1, BC4
 DXGI |= {n: 16 for n in (*range(73, 79), *range(82, 85), *range(94, 100))}  # BC2/3/5/6/7
-DXGI |= {
-    n: -bpp
-    for bpp, ids in (
-        (4, (*range(27, 33), *range(87, 94))),
-        (16, (2,)),
-        (8, (10,)),
-        (1, (61,)),
-        (2, (49,)),
-    )
-    for n in ids
-}
-BNK_CHUNKS = {
-    b"BKHD",
-    b"DIDX",
-    b"DATA",
-    b"HIRC",
-    b"STID",
-    b"STMG",
-    b"ENVS",
-    b"PLAT",
-    b"INIT",
-    b"FXPR",
-}
+DXGI |= {n: -4 for n in (*range(27, 33), *range(87, 94))}  # minus the bytes per pixel
+DXGI |= {2: -16, 10: -8, 61: -1, 49: -2}
+BNK_CHUNKS = {s.encode() for s in "BKHD DIDX DATA HIRC STID STMG ENVS PLAT INIT FXPR".split()}
 
 
 def bink(m, p: int, end: int):

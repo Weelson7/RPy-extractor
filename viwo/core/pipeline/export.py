@@ -1,5 +1,6 @@
 """EXPORT stage: one export per selected plugin, plus the wrapper re-detection (doc 14.2 #3)."""
 
+from collections import Counter
 from pathlib import Path
 
 from viwo.contracts import workspace as ws
@@ -11,12 +12,8 @@ from .probe import FolderProbe, detect_all
 
 def kinds(staging: Path) -> dict[str, int]:
     """Exported files per extension (doc 3.5 exportedByKind)."""
-    kinds: dict[str, int] = {}
-    for file in staging.rglob("*"):
-        if file.is_file() and file.name != ws.EXPORT_MAP:
-            kind = file.suffix.lower().lstrip(".") or "noext"
-            kinds[kind] = kinds.get(kind, 0) + 1
-    return kinds
+    files = (f for f in staging.rglob("*") if f.is_file() and f.name != ws.EXPORT_MAP)
+    return dict(Counter(f.suffix.lower().lstrip(".") or "noext" for f in files))
 
 
 def export_one(run, plugin_id: str, game: Path | None = None) -> PluginRun:

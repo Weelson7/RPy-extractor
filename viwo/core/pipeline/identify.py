@@ -52,12 +52,16 @@ def carve(match: Match, scratch: Path) -> Path:
     scratch.mkdir(parents=True, exist_ok=True)
     out = scratch / f"carved_{match.path.name}_{match.offset}.bin"
     with open(match.path, "rb") as src, open(out, "wb") as dst:
-        src.seek(match.offset)
-        remaining = match.size if match.size is not None else -1
-        while remaining != 0:
-            chunk = src.read(1 << 20 if remaining < 0 else min(1 << 20, remaining))
-            if not chunk:
-                break
-            dst.write(chunk)
-            remaining = -1 if remaining < 0 else remaining - len(chunk)
+        copy_range(src, dst, match.offset, match.size if match.size is not None else -1)
     return out
+
+
+def copy_range(src, dst, offset: int, size: int) -> None:
+    """`size` bytes of src from `offset` into dst (negative: to its end), a megabyte at a time."""
+    src.seek(offset)
+    while size != 0:
+        chunk = src.read(1 << 20 if size < 0 else min(1 << 20, size))
+        if not chunk:
+            break
+        dst.write(chunk)
+        size = -1 if size < 0 else size - len(chunk)

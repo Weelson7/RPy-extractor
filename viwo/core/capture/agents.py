@@ -87,8 +87,7 @@ def run_agent(rt, req: RuntimeRequest, sink=None, cancel=None) -> dict:
     copy = (req.copy or req.workspace.parent / f"{req.workspace.name}.agent-copy").resolve()
     target = copy / _exe_in_game(req)  # refused before anything is copied
     left = prepare_copy(rt, req.game, copy, sink, "agent", reuse=True)
-    why = agent.accepts(copy, target)
-    if why:
+    if why := agent.accepts(copy, target):
         raise ViwoError("unavailable", f"{agent.backend_id}: {why}")
     ctx = core_context(rt, "agent", copy, rt.temp_root, sink, cancel)
     ctx.log(f"Installing {agent.backend_id} into {copy}", stage="agent")

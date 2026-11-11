@@ -4,6 +4,11 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.64 (2026-11-11)
+- Reclaim pass, core sub-packages: 83 counted lines fewer (4,502 to 4,419), tests unchanged:
+  one bounded copy loop for carving, the version diff's pairing in one helper, the
+  dependency report in one walk.
+
 ## 1.20.63 (2026-11-11)
 - Reclaim pass, core modules: 86 counted lines fewer (3,125 to 3,039), tests unchanged: one
   `read_json` for the files ViWo reads back, `tell` instead of repeated sink checks, the

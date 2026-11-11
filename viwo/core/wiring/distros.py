@@ -61,13 +61,8 @@ def enabled_for(profile: str) -> dict[str, bool]:
     """mixed = everything; a plugin's own profile = that plugin; custom = every other built-in."""
     own = own_profiles()
     custom = {p for p in BUILTIN_PLUGINS if p not in own.values() and p != "generic"}
-    wanted = (
-        set(BUILTIN_PLUGINS)
-        if profile == "mixed"
-        else custom
-        if profile == "custom"
-        else {own.get(profile, profile)}
-    )
+    shared = {"mixed": set(BUILTIN_PLUGINS), "custom": custom}
+    wanted = shared.get(profile, {own.get(profile, profile)})
     return {pid: pid == "generic" or pid in wanted for pid in sorted(BUILTIN_PLUGINS)}
 
 
@@ -75,19 +70,10 @@ def render(os_id: str, profile: str) -> str:
     plugins, (slots, backends, _) = _registry()
     on = enabled_for(profile)
     owners = {"core"} | {p for p, enabled in on.items() if enabled}
-    lines = [
-        MARKER,
-        f"; viwo contract {CONTRACT_VERSION} - distro {os_id}-{profile}",
-        "",
-        "[startup]",
-    ]
-    lines += [f"os = {os_id}", f"profile = {profile}", "features = extraction, sorting, merger", ""]
-    lines += [
-        "[plugins]",
-        *(f"{pid} = {'on' if v else 'off'}" for pid, v in on.items()),
-        "",
-        "[slots]",
-    ]
+    lines = [MARKER, f"; viwo contract {CONTRACT_VERSION} - distro {os_id}-{profile}", ""]
+    lines += ["[startup]", f"os = {os_id}", f"profile = {profile}"]
+    lines += ["features = extraction, sorting, merger", "", "[plugins]"]
+    lines += [f"{pid} = {'on' if v else 'off'}" for pid, v in on.items()] + ["", "[slots]"]
     for sid in sorted(s for s, d in slots.items() if d.owner in owners):
         d = slots[sid]
         spare = d.default_spare if d.default_spare in backends else ""

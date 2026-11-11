@@ -5,7 +5,7 @@ import shutil
 import tempfile
 import threading
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from viwo import __version__
@@ -158,8 +158,8 @@ def _stages(run: Run, workspace: Path) -> ExtractionResult:
     collected = _collect(run, workspace, sources, skip)
     _stop_if_cancelled(run)
     warnings = _verify(unpacked, collected) + [w for r in runs for w in r.warnings]
-    changed = change_warning(before, snapshot(run.game), "extraction")
-    if changed:  # ViWo never writes there; a running game (saves, logs) or an antivirus may
+    # ViWo never writes there; a running game (saves, logs) or an antivirus may
+    if changed := change_warning(before, snapshot(run.game), "extraction"):
         warnings.append(changed)
     runs = verified(run, runs, collected.collected)
     warnings += [w[8:] for r in runs for w in r.warnings if w.startswith("verify: ")]
@@ -205,10 +205,8 @@ def _carve(run: Run, runs, game_files, unpacked):
     if nested:
         more = unpack_all(run.rt, nested, run.work / "unpack-carved", run.ctx, run.cancel)
         unpacked.origins.update(more.origins)
-        unpacked.found, unpacked.extracted = (
-            unpacked.found + more.found,
-            unpacked.extracted + more.extracted,
-        )
+        unpacked.found += more.found
+        unpacked.extracted += more.extracted
         unpacked.by_backend.update(more.by_backend)
         unpacked.failures += more.failures
     return carved, unpacked
@@ -254,6 +252,4 @@ def _report(run: Run, workspace: Path, result: ExtractionResult, provenance: lis
     spent = sorted(((s, t) for s, t in run.took.items() if s and t >= 1), key=lambda i: -i[1])
     total = clock(sum(run.took.values()))
     run.log(f"Time: {total}: " + ", ".join(f"{s} {clock(t)}" for s, t in spent), "report")
-    return ExtractionResult(
-        **{**result.__dict__, "run_record": str(record_path), "logs": tuple(run.logs)}
-    )
+    return replace(result, run_record=str(record_path), logs=tuple(run.logs))

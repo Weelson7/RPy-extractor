@@ -41,6 +41,12 @@ def _pair_by_fingerprint(old: list[dict], new: list[dict]) -> list[tuple[dict, d
     ]
 
 
+def _unpaired(functions: list[dict], pairs: list[tuple[dict, dict]], side: int) -> list[dict]:
+    """The functions of one side (0 old, 1 new) that no pair holds yet, in their order."""
+    taken = {id(pair[side]) for pair in pairs}
+    return [f for f in functions if id(f) not in taken]
+
+
 def diff(old_dir: Path, new_dir: Path) -> dict:
     old, new = load(old_dir), load(new_dir)
     once_old = Counter(f["name"] for f in old)
@@ -53,26 +59,18 @@ def diff(old_dir: Path, new_dir: Path) -> dict:
         for f in old
         if f["name"] in named_new and once_old[f["name"]] == 1
     ]
-    taken_old = {id(a) for a, _ in pairs}
-    taken_new = {id(b) for _, b in pairs}
-    rest_old = [f for f in old if id(f) not in taken_old]
-    rest_new = [f for f in new if id(f) not in taken_new]
-    pairs += _pair_by_fingerprint(rest_old, rest_new)
-    taken_old |= {id(a) for a, _ in pairs}
-    taken_new |= {id(b) for _, b in pairs}
+    pairs += _pair_by_fingerprint(_unpaired(old, pairs, 0), _unpaired(new, pairs, 1))
     rows = [
         {"status": _status(a, b), "old": a["address"], "new": b["address"], "name": b["name"]}
         for a, b in pairs
     ]
     rows += [
         {"status": "removed", "old": f["address"], "new": "", "name": f["name"]}
-        for f in old
-        if id(f) not in taken_old
+        for f in _unpaired(old, pairs, 0)
     ]
     rows += [
         {"status": "added", "old": "", "new": f["address"], "name": f["name"]}
-        for f in new
-        if id(f) not in taken_new
+        for f in _unpaired(new, pairs, 1)
     ]
     summary = Counter(r["status"] for r in rows)
     return {"old": str(old_dir), "new": str(new_dir), "summary": dict(summary), "functions": rows}

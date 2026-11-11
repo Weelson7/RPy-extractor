@@ -131,8 +131,7 @@ def trace(rt, req: RuntimeRequest, cancel=None) -> dict:
     out = run_dir(req.workspace, "trace", pid)
     argv, env = frida(rt, "tracer")
     argv += ["-p", str(pid), "-o", str(out / "trace.log")]
-    for name in req.functions:
-        argv += ["-i", name]
+    argv += [arg for name in req.functions for arg in ("-i", name)]
     result = rt.os.process.run(argv, cwd=out, timeout=req.seconds, cancel=cancel, env=env)
     log = out / "trace.log"
     if not log.is_file():

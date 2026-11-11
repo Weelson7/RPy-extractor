@@ -45,8 +45,7 @@ class Runtime:
     def dependency_report(self) -> list[dict]:
         """v1 /api/dependencies items plus slot/backend detail (doc 4.2): `uses` names what each
         tool serves, the slots it backs, else its backends' families (analysis, runtime…)."""
-        items, uses = [], {}
-        backs = {}
+        items, uses, backs = [], {}, {}
         for sid, slot in self.slots.items():
             for bid in (slot.default_main, slot.default_spare):
                 backs.setdefault(bid, set()).add(sid)
@@ -54,8 +53,6 @@ class Runtime:
             for spec in backend.dependencies():
                 served = backs.get(backend.backend_id) or set(backend.families)
                 uses.setdefault(spec.dep_id, set()).update(served)
-        for backend in self.backends.values():
-            for spec in backend.dependencies():
                 found = self.os.tools.locate(spec)
                 items.append(
                     {
@@ -148,8 +145,7 @@ def boot(
     bindings, bind_problems = bind_all(slots, backends, config.slots, layer, config.policies)
     for slot in slots_cli.keys() & bindings.keys():
         bindings[slot] = replace(bindings[slot], source="cli")
-    for binding in bindings.values():
-        problems += list(binding.reasons)
+    problems += [reason for binding in bindings.values() for reason in binding.reasons]
     root = temp_root or config.server.temp  # one answer for the CLI and the server
     root.mkdir(parents=True, exist_ok=True)
     all_problems = config.problems + problems + clash + bind_problems

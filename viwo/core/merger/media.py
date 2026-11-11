@@ -1,6 +1,7 @@
 """Merger inputs: media entries, candidate groups, selection expansion (v1 semantics)."""
 
 import re
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -8,6 +9,7 @@ from ..media import AUDIO, IMAGE, VIDEO, media_type  # noqa: F401
 
 TIMELINE = IMAGE | VIDEO
 PATTERNS = ("number-to-name", "name-to-number")
+SHOWN = ("path", "ext", "type")  # what a candidate's file and a conflict option say of an entry
 
 
 def natural(value: str) -> list[Any]:
@@ -50,9 +52,7 @@ def list_entries(folder: Path, allowed: set[str] | None = None) -> list[dict[str
 
 
 def summarize(entries: list[dict[str, str]]) -> list[dict[str, Any]]:
-    counts: dict[str, int] = {}
-    for entry in entries:
-        counts[entry["ext"]] = counts.get(entry["ext"], 0) + 1
+    counts = Counter(entry["ext"] for entry in entries)
     return [{"ext": e, "count": c} for e, c in sorted(counts.items(), key=lambda i: natural(i[0]))]
 
 
@@ -66,8 +66,7 @@ def _conflicts(files: list[dict], pattern: str) -> list[dict]:
         {
             "index": idx,
             "options": [
-                {"path": f["path"], "ext": f["ext"], "type": f["type"]}
-                for f in sorted(b, key=lambda f: natural(f["name"]))
+                {k: f[k] for k in SHOWN} for f in sorted(b, key=lambda f: natural(f["name"]))
             ],
         }
         for idx, b in sorted(buckets.items(), key=lambda i: natural(i[0]))
@@ -87,12 +86,7 @@ def candidates(entries: list[dict], pattern: str, include_files: bool = True) ->
     for group in sorted(groups.values(), key=lambda g: natural(g["name"])):
         files = sorted(group["files"], key=lambda f: natural(f["name"]))
         payload = [
-            {
-                "path": f["path"],
-                "ext": f["ext"],
-                "type": f["type"],
-                "parsedIndex": split_name(f["stem"], pattern)[1],
-            }
+            {**{k: f[k] for k in SHOWN}, "parsedIndex": split_name(f["stem"], pattern)[1]}
             for f in files
         ]
         out.append(

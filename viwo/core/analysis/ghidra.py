@@ -140,7 +140,6 @@ class GhidraGui(Handoff):
         argv = _gui_argv(Path(tool.path), Path(java.path), gpr) if java else None
         if argv is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error="Ghidra's Utility.jar not found")
-        problem = quiet_gui(ctx.os, Path(tool.path).resolve().parent.parent)
-        if problem:
+        if problem := quiet_gui(ctx.os, Path(tool.path).resolve().parent.parent):
             ctx.log(problem, "warn", "analyze")
         return LaunchSpec(tuple(argv), gpr.parent, env)

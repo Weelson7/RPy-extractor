@@ -56,21 +56,12 @@ class RenderDocCapture(Backend):
         cmd, py = ctx.os.tools.locate(RENDERDOCCMD), ctx.os.tools.locate(RD_PYTHON)
         if cmd is None or py is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=RENDERDOCCMD.hint)
-        problem = quiet_ui(ctx.os)
-        if problem:
+        if problem := quiet_ui(ctx.os):
             ctx.log(problem, "warn", "capture")
         captures = staging / "captures"  # kept with the textures: the frame opens in qrenderdoc
         captures.mkdir(parents=True, exist_ok=True)
-        argv = [
-            *cmd.argv_prefix,
-            "capture",
-            "-w",
-            "-d",
-            spec["workdir"],
-            "-c",
-            str(captures / "viwo"),
-        ]
-        argv += [spec["exe"], *spec.get("args", [])]
+        argv = [*cmd.argv_prefix, "capture", "-w", "-d", spec["workdir"]]
+        argv += ["-c", str(captures / "viwo"), spec["exe"], *spec.get("args", [])]
         env = {**OFFLINE_ENV, **spec.get("env", {})}
         after = float(spec.get("capture_after") or 0)
         if after > 0:

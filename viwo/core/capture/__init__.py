@@ -11,7 +11,6 @@ from pathlib import Path
 from viwo.contracts import workspace as ws
 from viwo.contracts.errors import ViwoError
 from viwo.contracts.slots import SlotDefinition
-from viwo.contracts.types import CancelToken, DetectionResult, ProgressEvent
 
 from ..context import core_context
 from ..pipeline.collect import Source, collect, sha256
@@ -21,7 +20,7 @@ from ..pipeline.probe import FolderProbe
 from ..pipeline.runner import detect_all
 from ..records import record_context
 from ..scan_exclusions import excluded
-from ..steps import tell, teller
+from ..steps import tell
 from ..workspace import claim, write_atomic
 from .audio import LoopbackRecorder
 from .handoffs import CheatEngineGui, X64dbgGui

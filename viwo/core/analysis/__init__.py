@@ -159,8 +159,7 @@ def _copy_inputs(target: AnalysisTarget, scratch: Path) -> AnalysisTarget:
         name = safe if safe not in taken else f"{index}-{safe}"  # same-named chunks of two folders
         taken.add(name)
         copies.append(Path(shutil.copy2(path, folder / name)))
-    copies = tuple(copies)
-    return replace(target, paths=copies)  # every other field (hints, layout) as it was
+    return replace(target, paths=tuple(copies))  # every other field (hints, layout) as it was
 
 
 def analyze(rt, req: AnalysisRequest, sink=None, cancel: CancelToken | None = None) -> dict:

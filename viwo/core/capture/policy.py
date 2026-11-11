@@ -55,8 +55,7 @@ def warnings_for(game: Path, sensitive: list[str], rt=None) -> list[str]:
     """What the user should know before capturing this game (never a refusal)."""
     policy = load_policy()
     out = []
-    found = _markers(game, policy["anti_cheat_markers"])
-    if found:
+    if found := _markers(game, policy["anti_cheat_markers"]):
         out.append(
             f"anti-cheat present: {'; '.join(found[:3])}. ViWo does not evade it: the capture may "
             "be blocked, and running a capture tool next to it can get an account banned"
@@ -80,9 +79,8 @@ def _confirmations(rt) -> Path:
 
 
 def confirmed_games(rt) -> set[str]:
-    path = _confirmations(rt)
     try:
-        return set(json.loads(path.read_text(encoding="utf-8")))
+        return set(json.loads(_confirmations(rt).read_text(encoding="utf-8")))
     except (OSError, ValueError):
         return set()
 
