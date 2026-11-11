@@ -4,6 +4,12 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.63 (2026-11-11)
+- Reclaim pass, core modules: 86 counted lines fewer (3,125 to 3,039), tests unchanged: one
+  `read_json` for the files ViWo reads back, `tell` instead of repeated sink checks, the
+  provenance rewrite through `write_atomic`. The budget's patience test no longer depends
+  on timing.
+
 ## 1.20.62 (2026-11-11)
 - UI review, more fixes: SYSTEM says what the tools not found are (on demand, not installable
   here) and its subtitles follow the numbers; a long stat value wraps instead of being cut; a

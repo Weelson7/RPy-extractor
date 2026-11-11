@@ -156,26 +156,37 @@ class BudgetTests(unittest.TestCase):
             self.assertEqual((held[0], budget._free), (0, share))  # all handed back
 
     def test_small_asks_pass_a_large_one_until_it_has_waited_long_enough(self) -> None:
-        for patience, want in ((60.0, ["small", "smaller", "large"]), (0.0, ["large"])):
-            budget, order, threads = pool.Budget(10), [], []
+        def waiting(budget, count):  # until `count` asks stand in line (no timing guessed)
+            while len(budget._line) < count:
+                time.sleep(0.001)
 
-            def ask(name, amount, budget=budget, order=order):
-                with budget.hold(amount):
-                    order.append(name)
+        def ask(budget, order, name, amount):
+            with budget.hold(amount):
+                order.append(name)
 
-            with mock.patch.object(pool, "PATIENCE", patience), budget.hold(6):
-                for name, amount in (("large", 10), ("small", 2), ("smaller", 1)):
-                    threads.append(threading.Thread(target=ask, args=(name, amount)))
-                    threads[-1].start()
-                    time.sleep(0.05)  # asked, in this order
-                time.sleep(0.6)
-                waiting = [n for n in ("large", "small", "smaller") if n not in order]
-                # patient: the small ones fit beside what is held; overdue: nothing passes it
-                self.assertEqual(waiting, ["large"] if patience else ["large", "small", "smaller"])
+        patient, order = pool.Budget(10), []
+        large = threading.Thread(target=ask, args=(patient, order, "large", 10))
+        with mock.patch.object(pool, "PATIENCE", 3600.0), patient.hold(6):
+            large.start()
+            waiting(patient, 1)
+            with patient.hold(2), patient.hold(1):  # they fit beside what is held: no wait
+                self.assertEqual((order, len(patient._line)), ([], 1))
+        large.join(10)
+        self.assertEqual((order, patient._free), (["large"], 10))
+
+        overdue, order = pool.Budget(10), []
+        threads = [threading.Thread(target=ask, args=(overdue, order, n, a))
+                   for n, a in (("large", 10), ("small", 2))]  # fmt: skip
+        with mock.patch.object(pool, "PATIENCE", 0.0):
+            with overdue.hold(6):
+                for count, thread in enumerate(threads, 1):
+                    thread.start()
+                    waiting(overdue, count)
+                time.sleep(0.7)  # longer than a waiter's look: the small one had its chance
+                self.assertEqual(order, [])  # it fits, and nothing passes an overdue ask
             for thread in threads:
                 thread.join(10)
-            self.assertEqual(order[: len(want)], want)
-            self.assertEqual((sorted(order), budget._free), (["large", "small", "smaller"], 10))
+        self.assertEqual((order, overdue._free), (["large", "small"], 10))
 
     def test_a_failed_run_hands_its_part_back_and_the_share_follows_the_machine(self) -> None:
         budget = pool.Budget(10)

@@ -35,9 +35,7 @@ def scrub(text: str) -> str:
 
 
 def _recent_logs(folder: Path, days: int = LOG_DAYS) -> list[Path]:
-    cutoff = time.time() - days * 86400
-    if not folder.is_dir():
-        return []
+    cutoff = time.time() - days * 86400  # a missing folder globs as empty
     return sorted(p for p in folder.glob("*.log") if p.stat().st_mtime >= cutoff)
 
 

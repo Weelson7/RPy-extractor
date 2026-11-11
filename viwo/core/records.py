@@ -14,12 +14,8 @@ def record_context(rt) -> dict:
     for item in rt.dependency_report():
         if not item["available"]:
             continue
-        pinned = thirdparty.installed_version(item["id"], home)
-        tools[item["id"]] = {
-            "version": pinned or item.get("version", "") or "",
-            "location": item["location"],
-            "kind": item["kind"],
-        }
+        version = thirdparty.installed_version(item["id"], home) or item.get("version", "") or ""
+        tools[item["id"]] = {"version": version, "location": item["location"], "kind": item["kind"]}
     sources = getattr(rt.config, "sources", None)
     return {
         "viwo": __version__,

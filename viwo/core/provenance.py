@@ -3,10 +3,11 @@ its provenance entry follows, so the map never points at a missing file (round t
 """
 
 import json
-import os
 from pathlib import Path
 
 from viwo.contracts import workspace as ws
+
+from .workspace import write_atomic
 
 
 def relative(workspace: Path, path: Path) -> str | None:
@@ -50,9 +51,7 @@ def rewrite(workspace: Path, moves: dict[str, str | None]) -> int:
             line = json.dumps(entry, sort_keys=True)
         out.append(line)
     if changed:
-        tmp = file.with_suffix(".tmp")
-        tmp.write_text("\n".join(out) + "\n", encoding="utf-8")
-        os.replace(tmp, file)
+        write_atomic(file, "\n".join(out) + "\n")
     return changed
 
 

@@ -27,7 +27,7 @@ from .pipeline.ticker import Ticker
 from .records import record_context
 from .roundtrip_edits import Edit, edit_set, original_hashes
 from .steps import tell, teller
-from .workspace import workspace_lock, write_atomic
+from .workspace import read_json, workspace_lock, write_atomic
 
 UNVERIFIED = (
     "untouched members were not re-verified: this packer checks the edited members only "
@@ -58,8 +58,7 @@ def _pack_slot(rt, match) -> str:
 def plan(rt, game: Path, edits: list[Edit], originals=None) -> tuple[list[PlanItem], list[str]]:
     """originals: container -> {member: sha256} of the extraction, for the untouched check."""
     items, warnings, groups = [], [], defaultdict(dict)
-    loose = {e.member: e.file for e in edits if e.kind in ("loose", "added")}
-    if loose:
+    if loose := {e.member: e.file for e in edits if e.kind in ("loose", "added")}:
         items.append(PlanItem("", "override", loose))
     for edit in (e for e in edits if e.kind in ("member", "exported")):
         groups[(edit.container, edit.plugin)][edit.member] = edit.file
@@ -87,10 +86,7 @@ def source_game(workspace: Path) -> Path:
     """Game folder of the newest extraction run (capture records have no request)."""
     runs = []
     for record in (workspace / ws.RUNS_DIR).glob("*.json"):
-        try:
-            data = json.loads(record.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            continue
+        data = read_json(record, {})  # an unreadable record names no game
         if isinstance(data.get("request"), dict) and data["request"].get("game_path"):
             runs.append((str(data.get("finished", "")), record.name, data["request"]["game_path"]))
     if not runs:
@@ -102,9 +98,8 @@ def _reminders(rt, items: list[PlanItem]) -> list[str]:
     """Terms-of-service-sensitive plugins: a reminder, never a refusal (the user is responsible)."""
     owners = {rt.slots[i.slot].owner for i in items if i.slot in rt.slots}
     sensitive = [o for o in owners if o in rt.plugins and rt.plugins[o].manifest.tos_sensitive]
-    if sensitive:
-        return [f"{', '.join(sensitive)}: own install, offline use; respect the game's terms"]
-    return []
+    note = f"{', '.join(sensitive)}: own install, offline use; respect the game's terms"
+    return [note] if sensitive else []
 
 
 def _copy_tree(game: Path, target: Path, say) -> list[str]:
@@ -204,21 +199,17 @@ def _apply(rt, item: PlanItem, target: Path, ctx) -> dict:
     if item.slot == "override":
         return _override(item, target)
     container = ws.member_path(target, item.container)
+    head = {"container": item.container, "slot": item.slot}
     if container is None:  # a link or a crafted path would lead out of the copy
         failed = {"failed": list(item.members), "error": "container is a link or outside the copy"}
-        return {"container": item.container, "slot": item.slot, **failed}
+        return {**head, **failed}
     ctx.log(
         f"Packing {item.container} ({item.slot}, {len(item.members)} member(s))", stage="repack"
     )
     outcome, used = run_with_failover(
         rt.bindings[item.slot], rt.backends, lambda b: b.pack(container, item.members, ctx)
     )
-    result = {
-        "container": item.container,
-        "slot": item.slot,
-        "backend": used,
-        "members": len(item.members),
-    }
+    result = {**head, "backend": used, "members": len(item.members)}
     if not outcome.ok:
         return {**result, "failed": list(item.members), "error": outcome.error}
     packer = rt.backends[used]
@@ -276,8 +267,7 @@ def _build(rt, game: Path, target: Path, items: list[PlanItem], report: dict, co
     rt.temp_root.mkdir(parents=True, exist_ok=True)
     work = Path(tempfile.mkdtemp(prefix="viwo-repack-", dir=rt.temp_root))
     try:
-        left = prepare_copy(rt, game, target, sink, "repack")
-        if left:
+        if left := prepare_copy(rt, game, target, sink, "repack"):
             report["warnings"].append(not_copied(left))
         ctx = core_context(rt, "repack", target, work, sink, cancel)
         ctx.staging = work / "out"
@@ -290,8 +280,7 @@ def _build(rt, game: Path, target: Path, items: list[PlanItem], report: dict, co
     finally:
         shutil.rmtree(work, ignore_errors=True)
     report["verified"] = all(not r["failed"] for r in report["results"])
-    changed = change_warning(before, snapshot(game), "repack")
-    if changed:
+    if changed := change_warning(before, snapshot(game), "repack"):
         report["warnings"].append(changed)
     write_atomic(target / MARKER / "report.json", json.dumps(report, indent=2))
     state = "verified" if report["verified"] else "NOT verified"

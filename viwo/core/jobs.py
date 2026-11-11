@@ -27,9 +27,6 @@ class Job:
     started: float = 0.0  # when the function began running (0 while queued)
     finished: float = 0.0
 
-    def emit(self, event: ProgressEvent) -> None:
-        self.events.append(event)
-
     def summary(self) -> dict:
         """JobHandle {id, kind, state, created, started, finished} plus counts (doc 12.3)."""
         begun = self.started or self.created
@@ -85,7 +82,7 @@ class JobRunner:
     @staticmethod
     def _sink(job: Job, listener: ProgressSink | None) -> ProgressSink:
         def sink(event: ProgressEvent) -> None:
-            job.emit(event)
+            job.events.append(event)
             if listener:
                 listener(event)
 

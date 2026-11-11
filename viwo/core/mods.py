@@ -170,9 +170,7 @@ def conflicts(mods: list[Path]) -> list[str]:
         for item in manifest["files"]:
             if item["path"] in seen and seen[item["path"]][1] != item["sha256"]:
                 other = seen[item["path"]][0]
-                if other not in manifest.get("after", []) and other not in manifest.get(
-                    "requires", []
-                ):
+                if other not in [*manifest.get("after", []), *manifest.get("requires", [])]:
                     found.append(f"{item['path']}: {other} and {name}")
             seen[item["path"]] = (name, item["sha256"])
     return found
@@ -197,8 +195,7 @@ def _apply_one(mod: Path, copy: Path) -> dict:
         raise ViwoError(
             "failed", f"{report['name']} was made for another version: " + ", ".join(bad[:5])
         )
-    manifest = read_manifest(mod)
-    patched = _patched_files(mod, manifest)
+    patched = _patched_files(mod, read_manifest(mod))
     with zipfile.ZipFile(mod) as archive:
         for row in report["files"]:
             target = ws.member_path(copy, row["path"])
@@ -216,8 +213,7 @@ def apply(rt, game: Path, mods: list[Path], copy: Path, sink=None) -> dict:
     """Mods in load order into one patched copy (made from the game first when `copy` is not
     one); conflicts between them are refused before anything is written."""
     mods = order(list(mods))
-    clash = conflicts(mods)
-    if clash:
+    if clash := conflicts(mods):
         raise ViwoError(
             "refused",
             "mods conflict: " + "; ".join(clash[:5]),

@@ -88,14 +88,8 @@ class FfmpegDecode(_CliDecoder):
     backend_id, license, spec, suffix = "ffmpeg-decode", "GPL-3.0-or-later", FFMPEG, ".wav"
 
     def argv(self, path, dest):
-        return [
-            "-y",
-            "-loglevel",
-            "error",
-            "-i",
-            str(path),
-            str(dest / f"{path.name}{self.suffix}"),
-        ]
+        out = dest / f"{path.name}{self.suffix}"
+        return ["-y", "-loglevel", "error", "-i", str(path), str(out)]
 
 
 class FfmpegImage(FfmpegDecode):
@@ -117,14 +111,9 @@ class FfprobeProbe(Prober):
     def probe(self, path, ctx) -> Outcome:
         if (tool := ctx.os.tools.locate(FFPROBE)) is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=FFPROBE.hint)
-        argv = [
-            *tool.argv_prefix,
-            "-v",
-            "error",
-            "-show_entries",
-            "format=format_name,duration:stream=codec_type",
-        ]
-        result = ctx.os.process.run(argv + ["-of", "default=nw=1", str(path)], timeout=60)
+        argv = [*tool.argv_prefix, "-v", "error", "-show_entries"]
+        argv += ["format=format_name,duration:stream=codec_type", "-of", "default=nw=1", str(path)]
+        result = ctx.os.process.run(argv, timeout=60)
         if not result.ok:
             return Outcome(OutcomeKind.FAILED, error=(result.stderr or "")[-300:])
         facts = tuple(line.strip() for line in result.stdout.splitlines() if "=" in line)
@@ -295,11 +284,8 @@ def decode_all(run, workspace: Path, collected) -> None:
         if error:
             _warn(run, collected, f"{slot}: {error}")
     for slot, errors in failed.items():
-        _warn(
-            run,
-            collected,
-            f"{len(errors)} file(s) could not be decoded by {slot}: e.g. {errors[0]}",
-        )
+        text = f"{len(errors)} file(s) could not be decoded by {slot}: e.g. {errors[0]}"
+        _warn(run, collected, text)
     if sources:
         say = lambda message: run.log(message, "decode")  # noqa: E731
         say(f"Collecting the decoded files of {len(sources):,} folder(s) into the workspace")

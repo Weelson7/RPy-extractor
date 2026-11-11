@@ -43,16 +43,10 @@ def pe(data: bytes) -> dict | None:
     machine, count = struct.unpack_from("<HH", data, head + 4)
     opt_size = struct.unpack_from("<H", data, head + 20)[0]
     opt = head + 24
-    magic = struct.unpack_from("<H", data, opt)[0]
-    base = (
-        struct.unpack_from("<Q", data, opt + 24)[0]
-        if magic == 0x20B
-        else struct.unpack_from("<I", data, opt + 28)[0]
-    )
-    table, sections = opt + opt_size, []
-    for i in range(count):
-        vsize, va, raw_size, raw = struct.unpack_from("<IIII", data, table + i * 40 + 8)
-        sections.append((va, max(vsize, raw_size), raw, raw_size))
+    wide = struct.unpack_from("<H", data, opt)[0] == 0x20B  # PE32+: a 64-bit image base
+    base = struct.unpack_from("<Q" if wide else "<I", data, opt + (24 if wide else 28))[0]
+    rows = (struct.unpack_from("<IIII", data, opt + opt_size + i * 40 + 8) for i in range(count))
+    sections = [(va, max(vsize, raw_size), raw, raw_size) for vsize, va, raw_size, raw in rows]
     return {"machine": machine, "base": base, "sections": sections}
 
 

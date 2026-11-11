@@ -110,16 +110,10 @@ def locate(game: Path, patch: dict, host=None) -> dict:
     original = _bytes(patch["original"])[0] if "original" in patch else current
     status = "already" if current == new else "ready" if current == original else "mismatch"
     reason = "" if status != "mismatch" else f"found {current.hex(' ')} at {where:#x}"
-    found = {
-        "status": status,
-        "offset": where,
-        "reason": reason,
-        "old": current.hex(" "),
-        "new": new.hex(" "),
-    }
+    out.update(status=status, offset=where, reason=reason, old=current.hex(" "), new=new.hex(" "))
     if pe(data):
-        found["disasm"] = around(data, where, new)
-    return {**out, **found}
+        out["disasm"] = around(data, where, new)
+    return out
 
 
 def plan(game: Path, patch_set: dict, host=None) -> dict:

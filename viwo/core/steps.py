@@ -25,8 +25,7 @@ class Step:
         self.ticker = Ticker(self.tell if sink else None, label, total)
 
     def tell(self, message: str) -> None:
-        if self.sink is not None:
-            self.sink(ProgressEvent(message, "info", "core", self.stage))
+        tell(self.sink, message, self.stage)
 
     def tick(self, cancel=None) -> None:
         if cancel is not None and cancel.cancelled:

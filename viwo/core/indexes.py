@@ -16,7 +16,7 @@ from pathlib import Path
 from viwo.contracts.errors import ViwoError
 
 from . import downloads, thirdparty
-from .steps import teller
+from .steps import tell, teller
 from .wiring.boot import DEFAULT_INI
 
 SCHEMA = 1
@@ -152,8 +152,7 @@ def install_game(rt, root: Path, slug: str, version: str = "any", sink=None, can
             scripts[item["name"]] = _install_script(item, scripts_dir, say, cancel)
         except ViwoError as exc:
             failed[item["name"]] = exc.message
-    if say:
-        say(f"Index {slug} ({version}): {len(tools)} tool(s), {len(scripts)} script(s)")
+    tell(sink, f"Index {slug} ({version}): {len(tools)} tool(s), {len(scripts)} script(s)", "index")
     return {
         "slug": slug,
         "gameVersion": version,
@@ -211,6 +210,5 @@ def update_indexes(home: Path, major: int, sink=None, cancel=None, fetch=None) -
         root = fresh if (fresh / "games").is_dir() else next(fresh.glob("*/games"), fresh).parent
         (root / "VERSION").write_text(tag + "\n", encoding="utf-8")
         where = _swap(home, root)
-    if say:
-        say(f"Indexes {tag} installed into {where}")
+    tell(sink, f"Indexes {tag} installed into {where}", "indexes")
     return {"tag": tag, "where": str(where)}

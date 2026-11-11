@@ -181,9 +181,8 @@ def survey_game(
     rt, game: Path, deep: bool = False, cancel: CancelToken | None = None, sink=None
 ) -> GameSurvey:
     cancel = cancel or CancelToken()
-    engine, confidence, evidence = _engine(rt, game)
-    report = GameSurvey(str(game), engine, confidence, evidence)
-    claimed = _claimed(rt, report, engine)
+    report = GameSurvey(str(game), *_engine(rt, game))
+    claimed = _claimed(rt, report, report.engine)
     files = _files(game, cancel, sink)
     containers, blobs = _identify(rt, report, files, claimed, cancel, sink)
     _probe(rt, report, containers, cancel, sink)

@@ -99,9 +99,8 @@ class ZeroByte(SanitizerRule):
     rule_id, category, cost = "core.zero_byte", "health", 1
 
     def inspect(self, path: Path, ctx: RuleContext) -> list[dict]:
-        if path.stat().st_size == 0:
-            return [ctx.finding(self.rule_id, path, "empty file", "trash")]
-        return []
+        empty = path.stat().st_size == 0
+        return [ctx.finding(self.rule_id, path, "empty file", "trash")] if empty else []
 
 
 class Junk(SanitizerRule):

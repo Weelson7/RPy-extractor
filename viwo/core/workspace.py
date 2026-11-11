@@ -36,12 +36,17 @@ def write_atomic(path: Path, text: str) -> None:
     os.replace(tmp, path)
 
 
+def read_json(path: Path, default=None):
+    """A JSON file's value, or `default` when the file cannot be read or is not JSON."""
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return default
+
+
 def marker_data(folder: Path) -> dict:
     """The ownership marker's JSON (doc 4.3); older or empty markers read as {}."""
-    try:
-        data = json.loads((folder / ws.MARKER).read_text(encoding="utf-8") or "{}")
-    except (OSError, ValueError):
-        return {}
+    data = read_json(folder / ws.MARKER, {})
     return data if isinstance(data, dict) else {}
 
 
@@ -148,9 +153,8 @@ def _lock_file(folder: Path) -> tuple[Path | None, bool]:
     if folder.exists() and not folder.is_dir():
         return None, False  # precheck reports it
     created = not folder.exists()
-    folder.mkdir(parents=True, exist_ok=True)
     path = folder / LOCK_FILE
-    path.parent.mkdir(parents=True, exist_ok=True)
+    path.parent.mkdir(parents=True, exist_ok=True)  # the folder too, when it is missing
     body = json.dumps({"pid": os.getpid(), "time": time.time()})
     for attempt in (1, 2):
         try:

@@ -22,6 +22,7 @@ from viwo.contracts.workspace import inside
 from viwo.os import host_os_id
 
 from . import downloads, workers
+from .workspace import read_json
 
 MANIFEST = Path(__file__).resolve().parent.parent / "data" / "tools.json"
 PLATFORM = host_os_id()
@@ -112,10 +113,8 @@ def found_tools(home: Path) -> dict[str, str | Argv]:
     out: dict[str, str | Argv] = {}
     for dep, entry in manifest()["tools"].items():
         spec = entry.get(PLATFORM)
-        if spec and not entry.get("hidden"):
-            argv = tool_argv(dep, home, spec)
-            if argv:
-                out[dep] = argv[0] if len(argv) == 1 else argv
+        if spec and not entry.get("hidden") and (argv := tool_argv(dep, home, spec)):
+            out[dep] = argv[0] if len(argv) == 1 else argv
     return {**out, **workers.found(home)}
 
 
@@ -149,11 +148,8 @@ def _unpack(kind: str, file: Path, out: Path, spec: dict, runner, home: Path) ->
         downloads.unzip(file, out)
     elif kind == "tar":
         downloads.untar(file, out)
-    elif kind == "gz":
-        with gzip.open(file) as src:
-            downloads.write(src, out / spec["save_as"], 0o755)
-    elif kind == "raw":
-        with open(file, "rb") as src:
+    elif kind in ("gz", "raw"):
+        with (gzip.open if kind == "gz" else open)(file, "rb") as src:
             downloads.write(src, out / spec["save_as"], 0o755)
     elif kind == "msi":  # administrative install (no admin rights); msiexec parses its own
         # command line, so the quotes around paths with spaces must reach it verbatim
@@ -244,10 +240,7 @@ PINS = ".viwo-pins.json"  # dep id -> the pin installed (a bump or a broken inst
 
 
 def installed_pins(home: Path) -> dict[str, str]:
-    try:
-        return json.loads((python_dir(home) / PINS).read_text(encoding="utf-8"))
-    except (OSError, ValueError):
-        return {}
+    return read_json(python_dir(home) / PINS, {})
 
 
 def python_stale(dep_id: str, home: Path) -> bool:

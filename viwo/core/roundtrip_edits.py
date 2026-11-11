@@ -66,14 +66,9 @@ def original_hashes(workspace: Path) -> dict[str, dict[str, str]]:
 def added_files(workspace: Path) -> list[Edit]:
     """Files the user placed under _added/, keyed by their target path in the game."""
     root = workspace / ADDED_DIR
-    if not root.is_dir():
-        return []
-    edits = []
-    for file in sorted(p for p in root.rglob("*") if p.is_file()):
-        rel = ws.safe_member(file.relative_to(root).as_posix())
-        if rel is not None:
-            edits.append(Edit(file, "added", "", rel.as_posix()))
-    return edits
+    files = sorted(p for p in root.rglob("*") if p.is_file()) if root.is_dir() else []
+    rels = ((file, ws.safe_member(file.relative_to(root).as_posix())) for file in files)
+    return [Edit(file, "added", "", rel.as_posix()) for file, rel in rels if rel is not None]
 
 
 def edit_set(workspace: Path) -> tuple[list[Edit], list[str]]:
@@ -104,8 +99,7 @@ def edit_set(workspace: Path) -> tuple[list[Edit], list[str]]:
                 Edit(file, kind, entry.get("container", ""), member, entry.get("plugin", ""))
             )
     if missing:  # renamed, moved or trashed since extraction: their edits cannot be traced
-        shown = ", ".join(missing[:5]) + (
-            f" and {len(missing) - 5} more" if len(missing) > 5 else ""
-        )
+        more = f" and {len(missing) - 5} more" if len(missing) > 5 else ""
+        shown = ", ".join(missing[:5]) + more
         skipped.append(f"{len(missing)} extracted file(s) were moved, renamed or trashed: {shown}")
     return edits + added_files(workspace), skipped

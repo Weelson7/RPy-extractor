@@ -59,14 +59,12 @@ def install(rt, dep_id: str, sink=None, cancel=None) -> dict:
     if item is None or not thirdparty.installable(dep_id, item["kind"]):
         raise ViwoError("unavailable", f"{dep_id} has no automatic install on this platform")
     home = thirdparty.home_of(rt.config)
-    if say:
-        say(f"Installing {item['label']} into {home / 'third_party'}")
+    tell(sink, f"Installing {item['label']} into {home / 'third_party'}", "install")
     if item["kind"] == "python":
         done = thirdparty.install_python(dep_id, home, rt.os.process)
     else:
         done = thirdparty.install_tool(dep_id, home, rt.os.process, say, cancel)
-    if say:
-        say(f"Installed {item['label']}")
+    tell(sink, f"Installed {item['label']}", "install")
     return {"installed": dep_id, "where": done}
 
 
@@ -105,14 +103,12 @@ def preflight(rt, sink=None, cancel=None) -> dict:
     items = check(rt, sink)
     home = thirdparty.home_of(rt.config)
 
-    def stale(item: dict) -> bool:  # a Python pin present at another version: installed again
-        return (
-            item["kind"] == "python"
-            and item["available"]
-            and thirdparty.python_stale(item["id"], home)
-        )
-
-    wanted = [i for i in items if not i["available"] or stale(i)]
+    # a Python pin present at another version is installed again
+    wanted = [
+        i
+        for i in items
+        if not i["available"] or i["kind"] == "python" and thirdparty.python_stale(i["id"], home)
+    ]
     missing = [i for i in wanted if i["installable"] and not i["onDemand"]]
     todo = missing if rt.config.auto_install else []
     installed, failed = _install_missing(rt, todo, sink, cancel)

@@ -20,15 +20,8 @@ _VOLATILE = re.compile(
 _HEX = re.compile(r"[0-9a-f]{64}")
 _KEY = re.compile(r"[A-Za-z][A-Za-z0-9_]*")
 CARRIED = re.compile(r"step\d+_[a-z0-9_]+")  # the `{name}` of a value an earlier step answered
-UNEXPECTED = {
-    "capture",
-    "dump",
-    "trace",
-    "hook",
-    "profile",
-    "agent",
-    "record",
-}  # a running game's kinds
+# a running game's kinds
+UNEXPECTED = {"capture", "dump", "trace", "hook", "profile", "agent", "record"}
 MAX_FACTS = 60
 
 
@@ -47,8 +40,7 @@ def path_pairs(values: dict[str, str]) -> list[tuple[re.Pattern, str]]:
     where a path ends (`Foobar` is not `{game}bar`)."""
     found: dict[str, str] = {}
     for name in ("game", "workspace"):
-        raw = values.get(name, "")
-        if raw:
+        if raw := values.get(name, ""):
             path, real = Path(raw), Path(raw).resolve()
             for spelling in (raw, str(path), path.as_posix(), str(real), real.as_posix()):
                 if len(spelling) > 3:

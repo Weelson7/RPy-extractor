@@ -11,7 +11,7 @@ from typing import Callable
 from viwo.contracts.errors import ViwoError
 from viwo.contracts.workspace import inside, safe_member
 
-from .workspace import write_atomic
+from .workspace import read_json, write_atomic
 
 DATA = Path(__file__).resolve().parent.parent / "data"
 ID = re.compile(r"[a-z0-9-]+")
@@ -54,11 +54,7 @@ def load(rt, kind: str, parse: Parse) -> tuple[list[dict], list[str]]:
 def _raw(folder: Path):
     """(path, its JSON object) for each of the user's files that parses as an object."""
     for path in sorted(folder.glob("*.json")) if folder.is_dir() else ():
-        try:
-            raw = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, ValueError):
-            continue
-        if isinstance(raw, dict):
+        if isinstance(raw := read_json(path), dict):
             yield path, raw
 
 

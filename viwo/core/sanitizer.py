@@ -51,8 +51,7 @@ def _asset_files(workspace: Path, under: Path) -> list[Path]:
 
 
 def _recipe_rules(recipe: str, rules) -> list:
-    known = {r["id"] for r in RECIPES}
-    if recipe not in known:
+    if recipe not in {r["id"] for r in RECIPES}:
         raise ViwoError("invalid_request", f"unknown sanitizer recipe {recipe!r}")
     return [r for r in rules if r.default_enabled and not r.lossy]  # phase 1: never lossy
 
