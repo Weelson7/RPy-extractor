@@ -55,9 +55,8 @@ class Xp3Writer(Packer):
     def pack(self, container: Path, members: dict[str, Path], ctx) -> Outcome:
         target = self.output_for(container)
         try:  # edits of another archive already in ViWo's patch stay in it
-            merged = {**(_members(target) if target.exists() else {})}
-            merged.update({m: p.read_bytes() for m, p in members.items()})
-            write_xp3(merged, target)
+            kept = _members(target) if target.exists() else {}
+            write_xp3(kept | {m: p.read_bytes() for m, p in members.items()}, target)
             (target.parent / f".{target.name}.viwo").write_text("written by ViWo", encoding="utf-8")
         except (OSError, ValueError, zlib.error) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"patch archive not written: {exc}"[:300])
@@ -80,10 +79,8 @@ def _members(archive: Path) -> dict[str, bytes]:
         Xp3Builtin().extract(archive, out, SimpleNamespace(cancel=SimpleNamespace(cancelled=False)))
         files = [f for f in out.rglob("*") if f.is_file() and not f.name.startswith(".viwo-")]
         names = ws.renamed(out)  # a name Windows cannot hold: its original, from the record
-        found = {}
-        for f in files:
-            rel = f.relative_to(out).as_posix()
-            found[names.get(rel, rel)] = f.read_bytes()
+        rels = [f.relative_to(out).as_posix() for f in files]
+        found = {names.get(rel, rel): f.read_bytes() for rel, f in zip(rels, files)}
         shutil.rmtree(out, ignore_errors=True)
     return found
 

@@ -5,6 +5,7 @@ a Doom picture (posts per column, the grAb offsets kept) or a flat through the g
 it is. Lumps keep their order (markers included). The read-back decodes the new lumps again and
 compares them with the edit after the palette mapping, the only loss the format imposes."""
 
+import functools
 import io
 import os
 import struct
@@ -15,10 +16,11 @@ from viwo.contracts.slots import Packer, SlotDefinition
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 
 from . import lumps
-from .wad import UNSAFE, convert, directory, layout, palette, read
+from .wad import directory, layout, palette, placed, read
 
 SLOT = SlotDefinition("pack.wad", "pack", "doom", "wad-writer")
 PILLOW = DependencySpec("pillow", "Pillow", kind="python", import_name="PIL")
+HOW = {"flats": "flat", "sounds": "dmx"}  # the folder of a converted lump -> how it was
 
 
 def members(path: Path, pal: bytes) -> dict[str, tuple[int, str]]:
@@ -27,18 +29,9 @@ def members(path: Path, pal: bytes) -> dict[str, tuple[int, str]]:
     index = {id(lump): i for i, lump in enumerate(entries)}
     out: dict[str, tuple[int, str]] = {}
     for lump, space, map_name in layout(entries):
-        name = UNSAFE.sub("_", lump.name) or "UNNAMED"
         data = read(path, lump)
-        if map_name:
-            folder, suffix, how = "maps", ".txt" if lump.name == "TEXTMAP" else ".lmp", "raw"
-            name = f"{UNSAFE.sub('_', map_name)}_{name}"
-        else:
-            folder, suffix, shown = convert(lump, data, space, pal)
-            how = (
-                "raw"
-                if shown == data
-                else {"flats": "flat", "sounds": "dmx"}.get(folder, "picture")
-            )
+        folder, name, suffix, shown = placed(lump, data, space, map_name, pal)
+        how = "raw" if shown == data else HOW.get(folder, "picture")  # a map's lumps are raw
         member, n = f"{folder}/{name}{suffix}", 1
         while member in out:  # the unpacker's next free name
             member, n = f"{folder}/{name}__{n}{suffix}", n + 1
@@ -53,15 +46,10 @@ def _indices(png: bytes, pal: bytes) -> tuple[int, int, list[int | None], tuple[
         rgba = img.convert("RGBA")
     grab = _grab(png)
     colours = [tuple(pal[i * 3 : i * 3 + 3]) for i in range(256)]
-    cache: dict[tuple, int] = {}
 
-    def nearest(r, g, b):
-        key = (r, g, b)
-        if key not in cache:
-            cache[key] = min(
-                range(256), key=lambda i: sum((a - c) ** 2 for a, c in zip(key, colours[i]))
-            )
-        return cache[key]
+    @functools.cache
+    def nearest(*rgb: int) -> int:
+        return min(range(256), key=lambda i: sum((a - c) ** 2 for a, c in zip(rgb, colours[i])))
 
     pixels = [None if a < 128 else nearest(r, g, b) for r, g, b, a in rgba.getdata()]
     return rgba.width, rgba.height, pixels, grab

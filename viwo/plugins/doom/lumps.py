@@ -42,14 +42,10 @@ def png(width: int, height: int, rgba: bytes, offsets: tuple[int, int] | None = 
 
     stride = width * 4
     raw = b"".join(b"\x00" + rgba[y * stride : (y + 1) * stride] for y in range(height))
-    parts = [
-        b"\x89PNG\r\n\x1a\n",
-        chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0)),
-    ]
-    parts.append(chunk(b"IDAT", zlib.compress(raw, 6)))
-    if offsets is not None:
-        parts.insert(2, chunk(b"grAb", struct.pack(">ii", *offsets)))
-    return b"".join(parts) + chunk(b"IEND", b"")
+    head = chunk(b"IHDR", struct.pack(">IIBBBBB", width, height, 8, 6, 0, 0, 0))
+    grab = chunk(b"grAb", struct.pack(">ii", *offsets)) if offsets is not None else b""
+    body = chunk(b"IDAT", zlib.compress(raw, 6))
+    return b"\x89PNG\r\n\x1a\n" + head + grab + body + chunk(b"IEND", b"")
 
 
 def _rgba(indices: list[int | None], palette: bytes) -> bytes:
@@ -120,8 +116,6 @@ def dmx_sound(data: bytes) -> bytes | None:
     samples = samples[16:-16] if len(samples) > 32 else samples
     out = io.BytesIO()
     with wave.open(out, "wb") as wav:
-        wav.setnchannels(1)
-        wav.setsampwidth(1)
-        wav.setframerate(rate)
+        wav.setparams((1, 1, rate, 0, "NONE", "not compressed"))  # mono, 8-bit, the lump's rate
         wav.writeframes(samples)
     return out.getvalue()

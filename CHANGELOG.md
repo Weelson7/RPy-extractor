@@ -4,6 +4,11 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.60 (2026-11-11)
+- Reclaim pass, plugins: 186 counted lines fewer (4,814 to 4,628) with every test unchanged:
+  BSA and BA2 extraction share one loop, the asar reader and writer one tree walk, Doom's
+  lump naming one function, Unreal's key masking is the contract's; budgets lowered.
+
 ## 1.20.58 (2026-11-11)
 - `viwo --ini <relative path>`: the tools under `third_party/` are found by absolute path (a
   tool started in another folder was not found).

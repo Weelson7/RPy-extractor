@@ -53,11 +53,10 @@ class UnrpycAnalyzer(Analyzer):
         ctx.log(f"unrpyc: decompiling {len(target.paths)} .rpyc file(s)", stage="analyze")
         argv = [*tool.argv_prefix, "--clobber", "--processes", "4", str(folder)]
         result = ctx.os.process.run(argv, timeout=3600, cancel=ctx.cancel)
-        done = 0
-        for script in sorted(folder.glob("*.rpy")):
+        scripts = sorted(folder.glob("*.rpy"))
+        for script in scripts:
             shutil.move(str(script), str(ctx.staging / script.name))
-            done += 1
-        if not done:
+        if not (done := len(scripts)):
             text = (result.stderr or result.stdout).strip()
             return Outcome(OutcomeKind.FAILED, error=text[-300:] or "unrpyc wrote no .rpy")
         return Outcome(OutcomeKind.OK, done, notes=(f"{done}/{len(target.paths)} scripts",))

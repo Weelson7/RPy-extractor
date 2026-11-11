@@ -14,13 +14,7 @@ import time
 from pathlib import Path
 
 from viwo.contracts import workspace as ws
-from viwo.contracts.plugin import (
-    EnginePlugin,
-    GameProbe,
-    PluginManifest,
-    PluginOption,
-    VerifyReport,
-)
+from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest, VerifyReport
 from viwo.contracts.slots import SlotDefinition, Unarchiver
 from viwo.contracts.types import DetectionResult, Outcome, OutcomeKind
 from viwo.contracts.workspace import count_files
@@ -34,12 +28,14 @@ from .pack import WolvenKitPack
 from .rdar import Archive, Oodle
 
 MAGIC = b"RDAR"
-MANIFEST = PluginManifest(
+MANIFEST = PluginManifest("redengine", "REDengine 4", "0.1.0", engine_type="redengine", priority=12)
+SLOT = SlotDefinition(
+    "unarchive.archive",
+    "unarchive",
     "redengine",
-    "REDengine 4",
-    "0.1.0",
-    engine_type="redengine",
-    priority=12,
+    "rdar-builtin",
+    suffixes=(".archive",),
+    magic=(MAGIC,),
 )
 
 
@@ -90,8 +86,7 @@ class RdarBuiltin(Unarchiver):
             notes.append(f"{skipped} Kraken-compressed member(s) skipped: {why}")
         if unnamed and names:
             notes.append(f"{unnamed} member(s) not in the path list: kept as <hash>.<ext>")
-        files = count_files(dest)
-        return Outcome(OutcomeKind.OK, files, notes=tuple(notes) + out.save())
+        return Outcome(OutcomeKind.OK, count_files(dest), notes=tuple(notes) + out.save())
 
 
 def _names(ctx, oodle) -> tuple[Names | None, list[str]]:
@@ -121,18 +116,7 @@ class RedenginePlugin(EnginePlugin):
         return DetectionResult("redengine", 0.85 if found else 0.0, evidence, "redengine")
 
     def slot_definitions(self):
-        return (
-            SlotDefinition(
-                "unarchive.archive",
-                "unarchive",
-                "redengine",
-                "rdar-builtin",
-                suffixes=(".archive",),
-                magic=(MAGIC,),
-            ),
-            CR2W_SLOT,
-            PACK_SLOT,
-        )
+        return (SLOT, CR2W_SLOT, PACK_SLOT)
 
     def verify_report(self, ctx, inventory, export, collected) -> VerifyReport:
         """The plain verdict plus the installed mods' conflicts (names when the list loads)."""

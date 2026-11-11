@@ -73,31 +73,29 @@ class RgssadBuiltin(Unarchiver):
     parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
     def extract(self, archive: Path, dest: Path, ctx) -> Outcome:
-        try:  # memory-mapped: game archives can be large
-            with (
-                open(archive, "rb") as fh,
-                mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ) as blob,
-            ):
-                written, notes = _write_all(blob, dest, ctx)
-                return Outcome(OutcomeKind.OK, written, notes=tuple(notes))
+        try:
+            written, notes = _write_all(archive, dest, ctx)
         except (OSError, ValueError, struct.error) as exc:
             return Outcome(OutcomeKind.FAILED, error=str(exc))
+        return Outcome(OutcomeKind.OK, written, notes=tuple(notes))
 
 
-def _write_all(blob, dest: Path, ctx) -> tuple[int, list[str]]:
-    """(written, what was skipped or altered and why: names, entries past a cut archive's end)."""
+def _write_all(archive: Path, dest: Path, ctx) -> tuple[int, list[str]]:
+    """(written, what was skipped or altered and why: names, entries past a cut archive's end);
+    the archive is memory-mapped: game archives can be large."""
     names, written, cut = ws.Names(dest), 0, 0
-    for name, offset, size, key in entries(blob):
-        if ctx.cancel.cancelled:
-            break
-        if offset + size > len(blob):
-            cut += 1
-            continue
-        target = names.target(name.decode("utf-8", "replace"))
-        if target is None:
-            continue
-        target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_bytes(decrypt(blob[offset : offset + size], key))
-        written += 1
+    with open(archive, "rb") as fh, mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ) as blob:
+        for name, offset, size, key in entries(blob):
+            if ctx.cancel.cancelled:
+                break
+            if offset + size > len(blob):
+                cut += 1
+                continue
+            target = names.target(name.decode("utf-8", "replace"))
+            if target is None:
+                continue
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(decrypt(blob[offset : offset + size], key))
+            written += 1
     notes = [f"{cut} entr(ies) past the end of the archive (cut short)"] if cut else []
     return written, [*names.save(), *notes]

@@ -16,6 +16,8 @@ from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 from viwo.contracts.workspace import count_files
 
 UNRPA = DependencySpec.of("unrpa")
+# what a damaged or hostile archive raises in the safe reader: a named failure, never a crash
+BAD = (ValueError, OSError, OverflowError, zlib.error, pickle.UnpicklingError, EOFError)
 
 
 # The only callables an RPA index may reference: building bytes values.
@@ -83,14 +85,7 @@ class RpaSafe(Unarchiver):
             with open(archive, "rb") as fh:
                 index, names = read_index(fh), ws.Names(dest)
                 said = [self._write(fh, names, name, chunks) for name, chunks in index.items()]
-        except (
-            ValueError,
-            OSError,
-            OverflowError,
-            zlib.error,
-            pickle.UnpicklingError,
-            EOFError,
-        ) as exc:
+        except BAD as exc:
             return Outcome(OutcomeKind.FAILED, error=str(exc)[:300])
         notes = list(names.save())
         if short := said.count("short"):

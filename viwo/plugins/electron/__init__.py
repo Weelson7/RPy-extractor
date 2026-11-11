@@ -28,12 +28,19 @@ def asar_header(head: bytes) -> tuple[int, int] | None:
     return json_len, 8 + header_size
 
 
-def _walk(tree: dict, prefix: str = ""):
+def files(tree: dict, prefix: str = ""):
+    """(path, node) of every file node, in header order."""
     for name, node in (tree.get("files") or {}).items():
         path = f"{prefix}/{name}" if prefix else name
         if "files" in node:
-            yield from _walk(node, path)
-        elif not node.get("unpacked") and "offset" in node:
+            yield from files(node, path)
+        else:
+            yield path, node
+
+
+def _walk(tree: dict):
+    for path, node in files(tree):
+        if not node.get("unpacked") and "offset" in node:
             offset, size = int(node["offset"]), int(node.get("size", 0))
             if offset >= 0 and size >= 0:  # negative values would read to the end of the file
                 yield path, offset, size

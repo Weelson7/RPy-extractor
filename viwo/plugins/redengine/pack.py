@@ -98,9 +98,8 @@ class WolvenKitPack(Packer):
             entries = {e.name_hash: e for e in archive.entries()}
             for i, (member, source) in enumerate(members.items()):
                 entry, target = entries.get(member_hash(member)), scratch / f"{i}.member"
-                if entry is None or not archive.write(entry, scratch, oodle, target.name):
-                    bad.append(member)
-                elif not target.is_file() or target.read_bytes() != source.read_bytes():
+                read = entry is not None and archive.write(entry, scratch, oodle, target.name)
+                if not read or not target.is_file() or target.read_bytes() != source.read_bytes():
                     bad.append(member)
         shutil.rmtree(scratch, ignore_errors=True)
         return bad

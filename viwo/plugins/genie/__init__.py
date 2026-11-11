@@ -22,6 +22,9 @@ LIMIT = 1 << 31
 MANIFEST = PluginManifest(
     "genie", "Genie (Age of Empires)", "0.1.0", engine_type="genie", priority=10
 )
+SLOT = SlotDefinition(
+    "unarchive.drs", "unarchive", "genie", "drs-builtin", suffixes=(".drs",), magic=(MAGIC,)
+)
 
 
 def entries(fh):
@@ -73,18 +76,7 @@ class GeniePlugin(EnginePlugin):
         return DetectionResult("genie", 0.85 if drs else 0.0, evidence, "genie")
 
     def slot_definitions(self):
-        return (
-            SlotDefinition(
-                "unarchive.drs",
-                "unarchive",
-                "genie",
-                "drs-builtin",
-                suffixes=(".drs",),
-                magic=(MAGIC,),
-            ),
-            SLP_SLOT,
-            PACK_SLOT,
-        )
+        return (SLOT, SLP_SLOT, PACK_SLOT)
 
     def pack_slot(self, unarchive_slot: str) -> str:
         return "pack.drs" if unarchive_slot == "unarchive.drs" else ""

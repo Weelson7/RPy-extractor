@@ -34,10 +34,8 @@ def shipping(copy: Path, exe: Path) -> Path | None:
 
 def _settings(path: Path) -> None:
     lines = path.read_text(encoding="utf-8-sig").splitlines()
-    out = []
-    for line in lines:
-        key = line.split("=", 1)[0].strip()
-        out.append(f"{key} = {QUIET[key]}" if key in QUIET else line)
+    keys = [line.split("=", 1)[0].strip() for line in lines]
+    out = [f"{key} = {QUIET[key]}" if key in QUIET else line for key, line in zip(keys, lines)]
     path.write_text("\n".join(out) + "\n", encoding="utf-8")
 
 

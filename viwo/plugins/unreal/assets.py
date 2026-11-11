@@ -10,6 +10,7 @@ import shutil
 from pathlib import Path
 
 from viwo.contracts import workspace as ws
+from viwo.contracts.plugin import masked
 from viwo.contracts.slots import Exporter, SlotDefinition
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 from viwo.contracts.workspace import count_files
@@ -81,7 +82,7 @@ class UasExport(Exporter):
             failed, need = failed + f, need + n
         for manifest in ctx.staging.rglob(".uas-manifest.json"):
             manifest.unlink()
-        return Outcome(OutcomeKind.OK, count_files(ctx.staging), notes=_notes(failed, need, usmap))
+        return Outcome(OutcomeKind.OK, count_files(ctx.staging), notes=_notes(failed, need))
 
     def _folder(self, ctx, tool, folder: Path, version: str, usmap):
         """Every mode over one Paks folder: (failed packages, those needing mappings, the
@@ -103,9 +104,8 @@ class UasExport(Exporter):
                 cancel=ctx.cancel,
                 on_line=ctx.tool_output("export", mask=key),
             )
-            text = result.stdout + result.stderr
-            if key:  # the key is on that command line: whatever the tool echoes is masked
-                text = text.replace(key, "<secret>").replace(key.upper(), "<secret>")
+            # the key is on that command line: whatever the tool echoes is masked
+            text = masked(result.stdout + result.stderr, key)
             if not result.ok:
                 said = f"{mode}: {text.strip()[-200:] or f'exit {result.returncode}'}"
                 return failed, need, Outcome(OutcomeKind.FAILED, error=said)
@@ -117,7 +117,7 @@ class UasExport(Exporter):
         return failed, need, None
 
 
-def _notes(failed: int, need: int, usmap) -> tuple[str, ...]:
+def _notes(failed: int, need: int) -> tuple[str, ...]:
     if need:
         return (
             f"{need} package(s) need the game's mappings (.usmap): run the RUNTIME agent "

@@ -83,9 +83,8 @@ def _encrypted(archive: Path) -> tuple[bool, Path | None]:
     paks = [
         p for p in sorted(archive.parent.glob("*.pak")) if (i := pak_info(p)) and i.encrypted_index
     ]
-    return len(head) > UTOC_FLAGS and bool(head[UTOC_FLAGS] & ENCRYPTED), (
-        paks[0] if paks else None
-    )
+    flagged = len(head) > UTOC_FLAGS and bool(head[UTOC_FLAGS] & ENCRYPTED)
+    return flagged, paks[0] if paks else None
 
 
 def resolve_key(archive: Path, ctx) -> tuple[str, str]:

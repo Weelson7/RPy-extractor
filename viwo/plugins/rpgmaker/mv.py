@@ -34,14 +34,16 @@ def system_key(game: Path) -> bytes | None:
     return None
 
 
+def _head(image: Path) -> bytes | None:
+    """The 16 encrypted bytes after the RPGMV header; None for a file that has no such header."""
+    with open(image, "rb") as fh:
+        head = fh.read(32)
+    return head[16:] if head[:16] == HEADER and len(head) == 32 else None
+
+
 def png_key(images: list[Path]) -> bytes | None:
     """The key that turns the first encrypted image back into a PNG, if it does for all."""
-    heads = []
-    for image in images[:20]:
-        with open(image, "rb") as fh:
-            head = fh.read(32)
-        if head[:16] == HEADER and len(head) == 32:
-            heads.append(head[16:])
+    heads = [head for head in map(_head, images[:20]) if head]
     if not heads:
         return None
     key = bytes(a ^ b for a, b in zip(heads[0], PNG_HEAD))
@@ -55,11 +57,9 @@ def game_images(game: Path) -> list[Path]:
 
 def opens(key: bytes, images: list[Path]) -> bool:
     """D18: a key is used only once it turns an encrypted image back into a PNG."""
-    for image in images[:5]:
-        with open(image, "rb") as fh:
-            head = fh.read(32)
-        if head[:16] == HEADER and len(head) == 32:
-            return bytes(a ^ b for a, b in zip(head[16:], key)) == PNG_HEAD
+    for head in map(_head, images[:5]):
+        if head:
+            return bytes(a ^ b for a, b in zip(head, key)) == PNG_HEAD
     return True  # no image to check it on (audio only): the game's own key is taken
 
 
@@ -100,20 +100,17 @@ class RpgMvExporter(Exporter):
         for path in files:
             if ctx.cancel.cancelled:
                 break
-            data = path.read_bytes()
+            data, own = path.read_bytes(), path.relative_to(ctx.game_root)
             plain = decrypt(data, key)
-            if plain is None:  # no RPGMV header (a placeholder, a custom header): kept as it is
-                target = ctx.staging / path.relative_to(ctx.game_root)
-                target.parent.mkdir(parents=True, exist_ok=True)
-                target.write_bytes(data)
-                raw += 1
-                continue
-            rel = path.relative_to(ctx.game_root).with_suffix(SUFFIXES[path.suffix.lower()])
+            rel = own if plain is None else own.with_suffix(SUFFIXES[path.suffix.lower()])
             target = ctx.staging / rel
             target.parent.mkdir(parents=True, exist_ok=True)
-            target.write_bytes(plain)
-            mapping[rel.as_posix()] = [path.relative_to(ctx.game_root).as_posix(), "file"]
-            written += 1
+            target.write_bytes(data if plain is None else plain)
+            if plain is None:  # no RPGMV header (a placeholder, a custom header): kept as it is
+                raw += 1
+            else:
+                mapping[rel.as_posix()] = [own.as_posix(), "file"]
+                written += 1
         (ctx.staging / ws.EXPORT_MAP).write_text(json.dumps(mapping), encoding="utf-8")
         notes = [note] if note else []
         if raw:

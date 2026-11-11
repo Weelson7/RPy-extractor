@@ -31,9 +31,7 @@ def _sbox() -> list[int]:
 
 
 SBOX = _sbox()
-INV = [0] * 256
-for _i, _v in enumerate(SBOX):
-    INV[_v] = _i
+INV = [SBOX.index(value) for value in range(256)]
 
 
 def _expand(key: bytes) -> list[list[int]]:
@@ -56,12 +54,8 @@ def _inv_mix(s: list[int]) -> list[int]:
     for c in range(4):
         a = s[c * 4 : c * 4 + 4]
         for r in range(4):
-            out.append(
-                _mul(a[r], 14)
-                ^ _mul(a[(r + 1) % 4], 11)
-                ^ _mul(a[(r + 2) % 4], 13)
-                ^ _mul(a[(r + 3) % 4], 9)
-            )
+            # a[r - 3], a[r - 2], a[r - 1]: the next three bytes of the column, wrapping round
+            out.append(_mul(a[r], 14) ^ _mul(a[r - 3], 11) ^ _mul(a[r - 2], 13) ^ _mul(a[r - 1], 9))
     return out
 
 

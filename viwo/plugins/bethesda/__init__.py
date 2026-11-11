@@ -30,10 +30,33 @@ def _write(names: ws.Names, name: str, data: bytes) -> int:
     return 1
 
 
-def _mapped(archive: Path, read):
-    """Run read(blob) over a read-only memory map (multi-GB archives are never loaded)."""
-    with open(archive, "rb") as fh, mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ) as blob:
-        return read(blob)
+BAD = (OSError, ValueError, OverflowError, struct.error, zlib.error, IndexError)
+
+
+def _bsa(blob, ctx):
+    """(path, bytes or None without lz4) per file; a cancelled run reads no further entry."""
+    version, flags, entries = bsa_entries(blob)
+    for entry in entries:
+        if ctx.cancel.cancelled:
+            return
+        yield entry[0], bsa_data(blob, version, flags, entry)
+
+
+def _extract(archive: Path, dest: Path, ctx, what: str, members) -> Outcome:
+    """Write what members(blob) yields over a read-only memory map (multi-GB archives are
+    never loaded); an entry without data (LZ4 without the package) is counted and said."""
+    names, written, skipped = ws.Names(dest), 0, 0
+    try:
+        with open(archive, "rb") as fh, mmap.mmap(fh.fileno(), 0, access=mmap.ACCESS_READ) as blob:
+            for name, data in members(blob):
+                if ctx.cancel.cancelled:
+                    break
+                skipped += data is None
+                written += _write(names, name, data) if data is not None else 0
+    except BAD as exc:
+        return Outcome(OutcomeKind.FAILED, error=f"bad {what}: {exc}")
+    notes = (f"{skipped} LZ4 entries need the 'lz4' Python package",) if skipped else ()
+    return Outcome(OutcomeKind.OK, written, notes=notes + names.save())
 
 
 class BsaBuiltin(Unarchiver):
@@ -46,27 +69,7 @@ class BsaBuiltin(Unarchiver):
         return True, ""  # lz4 only unlocks version-105 entries; everything else works without it
 
     def extract(self, archive: Path, dest: Path, ctx) -> Outcome:
-        names = ws.Names(dest)
-
-        def read(blob) -> tuple[int, int]:
-            version, flags, entries = bsa_entries(blob)
-            written, skipped = 0, 0
-            for entry in entries:
-                if ctx.cancel.cancelled:
-                    break
-                data = bsa_data(blob, version, flags, entry)
-                if data is None:
-                    skipped += 1
-                    continue
-                written += _write(names, entry[0], data)
-            return written, skipped
-
-        try:
-            written, skipped = _mapped(archive, read)
-        except (OSError, ValueError, OverflowError, struct.error, zlib.error, IndexError) as exc:
-            return Outcome(OutcomeKind.FAILED, error=f"bad BSA: {exc}")
-        notes = (f"{skipped} LZ4 entries need the 'lz4' Python package",) if skipped else ()
-        return Outcome(OutcomeKind.OK, written, notes=notes + names.save())
+        return _extract(archive, dest, ctx, "BSA", lambda blob: _bsa(blob, ctx))
 
 
 class Ba2Builtin(Unarchiver):
@@ -74,21 +77,7 @@ class Ba2Builtin(Unarchiver):
     parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
 
     def extract(self, archive: Path, dest: Path, ctx) -> Outcome:
-        names = ws.Names(dest)
-
-        def read(blob) -> int:
-            written = 0
-            for name, data in ba2_files(blob):
-                if ctx.cancel.cancelled:
-                    break
-                written += _write(names, name, data)
-            return written
-
-        try:
-            written = _mapped(archive, read)
-        except (OSError, ValueError, OverflowError, struct.error, zlib.error, IndexError) as exc:
-            return Outcome(OutcomeKind.FAILED, error=f"bad BA2: {exc}")
-        return Outcome(OutcomeKind.OK, written, notes=names.save())
+        return _extract(archive, dest, ctx, "BA2", ba2_files)
 
 
 SLOTS = (

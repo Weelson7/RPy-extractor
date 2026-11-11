@@ -80,23 +80,16 @@ class GodotPlugin(EnginePlugin):
         evidence = []
         if any(probe.head(p, 4) == MAGIC for p in probe.with_suffix(".pck")[:20]):
             evidence.append("PCK archive (GDPC)")
-        if any(embedded_chunk(p, probe.tail(p, 64)) for p in probe.with_suffix(*EXECUTABLES)[:20]):
+        exes = probe.with_suffix(*EXECUTABLES)[:20]
+        if any(embedded_chunk(p, probe.tail(p, 64)) for p in exes):
             evidence.append("PCK embedded in the executable")
         strong = bool(evidence)
-        if probe.has_name("project.godot", ".import") or probe.find(".godot", limit=1):
+        project = probe.has_name("project.godot", ".import") or probe.find(".godot", limit=1)
+        if project:
             evidence.append("Godot project files")
-        exes = probe.with_suffix(*EXECUTABLES)[:20]
         if not evidence and any(godot_executable(probe.head(p, 4096)) for p in exes):
             evidence.append(NO_DATA)  # an engine binary with nothing to extract: say so
-        score = (
-            0.9
-            if strong
-            else 0.7
-            if "Godot project files" in evidence
-            else 0.6
-            if evidence
-            else 0.0
-        )
+        score = 0.9 if strong else 0.7 if project else 0.6 if evidence else 0.0
         return DetectionResult("godot", score, tuple(evidence), "godot")
 
     def verify_report(self, ctx, inventory, export, collected) -> VerifyReport:

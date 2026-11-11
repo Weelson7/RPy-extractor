@@ -14,27 +14,18 @@ from viwo.contracts import workspace as ws
 from viwo.contracts.slots import Packer, SlotDefinition
 from viwo.contracts.types import Outcome, OutcomeKind
 
+from . import asar_header
+from . import files as _files
+
 BLOCK = 4 << 20
 SLOT = SlotDefinition("pack.asar", "pack", "electron", "asar-writer")
 
 
 def _header(fh) -> tuple[dict, int]:
-    from . import asar_header
-
     found = asar_header(fh.read(16))
     if found is None:
         raise ValueError("not an asar archive")
     return json.loads(fh.read(found[0]).decode("utf-8")), found[1]
-
-
-def _files(tree: dict, prefix: str = ""):
-    """(path, node) of every file node, in header order."""
-    for name, node in (tree.get("files") or {}).items():
-        path = f"{prefix}/{name}" if prefix else name
-        if "files" in node:
-            yield from _files(node, path)
-        else:
-            yield path, node
 
 
 def _integrity(data: bytes) -> dict:
@@ -78,7 +69,8 @@ class AsarWriter(Packer):
     def pack(self, container: Path, members: dict[str, Path], ctx) -> Outcome:
         temp = container.with_name(container.name + ".viwo-tmp")
         try:
-            unpacked = _unpacked(container, members)
+            marked = _paths(container, "unpacked")
+            unpacked = {m: p for m, p in members.items() if m in marked}
             inside = {m: p for m, p in members.items() if m not in unpacked}
             count = write_asar(container, inside, temp)
             os.replace(temp, container)
@@ -86,7 +78,7 @@ class AsarWriter(Packer):
         except (OSError, ValueError, struct.error, UnicodeDecodeError) as exc:
             temp.unlink(missing_ok=True)
             return Outcome(OutcomeKind.FAILED, error=f"asar not rebuilt: {exc}"[:300])
-        missing = sorted(set(inside) - _names(container))
+        missing = sorted(set(inside) - _paths(container))
         notes = [f"{len(missing)} new member(s) not in the archive: not added"] * bool(missing)
         lost = len(unpacked) - written  # never silent: a name leading out of the folder
         notes += [
@@ -107,14 +99,8 @@ def _write_unpacked(container: Path, unpacked: dict[str, Path]) -> int:
     return written
 
 
-def _unpacked(container: Path, members: dict[str, Path]) -> dict[str, Path]:
+def _paths(container: Path, flag: str = "") -> set[str]:
+    """Every file path the archive's header lists; with `flag`, those whose node carries it."""
     with open(container, "rb") as fh:
         tree, _ = _header(fh)
-    marked = {path for path, node in _files(tree) if node.get("unpacked")}
-    return {m: p for m, p in members.items() if m in marked}
-
-
-def _names(container: Path) -> set[str]:
-    with open(container, "rb") as fh:
-        tree, _ = _header(fh)
-    return {path for path, _ in _files(tree)}
+    return {path for path, node in _files(tree) if not flag or node.get(flag)}

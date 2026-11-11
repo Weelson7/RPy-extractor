@@ -23,11 +23,8 @@ def write_drs(original: Path, members: dict[str, Path], target: Path) -> int:
         rows = list(entries(fh))
         blobs = []
         for name, offset, size in rows:
-            if name in members:
-                blobs.append(members[name].read_bytes())
-            else:
-                fh.seek(offset)
-                blobs.append(fh.read(size))
+            fh.seek(offset)
+            blobs.append(members[name].read_bytes() if name in members else fh.read(size))
     entries_at = HEADER + 8 + 12 * tables
     data_at = entries_at + 12 * len(rows)
     out_specs, out_rows, at, i = b"", b"", data_at, 0

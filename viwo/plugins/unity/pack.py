@@ -7,7 +7,7 @@ from pathlib import Path
 from viwo.contracts.slots import Packer
 from viwo.contracts.types import Outcome, OutcomeKind
 
-from .exporters import UNITYPY
+from .exporters import UNITYPY, script_bytes
 
 RGBA32 = 4  # UnityPy TextureFormat.RGBA32
 
@@ -34,11 +34,7 @@ def _apply(obj, source: Path) -> None:
 def _same(obj, source: Path) -> bool:
     data = obj.parse_as_object()
     if obj.type.name == "TextAsset":
-        script = data.m_Script
-        raw = (
-            script.encode("utf-8", "surrogateescape") if isinstance(script, str) else bytes(script)
-        )
-        return raw == source.read_bytes()
+        return script_bytes(data.m_Script) == source.read_bytes()
     from PIL import Image
 
     with Image.open(source) as img:

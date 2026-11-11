@@ -26,6 +26,9 @@ MANIFEST = PluginManifest(
     "taleworlds", "TaleWorlds", "0.1.0", engine_type="taleworlds", priority=10
 )
 LZ4 = DependencySpec("lz4", "lz4 (TaleWorlds TPAC)", kind="python", import_name="lz4")
+SLOT = SlotDefinition(
+    "unarchive.tpac", "unarchive", "taleworlds", "tpac-builtin", suffixes=(".tpac",), magic=(MAGIC,)
+)
 
 
 def _string(fh) -> str:
@@ -110,9 +113,8 @@ class TpacBuiltin(Unarchiver):
         notes = [f"{counts['lz4']} LZ4 segment(s) need the 'lz4' Python package"]
         notes.append(f"{counts['raw texture']} texture(s) of an unknown shape kept as raw .bin")
         notes.append(f"{counts['cut']} segment(s) past the end of the package (cut short)")
-        files = count_files(dest)
-        notes = tuple(n for n in notes if n[0] != "0") + names.save()
-        return Outcome(OutcomeKind.OK, files, notes=notes)
+        said = tuple(n for n in notes if n[0] != "0")
+        return Outcome(OutcomeKind.OK, count_files(dest), notes=said + names.save())
 
 
 def _segment(fh, segment, counts: dict) -> bytes | None:
@@ -158,16 +160,7 @@ class TaleworldsPlugin(EnginePlugin):
         return DetectionResult("taleworlds", 0.85 if found else 0.0, evidence, "taleworlds")
 
     def slot_definitions(self):
-        return (
-            SlotDefinition(
-                "unarchive.tpac",
-                "unarchive",
-                "taleworlds",
-                "tpac-builtin",
-                suffixes=(".tpac",),
-                magic=(MAGIC,),
-            ),
-        )
+        return (SLOT,)
 
     def backends(self):
         return (TpacBuiltin(),)

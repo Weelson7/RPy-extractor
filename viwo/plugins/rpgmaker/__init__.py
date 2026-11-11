@@ -24,6 +24,7 @@ SLOTS = (
     SlotDefinition("pack.rpgmaker", "pack", "rpgmaker", "rpgmv-pack"),
     RGSS_PACK_SLOT,
 )
+PACKS = {"exported": "pack.rpgmaker", "unarchive.rgssad": "pack.rgssad"}  # what packs it back
 MARKERS = ("rpg_core.js", "rmmz_core.js", "rpg_managers.js", "rmmz_managers.js", "game.rgssad")
 MARKERS += ("game.rgss2a", "game.rgss3a", "rgss102e.dll", "rgss202e.dll", "rgss301.dll")
 
@@ -50,9 +51,7 @@ class RpgMakerPlugin(EnginePlugin):
         return (RgssadBuiltin(), RpgMvExporter(), RpgMvPacker(), RgssadWriter())
 
     def pack_slot(self, unarchive_slot: str) -> str:
-        return {"exported": "pack.rpgmaker", "unarchive.rgssad": "pack.rgssad"}.get(
-            unarchive_slot, ""
-        )
+        return PACKS.get(unarchive_slot, "")
 
     def export_slot(self) -> str:
         return "export.rpgmaker"

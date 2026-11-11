@@ -126,8 +126,7 @@ class Archive:
 def extension(data: bytes) -> str:
     """The CR2W root class mapped to its extension, else a sniffed media type, else `bin`."""
     if data[:4] == b"CR2W":
-        name = root_class(data)
-        return CLASSES.get(name, "cr2w")
+        return CLASSES.get(root_class(data), "cr2w")
     for magic, ext in SNIFF:
         if data.startswith(magic):
             return ext
@@ -157,26 +156,10 @@ class Oodle:
     answers None where a Windows DLL cannot load)."""
 
     def __init__(self, lib) -> None:
-        self.lib = lib
-        fn = self.lib.OodleLZ_Decompress
-        fn.restype = ctypes.c_int64
-        fn.argtypes = [
-            ctypes.c_char_p,
-            ctypes.c_int64,
-            ctypes.c_void_p,
-            ctypes.c_int64,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_void_p,
-            ctypes.c_int64,
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_void_p,
-            ctypes.c_int64,
-            ctypes.c_int,
-        ]
-        self.fn = fn
+        self.lib, self.fn = lib, lib.OodleLZ_Decompress
+        buf, ptr, i64, i32 = ctypes.c_char_p, ctypes.c_void_p, ctypes.c_int64, ctypes.c_int
+        self.fn.restype = i64
+        self.fn.argtypes = [buf, i64, ptr, i64, i32, i32, i32, ptr, i64, ptr, ptr, ptr, i64, i32]
 
     @classmethod
     def beside(cls, archive: Path, host) -> "Oodle | None":

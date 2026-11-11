@@ -29,6 +29,9 @@ LIMIT = 1 << 31
 MANIFEST = PluginManifest(
     "warscape", "Warscape (Total War)", "0.1.0", engine_type="warscape", priority=10
 )
+SLOT = SlotDefinition(
+    "unarchive.pack", "unarchive", "warscape", "pack-builtin", suffixes=(".pack",), magic=MAGICS
+)
 
 
 def entries(fh):
@@ -81,9 +84,8 @@ class PackBuiltin(Unarchiver):
                                 break
         except (OSError, ValueError, struct.error) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"bad pack: {exc}")
-        files = count_files(dest)
         notes = (f"{cut} member(s) cut short (the pack ends early)",) if cut else ()
-        return Outcome(OutcomeKind.OK, files, notes=names.save() + notes)
+        return Outcome(OutcomeKind.OK, count_files(dest), notes=names.save() + notes)
 
 
 class WarscapePlugin(EnginePlugin):
@@ -96,19 +98,7 @@ class WarscapePlugin(EnginePlugin):
         return DetectionResult("warscape", 0.85 if packs else 0.0, evidence, "warscape")
 
     def slot_definitions(self):
-        return (
-            SlotDefinition(
-                "unarchive.pack",
-                "unarchive",
-                "warscape",
-                "pack-builtin",
-                suffixes=(".pack",),
-                magic=MAGICS,
-            ),
-            LOC_SLOT,
-            DB_SLOT,
-            PACK_SLOT,
-        )
+        return (SLOT, LOC_SLOT, DB_SLOT, PACK_SLOT)
 
     def export_slot(self) -> str:
         return "export.warscape"

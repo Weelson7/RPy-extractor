@@ -37,13 +37,9 @@ def pe_sections(head: bytes) -> list[str]:
         return []
     nsec = struct.unpack_from("<H", head, pe + 6)[0]
     start = pe + 24 + struct.unpack_from("<H", head, pe + 20)[0]
-    names = []
-    for i in range(nsec):
-        if start + 40 * (i + 1) > len(head):
-            break
-        raw = head[start + 40 * i : start + 40 * i + 8].rstrip(b"\0")
-        names.append(raw.decode("ascii", "replace"))
-    return names
+    whole = min(nsec, (len(head) - start) // 40)  # the section headers these bytes hold in full
+    raws = (head[start + 40 * i : start + 40 * i + 8] for i in range(whole))
+    return [raw.rstrip(b"\0").decode("ascii", "replace") for raw in raws]
 
 
 def godot_executable(head: bytes) -> bool:

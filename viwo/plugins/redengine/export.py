@@ -46,9 +46,7 @@ def quiet_settings(folder: Path) -> None:
         current = json.loads(path.read_text(encoding="utf-8-sig")) if path.is_file() else {}
     except ValueError:
         current = {}
-    merged = {**current}
-    for section, values in SETTINGS.items():
-        merged[section] = {**current.get(section, {}), **values}
+    merged = current | {s: {**current.get(s, {}), **values} for s, values in SETTINGS.items()}
     if merged != current:
         path.write_text(json.dumps(merged, indent=2), encoding="utf-8")
 

@@ -7,6 +7,7 @@ import tempfile
 from dataclasses import dataclass
 from pathlib import Path
 
+from viwo.contracts.plugin import masked
 from viwo.contracts.slots import Match, Packer, Unarchiver
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 from viwo.contracts.workspace import count_files, stage_members
@@ -100,15 +101,10 @@ class _UnrealCli(Unarchiver):
         finally:
             if source != archive:  # a staging folder (links or copies): never kept
                 shutil.rmtree(source, ignore_errors=True)
-        text = (result.stderr or result.stdout).strip()
-        if key:
-            text = text.replace(key, "<secret>").replace(key.upper(), "<secret>")
+        text = masked((result.stderr or result.stdout).strip(), key)
         if not result.ok:
-            kind = (
-                OutcomeKind.NEEDS_KEY
-                if "aes" in text.lower() or "encrypt" in text.lower()
-                else OutcomeKind.FAILED
-            )
+            locked = "aes" in text.lower() or "encrypt" in text.lower()
+            kind = OutcomeKind.NEEDS_KEY if locked else OutcomeKind.FAILED
             return Outcome(kind, error=text[-300:] or f"exit {result.returncode}")
         return Outcome(OutcomeKind.OK, count_files(dest))
 
@@ -162,12 +158,8 @@ class RepakPatch(Packer):
     """Round trip by override: edited assets go into <container>_P.pak, which the engine
     mounts over the original. Signed games (.sig) may refuse it; that is reported."""
 
-    backend_id, owner, license, isolation = (
-        "repak-patch",
-        "unreal",
-        "MIT OR Apache-2.0",
-        "subprocess",
-    )
+    backend_id, owner, isolation = "repak-patch", "unreal", "subprocess"
+    license = "MIT OR Apache-2.0"
 
     requires = (REPAK,)
     override = True
@@ -183,22 +175,13 @@ class RepakPatch(Packer):
         root = Path(tempfile.mkdtemp(prefix="pak-", dir=ctx.scratch))  # one per pack call
         staged = stage_members(members, root)  # unsafe names are skipped, not counted
         version = REPAK_VERSIONS.get(info.version if info else 8, "V8B")
-        argv = [
-            *tool.argv_prefix,
-            "pack",
-            "--version",
-            version,
-            str(root),
-            str(self.output_for(container)),
-        ]
+        out = self.output_for(container)
+        argv = [*tool.argv_prefix, "pack", "--version", version, str(root), str(out)]
         result = ctx.os.process.run(
             argv, timeout=3600, cancel=ctx.cancel, on_line=ctx.tool_output("pack")
         )
         if not result.ok:
             return Outcome(OutcomeKind.FAILED, error=(result.stderr or result.stdout)[-300:])
-        notes = (
-            ("signed game (.sig files): it may refuse the patch",)
-            if list(container.parent.glob("*.sig"))
-            else ()
-        )
+        signed = any(container.parent.glob("*.sig"))
+        notes = ("signed game (.sig files): it may refuse the patch",) if signed else ()
         return Outcome(OutcomeKind.OK, len(staged), notes=notes)

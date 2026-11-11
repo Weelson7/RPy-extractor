@@ -23,6 +23,7 @@ CONTAINER_NAME = re.compile(
 
 
 SIGNATURES = (b"UnityFS", b"UnityWeb", b"UnityRaw", b"UnityWebData")
+FORMATS = "--image-format png --audio-format wav --log-level warning".split()  # AssetStudioMod
 
 
 def unity_containers(root: Path) -> list[Path]:
@@ -79,6 +80,11 @@ def _name(data, fallback: str) -> str:
     return clean or fallback
 
 
+def script_bytes(script) -> bytes:
+    """A TextAsset's `m_Script` as the bytes the file holds (UnityPy gives text or bytes)."""
+    return script.encode("utf-8", "surrogateescape") if isinstance(script, str) else bytes(script)
+
+
 def _wanted(ctx, ext: str) -> bool:
     return ctx.selected_exts is None or ext in ctx.selected_exts
 
@@ -127,11 +133,7 @@ def _export_object(ctx, obj, fallback: str, record: dict) -> int:
             if _write(ctx, "audio", _name(data, Path(k).stem), Path(k).suffix.lower() or ".wav", v)
         )
     if kind == "TextAsset":
-        script = getattr(data, "m_Script", "")
-        raw = (
-            script.encode("utf-8", "surrogateescape") if isinstance(script, str) else bytes(script)
-        )
-        target = _write(ctx, "text", name, ".txt", raw)
+        target = _write(ctx, "text", name, ".txt", script_bytes(getattr(data, "m_Script", "")))
         if target and record.get("where"):
             record["map"][f"text/{target.name}"] = [record["where"], str(obj.path_id)]
         return int(target is not None)
@@ -220,11 +222,8 @@ class UnityPyExporter(Exporter):
         if _flag(ctx, "include_cache", False):
             roots += cache_roots(ctx.game_root)
         exported, notes, mapping = 0, [], {}
-        dump = (
-            objects.Dump(ctx.staging, getattr(ctx, "os", None))
-            if _flag(ctx, "objects", True)
-            else None
-        )
+        host = getattr(ctx, "os", None)
+        dump = objects.Dump(ctx.staging, host) if _flag(ctx, "objects", True) else None
         extra = {"dump": dump}
         try:
             for root in roots:
@@ -256,25 +255,9 @@ class AssetStudioModCli(Exporter):
     @staticmethod
     def argv(ctx, tool) -> list[str]:
         """Flags verified against AssetStudioModCLI 0.20 --help (-m/-t/-o, convert, logger)."""
-        types = ["tex2d", "sprite", "audio", "textAsset"] + (
-            ["mesh"] if _flag(ctx, "meshes", True) else []
-        )
-        return [
-            *tool.argv_prefix,
-            str(ctx.game_root),
-            "-m",
-            "export",
-            "-t",
-            ",".join(types),
-            "-o",
-            str(ctx.staging),
-            "--image-format",
-            "png",
-            "--audio-format",
-            "wav",
-            "--log-level",
-            "warning",
-        ]
+        types = "tex2d,sprite,audio,textAsset" + (",mesh" if _flag(ctx, "meshes", True) else "")
+        head = [*tool.argv_prefix, str(ctx.game_root), "-m", "export", "-t", types]
+        return [*head, "-o", str(ctx.staging), *FORMATS]
 
     def export(self, ctx) -> Outcome:
         if (tool := ctx.os.tools.locate(ASSETSTUDIO)) is None:

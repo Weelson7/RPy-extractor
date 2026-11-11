@@ -61,10 +61,8 @@ class RgssadWriter(Packer):
         try:
             blob = container.read_bytes()
             items = _plain(blob, members)
-            rebuilt = (
-                _v3(struct.unpack_from("<I", blob, 8)[0], items) if blob[7] == 3 else _v1(items)
-            )
-            temp.write_bytes(rebuilt)
+            (seed,) = struct.unpack_from("<I", blob, 8)  # the key seed of a v3 archive
+            temp.write_bytes(_v3(seed, items) if blob[7] == 3 else _v1(items))
             os.replace(temp, container)
         except (OSError, ValueError, struct.error) as exc:
             temp.unlink(missing_ok=True)

@@ -101,11 +101,8 @@ def convert(lump: Lump, data: bytes, space: str, pal: bytes) -> tuple[str, str, 
         return "lumps", ".lmp", data
     magic = lumps.by_magic(data)
     if magic:
-        return (
-            {".wav": "sounds", ".png": space or "graphics"}.get(magic, space or "music"),
-            magic,
-            data,
-        )
+        folders = {".wav": "sounds", ".png": space or "graphics"}
+        return folders.get(magic, space or "music"), magic, data
     if space in ("sprites", "patches", "textures", "hires", "") and pal:
         if (image := lumps.picture(data, pal)) is not None:
             return space or "graphics", ".png", image
@@ -116,6 +113,17 @@ def convert(lump: Lump, data: bytes, space: str, pal: bytes) -> tuple[str, str, 
     if not space and lumps.is_text(data):
         return "text", ".txt", data
     return space or "lumps", ".lmp", data
+
+
+def placed(lump: Lump, data: bytes, space: str, map_name: str, pal: bytes):
+    """(folder, name, suffix, bytes) a lump is written under: a map's lumps raw in `maps/`
+    with the map's name in front, every other lump as `convert` shows it."""
+    name = UNSAFE.sub("_", lump.name) or "UNNAMED"
+    if not map_name:
+        folder, suffix, out = convert(lump, data, space, pal)
+        return folder, name, suffix, out
+    suffix = ".txt" if lump.name == "TEXTMAP" else ".lmp"
+    return "maps", f"{UNSAFE.sub('_', map_name)}_{name}", suffix, data
 
 
 class WadBuiltin(Unarchiver):
@@ -136,12 +144,8 @@ class WadBuiltin(Unarchiver):
                 break
             if index % 500 == 0:
                 ctx.log(f"{archive.name}: {index}/{len(items)} lumps", stage="unpack")
-            data, name = read(archive, lump), UNSAFE.sub("_", lump.name) or "UNNAMED"
-            if map_name:
-                folder, suffix = "maps", ".txt" if lump.name == "TEXTMAP" else ".lmp"
-                name, out = f"{UNSAFE.sub('_', map_name)}_{name}", data
-            else:
-                folder, suffix, out = convert(lump, data, space, pal)
+            data = read(archive, lump)
+            folder, name, suffix, out = placed(lump, data, space, map_name, pal)
             written += _write(dest / folder / f"{name}{suffix}", out)
             if raw and suffix != ".lmp":
                 written += _write(dest / "lumps" / f"{name}.lmp", data)
