@@ -21,38 +21,53 @@ declarative (Kaitai) plugins; the indexes repository split.
 ## Done, per engine and arm (owner)
 
 What "done" means for an engine: **extract** (every file out, its formats decoded), **edit +
-repack** (a change in the workspace written back into the engine's own container or override),
-**verify** (the repacked output read back with the change in it), **game loads it** (the game
-runs with the change). Each cell says how far it is proven:
+repack** (a change in the workspace written back into the engine's container or override),
+**read back** (the repacked output read with the change in it), **game loads it** (the game
+runs with the change). A cell reads `real` (proven on a real install, on Windows), `tests`
+(covered by synthetic fixtures only) or `open` (not implemented). On Linux no real game has
+run: `tests` means the suite covers the engine there. A row closes when every cell reads
+`real` (doc 16.0c).
 
-- **real: <game>** (date or version): done end to end on a real install, on Windows, every
-  flag of its `sqc/ctf.json` pass met; **partial** says which flags were missed;
-- **tests**: implemented and covered by synthetic fixtures only (no real game run yet);
-- **open**: not implemented.
+| Engine | Extract | Edit + repack | Read back | Game loads it | Linux |
+|--------|---------|---------------|-----------|---------------|-------|
+| REDengine (Cyberpunk 2077) | real | real | real | open | tests |
+| Unity | real | real | real | open | tests |
+| Unreal | tests | real (pak) | real | open | tests |
+| Godot | tests | tests | tests | open | tests |
+| Ren'Py | real | real | real | open | tests |
+| RPG Maker | tests | tests | tests | open | tests |
+| KiriKiri | tests | real | real | open | tests |
+| Source | real | real | real | open | tests |
+| Bethesda | tests | tests | tests | open | tests |
+| Doom | real | real | real | open | tests |
+| Electron | tests | tests | tests | open | tests |
+| Age of Empires (genie) | real | real | real | open | tests |
+| Total War (warscape) | real | real | real | open | tests |
+| Bannerlord (taleworlds) | real | open (no packer) | open | open | tests |
+| QuickBMS | tests | open | open | open | tests |
+| Overwatch (DataTool) | tests | - (read only) | - | - | Windows only |
 
-On **Linux** no real game has been run yet: the column says whether the suite covers the
-engine there (`tests`: the suite passes on Linux without the optional extras since 1.20.12;
-tests that need UnityPy, lz4 or py7zr skip and say so) and whether the engine's tools have a
-Linux build pinned. A row closes only when every cell reads `real` (doc 16.0c).
+What each `real` stands on (the passes' reports are in `viwo-data/`):
 
-| Engine | Extract | Edit + repack | Verify (read back) | Game loads it | Linux |
-|--------|---------|---------------|--------------------|---------------|-------|
-| REDengine (Cyberpunk 2077) | real: Cyberpunk 2077 (games pass 2026-11-03: 11 of 11 flags; demo subset 1.20.27: 183,621 files; audio CTF 1.20.15) | real: Cyberpunk 2077 (a changed byte in a `lang_en_text.archive` resource packed as `archive/pc/mod/!viwo_lang_en_text.archive`, 1.20.56; bytes appended past the resource's own size are dropped by WolvenKit and reported as failed) | real: read back from the override, identical | open: an `archive/pc/mod` override not yet run in the game | tests; WolvenKit pinned for Linux |
-| Unity | real: Schedule I (games pass 1.20.37: 12 of 12 flags; 3,638 textures, 1,292 sounds, 4,510 meshes); Approximately Up 9 of 10 (1.20.36; the flag left needs an antivirus-held file in the run). MonoBehaviour fields from rebuilt layouts are kept, a script whose layout misfits is set aside and counted (1.20.41; Schedule I extracted again at 1.20.56 under a 2.6 GB peak) | real: Schedule I, ULTRAKILL Prelude, Baldi's Basics Classic Remastered, Burning Snow (a repainted texture in a `.assets` file, deep pass 1.20.56, 2026-11-10/11) | real: read back, verified | open | tests (UnityPy optional); Cpp2IL, BepInEx Windows only |
-| Unreal | tests (pak, IoStore, UnrealAssetScout); two UE5 test games unpack whole (deep pass 1.20.56, 2026-11-10/11) | real: two UE5 test games (a repainted texture as a `_P.pak` patch, deep pass 1.20.56, 2026-11-10/11); an edited IoStore member has no packer and the plan says so | real: read back, verified | open | tests; repak and retoc pinned for Linux, UnrealAssetScout Windows only |
-| Godot | tests (no Godot game with its data at hand) | tests (`pack.pck`) | tests | open | tests; GDRE and GodotPckTool pinned for Linux |
-| Ren'Py | real: a Ren'Py title (games pass 2026-11-04: 10 of 10 flags) | real: Doki Doki Literature Club (a repainted image in `images.rpa`, deep pass 1.20.56, 2026-11-10/11) | real: read back, verified | open | tests |
-| RPG Maker | tests (MV/MZ, RGSSAD) | tests (`pack.rpgmaker`, `pack.rgssad`); the MV test game at hand keeps its files loose: nothing to repack | tests | open | tests |
-| KiriKiri | tests | real: a KiriKiri test game (a repainted image in `data.xp3`, deep pass 1.20.56, 2026-11-10/11) | real: read back, verified | open | tests |
-| Source | real: Team Fortress 2 (games pass 2026-11-04: 9 of 9 flags) | real: Team Fortress 2 (an edited text as `tf/custom/!viwo_tf2_misc.vpk`, deep pass 1.20.56, 2026-11-10/11) | real: read back, verified | open | tests |
-| Bethesda | tests (no Bethesda game at hand) | tests (loose files in `Data/`) | tests | open | tests |
-| Doom | real: Freedoom (deep pass 1.16.1) | real: Freedoom (a repainted sprite, 1.16.4; both WADs again, deep pass 1.20.56, 2026-11-10/11) | real: Freedoom (read back) | open | tests |
-| Electron | tests | tests (`pack.asar`) | tests | open | tests |
-| Age of Empires (genie) | real: AoE II HD (games pass 1.20.34: 13 of 13 flags; 3,923 SLP sprites as PNG) | real: AoE II HD (a changed member of `interfac.drs`, deep pass 1.20.56, 2026-11-10/11) | real: read back, verified | open | tests |
-| Total War (warscape) | real: Rome II (games pass 2026-11-04: 12 of 12 flags) | real: Rome II (a repainted image as the movie pack `data/viwo_data_rome2.pack`, deep pass 1.20.56, 2026-11-10/11) | real: read back, verified | open | tests |
-| Bannerlord (taleworlds) | real: Mount & Blade II: Bannerlord (games pass 2026-11-03: 11 of 11 flags; textures 188 of 190, 1.6.0) | open (no packer) | open | open | tests |
-| QuickBMS | tests (no real archive run) | open | open | open | tests; QuickBMS pinned for Linux |
-| Overwatch (DataTool) | tests (real data is the independent operator's, doc 17.4b) | - (read only) | - | - | DataTool Windows only |
+| Engine | Extract | Edit, repack and read back (deep passes at 1.20.56, 2026-11-10/11) |
+|--------|---------|------|
+| REDengine | Cyberpunk 2077: games pass 2026-11-03, 11 of 11 flags; demo subset at 1.20.56, 183,515 files | a changed byte in a `lang_en_text.archive` resource, packed as `archive/pc/mod/!viwo_lang_en_text.archive` and read back identical. WolvenKit drops bytes appended past a resource's own size; ViWo reports that member as failed |
+| Unity | Schedule I: games pass 1.20.37, 12 of 12 flags. Approximately Up: 9 of 10 (the missing flag needs a file the antivirus holds) | a repainted texture in a `.assets` file: Schedule I, ULTRAKILL Prelude, Baldi's Basics, Burning Snow |
+| Unreal | - (two UE5 test games meet their 5 flags each, free-games run 1.20.64; assets stay raw without UnrealAssetScout's export) | a repainted texture as a `_P.pak` patch, on both. An edited IoStore member has no packer; the plan says so |
+| Ren'Py | a Ren'Py title: games pass 2026-11-04, 10 of 10 flags | a repainted image in `images.rpa` (Doki Doki Literature Club) |
+| KiriKiri | - | a repainted image in `data.xp3` (a KiriKiri test game) |
+| Source | Team Fortress 2: games pass 2026-11-04, 9 of 9 flags | an edited text as `tf/custom/!viwo_tf2_misc.vpk` |
+| Doom | Freedoom: deep pass 1.16.1 | a repainted sprite, both WADs (first at 1.16.4) |
+| Genie | AoE II HD: games pass 1.20.34, 13 of 13 flags | a changed member of `interfac.drs` |
+| Warscape | Rome II: games pass 2026-11-04, 12 of 12 flags | a repainted image as the movie pack `data/viwo_data_rome2.pack` |
+| TaleWorlds | Bannerlord: games pass 2026-11-03, 11 of 11 flags (textures 188 of 190) | - |
+
+Not at hand: a Godot game that ships its data, a Bethesda game, an RPG Maker game with a
+packed archive (the MV test game keeps its files loose), a real QuickBMS archive. Unity
+MonoBehaviour fields come out for the scripts whose rebuilt layout fits; the others are
+listed without fields and counted (1.20.41). Linux tools: WolvenKit, repak, retoc, GDRE,
+GodotPckTool and QuickBMS have a Linux pin; Cpp2IL, BepInEx, UnrealAssetScout and DataTool
+are Windows only.
 
 The dynamic arm (capture, agents, dump, trace, attach) and the analysis arm are tracked in 11.2
 and 6; `viwo attach` on a running game is still to be verified on real data (HANDOFF).

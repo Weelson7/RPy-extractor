@@ -111,8 +111,9 @@ Expected:
   MonoBehaviours are listed without fields, every other script keeps its fields`. Those
   MonoBehaviours are in the export without fields; MonoBehaviours of the other scripts still
   carry theirs (open one of each as JSON). The run ends with its assets out, not `internal`.
-- 4: no WolvenKit process passes its cap (4 GB each); as many run at once as fit in ViWo's share
-  of the machine (4 on a 32 GB machine); the decode says how many parts and how many at a time.
+- 4: no WolvenKit process passes its cap (its estimate, 1.5 GB at least); together the caps
+  never pass ViWo's share of the machine (about five run at once on a 32 GB machine); the
+  decode says how many parts, and each part its runs, their time and their wait for memory.
   A WolvenKit that reaches its cap fails by itself: that part is one counted failure in the
   slot's warning, the other parts and the run go on, the machine stays up. A cap that could not
   be set is said (`no memory cap on this tool: <why>`).
@@ -129,4 +130,4 @@ Expected:
 | SQC-SAFE-06 | | | | |
 | SQC-SAFE-07 | | | | |
 | SQC-SAFE-08 | | | | |
-| SQC-SAFE-09 | NOT RUN | added at 1.20.40 | | |
+| SQC-SAFE-09 | PASS 1, 2, 4; 3 in part | 1.20.64 for 1-2 (`15.8 GB (50 % of the machine)`, then `memory ceiling off`; the `[SERVER]` line not looked at). 3 at 1.20.56: Schedule I extracted whole, the process tree peaked at 2.6 GB, the machine stayed up; the export said 88,844 MonoBehaviours are listed without fields because their script layout is not in the build; nobody opened one of each as JSON. 4 at 1.20.56: the process tree peaked at 13.0 GB with 6.3 GB free at the lowest, about five WolvenKit at once | agent | 2026-11-11 |

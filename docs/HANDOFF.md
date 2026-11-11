@@ -1,9 +1,9 @@
 # Handoff
 
-State at **v1.20.52** (branch `makeover`, pushed; `main` is at v1.20.27 and takes `makeover`
-after a `--full` commit). History is in [CHANGELOG.md](../CHANGELOG.md); the
-design in [docs/contract/](contract/README.md); what is open in
-[CONFORMANCE.md](contract/CONFORMANCE.md) and below.
+State at **v1.20.65**, branch `makeover` (`main` is at v1.20.27 and takes `makeover` after a
+`--full` commit). What changed is in [CHANGELOG.md](../CHANGELOG.md), the design in
+[docs/contract/](contract/README.md), what is implemented in
+[CONFORMANCE.md](contract/CONFORMANCE.md). This page says how to work and what is open.
 
 ## Where things are
 
@@ -11,203 +11,111 @@ design in [docs/contract/](contract/README.md); what is open in
 |------|-------|
 | rules for agents and contributors | `CLAUDE.md`, `CONTRIBUTING.md` |
 | module map | `ARCHITECTURE.md` |
-| normative design, conformance | `docs/contract/` |
-| web UI layers, plugin add-ons, per-game indexes | `docs/ui.md`, `docs/plugins.md`, `docs/indexes.md` |
-| manual check suite, real-game list, CTF flags | `sqc/` (`00-README.md`, `games.md`, `ctf.json`) |
+| design and conformance | `docs/contract/` |
+| web UI, plugin add-ons, per-game indexes | `docs/ui.md`, `docs/plugins.md`, `docs/indexes.md` |
+| manual checks, real-game list, CTF flags | `sqc/` (`00-README.md`, `games.md`, `ctf.json`) |
 | pins | `viwo/data/tools.json`, `viwo/data/locks/` |
-| release notes body used by the release workflow | `docs/release-notes.md` |
 
 ## How to work
 
 ```powershell
 py -3.13 -m venv .venv; .venv\Scripts\Activate.ps1
 pip install -e ".[unity,sevenzip,renpy,lz4,dev]"
-ruff format viwo tests tools packaging; ruff check viwo tests tools packaging
-python tools/loc_count.py --report
-python tools/run_tests.py                      # the whole suite in parallel (a commit runs the affected tests)
-python tools/version.py commit -m "..." [--feature|--major] [--push]
+python tools/version.py commit -m "..." [--feature|--major] [--full] [--push]
 ```
 
-- **Commits** only through `tools/version.py commit`: it runs format, lint, caps and the tests
-  the change is close to (`tools/affected.py`, doc 17; `--full` before a merge or a tag),
-  bumps `va.b.c`, commits and tags; the pre-commit hook refuses a version not past the latest
-  tag. No model names in messages. CI and the release workflow run only on `vN.0.0` tags or by
-  hand; never dispatch them without the owner.
+- **Commit** only through `tools/version.py commit`: format, lint, caps, the tests the change
+  reaches (`tools/affected.py`), version bump, commit, tag. `--full` runs the whole suite:
+  use it before a merge to `main` or a tag. One change per commit, subject under 72
+  characters, no model names.
+- **After changing** plugins or slots: `viwo config generate`. A tool pin: `python
+  tools/notices.py`. A Python pin: `python tools/pin_python.py`.
 - **Real tools:** `VIWO_L5=1 python -m unittest tests.test_l5_tools tests.test_l5_data
   tests.test_thirdparty` after `viwo install --all`.
-- **After changing plugins or slots:** `viwo config generate` (the drift test fails otherwise).
-  After changing a pin: `python tools/notices.py`; after changing a Python pin:
-  `python tools/pin_python.py`.
-- **Games pass** (real games, L7): never from a tree being edited (a pass once imported a
-  half-edited module). Make a worktree at a committed version with its own venv, then run the
-  pass there:
-  ```powershell
-  git worktree add ..\viwo-pass <tag>
-  cd ..\viwo-pass; py -3.13 -m venv .venv; .venv\Scripts\pip install -e ".[unity,sevenzip,renpy,lz4]"
-  powershell -File tools\games_pass.ps1 -Source C:\Users\<you>\Games [-Only <folder>,...]
-  ```
-  `games_pass.ps1` copies each game (or its `sqc/ctf.json` subset) into `Test-games/<slug>`, runs
-  `tools/integration_games.py` on the copy (detect, survey, extract, repack and sanitize plans,
-  analysis flags, game-folder hash check), keeps `viwo-data/games-pass/<slug>/report.*` and
-  deletes the copy. Free titles: `python tools/integration_games.py` over `Test-games/`
-  (`sqc/games.md`).
-- **Presentation** (`tools/presentation/`, owner's two parts): `frames.py <game> [--features
-  extraction,sorting,merger,analysis,capture] [--keep]` serves ViWo with the repository's
-  startup.ini (the switches overridden for the run only; the run's workspace is deleted after
-  unless `--keep`) on a fresh workspace and drives headless Edge or Chrome
-  through every view (`shots.mjs`: one PNG per step, a burst while an extraction runs, with a
-  caption and a longer description each, in `steps.json`); `tech_pdf.py` builds the technical
-  PDF from `tech_template.html` (mermaid charts, pinned and installed by itself), the frames and
-  reference tables generated from the code (`reference.py`); `video.py` turns the frames into
-  the demo MP4 with burned-in captions through the pinned ffmpeg; `deck.py` builds the
-  technical deck (PowerPoint, the presentation the owner shows: the PDF stays as the long
-  reference) from `deck.js` (layout and prose), the frames, the counts of the code and the
-  CTF results, through the pinned pptxgenjs (one file, run by Node, nothing to install); check
-  a new deck by eye before it leaves (PowerPoint or LibreOffice renders it). Output in
-  `viwo-data/presentation/`. Capture the frames on the demo game (Cyberpunk 2077) after the
-  last change to the UI.
-- **Deep pass** (real games, every capability, judged on its output): from the same worktree,
-  `python tools/deep_pass.py <game folder> [--dynamic] [--exe EXE]` runs detect, a deep survey,
-  a full extraction, the accounting of every game byte and workspace file (open, raw, unknown;
-  the raw types ranked), every decoded file opened by a real reader (Pillow, WAV, JSON, glTF,
-  ffprobe), a contact sheet of sampled images, cleanup plan/apply/undo, every analysis target,
-  a real edit per container type repacked and read back, an AOB patch set, a mod packed,
-  checked and applied, and with `--dynamic` capture, the engine agent, a dump, a trace and the
-  game's sound; `--arms static,patching` runs part of it, `--workspace` reuses an extraction, and
-  `tools/games_pass.ps1 -Deep static,patching -Only <folder>` does it on the copy of an
-  installed game. Reports in `viwo-data/deep-pass/<slug>/` (`report.md`, `report.json`,
-  `contact.png`); the game folder is only read (checked). A patched copy is skipped, and said,
-  when the disk cannot hold one.
+- **CI** runs only on `vN.0.0` tags or by the owner's hand. Never dispatch it.
 
-## How a run behaves (since 1.20.28)
+### Real games
 
-- **Parallel pipeline:** the stages share one worker count, 80 % of the processors
-  (`core/pipeline/pool.py`, `VIWO_WORKERS`); results keep the items' order (doc 3.1).
-- **Memory:** ViWo's own process runs under `[startup] memory_limit` (default 50 % of the
-  machine; a job object on Windows). Child tools that keep what they convert run under a cap
-  held out of one budget of the same size (`ctx.memory`, `run_capped`), in the order asked.
-  WolvenKit's runs are sized from the files' sizes (doc 8); the numbers were measured with
-  `wkbench`-style single runs under caps, and a run that fails is run again once with twice
-  the room. A Unity MonoBehaviour whose rebuilt layout misfits is read with the ceiling at
-  what ViWo holds plus 1 GB and its script set aside.
-- **Console:** every stage says what it does, counts, and how long it took; the run closes
-  with its time per stage; a child tool's lines are relayed live. `--json` keeps stdout clean.
-- **Tests at a commit:** only those the change reaches (`tools/affected.py`), in parallel at
-  80 % of the processors (`VIWO_TEST_WORKERS`); a change to `pyproject.toml` or `--full` runs
-  all of them.
-- **Real-game runs** go under a watchdog that ends the process tree past a memory limit (the
-  machine went down twice before the ceiling existed); keep one when reproducing a memory bug.
+Never from a tree being edited. Use a worktree at a committed version with its own venv
+(`git worktree add ..\viwo-pass <tag>`), and keep a memory watchdog on the run.
 
-## Gotchas that still apply
+| Run | Command (from the worktree) | Output |
+|-----|-----------------------------|--------|
+| free test games | `python tools/integration_games.py` | `viwo-data/integration/` |
+| installed games, flags of `sqc/ctf.json` | `tools\games_pass.ps1 -Source <games folder> [-Only <folder>]` | `viwo-data/games-pass/<slug>/` |
+| every capability on one game | `python tools/deep_pass.py <game> [--arms static,patching] [--workspace WS] [--dynamic]` | `viwo-data/deep-pass/<slug>/` |
+| the same on an installed game's copy | `tools\games_pass.ps1 -Deep static,patching -Only <folder>` | `viwo-data/deep-pass/<slug>/` |
+
+The presentation tools (`tools/presentation/`: `frames.py`, `deck.py`, `tech_pdf.py`,
+`video.py`) are run only when the owner asks for a new deck, PDF or video.
+
+## How a run behaves
+
+- **Parallel:** the stages share one worker count, 80 % of the processors (`VIWO_WORKERS`);
+  results keep the items' order (doc 3.1).
+- **Memory:** ViWo's process runs under `[startup] memory_limit` (default 50 % of the machine).
+  Child tools that keep what they convert run under a cap held out of a budget of the same
+  size (`ctx.memory`). WolvenKit's runs are sized from the files' sizes (doc 8). On the
+  Cyberpunk demo subset (183,515 files) the extraction takes 1 h 14 min; the budget is the
+  limit there (about five WolvenKit at once).
+- **Console:** every stage says what it does, counts, and how long it took; a child tool's
+  lines are relayed live; `--json` keeps stdout clean.
+
+## Gotchas
 
 - Bash heredocs on the owner's machine halve backslashes: write files with the file tools.
-- Windows Defender: quarantines GodotPckTool 2.3 (allow `third_party/godotpcktool` for
-  `pack.pck`); holds loader DLLs of online-fix builds (`Custom.dll`, `winmm.dll`,
-  `OnlineFix64.dll`), which ViWo names as unreadable or not copied; Defender exclusions need an
+- Windows Defender quarantines GodotPckTool 2.3 (allow `third_party/godotpcktool`) and holds
+  loader DLLs of online-fix builds, which ViWo names as unreadable. Its exclusions need an
   elevated ViWo.
 - Ghidra 12.2 needs JDK 25 and refuses project paths with a dot folder (projects live in
-  `<workspace>.ghidra/`); `cmd /c` drops the quotes of a batch path with spaces (`call` fixes it).
-- qrenderdoc's first-run analytics modal blocks `--py`; ViWo pre-answers it. A grandchild holding
-  pipes (qrenderdoc's adb server) is why `run()` reads through pump threads.
-- angr is pinned at 9.2.223 (angr 10's solver crashes on Windows); some Python pins have no
-  wheels for every CPython (py7zr on 3.14, soundcard/numpy on 3.11, angr outside 3.12-3.13).
+  `<workspace>.ghidra/`).
+- qrenderdoc's first-run modal blocks `--py`; ViWo pre-answers it.
+- angr is pinned at 9.2.223 (angr 10's solver crashes on Windows). Some Python pins have no
+  wheel for every CPython (py7zr on 3.14, soundcard/numpy on 3.11, angr outside 3.12-3.13).
 - UnityPy holds file handles until `gc.collect()`; close every handle before moving files.
-- A reader given a layout that does not fit (UnityPy with Cpp2IL's stand-ins on Schedule I) can
-  ask for all the machine's memory in seconds: it took the owner's PC down twice (2026-11-10).
-  `[startup] memory_limit` (default 50 %) now stops it inside ViWo; when reproducing such a run,
-  keep the ceiling on. The Linux side (soft data limit) is written but not run on Linux yet.
-- Owner's machine: the rejected Cheat Engine 7.7 installer left an uninstall entry, the `.CT`
-  association and `third_party/.cheatengine-7.7-installer-leftover`; removing them needs one
-  elevated command.
+- A reader given a layout that does not fit can ask for all the memory in seconds (it took
+  the owner's PC down twice): keep the memory ceiling on when reproducing such a run.
+- A WolvenKit run cannot start under about 1.5 GB, and drops bytes appended past a
+  resource's own size when it packs.
+- Owner's machine: the rejected Cheat Engine 7.7 installer left an uninstall entry and the
+  `.CT` association; removing them needs one elevated command.
 
 ## Open work
 
-- **Waiting on the owner:** rename the repository from `RPy-extractor` to `ViWo` in GitHub's
-  settings (GitHub redirects the old URL); then point `origin`, `viwo/core/diag.py` `REPO`,
-  `tests/test_diag.py`, `indexes/README.md` and the URLs in `pyproject.toml` and the README at
-  the new name. Create the `vidya_wormhole_indexes` repository: the history of `indexes/` is
-  ready on the local branch `indexes-main` (`git subtree split -P indexes`), to push there.
-  The `v2.0.0` tag (item 9).
-- **Linux:** the suite passed there at 1.20.13; since then the memory ceiling, the child cap
-  and `memory_room` have a Linux side that was written and never run (`viwo/os/linux.py`).
-  No Linux environment is at hand (the owner had WSL removed).
-0. **UI capabilities (doc 16.4, spec in doc 19; owner flagged, in this order):** workbooks
-   shipped (1.18.0: four, for x64dbg, Ghidra and Cheat Engine; 1.20.8: RenderDoc, on the frames
-   a capture now keeps; more tools and topics by reach, e.g. WolvenKit, whose GUI ViWo does not
-   pin); runbooks shipped (1.19.0: three defaults, run one step per
-   request through the job handlers, edited as JSON; a structured step editor is open);
-   workflows shipped (1.20.0: the server records every action route, saved as a runbook with
-   expected answers; replay stops where one differs; what is done inside a child tool is a
-   note the user writes). Embedded child GUIs are dropped (owner, 2026-11-05): native tools stay
-   native, in their own windows (doc 19.4). Open here: more workbooks by reach, a structured
-   runbook step editor.
-1. **Rung D4** (shipped: CPU profiling `viwo profile`; own traffic `attach.net`, mitmproxy;
-   the user's hook script `viwo hook`, the pinned Frida, verified on a process that is not a
-   game): open is the overlay (`hook.overlay`). Special K is not pinned because it works around
-   CAPCOM's copy protection by default (the owner's call) and MangoHud's release installs into
-   `/usr` with `sudo` (doc 11.7). D4 is served by third-party tools only.
-2. **Coverage** (in progress): owner's target 98 % line / 95 % branch per file; measured 98.2 %
-   line / 95.0 % branch overall at 1.20.58 (child processes counted, browser tests off: `coverage
-   run -m unittest discover -s tests -t .`, `coverage combine`, `coverage json`); 84 of 200 files
-   are under the per-file target, most by one to three lines; the furthest are `os/linux.py`
-   (not run on Linux here), `contracts/paths.py` (links need rights Windows does not give by
-   default) and the packers' error paths. Tests are property checks over random
-   inputs, never assertions for their own sake. The CI floors (`tools/coverage_check.py`) only
-   move up.
-3. **CONFORMANCE partials:** built-in plugins keep no inventory and ship no sanitizer rules
-   (the hooks work; nothing needs them yet); `core/thirdparty.py` runs `msiexec` (recorded).
-4. **CONFORMANCE opens:** sanitizer phases 2-3, the `supplement` slot policy, `[hooks]`,
-   `memory_image` targets, round-trip converters, the engines of doc 13.7, Kaitai
-   plugins.
-5. **Indexes:** create the `vidya_wormhole_indexes` repository, split `indexes/` out
-   (`docs/indexes.md`), publish its first release; add QuickBMS scripts pinned by checksum.
-6. **Not verified on real data:** `viwo attach` since 1.17.0 (SQC-DYN-01/02: x64dbg attached to a
-   running game and a live byte patch, Cheat Engine's table under `.runtime/`);
-   DataTool on a real Overwatch install (independent operator);
-   QuickBMS on a real game archive; the Godot PCK path on a title that ships its data; the game loading a
-   `pack.archive` override (`archive/pc/mod/!viwo_*.archive`, ahead of other mods by name).
-7. **Completeness contract (doc 16.0c, owner; per engine in CONFORMANCE "Done, per engine and
-   arm"):** everything out of every game, decoded, all
-   three arms per engine; every capability valid for all games of its engine (owner: no
-   overfitting to one game). Work the open column of the 16.0c table by reach; a row closes only
-   when verified on a real install. Verifiable here: Cyberpunk 2077, two Unity IL2CPP games,
-   two Unity Mono test games, a UE5.1 test game, Rome II, Bannerlord, AoE II HD, Ren'Py, RPG
-   Maker MV; no Godot game with data, no Source, Bethesda, KiriKiri-with-TLG or RPG Maker XP/VX.
-   Findings kept for the open rows:
-   - Unity IL2CPP MonoBehaviour fields: the export feeds Cpp2IL's stand-in assemblies to
-     UnityPy's TypeTreeGenerator (1.16.5): 270 of 745 MonoBehaviours of Schedule I's
-     resources.assets come out with their fields (6 without); the rest fail inside the native
-     generator ("Object reference not set", generic and nested types).
-   - Unreal models are UEFormat (`.uemodel`, Blender importer); glTF needs another exporter.
-   - REDengine TweakDB: a reader prototype works (flats: per type `<QIII>` header (hash
-     FNV-1a64 of the type name, values, keys, offset); values then keys `<QI>`; arrays and string
-     lengths are the engine's packed int; records `<QI>` id and Murmur3 seed 0x5EEDBA5E of the
-     class name, whose names are in the game's exe as `gamedata<Name>_Record`); names from
-     WolvenKit's `tweakdbstr.kark` (Kraken); 164 MB JSON in 11 s on 2.x. Not shipped (one game).
-   - Total War schema install on first use (today: `viwo install rpfm-schema-<game>`).
-8. **End of the open work, in this order:** the full audit is done (fourth audit, 1.20.2, and
-   its last open point at 1.20.6: Genie and Warscape detect by their archive signatures); the
-   LoC-reclaim pass is done (1.20.3 and 1.20.7: web back to its own budget, `viwo` 17,187 ->
-   16,701, the tools' descriptions in `viwo/data/dependencies.json`, unused contract members
-   dropped; API handlers keep answering failure dicts, see CHANGELOG 1.20.7). Next the presentation, in two parts that replace the status PDF. The
-   whole of Cyberpunk 2077 (86 GB) cannot be extracted inside the walk (hours, and its
-   uncompressed archives come close to the free disk), so the demo runs on the subset the
-   games pass already defines (`sqc/ctf.json` `pass-cyberpunk-2077`: seven archives, 6.7 GB)
-   plus the executable and `final.redscripts`, copied to `Test-games/cyberpunk-2077-demo`
-   (owner's approval, 2026-11-05); its extraction took about 2 h 20 min and takes 1 h 14 min
-   since 1.20.56 (183,515 files; 62,653 CR2W through WolvenKit in 55 minutes, about five
-   tools at once: the memory budget of 50 % is the limit), the walk waits up to four hours
-   for it and for every view to finish loading, and `frames.py` cancels and waits for any job
-   still running, so no staging is left behind. The first capture (at 1.20.6) ran out of its
-   two hours in the WolvenKit decode, whose counter did not move (fixed at 1.20.9); the capture
-   at 1.20.9 came out whole (183,621 files, every view loaded) but for the debugger frame
-   (fixed at 1.20.10); recapture at 1.20.10 or later.
-   (The UX/UI review from frames of the running UI at the owner's window and zoom, and on a
-   real extraction, was done at 1.12.0; it is repeated for the demo.)
-   - a product demo video (MP4, on-screen captions, no voice) on Cyberpunk 2077, the most
-     technically advanced covered game: boot, setup from blank, survey, select, extract, browse
-     the assets, the analysis, runtime and patching arms where they apply;
-   - a technical PDF (built by a `tools/` script from HTML): architecture and the three arms in
-     mermaid diagrams, every view with its screenshot, the specs (contract, conformance, CLI,
-     API, plugins); clear, structured, in depth, the whole UI and every feature.
-9. **v2.0.0:** the tag needs the owner's approval: it starts the paid CI and the release workflow.
+**Waiting on the owner**
+- Rename the repository to `ViWo` in GitHub's settings; then update `origin`,
+  `viwo/core/diag.py` `REPO`, `tests/test_diag.py`, `indexes/README.md` and the URLs in
+  `pyproject.toml` and the README.
+- Create the `vidya_wormhole_indexes` repository; the history of `indexes/` is ready on the
+  local branch `indexes-main`. Then its first release, and QuickBMS scripts pinned by checksum.
+- The `v2.0.0` tag: it starts the paid CI and the release.
+
+**Needs a person at the machine**
+- The game loading a change (a patched copy or an override): proven on no engine.
+- `viwo attach` (x64dbg live patch, Cheat Engine) and `viwo hook` on a running game
+  (SQC-DYN-01, -02, -07).
+- The SQC checks that need eyes and a browser (`sqc/`, results marked NOT RUN).
+
+**Needs an environment or a game that is not here**
+- Linux: the suite passed at 1.20.13; the memory ceiling, the child cap and `memory_room`
+  have a Linux side that never ran. No Linux environment is at hand.
+- Godot (the test games carry no PCK data), Bethesda, RPG Maker with a packed archive,
+  QuickBMS on a real archive, Overwatch (the independent operator's).
+
+**Open in the code**
+- CONFORMANCE rows: sanitizer phases 2-3, the `supplement` slot policy, `[hooks]`,
+  `memory_image` targets, asset converters, Kaitai formats, the engines of doc 13.7, a
+  structured runbook editor, more workbooks.
+- `hook.overlay`: neither candidate fits the rules (doc 11.7).
+- Coverage: 98.2 % line / 95.0 % branch overall at 1.20.58; 84 of 200 files are under the
+  per-file target of 98 / 95 (`coverage run -m unittest discover -s tests -t .`, then
+  `combine` and `json`). The furthest are `os/linux.py`, `contracts/paths.py` (links need
+  rights Windows does not give) and the packers' error paths.
+- UI review findings left: the ANALYSIS action bar over VERSION DIFF, button spacing in
+  RUNTIME, PATCHES and RUNBOOKS, single-file groups in MERGER, repeated codes on the arm
+  homes, raw JSON in RUNBOOKS steps.
+- Completeness (doc 16.0c): everything out of every game, decoded, on all three arms. Notes
+  kept for it: Unity IL2CPP MonoBehaviour fields come out for the scripts whose rebuilt
+  layout fits (the rest are listed without fields); Unreal models are UEFormat (glTF needs
+  another exporter); a REDengine TweakDB reader was prototyped and not shipped (one game);
+  Total War schemas install with `viwo install rpfm-schema-<game>`.

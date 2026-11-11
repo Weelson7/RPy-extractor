@@ -4,6 +4,13 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.65 (2026-11-11)
+- Docs: HANDOFF rewritten to half its length (how to work, real-game runs as a table, open
+  work grouped by what it waits on); the per-engine matrix of CONFORMANCE in one-word cells
+  with the proof of each `real` under it; the README's UI section as a list.
+- SQC: results recorded for CLI-14 to 17, SAFE-09 and CTF-01 (51 of 51 flags on the eleven
+  free titles with today's flag sets).
+
 ## 1.20.64 (2026-11-11)
 - Reclaim pass, core sub-packages: 83 counted lines fewer (4,502 to 4,419), tests unchanged:
   one bounded copy loop for carving, the version diff's pairing in one helper, the

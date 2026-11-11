@@ -72,7 +72,7 @@ files anything can open.
 | `viwo trace --name <image> --workspace <ws> [--functions ...]` | API calls through Frida |
 | `viwo hook --name <image> --script <your.js> --workspace <ws> [--seconds S]` | your own Frida script in the running game, reloaded when you save it, its output in the console |
 | `viwo record --workspace <ws> [--seconds S]` | the game's sound from the system output, to WAV |
-| `viwo attach <game> --target <key> --workspace <ws> --confirm [--tool cheatengine-gui] [--pid N]` | continue in x64dbg on the game's own process (attached when it runs, started otherwise: live patching), or in Cheat Engine with a ViWo table; no `--target` lists the targets |
+| `viwo attach <game> --target <key> --workspace <ws> --confirm [--tool ID] [--pid N]` | continue in x64dbg on the game's own process (live patching), in Cheat Engine with a ViWo table, or in mitmproxy to read the game's own traffic; no `--target` lists the targets |
 
 The same tools open from RUNTIME, DEBUGGER AND MEMORY.
 
@@ -113,15 +113,17 @@ install. Data goes to `viwo-data/` next to `startup.ini`. A portable Windows bui
 ## Web UI
 
 Plain HTML and ES modules served by `viwo serve` on `127.0.0.1:8081`, with a per-start token.
-The top bar holds SYSTEM (tools, install, diagnostics, updates), JOBS, WORKBOOKS (step-by-step
-how-tos for x64dbg, Ghidra and Cheat Engine's own interfaces; `viwo workbook`), RUNBOOKS (named
-step sequences: ViWo's actions run as jobs, the steps you do pause the run; edit and save your
-own; `viwo runbook ID --run`; record a workflow of what you do in any view, and its replay
-stops only where an answer differs from the recording), SETTINGS, the shared game selector and
-the workspace. The rail shows one arm at a time, each opening on its end-to-end
-path: STATIC (SURVEY, EXTRACT, WORKSPACE, SORT, CLEANUP, MERGER, ANALYSIS),
-DYNAMIC (CAPTURE, RUNTIME), PATCHING (PATCHED COPY, PATCHES + MODS). Two themes
-(`wormhole`, `plain`). Details: [docs/ui.md](docs/ui.md).
+
+- **Top bar:** the game and the workspace (SWITCH opens another one or converts a folder of
+  your own files), the job chip (opens JOBS), SYSTEM (tools, install, diagnostics, updates),
+  WORKBOOKS (step-by-step how-tos for the child tools' own interfaces; `viwo workbook`),
+  RUNBOOKS (named step sequences you can run, edit and record; `viwo runbook ID --run`) and
+  SETTINGS.
+- **Rail:** one arm at a time. STATIC: SURVEY, EXTRACT, WORKSPACE, SORT, CLEANUP, MERGER,
+  ANALYSIS. DYNAMIC: CAPTURE, RUNTIME. PATCHING: PATCHED COPY, PATCHES + MODS.
+- **Activity console:** at the bottom; closed, it shows the last line.
+
+Two themes (`wormhole`, `plain`). Details: [docs/ui.md](docs/ui.md).
 
 ## Configuration
 

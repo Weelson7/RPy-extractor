@@ -82,6 +82,6 @@ rename a top-level slug: the pass reports are keyed by it. Add the title to `gam
 
 | ID | Result | Version | Notes |
 |----|--------|---------|-------|
-| SQC-CTF-01 | PASS | 1.3.7 | agent, 2026-11-03: 55/55 flags over the eleven titles (viwo-data/integration/report.md), with the flag sets of that date. Today's sets hold 51: four flags that could not fail removed (GodotOne, MAD game), two of Burning Snow rewritten: NOT RUN since |
+| SQC-CTF-01 | PASS | 1.20.64 | agent, 2026-11-11: 51/51 flags over the eleven free titles on today's flag sets (`tools/integration_games.py`), every game folder unchanged. Earlier: 55/55 on the sets of 2026-11-03 (1.3.7) |
 | SQC-CTF-02 | PASS on the recorded sets; NOT RUN on today's | 1.20.37 and earlier | 2026-11-03 to 2026-11-10, table above: AoE II HD 13/13 (1.20.34), Approximately Up 9/10 (1.20.36), Schedule I 12/12 (1.20.37), Cyberpunk 2077 11/11, Bannerlord 11/11, Team Fortress 2 9/9, Rome II 12/12, the Ren'Py title 10/10. Cyberpunk's pass predates the current 16-flag set; five rewritten flags (Schedule I, Team Fortress 2, the Ren'Py title) are not run |
 | SQC-CTF-03 | | | |

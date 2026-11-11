@@ -183,7 +183,7 @@ extracts, with no change outside `viwo\plugins\` but the generated distro files.
 | SQC-CLI-11 | | | | |
 | SQC-CLI-12 | | | | |
 | SQC-CLI-13 | | | | |
-| SQC-CLI-14 | NOT RUN | added at 1.20.40 | | |
-| SQC-CLI-15 | NOT RUN | added at 1.20.40 | | |
-| SQC-CLI-16 | NOT RUN | added at 1.20.40 | | |
-| SQC-CLI-17 | NOT RUN | added at 1.20.40 | | |
+| SQC-CLI-14 | PASS (CLI) | 1.20.56, Cyberpunk demo subset: every line with its time, `<stage> took <t>` per stage, the closing `Time:` line, WolvenKit's lines relayed, each part's runs and waits said. Not looked at: the fixture, the job's log in JOBS, the activity console | agent | 2026-11-11 |
+| SQC-CLI-15 | PASS (real games) | 1.20.56: `--json extract` of the Cyberpunk subset and of Schedule I (IL2CPP, through the deep pass) each gave one JSON document on stdout. The `zip-basic` fixture step was not run | agent | 2026-11-11 |
+| SQC-CLI-16 | PASS | 1.20.64: 1 gives `tests.test_affected` (it names the file), 2 gives 13 modules, 3 gives `all`; 4 at 1.20.44: 644 tests in 114 modules, green | agent | 2026-11-11 |
+| SQC-CLI-17 | PASS | 1.20.64: twelve files, byte-identical to `distros/`; `tests.test_sealed` green in the commit runs | agent | 2026-11-11 |

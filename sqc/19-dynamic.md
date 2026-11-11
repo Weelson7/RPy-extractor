@@ -68,4 +68,4 @@ show a first-run dialog: a dialog is a FAIL (owner's rule).
 | SQC-DYN-04 | PASS | 1.4.7 | agent, 2026-11-03: Void's Cave, 1.3 MB usmap, 12 MB dump |
 | SQC-DYN-05 | BLOCKED | 1.4.7 | both IL2CPP titles here are online-fix builds Defender holds; tests cover the agent |
 | SQC-DYN-06 | PASS | 1.4.7 | agent, 2026-11-03: peak 0.48 |
-| SQC-DYN-07 | NOT RUN | NEXT | new; an agent ran steps 1-3 on a sleeping Python process (not a game), 2026-11-10: modules listed, reload seen, the pid refused at once |
+| SQC-DYN-07 | NOT RUN on a game | added at 1.20.50; steps 1-3 passed on a sleeping Python process (2026-11-10): modules listed, the reload seen, the pid refused at once | agent | 2026-11-11 |

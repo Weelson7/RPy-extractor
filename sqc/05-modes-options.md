@@ -135,4 +135,4 @@ passes without a line (unpack, nested search, carve, collect, decode each count)
 | SQC-MODE-08 | | | | |
 | SQC-MODE-09 | | | | |
 | SQC-MODE-10 | | | | |
-| SQC-MODE-11 | NOT RUN | added at 1.20.40 | | |
+| SQC-MODE-11 | NOT RUN | added at 1.20.40. Related evidence only: the RDAR members unpacked on the pool were byte-identical to a serial run (9,937 files, 1.20.31) | agent | 2026-11-11 |
