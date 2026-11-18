@@ -96,6 +96,11 @@ Rules that apply to drop-ins exactly as to built-ins:
 - External tools are declared with `DependencySpec` and located through `ctx.os.tools.locate`,
   never by a hardcoded path; GPL/AGPL tools run as separate processes.
 - Options come from `[options.<id>]`; secrets travel with the request, never in the ini.
+- A plugin that turns its engine's models into glTF writes them through
+  `viwo.contracts.gltf` (`Glb` with `view`/`accessor`, `skin`, `links`, `texture`, `finish`,
+  and the affine helpers `matrix`, `times`, `inverse`, `columns`): the plugin reads its format
+  and converts its axes into glTF's (right-handed, Y up, +Z front); the module only writes.
+  `plugins/overwatch/owmdl.py` and `plugins/unity/meshes.py` use it.
 - Trust: a drop-in runs inside the app with your permissions. Load only what you trust.
 
 ## Testing a plugin

@@ -4,6 +4,17 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.21.0 (2026-11-18)
+- Unity: every Mesh also comes out as a lossless `.glb` beside UnityPy's `.obj`: positions,
+  normals, tangents, every UV set, vertex colours as data, each sub-mesh as a primitive (32-bit
+  indices only when needed), and for a skinned mesh its bind poses, bone weights and the bone
+  names and tree of its SkinnedMeshRenderer; the material's main texture is embedded. Unity's
+  left-handed space is mirrored on X with every triangle rewound, so a model keeps its sides
+  and its front faces. A mesh the `.glb` cannot hold keeps its `.obj` and is counted with the
+  first reason; untextured meshes and bones named by hash are counted too. No tool installed.
+- The glTF writer is shared (`viwo/contracts/gltf.py`) instead of living in the Overwatch
+  plugin; Overwatch's `.glb` files are byte for byte what they were.
+
 ## 1.20.76 (2026-11-18)
 - Patch sets: two patches that would write the same bytes of one file (offset, RVA or AOB,
   once located) are refused at plan time as `overlap`, each naming both; they used to corrupt

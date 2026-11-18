@@ -11,7 +11,7 @@ from viwo.contracts.slots import Exporter
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 from viwo.contracts.workspace import count_files
 
-from . import objects
+from . import meshes, objects
 
 UNITYPY = DependencySpec.of("unitypy")
 ASSETSTUDIO = DependencySpec.of("assetstudiomod")
@@ -139,9 +139,8 @@ def _export_object(ctx, obj, fallback: str, record: dict) -> int:
         return int(target is not None)
     if kind == "Mesh" and record.get("meshes", True):
         text = data.export()  # UnityPy Mesh.export(format="obj"): Wavefront OBJ text
-        return int(
-            bool(text) and _write(ctx, "mesh", name, ".obj", text.encode("utf-8")) is not None
-        )
+        made = bool(text) and _write(ctx, "mesh", name, ".obj", text.encode("utf-8")) is not None
+        return int(made) + meshes.write(ctx, obj, data, name, record)  # and the lossless .glb
     return 0
 
 
@@ -168,6 +167,7 @@ def _one(ctx, obj, label: str, record: dict) -> int:
 
 def _export_env(ctx, env, label: str, record: dict) -> tuple[int, list[str]]:
     exported, notes = 0, []
+    record["env"], record["drawn"] = env, None  # the renderers a .glb reads, found on first use
     shared = record["shared"]  # one per export: the layouts are looked for once, given to all
     if record["dump"] is not None and "layouts" not in shared:
         shared["generator"], shared["layouts"] = objects.layouts(env, ctx.game_root, ctx)
@@ -241,7 +241,7 @@ class UnityPyExporter(Exporter):
             ctx.log(summary, stage="export")
         if extra.get("layouts") and dump.no_layout.get("MonoBehaviour"):
             said.append(extra["layouts"])  # why those MonoBehaviours have no fields
-        notes = said + notes
+        notes = said + meshes.summary(ctx, extra) + notes
         ctx.log(f"UnityPy exported {exported} asset(s), {len(notes)} problem(s)", stage="export")
         (ctx.staging / ws.EXPORT_MAP).write_text(json.dumps(mapping), encoding="utf-8")
         return Outcome(OutcomeKind.OK, exported, notes=tuple(notes[:50]))

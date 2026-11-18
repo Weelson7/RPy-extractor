@@ -150,7 +150,17 @@ slot's identifier; doc 2.5):
 | `unarchive.tpac` | taleworlds | `tpac-builtin` | - | |
 | `unarchive.bms` | quickbms | `quickbms-cli` (GPL-2.0, subprocess) | - | suffixes from the scripts folder |
 
-**Export:** `export.unity` (`unitypy`, spare `assetstudiomod-cli`, D7), `export.godot`
+**Export:** `export.unity` (`unitypy`, spare `assetstudiomod-cli`, D7; `unitypy` writes every
+Mesh twice: UnityPy's own Wavefront `.obj`, and a lossless `.glb` through
+`contracts/gltf.py` (`plugins/unity/meshes.py`): positions, normals, tangents, every UV set,
+vertex colours as data (`_COLOR_0`), each sub-mesh a primitive with 16- or 32-bit indices, the
+bind poses and bone weights, the bone names and tree of the SkinnedMeshRenderer loaded with the
+mesh (else bones named by hash), the material's `_MainTex` embedded as PNG; X mirrored and every
+triangle rewound from Unity's left-handed space, V turned. Blend shapes, more than four bone
+weights a vertex, texture tiling and the other material slots are not in it. A mesh the `.glb`
+cannot hold is counted with the first reason and keeps its `.obj`; untextured meshes and bones
+named by hash are counted. The option `meshes = off` drops both; the spare writes `.obj` only),
+`export.godot`
 (`gdre-recover`, opt-in option `recover`), `export.rpgmaker` (`rpgmv-builtin`),
 `export.overwatch` (`datatool`, declares `network = "download"`), `export.warscape` (`db-builtin`: every `db/` member of every pack to JSON with the
 game's RPFM schema `rpfm-schema-<game>`; a table the schema lacks or misreads is counted and

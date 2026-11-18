@@ -4,17 +4,21 @@ every submesh with its normals, tangents, UV sets and vertex colours, the skelet
 reference pose and every vertex's bone weights, the colour and normal textures embedded as
 they were extracted (nothing re-encoded). The formats are read as DataTool writes them
 (TankLib/ExportFormats/OverwatchModel.cs and DataTool/SaveLogic/Model.cs, MIT): positions come
-Z-up with V flipped for Blender and go back to glTF's Y-up here; bones are already Y-up."""
+Z-up with V flipped for Blender and go back to glTF's Y-up here; bones are already Y-up. The
+glTF writer is shared (viwo/contracts/gltf.py)."""
 
-import json
-import math
 import struct
 import sys
 from array import array
 from pathlib import Path
 
+from viwo.contracts import gltf
+from viwo.contracts.gltf import FLOAT, UINT, Glb
+from viwo.contracts.gltf import matrix as _matrix
+from viwo.contracts.gltf import quaternion as _quaternion
+from viwo.contracts.gltf import times as _times
+
 ALBEDO, NORMAL = 2903569922, 378934698  # the texture slots glTF has a place for
-FLOAT, USHORT, UINT = 5126, 5123, 5125
 
 
 class _In:
@@ -112,84 +116,6 @@ def textures(model: Path, look: str) -> dict[int, dict[int, Path]]:
     return out
 
 
-def _quaternion(euler: tuple) -> list[float]:
-    """An XYZ Euler rotation (x applied first) as glTF's [x, y, z, w]."""
-    (sx, cx), (sy, cy), (sz, cz) = ((math.sin(a / 2), math.cos(a / 2)) for a in euler)
-    return [
-        sx * cy * cz - cx * sy * sz,
-        cx * sy * cz + sx * cy * sz,
-        cx * cy * sz - sx * sy * cz,
-        cx * cy * cz + sx * sy * sz,
-    ]
-
-
-def _matrix(translation, rotation, scale) -> list[list[float]]:
-    x, y, z, w = rotation
-    rows = [
-        [1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
-        [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
-        [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)],
-    ]
-    return [[rows[r][c] * scale[c] for c in range(3)] + [translation[r]] for r in range(3)]
-
-
-def _times(a, b) -> list[list[float]]:
-    """Two 3x4 affine matrices multiplied (a then applied after b)."""
-    return [
-        [sum(a[r][k] * b[k][c] for k in range(3)) + (a[r][3] if c == 3 else 0) for c in range(4)]
-        for r in range(3)
-    ]
-
-
-def _inverse(m) -> list[float]:
-    """The inverse of a 3x4 affine matrix, as glTF's 16 column-major numbers."""
-    (a, b, c), (d, e, f), (g, h, i) = (row[:3] for row in m)
-    det = a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g) or 1.0
-    inv = [
-        [(e * i - f * h) / det, (c * h - b * i) / det, (b * f - c * e) / det],
-        [(f * g - d * i) / det, (a * i - c * g) / det, (c * d - a * f) / det],
-        [(d * h - e * g) / det, (b * g - a * h) / det, (a * e - b * d) / det],
-    ]
-    move = [-sum(inv[r][k] * m[k][3] for k in range(3)) for r in range(3)]
-    return [v for c in range(3) for v in (*(inv[r][c] for r in range(3)), 0.0)] + [*move, 1.0]
-
-
-class Glb:
-    """A glTF 2.0 binary being filled: one buffer, its views and accessors, the JSON beside."""
-
-    def __init__(self) -> None:
-        self.blob, self.doc = bytearray(), {"asset": {"version": "2.0", "generator": "ViWo"}}
-        for key in ("bufferViews", "accessors", "images", "textures", "materials", "nodes"):
-            self.doc[key] = []
-
-    def view(self, data: bytes, target: int = 0) -> int:
-        self.blob += b"\0" * (-len(self.blob) % 4)
-        view = {"buffer": 0, "byteOffset": len(self.blob), "byteLength": len(data)}
-        self.doc["bufferViews"].append(view | ({"target": target} if target else {}))
-        self.blob += data
-        return len(self.doc["bufferViews"]) - 1
-
-    def accessor(self, values: array, kind: str, component: int, target: int = 34962) -> int:
-        width = {"SCALAR": 1, "VEC2": 2, "VEC3": 3, "VEC4": 4, "MAT4": 16}[kind]
-        entry = {"bufferView": self.view(values.tobytes(), target), "componentType": component}
-        entry |= {"count": len(values) // width, "type": kind}
-        if kind == "VEC3" and target == 34962 and values:  # POSITION must say its bounds
-            entry["min"] = [min(values[n::3]) for n in range(3)]
-            entry["max"] = [max(values[n::3]) for n in range(3)]
-        self.doc["accessors"].append(entry)
-        return len(self.doc["accessors"]) - 1
-
-    def save(self, path: Path) -> None:
-        self.doc["buffers"] = [{"byteLength": len(self.blob)}]
-        doc = {k: v for k, v in self.doc.items() if v or k == "asset"}
-        text = json.dumps(doc, separators=(",", ":")).encode("utf-8")
-        text += b" " * (-len(text) % 4)
-        self.blob += b"\0" * (-len(self.blob) % 4)
-        size = 12 + 8 + len(text) + 8 + len(self.blob)
-        head = struct.pack("<4sII", b"glTF", 2, size) + struct.pack("<I4s", len(text), b"JSON")
-        path.write_bytes(head + text + struct.pack("<I4s", len(self.blob), b"BIN\0") + self.blob)
-
-
 def _skeleton(glb: Glb, bones: list) -> None:
     """One node per bone in its reference pose, and the skin that binds the meshes to them."""
     local = [_matrix(t, _quaternion(r), s) for _, _, t, s, r in bones]
@@ -202,30 +128,13 @@ def _skeleton(glb: Glb, bones: list) -> None:
             world[i] = local[i] if rooted else _times(placed(parent, (*seen, i)), local[i])
         return world[i]
 
-    for i, (name, parent, move, scale, euler) in enumerate(bones):
-        kids = [k for k, bone in enumerate(bones) if bone[1] == i and k != i]
-        node = {"name": name, "translation": list(move), "scale": list(scale)}
-        node |= {"rotation": _quaternion(euler)} | ({"children": kids} if kids else {})
-        glb.doc["nodes"].append(node)
-    inverse = array("f", (v for i in range(len(bones)) for v in _inverse(placed(i))))
-    binds = glb.accessor(inverse, "MAT4", FLOAT, 0)
-    glb.doc["skins"] = [{"joints": list(range(len(bones))), "inverseBindMatrices": binds}]
-
-
-def _links(glb: Glb, mesh: dict, attributes: dict) -> None:
-    """Bone indices and weights four at a time (JOINTS_0, JOINTS_1...): none is dropped. A
-    slot DataTool left empty (0xFFFF) points at bone 0 with no weight."""
-    links, count = mesh["links"], mesh["count"]
-    for group in range(0, links, 4):
-        joints, weights = array("H", bytes(8 * count)), array("f", bytes(16 * count))
-        for k in range(group, min(group + 4, links)):
-            column = mesh["joints"][k::links]
-            used = array("B", (j != 0xFFFF for j in column))
-            joints[k - group :: 4] = array("H", (j if u else 0 for j, u in zip(column, used)))
-            kept = (w if u else 0.0 for w, u in zip(mesh["weights"][k::links], used))
-            weights[k - group :: 4] = array("f", kept)
-        attributes[f"JOINTS_{group // 4}"] = glb.accessor(joints, "VEC4", USHORT)
-        attributes[f"WEIGHTS_{group // 4}"] = glb.accessor(weights, "VEC4", FLOAT)
+    nodes = [
+        {"name": name, "translation": list(move), "scale": list(scale)}
+        | {"rotation": _quaternion(euler)}
+        for name, _, move, scale, euler in bones
+    ]
+    inverse = (v for i in range(len(bones)) for v in gltf.columns(gltf.inverse(placed(i))))
+    gltf.skin(glb, nodes, [bone[1] for bone in bones], array("f", inverse))
 
 
 def _material(glb: Glb, key: int, slots: dict[int, Path], images: dict[Path, int]) -> int:
@@ -238,12 +147,7 @@ def _material(glb: Glb, key: int, slots: dict[int, Path], images: dict[Path, int
         if file is None or file.suffix.lower() != ".png":
             continue
         if file not in images:
-            view = glb.view(file.read_bytes())
-            glb.doc["images"].append(
-                {"bufferView": view, "mimeType": "image/png", "name": file.name}
-            )
-            glb.doc["textures"].append({"source": len(glb.doc["images"]) - 1})
-            images[file] = len(glb.doc["textures"]) - 1
+            images[file] = gltf.texture(glb, file.read_bytes(), file.name)
         holder = material if slot == NORMAL else material["pbrMetallicRoughness"]
         holder[place] = {"index": images[file]}
     glb.doc["materials"].append(material)
@@ -265,21 +169,18 @@ def convert(model: Path, out: Path) -> tuple[str, ...]:
             for n in names
         }
         if bones and mesh["links"]:
-            _links(glb, mesh, attributes)
+            gltf.links(glb, attributes, mesh["joints"], mesh["weights"], mesh["links"])
         key = mesh["material"]
         if key not in materials:
             materials[key] = _material(glb, key, slots.get(key, {}), images)
-        indices = glb.accessor(mesh["indices"], "SCALAR", UINT, 34963)
+        indices = glb.accessor(mesh["indices"], "SCALAR", UINT, gltf.INDICES)
         primitives.append(
             {"attributes": attributes, "indices": indices, "material": materials[key]}
         )
     if not primitives:
         raise ValueError("no mesh in it")
     roots = [i for i, bone in enumerate(bones) if not 0 <= bone[1] < len(bones) or bone[1] == i]
-    glb.doc["meshes"] = [{"name": model.stem, "primitives": primitives}]
-    glb.doc["nodes"].append({"name": model.stem, "mesh": 0} | ({"skin": 0} if bones else {}))
-    glb.doc |= {"scenes": [{"nodes": [*roots, len(glb.doc["nodes"]) - 1]}], "scene": 0}
-    glb.save(out)
+    gltf.finish(glb, model.stem, primitives, roots, out)
     bare = sum(1 for key in materials if ALBEDO not in slots.get(key, {}))
     return (f"{bare} of {len(materials)} material(s) without a colour texture",) if bare else ()
 

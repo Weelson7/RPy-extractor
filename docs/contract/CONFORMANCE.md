@@ -66,7 +66,9 @@ What each `real` stands on (the passes' reports are in `viwo-data/`):
 window captured by `tools/game_shot.ps1`, screenshots in `sqc/proof/`): Ren'Py (Doki Doki
 Literature Club: the menu background repacked into `images.rpa`), Unity (Baldi's Basics
 Classic Remastered: a texture repacked into `sharedassets0.assets`), RPG Maker MV (a test
-game: the title image as a loose override). Open on the other engines.
+game: the title image as a loose override). Tried and not shown on KiriKiri (a test game: the
+marked logo did not appear from `patch.xp3`; whether the game ignores the patch archive or
+draws its title from other files is not known yet). Open on the other engines.
 
 Not at hand: a Godot game that ships its data, a Bethesda game, an RPG Maker game with a
 packed archive (the MV test game keeps its files loose), a real QuickBMS archive. Unity
@@ -235,6 +237,7 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 8.3a first-run answers off screen | implemented | `core/capture/handoffs.py`, `core/analysis/ghidra.py`, `core/capture/renderdoc.py` |
 | 8.4 slot table | implemented | `backends/__init__.py`, `core/*` `SLOTS`, plugin `slot_definitions` (`viwo slots`) |
 | 8.5 stage use | implemented | as listed |
+| 8.5 `export.unity` meshes as `.glb` (all channels, sub-meshes, skin and bone tree, main texture; Unity's left-handed space mirrored) through the shared glTF writer | implemented | `plugins/unity/meshes.py`, `contracts/gltf.py` (also `plugins/overwatch/owmdl.py`); `tests/test_unity_glb.py`, `tests/test_owmdl.py`. Blend shapes, more than four weights a vertex and animations stay open (16.0c) |
 | 8.6 slot conformance | implemented | `core/wiring/conformance.py`, `tests/test_core_units.py`, `tests/test_config.py` |
 
 ## 09 Startup ini
