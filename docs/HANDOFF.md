@@ -91,7 +91,8 @@ The presentation tools (`tools/presentation/`: `frames.py`, `deck.py`, `tech_pdf
 - The `v2.0.0` tag: it starts the paid CI and the release.
 
 **Needs a person at the machine**
-- The game loading a change (a patched copy or an override): proven on no engine.
+- The game loading a change is proven on Ren'Py, Unity and RPG Maker MV (SQC-RT-LOAD,
+  `tools\game_shot.ps1`, `sqc/proof/`); the other engines are open.
 - `viwo attach` (x64dbg live patch, Cheat Engine) and `viwo hook` on a running game
   (SQC-DYN-01, -02, -07).
 - The SQC checks that need eyes and a browser (`sqc/`, results marked NOT RUN).

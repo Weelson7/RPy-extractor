@@ -4,6 +4,11 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.73 (2026-11-18)
+- Proven: the game loads the change. A patched copy of a Ren'Py, a Unity and an RPG Maker MV
+  game each started and showed the edited image on its first screen (`sqc/proof/`,
+  SQC-RT-LOAD). `tools/game_shot.ps1` starts a game, captures its own window and ends it.
+
 ## 1.20.72 (2026-11-18)
 - Line budgets get headroom (owner): each package budget stands at about 125 % of its size
   today. The caps per function, file and line stay; the reclaim passes stop.

@@ -31,11 +31,11 @@ run: `tests` means the suite covers the engine there. A row closes when every ce
 | Engine | Extract | Edit + repack | Read back | Game loads it | Linux |
 |--------|---------|---------------|-----------|---------------|-------|
 | REDengine (Cyberpunk 2077) | real | real | real | open | tests |
-| Unity | real | real | real | open | tests |
+| Unity | real | real | real | real | tests |
 | Unreal | tests | real (pak) | real | open | tests |
 | Godot | tests | tests | tests | open | tests |
-| Ren'Py | real | real | real | open | tests |
-| RPG Maker | tests | tests | tests | open | tests |
+| Ren'Py | real | real | real | real | tests |
+| RPG Maker | real (MV, loose files) | real (MV: loose override) | real | real | tests |
 | KiriKiri | tests | real | real | open | tests |
 | Source | real | real | real | open | tests |
 | Bethesda | tests | tests | tests | open | tests |
@@ -61,6 +61,12 @@ What each `real` stands on (the passes' reports are in `viwo-data/`):
 | Genie | AoE II HD: games pass 1.20.34, 13 of 13 flags | a changed member of `interfac.drs` |
 | Warscape | Rome II: games pass 2026-11-04, 12 of 12 flags | a repainted image as the movie pack `data/viwo_data_rome2.pack` |
 | TaleWorlds | Bannerlord: games pass 2026-11-03, 11 of 11 flags (textures 188 of 190) | - |
+
+**The game loads the change** (1.20.72, 2026-11-18; the patched copy started, its own
+window captured by `tools/game_shot.ps1`, screenshots in `sqc/proof/`): Ren'Py (Doki Doki
+Literature Club: the menu background repacked into `images.rpa`), Unity (Baldi's Basics
+Classic Remastered: a texture repacked into `sharedassets0.assets`), RPG Maker MV (a test
+game: the title image as a loose override). Open on the other engines.
 
 Not at hand: a Godot game that ships its data, a Bethesda game, an RPG Maker game with a
 packed archive (the MV test game keeps its files loose), a real QuickBMS archive. Unity

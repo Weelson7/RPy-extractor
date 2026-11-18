@@ -90,6 +90,18 @@ build a patched copy.
 Expected: the plan carries the warning `overwatch: own install, offline use; respect the game's
 terms`; the build proceeds (loose override) and verifies. No `refused`.
 
+## SQC-RT-LOAD (P0) The game loads the change
+
+Steps, per engine (a free title of `games.md`, from a worktree at a committed version):
+1. `viwo extract <game> --workspace W`; paint a clear mark on an image the game shows on its
+   first screen (the title or menu background), in `W`.
+2. `viwo repack W --out P`; read `Result: ... (verified)`.
+3. `powershell -File tools\game_shot.ps1 -Exe P\<game exe> -Out shot.png -Wait 15`.
+
+Expected: the patched copy starts and `shot.png` (the game's own window) shows the mark; the
+game folder is unchanged. Recorded: `sqc/proof/renpy-ddlc.jpg`, `sqc/proof/unity-baldi.jpg`,
+`sqc/proof/rpgmaker-mv.jpg`.
+
 ## Results
 
 | ID | Result | Notes | Tester | Date |
@@ -102,3 +114,4 @@ terms`; the build proceeds (loose override) and verifies. No `refused`.
 | SQC-RT-06 | | | | |
 | SQC-RT-07 | | | | |
 | SQC-RT-08 | | | | |
+| SQC-RT-LOAD | PASS (Ren'Py, Unity, RPG Maker MV) | 1.20.72: DDLC, Baldi's Basics Classic Remastered and an MV test game each showed the mark on their first screen (`sqc/proof/`); other engines not run | agent | 2026-11-18 |
