@@ -4,6 +4,10 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.72 (2026-11-18)
+- Line budgets get headroom (owner): each package budget stands at about 125 % of its size
+  today. The caps per function, file and line stay; the reclaim passes stop.
+
 ## 1.20.71 (2026-11-18)
 - Security (review, 2026-11-18), four fixes:
   - a request's path is checked before it is joined or resolved: `/%5C%5Chost%5Cshare` on the

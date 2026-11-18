@@ -30,21 +30,16 @@ commit. The numbers below mirror `loc_caps.ini`; the ini is the source.
 | line length | 100 |
 | JS file | 300 |
 
-**Budgets** (`[budgets]`, hard totals per path prefix; the split inside is free):
+**Budgets** (`[budgets]` and `[web]` in `loc_caps.ini`, totals per path prefix; the split
+inside is free). They are a tripwire against runaway growth, not a target: since 1.20.72
+(owner, 2026-11-18) each stands at about 125 % of the package's size at that date, so
+ordinary work does not trip it and nothing is rewritten only to save lines. The caps that
+keep code readable are the ones above (function, class, file, parameters, line). Current
+numbers are in `loc_caps.ini` (`python tools/loc_count.py --report` prints used / budget):
+`viwo` 21,900, `viwo/core` 9,400, `viwo/contracts` 1,100, `viwo/os` 1,100, each plugin its own
+line, `tools` 2,300, `viwo/web` 6,650.
 
-| Prefix | Budget | Used at 1.6.0 |
-|--------|--------|---------------|
-| `viwo` (whole product) | 13,900 | 13,870 |
-| `viwo/core` | 6,900 | 6,780 |
-| `viwo/contracts` | 900 | 744 |
-| `viwo/os` | 900 | 533 |
-| `viwo/backends` | 600 | 187 |
-| `viwo/cli.py` | 400 | 153 |
-| each built-in plugin `viwo/plugins/<id>` | 100 (generic) to 700 (unity); one line each | see `loc_caps.ini` |
-| `tools` | 900 | 875 |
-| `viwo/web` (`[web]`, js + css + html) | 5,400 | 5,071 |
-
-`viwo/api` and the `cli_*.py` modules count only under the `viwo` total. Every raise carries its
+`viwo/api` and the `cli_*.py` modules count only under the `viwo` total. A raise carries its
 reason as an inline comment on the budget line.
 
 ## 15.4 Test caps
