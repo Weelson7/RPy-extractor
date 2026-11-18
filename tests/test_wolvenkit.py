@@ -297,6 +297,7 @@ class BatchTests(unittest.TestCase):
             logs = []
             run = SimpleNamespace(
                 work=Path(tmp),
+                cancel=None,
                 rt=SimpleNamespace(bindings={"decode.cr2w": None}, backends={}),
                 log=lambda m, stage, level="info": logs.append((m, level)),
             )

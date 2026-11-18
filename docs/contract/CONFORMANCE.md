@@ -149,7 +149,8 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | Item | State | Where / missing |
 |------|-------|-----------------|
 | 3.1 stage order and events | implemented | `core/pipeline/runner.py` `_stages` |
-| 3.1 guard: no workspace or temp inside the game | implemented | `core/pipeline/guard.py` `refuse_writes_inside` |
+| 3.1 guard: one guard hands every writer its folder (not the game, not inside it, not holding it; no marker exempts a folder), before any lock, claim or copy | implemented | `core/pipeline/guard.py` `guarded`: extraction, capture, attach, analysis, dynamic runs, patched copies (repack, patch, mod, agents), sanitizer, the API's claims and locks; `tests/test_game_guard.py` drives every CLI command that takes a game and a folder |
+| 3.1 guard without a game path (dump, trace, hook, profile, record, sanitize) | partial | a patched copy and a folder of files that is no ViWo workspace are refused; a new folder inside a game, a folder above one and a game carrying a workspace marker cannot be told apart without the game's path |
 | 3.1 wrapper re-detection | implemented | `core/pipeline/export.py` `rewrap`; `tests/test_formats.py::test_engine_inside_an_asar_is_redetected` |
 | 3.1 carve modes and claimed suffixes | implemented | `core/pipeline/carving.py` |
 | 3.1 COLLECT copy/move, dedupe by hash, unreadable files named | implemented | `core/pipeline/collect.py` |
@@ -173,6 +174,7 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 4.3 layout, marker, ownership, re-extraction policy | implemented | `contracts/workspace.py`, `core/workspace.py` |
 | 4.3 trash areas and migration, collision names | implemented | `core/curation/trash.py`, `core/curation/sorting.py` |
 | 4.3 workspace lock across processes, new-folder lock | implemented | `core/workspace.py` `workspace_lock`, `LOCK_FILE` |
+| 4.3 lock owner checked first (pid, its start time, host), refreshed while held, age only for an owner on another machine | implemented | `core/workspace.py` `_stale`, `_keep_fresh`; `os/_started.py` `pid_started`; `tests/test_lock_owner.py` |
 | 4.4 events, line format, daily log, masking | implemented | `contracts/types.py` `ProgressEvent`, `api/app.py`, `web/js/progress.js` |
 | 4.5 configuration, secrets off disk | implemented | `core/wiring/ini.py`, `core/pipeline/runner.py` |
 | 4.6 UI session, persisted stores | implemented | `api/app.py`, `core/surveys.py` |
@@ -223,6 +225,7 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 8.1 definitions, declarations, self-check | implemented | `contracts/slots.py` |
 | 8.1 dependency-only backends | implemented | `core/capture/runtime.py` `FridaTrace`, `core/capture/audio.py` `LoopbackRecorder` |
 | 8.2 failover, outcome kinds, `needs_key` not retried | implemented | `core/pipeline/failover.py`, `contracts/types.py` |
+| 8.2 a fresh folder for every attempt (`into`, required), no spare after a cancel (`cancel`, required), in every stage | implemented | `core/pipeline/failover.py`; callers in `core/pipeline/`, `core/decode.py`, `core/analysis/`, `core/capture/`, `core/roundtrip.py`, `core/merger/`; `tests/test_failover_fresh.py` |
 | 8.2 `main_only` policy | implemented | `core/wiring/binder.py` `bind_slot`; `tests/test_slot_policy.py` |
 | 8.2 `supplement` policy | open | - |
 | 8.2 binding, promotion, unbound, bad ini entries | implemented | `core/wiring/binder.py` |
@@ -361,7 +364,7 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 18.3 repack steps, same-format rule, verification by re-extraction | implemented | `core/roundtrip.py` |
 | 18.3 asset converters (PNG back to Texture2D, `.ctex`) | open | - |
 | 18.4 pack slots | implemented | `plugins/*`, `backends/packers.py` |
-| 18.6 target rules, no anti-tamper code | implemented | `core/roundtrip.py` `prepare_copy` |
+| 18.6 target rules (the guard first, also for a reused copy), no anti-tamper code | implemented | `core/roundtrip.py` `prepare_copy`, `core/pipeline/guard.py` `guarded` |
 | 18.8 offset, RVA, AOB, Keystone, capstone, bounded writes, verify, export | implemented | `core/patchsets.py`, `core/patch_tools.py`; `tests/test_patchsets.py` |
 | 18.8 API | implemented | `POST /api/patch` and job kind `patch` |
 | 18.9 pack, check (adapts), ordered apply, conflicts, duplicate names | implemented | `core/mods.py`; `tests/test_mods.py` |

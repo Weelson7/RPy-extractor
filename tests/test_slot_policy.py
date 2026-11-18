@@ -41,7 +41,7 @@ class PolicyTests(unittest.TestCase):
                 called.append(found.backend_id)
                 return Outcome(OutcomeKind.FAILED, error="broke")
 
-            outcome, _ = run_with_failover(only, backends, call)
+            outcome, _ = run_with_failover(only, backends, call, into=None, cancel=None)
             self.assertEqual(called, ["a"] if main_there else [])
             self.assertFalse(outcome.ok)
 

@@ -170,8 +170,9 @@ def _decode_one(run, ctx, workspace: Path, rel: str, slot: str) -> tuple[Source 
         return None, ""
     rt = run.rt
     dest = Path(tempfile.mkdtemp(prefix="dec-", dir=run.work))
+    call = lambda b: b.decode(workspace / rel, dest, ctx)  # noqa: E731
     outcome, used = run_with_failover(
-        rt.bindings[slot], rt.backends, lambda b: b.decode(workspace / rel, dest, ctx)
+        rt.bindings[slot], rt.backends, call, into=dest, cancel=run.cancel
     )
     if outcome.fallback:
         run.log(f"{rel}: {outcome.fallback}", "decode", "warn")
@@ -186,8 +187,9 @@ def _decode_batch(run, ctx, workspace: Path, rels: list[str], slot: str):
     all of the batch did not decode, "" when all did)."""
     dest = Path(tempfile.mkdtemp(prefix="dec-", dir=run.work))
     paths = [workspace / rel for rel in rels]
+    call = lambda b: b.decode_many(paths, dest, ctx)  # noqa: E731
     outcome, used = run_with_failover(
-        run.rt.bindings[slot], run.rt.backends, lambda b: b.decode_many(paths, dest, ctx)
+        run.rt.bindings[slot], run.rt.backends, call, into=dest, cancel=run.cancel
     )
     for note in outcome.notes:
         run.log(note, "decode")

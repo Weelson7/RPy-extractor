@@ -1,21 +1,35 @@
 """Main -> spare failover for one slot call (doc 8.2)."""
 
+import shutil
 from dataclasses import replace
+from pathlib import Path
 from typing import Callable
 
 from viwo.contracts.slots import Backend, SlotBinding
 from viwo.contracts.types import Outcome, OutcomeKind
 
 
+def fresh(folder: Path) -> None:
+    """An empty `folder`: whatever an earlier attempt wrote there is gone."""
+    shutil.rmtree(folder, ignore_errors=True)
+    folder.mkdir(parents=True, exist_ok=True)
+
+
 def run_with_failover(
     binding: SlotBinding,
     backends: dict[str, Backend],
     call: Callable[[Backend], Outcome],
-    reset: Callable[[], None] | None = None,
-    cancel=None,
+    *,
+    into: Path | None,
+    cancel,
 ) -> tuple[Outcome, str]:
-    """Try main, then spare when the outcome is retryable. Returns (outcome, backend id). A
-    cancelled run never starts the spare (the main failed because it was stopped)."""
+    """Try main, then spare when the outcome is retryable. Returns (outcome, backend id).
+
+    `into` is the folder the call writes (None only for a call that writes nothing, a probe):
+    every attempt starts with it empty, so a spare never writes beside the truncated files
+    and the export map a failed main left, and nothing of a failed attempt is collected.
+    `cancel` (a token or None): a cancelled run never starts the spare (the main failed
+    because it was stopped). Both are required: no caller can forget them."""
     if not binding.bound:
         reasons = "; ".join(binding.reasons) or "no backend available"
         return Outcome(OutcomeKind.UNAVAILABLE, error=reasons), ""
@@ -28,8 +42,8 @@ def run_with_failover(
             break
         if used:
             failed = f"{used} {last.kind.value}: {last.error or 'no reason given'}"
-            if reset is not None:
-                reset()
+        if into is not None:
+            fresh(into)
         used = backend_id
         try:
             last = call(backends[backend_id])

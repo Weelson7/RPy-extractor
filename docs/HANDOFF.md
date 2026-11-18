@@ -104,6 +104,10 @@ The presentation tools (`tools/presentation/`: `frames.py`, `deck.py`, `tech_pdf
   QuickBMS on a real archive, Overwatch (the independent operator's).
 
 **Open in the code**
+- The game-folder guard without a game path (doc 3.1): `dump`, `trace`, `hook`, `profile`,
+  `record` and `sanitize` cannot tell a new folder inside a game, a folder above one, or a game
+  carrying a workspace marker. `viwo unpack --out` and `viwo diff --out` take no game either:
+  unpack needs an empty or new folder (it never overwrites), diff writes its two files.
 - CONFORMANCE rows: sanitizer phases 2-3, the `supplement` slot policy, `[hooks]`,
   `memory_image` targets, asset converters, Kaitai formats, the engines of doc 13.7, a
   structured runbook editor, more workbooks.

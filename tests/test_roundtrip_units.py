@@ -87,7 +87,9 @@ class ApplyTests(unittest.TestCase):
             make_zip(target / "data.zip", {"a.txt": b"a"})
             src = root / "edit.txt"
             src.write_text("edited")
-            ctx = SimpleNamespace(scratch=root / "s" / "x", log=lambda *a, **k: None)
+            ctx = SimpleNamespace(
+                scratch=root / "s" / "x", staging=root / "st", cancel=None, log=lambda *a, **k: None
+            )
             (root / "s").mkdir()
             item = roundtrip.PlanItem("data.zip", "pack.zip", {"a.txt": src})
             packer = rt.backends[rt.bindings["pack.zip"].main]
@@ -123,7 +125,9 @@ class ApplyTests(unittest.TestCase):
             make_zip(target / "data.zip", {"a.txt": b"a", "b.txt": b"b"})
             src = root / "edit.txt"
             src.write_text("edited")
-            ctx = SimpleNamespace(scratch=root / "s" / "x", log=lambda *a, **k: None)
+            ctx = SimpleNamespace(
+                scratch=root / "s" / "x", staging=root / "st", cancel=None, log=lambda *a, **k: None
+            )
             (root / "s").mkdir()
             item = roundtrip.PlanItem("data.zip", "pack.zip", {"a.txt": src}, {"b.txt": "x"})
             packer = rt.backends[rt.bindings["pack.zip"].main]

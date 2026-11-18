@@ -81,7 +81,10 @@ their folders when `av_exclusions = on` (doc 1, `viwo/core/scan_exclusions.py`).
 ## 11.5 The game-folder rule
 
 The game folder is only read. An agent installs into a marked patched copy (doc 18), made once
-and reused. Attaching to a running process writes nothing into the game. x64dbg debugs the
+and reused; the copy and the workspace pass the game-folder guard first (doc 3.1). A run on a
+process id (dump, trace, hook, profile) and `record` have no game path: their workspace is
+refused when it may be a game (a patched copy, or a folder of files that is no ViWo workspace);
+a new folder inside a game cannot be told apart there. Attaching to a running process writes nothing into the game. x64dbg debugs the
 game's own process, not a copy (live patching needs the real process): what the user then
 patches in the debugger, or writes back to a file from it, is the user's own action in the tool.
 

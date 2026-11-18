@@ -1,5 +1,6 @@
 """CARVE (after UNPACK): pull embedded files out of blobs nothing else recognizes."""
 
+import shutil
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -80,13 +81,16 @@ def carve_all(run, claimed: frozenset[str], items: list[tuple[Path, str]]) -> Ca
     def one(job):
         if (_size(job[0]) or 0) > BIG:
             say(f"Scanning {job[0].name} ({(_size(job[0]) or 0) >> 20} MB)")
-        return run_with_failover(binding, rt.backends, lambda b: b.carve(job[0], job[2], ctx))
+        call = lambda b: b.carve(job[0], job[2], ctx)  # noqa: E731
+        return run_with_failover(binding, rt.backends, call, into=job[2], cancel=run.cancel)
 
     for (path, origin, dest), (outcome, used) in zip(jobs, each(one, jobs, run.cancel)):
         ticker.tick(note=f"{report.files:,} embedded file(s) found")
         report.scanned += 1
         if outcome.fallback:
             run.log(f"{path.name}: {outcome.fallback}", "carve", "warn")
+        if not outcome.ok or not outcome.files:
+            shutil.rmtree(dest, ignore_errors=True)  # nothing of it is collected
         if not outcome.ok:
             report.failures.append(f"carve {origin}: {outcome.kind.value}: {outcome.error}")
         elif outcome.files:

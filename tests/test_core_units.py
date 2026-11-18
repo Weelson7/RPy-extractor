@@ -80,8 +80,9 @@ class BinderAndFailoverTests(unittest.TestCase):
             }
             binding = bind_slot(SLOT, backends, None, layer)
             with tempfile.TemporaryDirectory() as tmp:
+                call = lambda b: b.extract(None, Path(tmp), None)  # noqa: E731
                 outcome, used = run_with_failover(
-                    binding, backends, lambda b: b.extract(None, Path(tmp), None)
+                    binding, backends, call, into=Path(tmp), cancel=None
                 )
             with self.subTest(kind=kind):
                 self.assertEqual((used, backends["spare-b"].calls), (used_expected, spare_calls))

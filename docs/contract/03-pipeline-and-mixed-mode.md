@@ -7,7 +7,7 @@ Every stage sends progress events with its stage name and checks the cancel toke
 
 | Stage | Owner | What happens |
 |-------|-------|--------------|
-| PREPARE | core | resolve the workspace by the ownership rule (doc 4.3); refuse a workspace or temp folder inside the game folder (`pipeline/guard.py`); snapshot the game folder; create staging and scratch |
+| PREPARE | core | resolve the workspace by the ownership rule (doc 4.3); refuse a workspace that is the game folder, lies inside it or holds it, and a temp folder inside it (`pipeline/guard.py` `guarded`, see below); snapshot the game folder; create staging and scratch |
 | PROBE | core | build one `FolderProbe` |
 | DETECT | core + plugins | `detect()` on every enabled plugin, then `select_plugins()` (3.3) |
 | UNPACK | core + `unarchive.*` slots | identify each file (suffix, magic, head and tail, embedded chunks), unpack recursively to depth 10; each archive goes to its slot's main, then spare (doc 8.2) |
@@ -42,6 +42,23 @@ workers) and nothing runs for more than a few seconds without a counted progress
 the work moves to another stage, the one it leaves says how long it took (`unpack took 8 min
 02 s`), and the run closes with its total and the time per stage (`Time: ...`). The CLI puts
 the time of day before every progress line; WolvenKit's own output is relayed as it comes.
+
+**The game-folder guard** (`pipeline/guard.py` `guarded`). It is the one way a writer gets the
+folder it writes into, and it always runs first, before any lock, claim, copy or work: the
+extraction's and the capture's workspace, the patched copy of repack, patch, mod apply and the
+runtime agents (`roundtrip.prepare_copy`, also when it reuses a copy), the analysis workspace
+(`analysis._pick`, the gate of every analysis run and handoff), the attach tools' workspace,
+every dynamic run's `.runtime/` (`capture/runtime.py` `run` and `runtime_dir`) and the
+sanitizer's workspace. With the game known, the folder must not be the game folder, lie inside
+it or hold it (ViWo's temp folder may hold it). No marker switches it off: an install that a
+patched copy was copied over carries `.viwo-patched/` and is still the game. Without a game
+(dump, trace, hook, profile and record take a process id; sanitize takes a workspace) a
+folder that may be a game, as far as that can be told, is refused: a patched copy, and a
+folder holding files of its own that is no ViWo workspace. What cannot be told without the
+game's path is not caught there: a new or empty folder inside a game, a folder above one, a
+game folder that carries a ViWo workspace marker. The API runs the same guard before it claims
+a workspace or takes the lock of a patched copy. A refusal is `refused` (CLI exit 3) and names
+the folder, why, and what to choose instead.
 
 ## 3.2 Request
 

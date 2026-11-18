@@ -125,7 +125,14 @@ onDemand}`; `category` is the owning plugin or `core`.
   groups `<ext>__N`. v1 trash trees are migrated to the three areas on first open.
 - **Lock:** one lock per workspace, in-process and across processes
   (`.extraction_metadata/lock`); writing jobs hold it (doc 12.3). A workspace folder created for
-  a job gets the lock too and is removed again when left empty.
+  a job gets the lock too and is removed again when left empty. The lock file records its
+  owner: pid, the pid's start time (`os.pid_started`), host and time. The owner is checked
+  first: a live owner keeps its lock whatever its age (a WolvenKit or DataTool run lasts
+  hours), and while it holds the lock its time (the file's modification time) is refreshed
+  every 60 s. A lock is taken over, with a warning in the log, only when its owner is gone: a
+  dead pid, a pid that now belongs to a later process (its start time differs from the one
+  recorded), an unreadable file, or, for an owner on another machine that cannot be checked,
+  no refresh for 6 h. A kept lock answers `busy` and names the lock file.
 - **Active workspace:** starts as `[server] workspace` and follows `POST /api/workspace` and the
   last extraction for the server's lifetime.
 - The Ghidra project of an analysis lives beside the workspace in `<workspace>.ghidra/<key>/`

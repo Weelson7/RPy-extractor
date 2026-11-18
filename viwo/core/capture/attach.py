@@ -13,7 +13,7 @@ from viwo.contracts.errors import ViwoError
 from ..analysis import find_target, targets_for
 from ..context import core_context
 from ..handoff import launch, offered
-from ..pipeline.guard import refuse_writes_inside
+from ..pipeline.guard import guarded
 from . import sensitive_plugins
 from .policy import check
 
@@ -58,15 +58,15 @@ def _pid(rt, req: AttachRequest, exe: Path) -> int:
 
 def attach(rt, req: AttachRequest) -> dict:
     """Start the tool on the game as a tracked child; the warnings come with the result."""
+    workspace = guarded(req.game, req.workspace)  # first: the table goes under it
     target = find_target(rt, req.game, req.target_key)
     tools = {t["id"]: t for t in attach_for(rt, target.kind)}
     choice = req.tool or next(iter(tools), "")
     if choice not in tools:
         raise ViwoError("unavailable", f"no attach tool {choice!r} for {target.kind} targets")
-    refuse_writes_inside(req.game, workspace=req.workspace)  # the table goes under it
     warnings = check(rt, req.game, req.confirm, sensitive_plugins(rt, req.game))
     ctx = core_context(rt, "attach", req.game, rt.temp_root)
-    ctx.staging = req.workspace / ".runtime" / choice / target.key
+    ctx.staging = workspace / ".runtime" / choice / target.key
     if tools[choice]["slot"] == "attach.debug":
         ctx.options = {"pid": _pid(rt, req, target.paths[0])}
     opened = launch(rt, rt.backends[choice], target, ctx)

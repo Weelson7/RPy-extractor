@@ -20,6 +20,7 @@ from viwo.contracts.types import CancelToken
 from ..context import core_context
 from ..handoff import failure, launch, offered
 from ..pipeline.failover import run_with_failover
+from ..pipeline.guard import guarded
 from ..pipeline.probe import FolderProbe
 from ..records import record_context
 from ..scan_exclusions import excluded
@@ -104,7 +105,9 @@ def find_target(rt, game: Path, key: str) -> AnalysisTarget:
 
 
 def _pick(rt, req: AnalysisRequest) -> tuple[AnalysisTarget, str]:
-    """(target, slot id) for the request; unknown key or kind without a slot is an error."""
+    """(target, slot id) for the request; unknown key or kind without a slot is an error. The
+    gate of every analysis run and handoff: the workspace is guarded first (doc 6.5)."""
+    guarded(req.game, req.workspace)  # .analysis/ and the Ghidra project go under and beside it
     target = find_target(rt, req.game, req.target_key)
     slot = req.slot or slot_for(target.kind)
     if slot not in rt.bindings or (req.slot and not _accepts(rt, slot, target.kind)):
@@ -181,7 +184,7 @@ def analyze(rt, req: AnalysisRequest, sink=None, cancel: CancelToken | None = No
         with excluded(rt, (req.game, out, scratch), lambda m: ctx.log(m, "warn", "analyze")):
             inputs = _copy_inputs(target, scratch)
             outcome, used = run_with_failover(
-                binding, rt.backends, lambda b: b.analyze(inputs, ctx)
+                binding, rt.backends, lambda b: b.analyze(inputs, ctx), into=out, cancel=cancel
             )
     if not outcome.ok:
         raise failure(outcome, f"{slot} failed")

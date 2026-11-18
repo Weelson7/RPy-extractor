@@ -18,6 +18,7 @@ from viwo.contracts.types import DependencySpec
 from viwo.contracts.workspace import next_free
 
 from .. import thirdparty
+from ..pipeline.guard import guarded
 
 FRIDA = DependencySpec.of("frida-tools")
 
@@ -54,7 +55,13 @@ def run(rt, kind: str, req: RuntimeRequest, sink=None, cancel=None) -> dict:
         "record": lambda: record(rt, req.workspace, req.seconds),
         "profile": lambda: profile(rt, req, cancel),
     }
+    guarded(game_of(req), req.workspace)  # before anything runs, records or waits
     return runs[kind]()
+
+
+def game_of(req: RuntimeRequest) -> Path | None:
+    """The game folder of a request (the agent's), None for a run on a process id."""
+    return req.game if req.game != Path() else None
 
 
 def _enabled(rt) -> None:
@@ -63,11 +70,12 @@ def _enabled(rt) -> None:
     require(rt, "capture", "the dynamic arm")
 
 
-def runtime_dir(workspace: Path, *parts: str) -> Path:
-    """`<workspace>/.runtime/<parts>`, made: where every dynamic run writes its files. A new (or
+def runtime_dir(workspace: Path, *parts: str, game: Path | None) -> Path:
+    """`<workspace>/.runtime/<parts>`, made: where every dynamic run writes its files, handed
+    out by the guard (`game` None: a run on a process id, see guard.guarded). A new (or
     ViWo-only) folder becomes a ViWo workspace, so an extraction can follow into it; a folder
     with the user's own files is never claimed."""
-    root = workspace.resolve()
+    root = guarded(game, workspace).resolve()
     fresh = not root.is_dir() or all(ws.is_reserved(p.name) for p in root.iterdir())
     out = root.joinpath(".runtime", *parts)
     out.mkdir(parents=True, exist_ok=True)
@@ -85,7 +93,7 @@ def stamp() -> str:
 def run_dir(workspace: Path, kind: str, pid: int) -> Path:
     """A new folder per run (`<pid>-<stamp>`, then `_1`... within one second): a run never
     reads or overwrites what an earlier one wrote."""
-    out = next_free(runtime_dir(workspace, kind) / f"{pid}-{stamp()}")
+    out = next_free(runtime_dir(workspace, kind, game=None) / f"{pid}-{stamp()}")
     out.mkdir()
     return out
 

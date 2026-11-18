@@ -6,6 +6,7 @@ from typing import Mapping, Sequence
 from viwo.contracts.errors import ViwoError
 from viwo.contracts.os import OS
 
+from ._started import pid_started  # noqa: F401  (the workspace lock's owner identity)
 from .linux import LinuxOS
 from .windows import WindowsOS
 

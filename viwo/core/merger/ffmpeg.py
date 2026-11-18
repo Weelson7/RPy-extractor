@@ -41,7 +41,10 @@ def probe(rt, path: Path, ctx) -> tuple[float, bool]:
     binding = rt.bindings.get("media.probe")
     if binding is None or not binding.bound:
         return 0.0, False
-    outcome, _ = run_with_failover(binding, rt.backends, lambda b: b.probe(path, ctx))
+    call = lambda b: b.probe(path, ctx)  # noqa: E731  (a probe writes nothing: into=None)
+    outcome, _ = run_with_failover(
+        binding, rt.backends, call, into=None, cancel=getattr(ctx, "cancel", None)
+    )
     if not outcome.ok:
         return 0.0, False
     facts = [str(n).strip() for n in outcome.notes]

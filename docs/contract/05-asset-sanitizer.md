@@ -44,6 +44,8 @@ report   { planId, applied, moved[], trashed, failed[], undoToken }
 - `inspect` never writes. `rename` uses the collision rule (`__N`); `trash` moves the file to
   `.trash/items/<rel>`; `core.health` findings are information and never applied.
 - A plan remembers each file's size; apply refuses a stale plan (`plan is stale`).
+- Plan, apply and undo write into the workspace (`.sanitizer/`, moves): a folder that may be a
+  game (a patched copy, or files without the ViWo workspace marker) is refused first (doc 3.1).
 - Each apply writes a journal under `.sanitizer/`; undo follows it in reverse and keeps what it
   could not restore. A cancel anywhere in apply leaves the batch undoable.
 - Rules reach media tools only through slots (`media.probe`), never directly.

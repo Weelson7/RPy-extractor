@@ -33,7 +33,7 @@ game folder --extract--> workspace --user edits files--> edit set
 | WARN | a `tos_sensitive` plugin among the owners adds a reminder; nothing is refused (D22) |
 | RESOLVE | the edit set from workspace hashes vs the provenance map; an edit whose bytes no longer match the member's format is rejected (same-format rule, `roundtrip_edits.py`) |
 | PLAN | per container: override or the owning plugin's `pack_slot()`; shown before anything is written (`--plan`, the 09 view) |
-| COPY | copy the game folder to the target; the target must be empty or already a patched copy; a file the OS refuses to read is left out and named |
+| COPY | the game-folder guard first (doc 3.1: the target is not the game, not inside it, does not hold it; also when it is a patched copy that is reused, whatever its marker); copy the game folder to the target; the target must be empty or already a patched copy; a file the OS refuses to read is left out and named |
 | PACK | `pack.*` slots write inside the copy only |
 | VERIFY | re-extract each packed container through its `unarchive.*` slot: edited members carry the edited hash, untouched members their original hash. A packer with its own `verify` (Unity, RPG Maker MV: no unarchive route back) checks the edited members only and the report says "untouched members were not re-verified". An override packer (`override = True`: Unreal `_P.pak`, Cyberpunk `pack.archive`) writes a separate file holding the edits only; it is verified on the edits, the untouched members stay in the container it loads over |
 | REPORT | `<copy>/.viwo-patched/report.json`: plan, edits, backends, verification, warnings; a changed game folder is a warning |
@@ -83,7 +83,11 @@ EnginePlugin.pack_slot(unarchive_slot) -> "pack.<...>" | ""
 ## 18.6 Rules
 
 1. The game folder is never written; all writes go to a target that is empty or carries the
-   patched-copy marker; two builds into one target are serialized by the workspace lock.
+   patched-copy marker, and that the game-folder guard passed first (doc 3.1): a marker never
+   lets the game itself through, so an install a patched copy was copied over is refused as
+   a target of `repack`, `patch`, `mod apply` and the runtime agents; two builds into one
+   target are serialized by the workspace lock. A pack attempt that fails leaves no file of
+   its own for the next one (doc 8.2).
 2. ViWo authors no integrity- or anti-tamper-defeating code (philosophy point 5). When a game
    verifies its data, the report says the copy may not load; working around it is the user's
    choice with third-party tools, under the disclaimer.

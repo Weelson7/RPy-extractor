@@ -41,7 +41,7 @@ def record(rt, workspace: Path, seconds: float) -> dict:
     with warnings.catch_warnings():  # "data discontinuity": a dropped buffer, not an error
         warnings.simplefilter("ignore")
         frames = loop.record(samplerate=RATE, numframes=int(RATE * seconds))
-    path = next_free(runtime_dir(workspace, "audio") / f"loopback-{stamp()}.wav")
+    path = next_free(runtime_dir(workspace, "audio", game=None) / f"loopback-{stamp()}.wav")
     pcm = (numpy.clip(frames, -1, 1) * 32767).astype("<i2")
     with wave.open(str(path), "wb") as fh:
         fh.setnchannels(pcm.shape[1] if pcm.ndim > 1 else 1)

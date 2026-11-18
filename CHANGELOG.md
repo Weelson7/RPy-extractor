@@ -4,6 +4,26 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.75 (2026-11-18)
+- The game folder is read-only by construction: one guard (`pipeline/guard.py` `guarded`)
+  hands every writer its folder and runs before any lock, claim, copy or work. `analyze`,
+  `attach`, `agent`, `dump`, `trace`, `hook`, `profile`, `record` and `sanitize` never checked
+  their workspace against the game from the CLI; a patched copy that was reused skipped the
+  check, so an install a patched copy was copied over let `patch --out`, `mod apply` and
+  `agent` write into the game itself. Now refused (exit 3), named, with a hint. Without a game
+  path (a run on a process id, `record`, `sanitize`) a patched copy and a folder of files that
+  is no ViWo workspace are refused, as the API already did for runs; what cannot be told there
+  is listed in HANDOFF. `repack --out` is checked before it plans, also with nothing to pack.
+- The workspace lock belongs to its live owner: a run past six hours (WolvenKit, DataTool) no
+  longer loses its lock to a second run with `--on-existing replace`. The owner is checked
+  first (pid and its start time, so a reused pid is told apart; host), the lock's time is
+  refreshed every minute while it is held, and its age decides only for an owner on another
+  machine. A kept lock names its file.
+- Failover gives each attempt a fresh folder (UNPACK, EXPORT, CARVE, DECODE, analysis,
+  capture, the round trip's pack and verify): a spare no longer writes beside the truncated
+  files and export map a failed main left, which were collected as good. CARVE, DECODE,
+  analysis, capture and the round trip no longer start the spare after a cancel.
+
 ## 1.20.74 (2026-11-18)
 - SORT: a type pick (IMG, AUD, VID, 3D, TXT, BIN) lists that type over the whole workspace,
   from its first page; it filtered only the hundred files of the page on screen, so the

@@ -6,9 +6,10 @@ from typing import Any, Callable
 from viwo.contracts.errors import ViwoError
 from viwo.core.capture import CaptureRequest, capture, warnings
 from viwo.core.capture.policy import CONFIRMATION, DEFAULT_AUTO
+from viwo.core.pipeline.guard import guarded
 from viwo.core.workspace import claim
 
-from .app import App, existing, failure, foreign, path_param, picked
+from .app import App, existing, failure, foreign, path_param, picked, safe
 
 
 def browse_file(app: App, q: dict) -> dict:
@@ -42,6 +43,8 @@ def run_capture(app: App, d: dict) -> dict:
         if isinstance(given, dict):
             return given
     workspace = app.workspace
+    if isinstance(refused := safe(lambda: guarded(game, workspace)), dict):
+        return refused  # before the claim below writes its marker
     if not workspace.exists() or not any(workspace.iterdir()):
         claim(workspace)  # the lock file lands inside it before capture() looks at it
     try:

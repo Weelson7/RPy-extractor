@@ -125,7 +125,7 @@ class CancelTests(unittest.TestCase):
             return Outcome(OutcomeKind.FAILED, error="killed")
 
         token = CancelToken()
-        out, used = run_with_failover(binding, {"m": "m", "s": "s"}, call, cancel=token)
+        out, used = run_with_failover(binding, {"m": "m", "s": "s"}, call, into=None, cancel=token)
         self.assertEqual((calls, used, out.fallback), (["m"], "m", ""))
         token = CancelToken()
         calls.clear()
@@ -134,7 +134,7 @@ class CancelTests(unittest.TestCase):
             calls.append(backend)
             return Outcome(OutcomeKind.FAILED, error="bad")
 
-        run_with_failover(binding, {"m": "m", "s": "s"}, fails, cancel=token)
+        run_with_failover(binding, {"m": "m", "s": "s"}, fails, into=None, cancel=token)
         self.assertEqual(calls, ["m", "s"])  # not cancelled: the spare still runs
 
 

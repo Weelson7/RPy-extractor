@@ -14,9 +14,10 @@ from viwo.core.analysis import (
     slot_for,
     targets_for,
 )
+from viwo.core.pipeline.guard import guarded
 from viwo.core.workspace import claim
 
-from .app import App, existing, failure, path_param
+from .app import App, existing, failure, path_param, safe
 
 
 def _game(d: dict) -> Path | dict:
@@ -57,6 +58,8 @@ def run_analysis(app: App, d: dict) -> dict:
     """POST /api/analysis/run: the analyzer as a job under the workspace lock."""
     if isinstance(req := _request(app, d), dict):
         return req
+    if isinstance(refused := safe(lambda: guarded(req.game, req.workspace)), dict):
+        return refused  # before the claim below writes its marker
     if not req.workspace.exists() or not any(req.workspace.iterdir()):
         claim(req.workspace)
 

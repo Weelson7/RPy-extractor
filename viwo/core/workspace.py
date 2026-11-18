@@ -1,31 +1,38 @@
 """Workspace ownership, re-extraction policy and locking (doc 4.3, 12.3).
 
 Locking is two-level: an in-process lock per folder, plus a lock file
-`<workspace>/.extraction_metadata/lock` (created exclusively, holding pid and time) so two
-ViWo processes cannot work on one workspace at once. A stale file (dead pid, or older than
-STALE_AFTER) is taken over with a warning in the log.
+`<workspace>/.extraction_metadata/lock` (created exclusively, holding pid, the pid's start
+time, host and time) so two ViWo processes cannot work on one workspace at once. The owner is
+checked first: a live owner keeps its lock whatever its age (a WolvenKit run lasts hours), and
+its lock's time (the file's modification time) is refreshed every REFRESH seconds while it
+runs. A lock is taken over, with a warning in the log, when its owner is gone (dead pid, or
+the pid now belongs to a later process) or, for an owner on another machine that cannot be
+checked, when it was not refreshed for STALE_AFTER.
 """
 
 import json
 import logging
 import os
 import shutil
+import socket
 import threading
 import time
 import uuid
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from pathlib import Path
 
 from viwo import CONTRACT_VERSION, __version__
 from viwo.contracts import workspace as ws
 from viwo.contracts.errors import ViwoError
 from viwo.contracts.pipeline import OnExisting
-from viwo.os import pid_alive
+from viwo.os import pid_alive, pid_started
 
 _LOCKS: dict[str, threading.Lock] = {}
 _LOCKS_GUARD = threading.Lock()
 LOCK_FILE = f"{ws.METADATA_DIR}/lock"
-STALE_AFTER = 6 * 3600
+STALE_AFTER = 6 * 3600  # not refreshed for this long: an owner on another machine is gone
+REFRESH = 60.0  # seconds between refreshes of a held lock's time
+HOST = socket.gethostname()
 log = logging.getLogger("viwo.workspace")
 
 
@@ -134,17 +141,50 @@ def resolve_target(folder: Path, policy: OnExisting, default: Path | None = None
 
 
 def _stale(path: Path) -> str:
-    """Why an existing lock file may be taken over ("" when its owner is alive)."""
+    """Why an existing lock file may be taken over ("" while its owner runs). The owner first:
+    alive (and the same process, by its start time when the lock and the OS tell it) keeps the
+    lock whatever its age. Age (since the last refresh) decides only for an owner that cannot
+    be checked: one on another machine."""
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-        pid, when = int(data["pid"]), float(data["time"])
+        pid, when = int(data["pid"]), max(float(data["time"]), path.stat().st_mtime)
+        host, started = str(data.get("host") or HOST), data.get("started")
     except (OSError, ValueError, KeyError, TypeError):
         return "unreadable lock file"
-    if time.time() - when > STALE_AFTER:
-        return f"lock older than {STALE_AFTER // 3600} h (pid {pid})"
-    if pid == os.getpid():
-        return ""
-    return "" if pid_alive(pid) else f"owner pid {pid} is not running"
+    if host != HOST:
+        old = time.time() - when > STALE_AFTER
+        return (
+            f"lock of {host} (pid {pid}) not refreshed for {STALE_AFTER // 3600} h" if old else ""
+        )
+    if pid != os.getpid() and not pid_alive(pid):
+        return f"owner pid {pid} is not running"
+    now = pid_started(pid)
+    if isinstance(started, (int, float)) and now is not None and abs(now - started) > 0.01:
+        return f"owner pid {pid} ended; the pid now belongs to a later process"
+    return ""
+
+
+def _body() -> str:
+    """The lock's content: who holds it (pid, its start time, host) and since when."""
+    owner = {"pid": os.getpid(), "started": pid_started(os.getpid()), "host": HOST}
+    return json.dumps({**owner, "time": time.time()})
+
+
+def _keep_fresh(path: Path | None):
+    """Refresh the held lock's time (its modification time) every REFRESH seconds while the run
+    lives, so its age never makes a live run look abandoned; returns the stop function."""
+    if path is None:
+        return lambda: None
+    done = threading.Event()
+
+    def beat() -> None:
+        while not done.wait(REFRESH):
+            with suppress(OSError):  # read by another process this instant: the next beat
+                os.utime(path)
+
+    beater = threading.Thread(target=beat, name="viwo-lock-refresh", daemon=True)
+    beater.start()
+    return lambda: (done.set(), beater.join())
 
 
 def _lock_file(folder: Path) -> tuple[Path | None, bool]:
@@ -155,14 +195,18 @@ def _lock_file(folder: Path) -> tuple[Path | None, bool]:
     created = not folder.exists()
     path = folder / LOCK_FILE
     path.parent.mkdir(parents=True, exist_ok=True)  # the folder too, when it is missing
-    body = json.dumps({"pid": os.getpid(), "time": time.time()})
+    body = _body()
     for attempt in (1, 2):
         try:
             fd = os.open(path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
         except FileExistsError:
             reason = _stale(path) if attempt == 1 else ""
             if not reason:
-                raise ViwoError("busy", f"workspace {folder} is locked by another ViWo process")
+                raise ViwoError(
+                    "busy",
+                    f"workspace {folder} is locked by another ViWo process, which still runs",
+                    hint=f"wait for it to finish; the lock is {path}",
+                )
             log.warning("taking over the lock on %s: %s", folder, reason)
             path.unlink(missing_ok=True)
             continue
@@ -194,9 +238,11 @@ def workspace_lock(folder: Path, timeout: float = 0.0):
         raise ViwoError("busy", f"workspace {folder} is busy with another job")
     try:
         held, created = _lock_file(folder)
+        stop = _keep_fresh(held)
         try:
             yield
         finally:
+            stop()  # before the file goes: a late refresh never brings it back
             _unlock_file(held, created)
     finally:
         lock.release()

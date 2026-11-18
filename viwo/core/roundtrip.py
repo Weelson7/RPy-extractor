@@ -21,7 +21,7 @@ from viwo.contracts.types import CancelToken
 from .context import core_context
 from .pipeline.collect import sha256
 from .pipeline.failover import run_with_failover
-from .pipeline.guard import change_warning, refuse_writes_inside, snapshot
+from .pipeline.guard import PATCHED, change_warning, guarded, snapshot
 from .pipeline.identify import identify
 from .pipeline.ticker import Ticker
 from .records import record_context
@@ -33,7 +33,7 @@ UNVERIFIED = (
     "untouched members were not re-verified: this packer checks the edited members only "
     "(doc 18.3); the in-place save keeps the others"
 )
-MARKER = ".viwo-patched"
+MARKER = PATCHED
 CORE_PACK = {"unarchive.zip": "pack.zip"}
 
 
@@ -137,11 +137,13 @@ def not_copied(left: list[str]) -> str:
 def prepare_copy(rt, game: Path, target: Path, sink=None, stage="copy", reuse=False) -> list[str]:
     """The patched copy (doc 18): a full copy of the game, marked. With `reuse`, a target that
     already is a patched copy is kept as it is, so patches and mods stack on it. A file the OS
-    refuses to read is left out, said in a warn event and returned (callers report it too)."""
+    refuses to read is left out, said in a warn event and returned (callers report it too).
+    The guard runs first, whatever the target's marker: an install a patched copy was copied
+    over carries the marker and is still the game."""
+    target = guarded(game, target, "patched copy", rt.temp_root)
     if reuse and (target / MARKER).is_dir():
         return []
     rt.temp_root.mkdir(parents=True, exist_ok=True)
-    refuse_writes_inside(game, workspace=target, temp_folder=rt.temp_root)
     tell(sink, f"Copying the game to {target}", stage)
     if target.exists() and any(p.name != ws.METADATA_DIR for p in target.iterdir()):
         if not (target / MARKER).is_dir():
@@ -164,9 +166,9 @@ def _verify(rt, packed: Path, item: PlanItem, ctx, untouched: dict) -> list[str]
     if match is None:
         return list(item.members) + list(untouched)
     dest = Path(tempfile.mkdtemp(dir=ctx.scratch.parent))
-    outcome, _ = run_with_failover(
-        rt.bindings[match.slot_id], rt.backends, lambda b: b.extract(packed, dest, ctx)
-    )
+    call = lambda b: b.extract(packed, dest, ctx)  # noqa: E731
+    binding = rt.bindings[match.slot_id]
+    outcome, _ = run_with_failover(binding, rt.backends, call, into=dest, cancel=ctx.cancel)
     expected = {m: sha256(src) for m, src in item.members.items()} | dict(untouched)
     back = {original: dest / altered for altered, original in ws.renamed(dest).items()}
     bad = [  # a member Windows cannot name is found under its altered name (its record)
@@ -195,6 +197,22 @@ def _override(item: PlanItem, target: Path) -> dict:
     return {"container": "", "slot": "override", "members": len(item.members), "failed": bad}
 
 
+def _packing(rt, item: PlanItem, container: Path, ctx):
+    """One pack attempt per backend. A packer that writes a file of its own beside the
+    container (an override, a patch archive) may leave it half-written when it fails: what
+    an earlier attempt made there, and was not in the copy before, is removed first."""
+    binding = rt.bindings[item.slot]
+    outputs = {rt.backends[b].output_for(container) for b in (binding.main, binding.spare) if b}
+    made = [out for out in outputs - {container} if not out.exists()]
+
+    def attempt(backend):
+        for out in (o for o in made if o.is_file()):
+            out.unlink()
+        return backend.pack(container, item.members, ctx)
+
+    return attempt
+
+
 def _apply(rt, item: PlanItem, target: Path, ctx) -> dict:
     if item.slot == "override":
         return _override(item, target)
@@ -207,7 +225,11 @@ def _apply(rt, item: PlanItem, target: Path, ctx) -> dict:
         f"Packing {item.container} ({item.slot}, {len(item.members)} member(s))", stage="repack"
     )
     outcome, used = run_with_failover(
-        rt.bindings[item.slot], rt.backends, lambda b: b.pack(container, item.members, ctx)
+        rt.bindings[item.slot],
+        rt.backends,
+        _packing(rt, item, container, ctx),
+        into=ctx.staging,
+        cancel=ctx.cancel,
     )
     result = {**head, "backend": used, "members": len(item.members)}
     if not outcome.ok:
@@ -237,6 +259,8 @@ def repack(
 ) -> dict:
     """Plan (apply=False) or build a patched copy of the game with the workspace edits."""
     game = source_game(workspace)
+    if apply and target is not None:  # before the lock and the plan, whatever is planned
+        target = guarded(game, target, "patched copy", rt.temp_root)
     edits, skipped = edit_set(workspace)
     items, warnings = plan(rt, game, edits, original_hashes(workspace))
     warnings = [*warnings, *_reminders(rt, items)]
@@ -255,7 +279,6 @@ def repack(
         return report
     if target is None:
         raise ViwoError("invalid_request", "no target folder for the patched copy")
-    refuse_writes_inside(game, workspace=target, temp_folder=rt.temp_root)  # before the lock
     with workspace_lock(target):  # two builds into one target cannot interleave
         return _build(rt, game, target, items, report, (sink, cancel or CancelToken()))
 

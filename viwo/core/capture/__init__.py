@@ -15,7 +15,7 @@ from viwo.contracts.slots import SlotDefinition
 from ..context import core_context
 from ..pipeline.collect import Source, collect, sha256
 from ..pipeline.failover import run_with_failover
-from ..pipeline.guard import change_warning, refuse_writes_inside, snapshot
+from ..pipeline.guard import change_warning, guarded, snapshot
 from ..pipeline.probe import FolderProbe
 from ..pipeline.runner import detect_all
 from ..records import record_context
@@ -75,8 +75,7 @@ class CaptureRequest:
 
 def _prepare(rt, req: CaptureRequest) -> set[str]:
     """Check the target workspace; returns the hashes static extraction already produced."""
-    refuse_writes_inside(req.game, workspace=req.workspace, temp_folder=rt.temp_root)
-    folder = req.workspace
+    folder = guarded(req.game, req.workspace, temp=rt.temp_root)
     if folder.is_dir() and any(folder.iterdir()) and not ws.has_marker(folder):
         raise ViwoError("refused", f"{folder} is not empty and is not a ViWo workspace")
     known = _known_hashes(folder) if folder.is_dir() else set()
@@ -97,8 +96,9 @@ def _run(rt, req: CaptureRequest, known: set[str], sink, cancel) -> tuple:
         spec["capture_after"] = req.capture_after
         say = lambda m: ctx.log(m, "warn", "capture")  # noqa: E731
         with excluded(rt, (req.game, req.workspace, work), say):
+            call = lambda b: b.capture(spec, ctx.staging, ctx)  # noqa: E731
             outcome, used = run_with_failover(
-                binding, rt.backends, lambda b: b.capture(spec, ctx.staging, ctx)
+                binding, rt.backends, call, into=ctx.staging, cancel=ctx.cancel
             )
         if not outcome.ok:
             raise ViwoError("failed", outcome.error or "capture failed")
@@ -117,6 +117,7 @@ def _run(rt, req: CaptureRequest, known: set[str], sink, cancel) -> tuple:
 def capture(rt, req: CaptureRequest, sink=None, cancel=None) -> dict:
     if not ws.inside(req.game, req.exe) or not req.exe.is_file():  # policy covers the game only
         raise ViwoError("refused", "the executable must be a file inside the game folder")
+    guarded(req.game, req.workspace, temp=rt.temp_root)  # before the policy remembers anything
     warnings = check(rt, req.game, req.confirmed, sensitive_plugins(rt, req.game))
     known = _prepare(rt, req)
     before = snapshot(req.game)  # the game runs in its own folder: what it writes there is said

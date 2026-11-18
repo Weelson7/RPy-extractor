@@ -42,13 +42,15 @@ class LockFileTests(unittest.TestCase):
             folder = Path(tmp)
             path = folder / workspace.LOCK_FILE
             path.parent.mkdir(parents=True)
-            for body in (
-                json.dumps({"pid": os.getpid(), "time": time.time() - 7 * 3600}),  # too old
+            old = time.time() - 7 * 3600
+            for body in (  # too old: only for an owner that cannot be checked (another host)
+                json.dumps({"pid": os.getpid(), "time": old, "host": "elsewhere"}),
                 json.dumps({"pid": 2**22 + 12345, "time": time.time()}),  # dead pid
                 "not json",
             ):
                 path.parent.mkdir(exist_ok=True)  # the last release removed the empty folder
                 path.write_text(body)
+                os.utime(path, (old, old))  # its last refresh, as old as its time
                 with self.assertLogs("viwo.workspace", level="WARNING"):
                     with workspace.workspace_lock(folder):
                         self.assertEqual(json.loads(path.read_text())["pid"], os.getpid())

@@ -12,6 +12,7 @@ from viwo.contracts.errors import ViwoError
 from viwo.contracts.runtime import RuntimeAgent
 
 from ..context import core_context
+from ..pipeline.guard import guarded
 from ..pipeline.probe import FolderProbe
 from ..pipeline.runner import detect_all
 from ..roundtrip import prepare_copy
@@ -83,8 +84,9 @@ def _unfinished(agent: str, files: list[Path], req: RuntimeRequest, ctx) -> list
 
 def run_agent(rt, req: RuntimeRequest, sink=None, cancel=None) -> dict:
     _enabled(rt)
-    agent = agent_for(rt, req.game)
     copy = (req.copy or req.workspace.parent / f"{req.workspace.name}.agent-copy").resolve()
+    guarded(req.game, copy, "patched copy", rt.temp_root)  # first, as prepare_copy does again
+    agent = agent_for(rt, req.game)
     target = copy / _exe_in_game(req)  # refused before anything is copied
     left = prepare_copy(rt, req.game, copy, sink, "agent", reuse=True)
     if why := agent.accepts(copy, target):
@@ -100,7 +102,7 @@ def run_agent(rt, req: RuntimeRequest, sink=None, cancel=None) -> dict:
         child.kill()
     found = agent.outputs(copy, target)
     warnings = [] if done else _unfinished(agent.backend_id, found, req, ctx)
-    out = runtime_dir(req.workspace, "agent", agent.backend_id)
+    out = runtime_dir(req.workspace, "agent", agent.backend_id, game=req.game)
     files = [Path(shutil.copy2(f, out / f.name)) for f in found]
     ctx.log(f"Collected {len(files)} file(s) into {out}", stage="agent")
     return {

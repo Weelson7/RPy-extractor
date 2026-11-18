@@ -25,7 +25,7 @@ from .checks import _verify, verified
 from .collect import collect
 from .export import export_one, rewrap
 from .filters import prune, widened
-from .guard import change_warning, refuse_writes_inside, snapshot
+from .guard import change_warning, guarded, snapshot
 from .probe import FolderProbe, detect_all
 from .select import select_plugins, with_games
 from .sources import claimed, sources_for
@@ -102,7 +102,7 @@ def extract(
     target = Path(request.workspace) if request.workspace else default_workspace
     if target is None:
         raise ViwoError("invalid_request", "no workspace given")
-    refuse_writes_inside(game, workspace=target, temp_folder=rt.temp_root)
+    target = guarded(game, target, temp=rt.temp_root)
     with workspace_lock(target):
         precheck(target, request.on_existing, default_workspace)  # ask before announcing work
         tell(sink, f"Preparing workspace {target} ({request.on_existing.value})", "prepare")

@@ -45,7 +45,19 @@ outcome is retryable, run the spare on the same item. `main_only`: the spare is 
 so it is neither promoted when the main is missing (the slot is then unbound and says why)
 nor run after the main failed. `supplement` (both run, the spare adding what the main left)
 is open. Outcome kinds (`OutcomeKind`): `ok`, `unavailable` (retry), `failed` (retry; a backend
-exception counts as failed), `needs_key` (never retried). Cancellation is the job's concern.
+exception counts as failed), `needs_key` (never retried).
+
+**A fresh folder per attempt** (`run_with_failover(binding, backends, call, *, into, cancel)`,
+both keywords required). `into` is the folder the call writes: it is emptied before every
+attempt, so a spare never writes beside the truncated files and the export map a failed main
+left, and nothing of a failed attempt is collected or mapped into provenance. Every stage
+passes its own: UNPACK the archive's folder, EXPORT the plugin's staging, CARVE the blob's
+folder, DECODE the file's or the batch's folder, analysis its `.analysis/<backend>/<key>/`,
+capture its staging, the round trip its staging (and the re-extraction folder of VERIFY); a
+pack attempt also removes the separate output file (an override, a patch archive) an earlier
+attempt made in the copy, when it was not there before. Only a call that writes nothing (a
+probe) passes `into=None`. **No spare after a cancel:** `cancel` is the job's token; when it is
+set while the main runs, the spare never starts, in every stage.
 
 Binding at boot:
 

@@ -199,12 +199,13 @@ class FixTests(unittest.TestCase):
 
         with tempfile.TemporaryDirectory() as tmp:
             fresh, mine = Path(tmp) / "fresh", Path(tmp) / "mine"
-            runtime_dir(fresh, "agent")
+            game = Path(tmp) / "game"  # the agent knows its game: the user's folder is not it
+            runtime_dir(fresh, "agent", game=game)
             self.assertTrue(ws.has_marker(fresh))
             self.assertFalse(_has_content(fresh))  # .runtime alone is no extraction to replace
             mine.mkdir()
             (mine / "notes.txt").write_text("mine")
-            runtime_dir(mine, "agent")
+            runtime_dir(mine, "agent", game=game)
             self.assertFalse(ws.has_marker(mine))
 
     def test_a_container_converts_with_global_utoc_beside_it(self) -> None:

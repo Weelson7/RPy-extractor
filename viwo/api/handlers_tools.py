@@ -6,6 +6,7 @@ from typing import Any, Callable
 
 from viwo.contracts.errors import ViwoError
 from viwo.core import sanitizer, surveys
+from viwo.core.pipeline.guard import guarded
 from viwo.core.preflight import install, preflight
 from viwo.core.roundtrip import repack
 from viwo.core.sanitizer_rules import collect_rules
@@ -115,6 +116,8 @@ def apply_patch_set(app: App, d: dict) -> dict:
     def run(sink, cancel) -> dict:
         return {"success": True, **patchsets.apply(app.rt, game, set_path, out, sink)}
 
+    if isinstance(refused := safe(lambda: guarded(game, out, "patched copy")), dict):
+        return refused  # before the lock file lands in it
     return app.locked_job("patch", out, run)
 
 
@@ -144,6 +147,9 @@ def mod_package(app: App, d: dict) -> dict:
             return {"success": True, **mods.pack(game, copy, mod, str(d.get("name", "")))}
         return {"success": True, **mods.apply(app.rt, game, mod_list, copy, sink)}
 
+    refused = safe(lambda: guarded(game, copy, "patched copy")) if action == "apply" else None
+    if isinstance(refused, dict):
+        return refused  # before the lock file lands in it
     return app.locked_job("mod", copy, run)
 
 

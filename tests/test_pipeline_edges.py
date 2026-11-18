@@ -146,7 +146,9 @@ class FailoverTests(unittest.TestCase):
             return Outcome(OutcomeKind.OK, 1)
 
         backends = {"main": SimpleNamespace(name="main"), "spare": SimpleNamespace(name="spare")}
-        out, used = run_with_failover(SlotBinding("s", "main", "spare"), backends, call)
+        out, used = run_with_failover(
+            SlotBinding("s", "main", "spare"), backends, call, into=None, cancel=None
+        )
         self.assertEqual((out.kind, used), (OutcomeKind.OK, "spare"))
         self.assertIn("KeyError", out.fallback)  # the main's bug travels with the result
 

@@ -91,18 +91,12 @@ def _unpack_one(runtime, match, dest: Path, make_ctx, report: UnpackReport, orig
     ctx = make_ctx(slot.owner)
     ctx.log(f"Extracting {match.path.name} ({match.slot_id})", stage="unpack")
     source = carve(match, ctx.scratch)
-
-    def reset() -> None:
-        shutil.rmtree(dest, ignore_errors=True)
-        dest.mkdir(parents=True)
-
-    reset()
     outcome, used = run_with_failover(
         runtime.bindings[match.slot_id],
         runtime.backends,
         lambda backend: backend.extract(source, dest, ctx),
-        reset,
-        getattr(ctx, "cancel", None),
+        into=dest,
+        cancel=getattr(ctx, "cancel", None),
     )
     if not outcome.ok:
         report.failures.append(f"{origin}: {outcome.kind.value}: {outcome.error}")

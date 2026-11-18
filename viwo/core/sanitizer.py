@@ -17,6 +17,7 @@ from viwo.contracts.errors import ViwoError
 
 from . import provenance
 from .curation import trash
+from .pipeline.guard import guarded
 from .sanitizer_rules import BatchRule, RuleContext, collect_rules, contained, rule_ids, sniff
 from .steps import Step
 from .workspace import write_atomic
@@ -57,7 +58,9 @@ def _recipe_rules(recipe: str, rules) -> list:
 
 
 def plan(workspace: Path, sink=None, cancel=None, **opts) -> dict:
-    """opts: rules (providers), recipe id, path (sub-folder), offset/limit (paging)."""
+    """opts: rules (providers), recipe id, path (sub-folder), offset/limit (paging). The plan
+    is saved in the workspace: a folder that may be a game is refused (guard.guarded)."""
+    workspace = guarded(None, workspace)
     rules = _recipe_rules(
         opts.get("recipe") or RECIPES[0]["id"], opts.get("rules") or collect_rules()
     )
@@ -153,6 +156,7 @@ def _chosen(workspace: Path, findings: list[dict], accept) -> list[dict]:
 
 
 def apply(workspace: Path, plan_id: str, accept="all-safe", sink=None, cancel=None) -> dict:
+    workspace = guarded(None, workspace)  # it moves files: never in a folder that may be a game
     plan_id = _plan_id(plan_id)
     path = workspace / ROOT / "plans" / f"{plan_id}.json"
     if not path.is_file():
@@ -196,6 +200,7 @@ def _record(workspace: Path, plan_id: str, journal: list) -> None:
 def undo(workspace: Path, token: str, sink=None, cancel=None) -> dict:
     """Move every journaled file back; what cannot go back (or a cancel did not reach) stays
     in the journal and is named, so a later undo can finish."""
+    workspace = guarded(None, workspace)
     path = workspace / ROOT / "journal" / f"{_plan_id(token)}.json"
     if not path.is_file():
         raise ViwoError("not_found", f"nothing to undo for {token}")
