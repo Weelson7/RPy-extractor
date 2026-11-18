@@ -4,6 +4,10 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.68 (2026-11-18)
+- COLLECT hashes with its own read loop again (owner): `hashlib.file_digest` needs Python
+  3.11, and an extraction on 3.10 failed there.
+
 ## 1.20.67 (2026-11-18)
 - Pinned downloads pick up where a dropped connection stopped (a Range request) and go on
   for as long as each try brings the file further; three tries in a row that bring nothing

@@ -43,8 +43,11 @@ class CollectReport:
 
 
 def sha256(path: Path) -> str:
+    h = hashlib.sha256()
     with open(path, "rb") as fh:
-        return hashlib.file_digest(fh, "sha256").hexdigest()
+        for chunk in iter(lambda: fh.read(8192), b""):
+            h.update(chunk)
+    return h.hexdigest()
 
 
 def _walk(root: Path, skip: set[str], avoid: Path):
