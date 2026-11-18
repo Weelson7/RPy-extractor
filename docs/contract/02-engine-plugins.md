@@ -149,7 +149,7 @@ Detection markers live in each plugin's `detect()`; slot defaults in doc 8.4.
 | taleworlds | TaleWorlds engine, detected by its TPAC packages: `unarchive.tpac` (textures to DDS) | - |
 | bannerlord | game plugin of taleworlds: the title, by its executables | - |
 | quickbms | `unarchive.bms`: one `<ext>.bms` script per format from `[options.quickbms] scripts` (default `third_party/quickbms/scripts/`) | - |
-| overwatch | `export.overwatch` (DataTool, Windows); `tos_sensitive`: a reminder in every run's warnings | `modes` (string) |
+| overwatch | `export.overwatch` (DataTool, Windows); `tos_sensitive`: a reminder in every run's warnings | `modes` (string); `query` (string, `;` between entries, each one DataTool argument: `mode: words` goes to that extract mode, `--flag` to every extract mode, any other entry to `extract-unlocks`; an entry no running mode takes is said in the notes); `models` (`glb` or `owmdl`) |
 
 ## 2.8 Discovery and drop-ins
 

@@ -31,9 +31,18 @@ or when a feature that needs them is turned on (doc 6.4).
   `viwo install --game SLUG [--game-version V]` (what an index entry needs, doc 13 and
   `docs/indexes.md`), SYSTEM (INSTALL, INSTALL ALL MISSING), and the startup preflight when
   `auto_install = on` (the default; never `on_demand` entries).
-- Download over HTTPS with `User-Agent: ViWo/<version>`, retried when a slow link ends early,
-  checked against the pinned size and sha256 before use; a mismatch is refused (`refused:
-  checksum mismatch`) and nothing lands.
+- Download over HTTPS with `User-Agent: ViWo/<version>`, checked against the pinned size and
+  sha256 before use; a mismatch is refused (`refused: checksum mismatch`) and nothing lands.
+  A link that drops is picked up where it stopped (a Range request; from the start when the
+  server sends the whole file again) for as long as each try brings the file further; three
+  tries in a row that do not end it, named by what ended the last (`the connection dropped
+  (...)` with "check the connection", or `the server answered HTTP 503 ...` with "the server is
+  failing: try again later"). An HTTP error answer is never taken for a drop: a 4xx fails at
+  once with its status and a hint (`the URL answers HTTP 404 Not Found (url)`: "the release may
+  have moved; report it"); a 5xx is tried again like a drop. A download without a pinned size
+  (an indexes release) knows the file is whole from the server's Content-Length or
+  Content-Range, else from a body that ends cleanly (or a 416 whose length is what came); a
+  body that drops is resumed or ends in a named failure, never returned as a whole file.
 - Unpack into a temporary folder under `third_party/` with the same member checks as extraction
   (traversal, links), Unix modes applied, then swap into `third_party/<id>/`. A tool that is
   running keeps its folder locked: `busy` with a hint. An antivirus quarantine is reported as a

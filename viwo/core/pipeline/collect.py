@@ -120,7 +120,8 @@ def _digest(item) -> str | OSError:
 
 def _take(src: Path, digest, folder: Path, source: Source, report) -> None:
     """Collect one file; a source the OS refuses or that vanishes (an antivirus hold or a
-    quarantine) is a named warning, never a crash. Workspace-side errors still raise."""
+    quarantine, also one that starts between its hash and its copy) is a named warning, never
+    a crash. Workspace-side errors still raise."""
     if isinstance(digest, OSError):
         report.unreadable.append(f"{src.name} ({digest.strerror or digest.errno})")
         return
@@ -130,6 +131,32 @@ def _take(src: Path, digest, folder: Path, source: Source, report) -> None:
         if src.exists():
             raise
         report.unreadable.append(f"{src.name} (removed while collecting, e.g. by an antivirus)")
+    except OSError as exc:
+        if _readable(src):  # the source reads: the workspace refused, which stops the run
+            raise
+        report.unreadable.append(f"{src.name} ({exc.strerror or exc.errno}, held while copied)")
+
+
+def _readable(src: Path) -> bool:
+    """Whether the source opens for reading now (Windows names neither file of a copy that
+    fails, so the side that refused is found by asking)."""
+    try:
+        with open(src, "rb"):
+            return True
+    except OSError:
+        return False
+
+
+def _transfer(src: Path, target: Path, move: bool, digest: str) -> None:
+    """Copy or move one file. A move whose copy landed whole while the staging original stays
+    held is done (staging goes with the run); any other failure leaves no partial copy."""
+    try:
+        (shutil.move if move else shutil.copy2)(str(src), str(target))
+    except OSError:
+        if move and target.is_file() and sha256(target) == digest:
+            return
+        target.unlink(missing_ok=True)  # a free name _place chose: only this copy's bytes
+        raise
 
 
 def _where(source: Source, rel: str) -> dict:
@@ -146,7 +173,7 @@ def _collect_one(src: Path, digest: str, folder: Path, source: Source, report) -
     folder.mkdir(parents=True, exist_ok=True)
     target, duplicate = _place(src, folder, digest)
     if not duplicate:
-        (shutil.move if source.move else shutil.copy2)(str(src), str(target))
+        _transfer(src, target, source.move, digest)
         report.by_ext[folder.name] += 1
     rel = src.relative_to(source.root).as_posix()  # duplicates still get provenance (round trip)
     report.provenance.append(

@@ -61,7 +61,7 @@ flaky. `python tools/run_tests.py` runs the whole suite the same way.
 | a plugin hook writing outside its staging | the conformance kit's sandbox check fails | `test_conformance_kit.py` |
 | PREPARE on a folder without the marker | refused, nothing deleted | `test_game_integrity.py` |
 | any extraction | game-folder hashes unchanged | plugin tests, `test_game_integrity.py` |
-| a game file unreadable (antivirus) or removed mid-run | named in a warning, the run completes | `test_pipeline.py` |
+| a game file unreadable (antivirus) or removed mid-run, also one held between its hash and its copy | named in a warning, no partial copy left, the run completes | `test_pipeline.py`, `test_collect_holds.py` |
 | missing token, foreign Host, non-JSON body, oversized body, cross-origin `text/plain` POST | 403 / 415 / 413, no side effect | `test_server.py` |
 | random bytes behind a format's magic, and valid archives randomly damaged, to every in-process reader | an Outcome (a named failure or what could be read), never an exception; nothing written outside the destination | `test_untrusted_input.py`, `test_redengine.py` |
 | an empty or relative path in an API request | refused (`not_found` / `invalid_request`); the server's own folder is never read or written | `test_api_routes.py` |

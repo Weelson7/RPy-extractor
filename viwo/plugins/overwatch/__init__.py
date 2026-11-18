@@ -39,6 +39,28 @@ def parse_modes(raw) -> tuple[list[str], str]:
     return modes, ""
 
 
+def queries(raw, modes: list[str]) -> tuple[dict[str, list[str]], list[str]]:
+    """The `query` option per extract mode, each `;` entry one DataTool argument as given:
+    `extract-maps: Rialto` goes to that mode, a `--flag` to every extract mode, anything else
+    to extract-unlocks. Returns ({mode: its arguments}, the entries no running mode takes)."""
+    out: dict[str, list[str]] = {m: [] for m in modes if m.startswith("extract-")}
+    unused = []
+    for entry in filter(None, (e.strip() for e in str(raw or "").split(";"))):
+        head, colon, rest = entry.partition(":")
+        if entry.startswith("--"):
+            targets, words = list(out), entry
+        elif colon and head.strip() in KNOWN_MODES:
+            targets, words = [head.strip()], rest.strip()
+        else:
+            targets, words = ["extract-unlocks"], entry
+        targets = [m for m in targets if m in out] if words else []
+        for mode in targets:
+            out[mode].append(words)
+        if not targets:
+            unused.append(entry)
+    return out, unused
+
+
 MANIFEST = PluginManifest(
     "overwatch",
     "Overwatch (DataTool)",
@@ -50,8 +72,9 @@ MANIFEST = PluginManifest(
         PluginOption("modes", "DataTool modes to run, comma separated", "string", MODES),
         PluginOption(
             "query",
-            "what the extract modes take, in DataTool's own words, `;` between several "
-            "(e.g. `Tracer|skin=Classic;Mercy|skin=Classic`); empty: everything",
+            "what to extract, in DataTool's own words, `;` between several: an entry goes to "
+            "extract-unlocks (`Tracer|skin=Classic;Mercy|skin=Classic`), `mode: words` to that "
+            "mode (`extract-maps: Rialto`), a `--flag` to every extract mode; empty: everything",
             "string",
             "",
         ),
@@ -82,18 +105,21 @@ class DataToolExporter(Exporter):
         modes, problem = parse_modes(ctx.options.get("modes"))
         if problem:
             return Outcome(OutcomeKind.FAILED, error=problem)
-        asked = [q.strip() for q in str(ctx.options.get("query") or "").split(";") if q.strip()]
-        failed = []
+        asked, unused = queries(ctx.options.get("query"), modes)
+        failed, notes = [], (REMINDER,)
+        if unused:  # never silent: a query entry no running mode takes
+            notes += (f"query entries no running mode takes (not used): {'; '.join(unused)}",)
+            ctx.log(notes[-1], "warn", stage="export")
         for mode in modes:
             out = ctx.staging / mode
-            query = asked if mode.startswith("extract-") else []  # each one argument, as given
+            query = asked.get(mode, [])  # each one argument, as given
             ctx.log(f"DataTool {mode} {' '.join(query)}".rstrip(), stage="export")
             argv = [*tool.argv_prefix, str(ctx.game_root), mode, str(out), *query]
             relay = ctx.tool_output("export", every=5.0)  # DataTool's own lines, live
             done = ctx.os.process.run(argv, timeout=12 * 3600, cancel=ctx.cancel, on_line=relay)
             if not done.ok:
                 failed.append(mode)
-        notes = (REMINDER,) + ((f"failed modes: {', '.join(failed)}",) if failed else ())
+        notes += (f"failed modes: {', '.join(failed)}",) if failed else ()
         if str(ctx.options.get("models") or "glb").lower() != "owmdl":
             ctx.log("Models to glTF (.glb beside each .owmdl)", stage="export")
             made, lost = owmdl.convert_all(ctx.staging, getattr(ctx, "each", map))

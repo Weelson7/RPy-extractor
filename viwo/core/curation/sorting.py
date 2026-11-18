@@ -227,12 +227,18 @@ def preview(workspace: Path, encoded: str, max_lines: int = 50) -> dict:
     path = resolve(workspace, encoded)
     kind, name = media_type(path.suffix.lower()), path.name
     if kind in ("image", "audio", "video", "model"):
-        return {
+        answer = {
             "success": True,
             "type": kind,
             "name": name,
             "url": f"/preview/{encode(workspace.resolve(), path)}",
         }
+        if kind == "model":  # a packed model makes the viewer go online for its decoder: said
+            from ..media import online_decoders
+
+            decoders = online_decoders(path)
+            answer.update(needsNetwork=bool(decoders), decoders=decoders)
+        return answer
     try:
         with path.open("rb") as fh:
             head = fh.read(4096)

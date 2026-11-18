@@ -153,7 +153,7 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 3.1 guard without a game path (dump, trace, hook, profile, record, sanitize) | partial | a patched copy and a folder of files that is no ViWo workspace are refused; a new folder inside a game, a folder above one and a game carrying a workspace marker cannot be told apart without the game's path |
 | 3.1 wrapper re-detection | implemented | `core/pipeline/export.py` `rewrap`; `tests/test_formats.py::test_engine_inside_an_asar_is_redetected` |
 | 3.1 carve modes and claimed suffixes | implemented | `core/pipeline/carving.py` |
-| 3.1 COLLECT copy/move, dedupe by hash, unreadable files named | implemented | `core/pipeline/collect.py` |
+| 3.1 COLLECT copy/move, dedupe by hash, unreadable files named (also one held while it is copied) | implemented | `core/pipeline/collect.py`; `tests/test_collect_holds.py` |
 | 3.1 DECODE inside COLLECT, `core.decode`, `core.decode_video` | implemented | `core/decode.py` |
 | 3.1 run record | implemented | `core/pipeline/runner.py` `_report` |
 | 3.2 request and payload mapping | implemented | `contracts/pipeline.py`, `api/app.py` |
@@ -259,7 +259,7 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 10.1 pin file: tools, python, workers, on_demand, hidden | implemented | `data/tools.json`, `core/thirdparty.py` |
 | 10.1 hash-locked Python pins | implemented | `data/locks/`, `tools/pin_python.py`, `core/thirdparty.py` `pip_install` |
 | 10.2 install paths: CLI, SYSTEM, preflight | implemented | `cli_extra.py`, `api/handlers_tools.py`, `core/preflight.py` |
-| 10.2 HTTPS, size and sha256, retries, safe unpack, busy folder, antivirus hint | implemented | `core/thirdparty.py` |
+| 10.2 HTTPS, size and sha256, resumed drops, HTTP errors named (4xx at once), unknown sizes whole or failed, safe unpack, busy folder, antivirus hint | implemented | `core/thirdparty.py`, `core/downloads.py`; `tests/test_thirdparty_unpack.py` |
 | 10.2 worker install into a fresh folder | implemented | `core/workers.py` |
 | 10.3 every pin listed | implemented | `data/tools.json`; `THIRD_PARTY_NOTICES.md` (`tools/notices.py`, `tests/test_diag.py`) |
 | 10.4 no prompts, no elevation | implemented | Cheat Engine from Scoop's unpacked build; first-run answers (8.3a) |
@@ -365,7 +365,7 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 18.3 asset converters (PNG back to Texture2D, `.ctex`) | open | - |
 | 18.4 pack slots | implemented | `plugins/*`, `backends/packers.py` |
 | 18.6 target rules (the guard first, also for a reused copy), no anti-tamper code | implemented | `core/roundtrip.py` `prepare_copy`, `core/pipeline/guard.py` `guarded` |
-| 18.8 offset, RVA, AOB, Keystone, capstone, bounded writes, verify, export | implemented | `core/patchsets.py`, `core/patch_tools.py`; `tests/test_patchsets.py` |
+| 18.8 offset, RVA, AOB (overlapping matches counted), Keystone, capstone, bounded writes, overlapping patches refused, verify, export | implemented | `core/patchsets.py`, `core/patch_tools.py`; `tests/test_patchsets.py` |
 | 18.8 API | implemented | `POST /api/patch` and job kind `patch` |
 | 18.9 pack, check (adapts), ordered apply, conflicts, duplicate names | implemented | `core/mods.py`; `tests/test_mods.py` |
 | 18.9 API | implemented | `POST /api/mod` and job kind `mod` |

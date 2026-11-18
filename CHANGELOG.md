@@ -4,6 +4,27 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.76 (2026-11-18)
+- Patch sets: two patches that would write the same bytes of one file (offset, RVA or AOB,
+  once located) are refused at plan time as `overlap`, each naming both; they used to corrupt
+  each other, report `verified` and then refuse to apply again. An AOB pattern counts its
+  overlapping matches (`CC CC CC` in four bytes of int3 padding is two), so it is never
+  written where it is not unique.
+- Downloads: an HTTP error answer is no longer taken for a dropped connection. A 4xx fails at
+  once with its status and a hint ("the URL answers HTTP 404 Not Found: the release may have
+  moved; report it"); a 5xx is tried again and named when it ends the download. Without a
+  pinned size (indexes releases) a body that drops is resumed or fails by name; it was
+  returned as if whole. The size the server gives also drives the progress line.
+- Overwatch: `[options.overwatch] query` reaches only the mode it is for: an entry goes to
+  `extract-unlocks`, `extract-maps: Rialto` to that mode, a `--flag` to every extract mode; an
+  entry no running mode takes is said. It used to go to every extract mode.
+- SORT: a 3D model packed with Draco, Basis (KTX2) or meshopt says under it that the viewer
+  fetches its decoder from the internet.
+- COLLECT: a file an antivirus takes between its hash and its copy is named among the
+  unreadable files and the run goes on (it stopped the extraction); no half copy is left. A
+  staging file whose copy landed but whose original stays held is collected.
+- `.gitignore`: the entries of other projects (C.O.R.E., RPy Extractor) removed.
+
 ## 1.20.75 (2026-11-18)
 - The game folder is read-only by construction: one guard (`pipeline/guard.py` `guarded`)
   hands every writer its folder and runs before any lock, claim, copy or work. `analyze`,

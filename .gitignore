@@ -1,49 +1,35 @@
-
-# =========================================================
-# Author: Weelson
-# Build/distribution artifacts
-# Extractor-generated working/output directories
-# IDE/editor metadata
-# Logs and runtime artifacts
-# OS metadata
-# Project: C.O.R.E.
 # Python bytecode and caches
-# RPy Extractor - Git Ignore
-# Tooling caches
-# User-local session output (if created outside app folder)
-# ViWo runtime data (startup.ini [server])
-# Virtual environments
 *$py.class
-*.egg-info/
-*.log
 *.py[cod]
-*.swo
-*.swp
-.DS_Store
+__pycache__/
 .coverage
-.idea/
 .mypy_cache/
 .pytest_cache/
 .ruff_cache/
+htmlcov/
+
+# Virtual environments
 .venv/
-.vscode/
 ENV/
-RPy-extractor/.trash*/
-RPy-extractor/assets/
-RPy-extractor/logs/
-RPy-extractor/tmp/
-Test-games/
-Thumbs.db
-__pycache__/
-assets/
+env/
+venv/
+
+# Build and distribution artifacts
+*.egg-info/
 build/
 dist/
-env/
-htmlcov/
-logs/
-merged-media/
-tmp/
-venv/
+release/
+
+# ViWo runtime data (startup.ini [server]), pinned tools, local test games
 viwo-data/
 third_party/
-release/
+Test-games/
+
+# Logs, editor and OS metadata
+*.log
+*.swo
+*.swp
+.DS_Store
+.idea/
+.vscode/
+Thumbs.db

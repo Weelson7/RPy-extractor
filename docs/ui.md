@@ -119,10 +119,13 @@ The stage's figure carries `data-kind` (`img`, `vid`, `aud`, `mdl`, `txt`, `bin`
 rules of `base.css` select on it, so a picture, a video or a model fills the panel and
 follows the window. A `.glb` or `.gltf` file opens in `<model-viewer>` (pinned, Apache-2.0,
 installed into `third_party/` by itself the first time a model is opened and served by ViWo from `/vendor/`; nothing comes from a CDN,
-except that a model packed with Draco or Basis makes the viewer fetch its decoder): drag to
-orbit, wheel to zoom. A `.gltf` that keeps buffers or textures in other files cannot load
-from the preview route; a `.glb` holds everything. Without the viewer installed the stage
-says how to install it.
+except that a model packed with Draco, Basis (KTX2) or meshopt makes the viewer fetch its
+decoder from the internet): drag to orbit, wheel to zoom. The preview route reads the model's
+JSON (a `.glb`'s JSON chunk, a `.gltf`'s text) and answers `needsNetwork` and `decoders`; when
+the model is packed, one short line under it says so ("Packed with Draco: the viewer fetches
+its decoder from the internet to show it."). A `.gltf` that keeps buffers or textures in other
+files cannot load from the preview route; a `.glb` holds everything. Without the viewer
+installed the stage says how to install it.
 
 ## Feedback
 

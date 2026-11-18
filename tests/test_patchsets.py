@@ -1,10 +1,15 @@
 """L3: T1 patch sets: offset patches check their original bytes, AOB patterns must match once,
 bytes already patched read `already`, the game is never written, an existing patched copy is
-patched in place, a set that does not fit is refused; CLI and API."""
+patched in place, a set that does not fit is refused; CLI and API. Properties: a pattern's
+matches are every position it fits, overlapping ones included (int3/NOP padding); a set plans
+`ok` exactly when no two of its located patches write the same bytes of one file, both of an
+overlapping pair are refused naming each other, and a set that applies re-applies as
+`already`."""
 
 from __future__ import annotations
 
 import json
+import random
 import struct
 import sys
 import tempfile
@@ -127,8 +132,6 @@ class PatchSetTests(unittest.TestCase):
             self.assertFalse((root / "other").exists())
 
     def test_a_patch_lands_only_inside_the_file(self) -> None:
-        import random
-
         rng = random.Random(9)
         with tempfile.TemporaryDirectory() as tmp:
             game, _ = fixture(Path(tmp))
@@ -177,6 +180,92 @@ class PatchSetTests(unittest.TestCase):
                 App(), {"gamePath": str(game), "patchSet": str(set_path), "plan": True}
             )
             self.assertTrue(res["success"] and res["ok"])
+
+
+def _brute(data: bytes, pattern: bytes, mask: list[bool]) -> list[int]:
+    """Every start where the pattern fits, by hand."""
+
+    def fits(i: int) -> bool:
+        return all(not m or data[i + k] == b for k, (b, m) in enumerate(zip(pattern, mask)))
+
+    return [i for i in range(len(data) - len(pattern) + 1) if fits(i)]
+
+
+SPELLINGS = {"bin/a.bin": "a", "./bin/a.bin": "a", "bin\\a.bin": "a", "b.bin": "b"}
+
+
+def _random_patch(rng: random.Random, data: bytes) -> tuple[dict, int, int]:
+    """(patch, start, width): an offset patch, or an AOB one whose 12-byte pattern is unique."""
+    width = rng.randint(1, 4)
+    start = rng.randrange(0, len(data) - width)
+    patch = {"file": rng.choice(list(SPELLINGS)), "patched": rng.randbytes(width).hex(" ")}
+    head = max(0, min(start - rng.randint(0, 12 - width), len(data) - 12))
+    pattern = data[head : head + 12]
+    if rng.random() < 0.4 and _brute(data, pattern, [True] * 12) == [head]:
+        return {**patch, "pattern": pattern.hex(" "), "at": start - head}, start, width
+    original = data[start : start + width].hex(" ")
+    return {**patch, "offset": hex(start), "original": original}, start, width
+
+
+class OverlapTests(unittest.TestCase):
+    def test_every_match_counts_overlapping_ones_too(self) -> None:
+        rng = random.Random(70)
+        for _ in range(400):
+            data = bytes(rng.choice(b"\xcc\x90") for _ in range(rng.randint(0, 40)))  # padding
+            size = rng.randint(1, 5)
+            pattern = bytes(rng.choice(b"\xcc\x90") for _ in range(size))
+            mask = [rng.random() < 0.8 for _ in range(size)]
+            self.assertEqual(patchsets._hits(data, pattern, mask), _brute(data, pattern, mask))
+        with tempfile.TemporaryDirectory() as tmp:
+            (Path(tmp) / "pad.bin").write_bytes(b"\x00" + b"\xcc" * 4 + b"\x00")
+            patch = {"file": "pad.bin", "pattern": "CC CC CC", "patched": "90"}
+            found = patchsets.locate(Path(tmp), patch)  # two matches in four bytes: not unique
+            self.assertEqual(found["status"], "mismatch")
+            self.assertEqual(found["reason"], "pattern matches 2 times (needs exactly one)")
+
+    def test_a_set_applies_exactly_when_no_two_patches_write_the_same_bytes(self) -> None:
+        rng = random.Random(71)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            rt = runtime(root)
+            for case in range(60):
+                game, data = root / f"g{case}", rng.randbytes(rng.randint(40, 200))
+                (game / "bin").mkdir(parents=True)
+                (game / "bin" / "a.bin").write_bytes(data)
+                (game / "b.bin").write_bytes(data)
+                made = [_random_patch(rng, data) for _ in range(rng.randint(1, 5))]
+                spans = [(SPELLINGS[p["file"]], s, s + w) for p, s, w in made]
+                pairs = {
+                    (i, j)
+                    for i, (f, a, a_end) in enumerate(spans)
+                    for j, (g, b, b_end) in enumerate(spans)
+                    if i < j and f == g and a < b_end and b < a_end
+                }
+                clash = {k for pair in pairs for k in pair}
+                set_path = root / f"s{case}.patch.json"
+                patch_set = {"schema": 1, "patches": [p for p, _, _ in made]}
+                set_path.write_text(json.dumps(patch_set), encoding="utf-8")
+                report = patchsets.plan(game, patch_set)
+                self.assertEqual(report["ok"], not clash, report)
+                for i, r in enumerate(report["results"]):
+                    self.assertEqual(r["status"] == "overlap", i in clash, (i, r))
+                for i, j in pairs:  # both of a pair are refused, each naming both
+                    for k in (i, j):
+                        self.assertIn(f"patches {i + 1} (", report["results"][k]["reason"])
+                        self.assertIn(f") and {j + 1} (", report["results"][k]["reason"])
+                copy = root / f"c{case}"
+                if clash:
+                    with self.assertRaises(ViwoError) as err:
+                        patchsets.apply(rt, game, set_path, copy)
+                    self.assertIn("overlap", err.exception.message)
+                    self.assertFalse(copy.exists())
+                    continue
+                self.assertTrue(patchsets.apply(rt, game, set_path, copy)["verified"])
+                if all(
+                    "offset" in p for p, _, _ in made
+                ):  # (a neighbour may edit an AOB's context)
+                    again = patchsets.apply(rt, game, set_path, copy)  # re-applies as it is
+                    self.assertEqual({r["status"] for r in again["results"]}, {"already"})
 
 
 if __name__ == "__main__":

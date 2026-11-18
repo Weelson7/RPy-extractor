@@ -7,8 +7,9 @@ game, never into the game. A patch set is JSON (`*.patch.json`):
       {"file": "Game.exe", "rva": "0x1010", "asm": "jmp 0x401020; nop"}]}
 
 An offset patch writes only where the original bytes are found; a pattern (AOB, `??` = any byte)
-must match exactly once, so it survives game updates that move the code; `rva` addresses a PE
-image, and `asm` is assembled at the edit's address (Keystone, a separate process). Bytes that
+must match exactly once (overlapping matches count), so it survives game updates that move the
+code; `rva` addresses a PE image, and `asm` is assembled at the edit's address (Keystone, a
+separate process). Two patches that would write the same bytes of a file are refused. Bytes that
 already read as `patched` are reported `already` (re-applying a set is harmless). Every write is
 read back. The set is the user's content: ViWo applies bytes, it does not author them."""
 
@@ -54,8 +55,10 @@ def load(path: Path) -> dict:
 
 
 def _hits(data: bytes, pattern: bytes, mask: list[bool]) -> list[int]:
+    """Every place the pattern matches, overlapping ones included (a lookahead: on int3 or
+    NOP padding `CC CC CC` matches twice in four bytes, and that is not a unique match)."""
     rx = b"".join(re.escape(bytes([b])) if m else b"." for b, m in zip(pattern, mask))
-    return [m.start() for m in re.finditer(rx, data, re.DOTALL)]
+    return [m.start() for m in re.finditer(b"(?=" + rx + b")", data, re.DOTALL)]
 
 
 def _offset(data: bytes, patch: dict) -> int | str:
@@ -91,7 +94,7 @@ def _file(game: Path, patch: dict) -> Path | None:
 def locate(game: Path, patch: dict, host=None) -> dict:
     """One patch checked against a folder: offset, the old and new bytes (an `asm` edit is
     assembled at its address through `host`), their disassembly for a PE, and a status:
-    ready, already, mismatch or missing."""
+    ready, already, mismatch or missing (`plan` adds overlap)."""
     out = {"file": str(patch.get("file", "")), "status": "missing", "offset": None, "reason": ""}
     path = _file(game, patch)
     if path is None:
@@ -116,8 +119,33 @@ def locate(game: Path, patch: dict, host=None) -> dict:
     return out
 
 
+def _overlaps(game: Path, patches: list, results: list) -> None:
+    """Two located patches whose byte ranges in one file overlap would corrupt each other (the
+    later write wins, the set no longer re-applies): both become `overlap`, naming the other."""
+    spans: dict = {}  # one file (however its name is spelled) -> [(start, end, patch index)]
+    for i, (patch, r) in enumerate(zip(patches, results)):
+        if r["status"] in ("ready", "already"):
+            end = r["offset"] + len(bytes.fromhex(r["new"]))
+            spans.setdefault(_file(game, patch), []).append((r["offset"], end, i))
+    clashes = [
+        (p, q)
+        for found in spans.values()
+        for x, p in enumerate(found)
+        for q in found[x + 1 :]
+        if p[0] < q[1] and q[0] < p[1]
+    ]
+    for (a, a_end, i), (b, b_end, j) in clashes:
+        why = f"patches {i + 1} ({a:#x}-{a_end - 1:#x}) and {j + 1} ({b:#x}-{b_end - 1:#x})"
+        why += " write the same bytes"
+        for k in (i, j):
+            said = results[k]["reason"] if results[k]["status"] == "overlap" else ""
+            results[k].update(status="overlap", reason=f"{said}; {why}" if said else why)
+
+
 def plan(game: Path, patch_set: dict, host=None) -> dict:
+    """Every patch located (`locate`), then two that would write the same bytes refused."""
     results = [locate(game, p, host) for p in patch_set["patches"]]
+    _overlaps(game, patch_set["patches"], results)
     ok = all(r["status"] in ("ready", "already") for r in results)
     return {"title": patch_set.get("title", ""), "game": str(game), "results": results, "ok": ok}
 

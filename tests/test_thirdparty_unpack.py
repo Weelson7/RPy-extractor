@@ -1,12 +1,18 @@
 """L3: the third_party installer's unpack and failure paths, as properties over random tools:
 every archive kind the manifest uses lands the tool where `find` says and nothing outside it,
 a reinstall leaves no stale file, every failure is named (short read, cancel, quarantine, a
-locked folder, a failed unpacker) and leaves no half-installed tool behind."""
+locked folder, a failed unpacker) and leaves no half-installed tool behind. Downloads: a
+dropped link resumes and the bytes are the file's; an HTTP error answer is never taken for a
+drop (4xx fails at once with its status, a 5xx is tried again and named when it ends the
+download); without a pinned size the result is the whole file or a named failure, never the
+digest of a part."""
 
 from __future__ import annotations
 
+import email.message
 import gzip
 import hashlib
+import http
 import io
 import os
 import random
@@ -14,6 +20,7 @@ import sys
 import tarfile
 import tempfile
 import unittest
+import urllib.error
 import zipfile
 from pathlib import Path
 from types import SimpleNamespace
@@ -312,16 +319,32 @@ class EnvironmentTests(unittest.TestCase):
             self.assertIn(dep, err.exception.message)
 
 
+def _http_error(request, code: int, headers: dict | None = None):
+    said = email.message.Message()
+    for key, value in (headers or {}).items():
+        said[key] = value
+    phrase = http.HTTPStatus(code).phrase
+    return urllib.error.HTTPError(request.full_url, code, phrase, said, None)
+
+
 class _Link:
     """A server whose connection drops after a few bytes; `ranges` says whether it honours
-    a Range request (206) or sends the whole file again (200)."""
+    a Range request (206) or sends the whole file again (200), `length` whether it says the
+    file's size (Content-Length, Content-Range), `torn` that even its last bytes end in a drop;
+    `answers` are what it gives first, one per request: an HTTP error code, or None (served)."""
 
-    def __init__(self, data: bytes, rng: random.Random, ranges: bool, dead: bool = False) -> None:
-        self.data, self.rng, self.ranges, self.dead, self.asked = data, rng, ranges, dead, []
+    def __init__(self, data: bytes, rng: random.Random, ranges: bool, **kind) -> None:
+        self.data, self.rng, self.ranges, self.asked = data, rng, ranges, []
+        self.dead, self.length, self.torn = (kind.get(k, False) for k in ("dead", "length", "torn"))
+        self.answers = list(kind.get("answers", ()))
 
     def open(self, request, timeout=None):
         start = int((request.get_header("Range") or "bytes=0-")[6:-1])
         self.asked.append(start)
+        if code := self.answers.pop(0) if self.answers else None:
+            raise _http_error(request, code)
+        if self.ranges and start >= len(self.data) > 0:
+            raise _http_error(request, 416, {"Content-Range": f"bytes */{len(self.data)}"})
         start = start if self.ranges else 0
         cut = 0 if self.dead else self.rng.randint(1, max(1, len(self.data) // 3))
         body, left = self.data[start : start + cut], [True]
@@ -329,12 +352,14 @@ class _Link:
         def read(size):
             if left.pop() if left else False:
                 return body
-            if start + cut < len(self.data):
+            if start + cut < len(self.data) or self.torn:
                 raise ConnectionResetError("dropped")
             return b""
 
-        status = 206 if self.ranges and start else 200
-        response = mock.MagicMock(status=status, read=read)
+        status, size = (206 if self.ranges and start else 200), len(self.data)
+        said = {"Content-Range": f"bytes {start}-{size - 1}/{size}"} if status == 206 else {}
+        said = (said or {"Content-Length": str(size)}) if self.length else {}
+        response = mock.MagicMock(status=status, read=read, headers=said)
         response.__enter__.return_value = response
         return response
 
@@ -361,6 +386,54 @@ class ResumeTests(unittest.TestCase):
                         downloads.download("https://x/t.zip", target, len(data) + 1, None, None)
                 self.assertIn("incomplete download", err.exception.message)
                 self.assertLessEqual(len(link.asked), 3 * (len(data) + 2))
+
+    def _get(self, link: _Link, target: Path, size: int, said=None) -> str:
+        with mock.patch.object(downloads.urllib.request, "urlopen", link.open):
+            return downloads.download("https://x/t.zip", target, size, said, None)
+
+    def test_an_http_error_is_an_answer_4xx_at_once_5xx_tried_and_named(self) -> None:
+        rng = random.Random(68)
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "t.zip"
+            for _ in range(30):
+                data, said = rng.randbytes(rng.randint(30, 3000)), []
+                code, served = rng.choice((400, 401, 403, 404, 410, 429, 451)), rng.randint(0, 2)
+                link = _Link(data, rng, ranges=True, answers=[None] * served + [code])
+                with self.assertRaises(ViwoError) as err:
+                    self._get(link, target, len(data))
+                self.assertEqual(len(link.asked), served + 1)  # at once, never retried
+                phrase = http.HTTPStatus(code).phrase
+                self.assertIn(f"answers HTTP {code} {phrase}", err.exception.message)
+                self.assertEqual(err.exception.hint, downloads.HINTS.get(code, "report it"))
+                bad = rng.choice((500, 502, 503, 504))
+                answers = [bad] * rng.randint(1, 2) + [None] + [bad] * rng.randint(0, 2)
+                link = _Link(data, rng, ranges=True, answers=answers)
+                digest = self._get(link, target, len(data), said.append)  # tried again: whole
+                self.assertEqual(digest, hashlib.sha256(data).hexdigest())
+                self.assertTrue(any(f"server answered HTTP {bad}" in s for s in said))
+                link = _Link(data, rng, ranges=True, answers=[None] + [bad] * 3)
+                with self.assertRaises(ViwoError) as err:  # what ends the download is named
+                    self._get(link, target, len(data))
+                self.assertIn(f"the server answered HTTP {bad}", err.exception.message)
+                self.assertIn("try again later", err.exception.hint)
+
+    def test_an_unknown_size_is_the_whole_file_or_a_named_failure(self) -> None:
+        rng = random.Random(69)
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "t.zip"
+            for _ in range(25):
+                data = rng.randbytes(rng.randint(30, 4000))
+                want = hashlib.sha256(data).hexdigest()
+                for kind in ({"length": True}, {}, {"torn": True}):  # said, ends clean, 416 at end
+                    link = _Link(data, rng, ranges=True, **kind)
+                    self.assertEqual(self._get(link, target, 0), want, kind)
+                    self.assertEqual(target.read_bytes(), data)
+                for torn in (False, True):  # no Range honoured: never more than a part
+                    link = _Link(data, rng, ranges=False, torn=torn)
+                    with self.assertRaises(ViwoError) as err:
+                        self._get(link, target, 0)
+                    self.assertIn("size unknown", err.exception.message)
+                    self.assertIn("connection dropped", err.exception.message)
 
 
 if __name__ == "__main__":

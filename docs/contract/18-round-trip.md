@@ -107,8 +107,8 @@ A patch set is JSON (`*.patch.json`), the user's content:
 
 | Step | What happens |
 |------|--------------|
-| RESOLVE | `offset` (file offset; the original bytes must be there), `rva` (through the PE section table), `pattern` (AOB, `??` = any byte; must match exactly once, so it survives updates that move code) |
-| PLAN | where each patch lands, its status (`ready`, `already`, `mismatch`, `missing`; the set applies only when every patch is `ready` or `already`), and the disassembly of the touched instructions before and after (capstone); `viwo patch --plan` |
+| RESOLVE | `offset` (file offset; the original bytes must be there), `rva` (through the PE section table), `pattern` (AOB, `??` = any byte; must match exactly once, overlapping matches counted, so `CC CC CC` in four bytes of int3 padding is two matches; it survives updates that move code) |
+| PLAN | where each patch lands, its status (`ready`, `already`, `mismatch`, `missing`, `overlap`; the set applies only when every patch is `ready` or `already`), and the disassembly of the touched instructions before and after (capstone); `viwo patch --plan`. Once every patch is located (offset, RVA and AOB alike), two whose byte ranges in one file overlap (however the file's name is spelled) are both `overlap`, each naming both: "patches 1 (0x10-0x11) and 2 (0x11-0x11) write the same bytes" |
 | APPLY | `asm` is assembled at its address by Keystone's `kstool` (a separate process); bytes are written into a patched copy (an existing copy is patched in place, so edits, patches and mods stack); offsets are bounded: a patch never grows the file; bytes already patched are reported `already` |
 | VERIFY | the whole file is re-read: every edited range has the new bytes, every other byte is unchanged; the game's binary is untouched |
 | EXPORT | into `<copy>/.viwo-patched/`: `<set>.diff.txt` (byte diff), `<set>.aob.patch.json` (an AOB patch set whose patterns are grown until unique in this version), `<set>.report.json`, and the set itself |

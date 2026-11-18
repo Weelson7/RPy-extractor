@@ -156,7 +156,7 @@ function stageFor(p, a) {
   const cap = h("div", { class: "cap" }, h("b", {}, p.name || a.name), h("code", { class: "mono dim" }, decodeURIComponent(a.path)));
   if (p.type === "image") return h("figure", { class: "media", "data-kind": "img" }, h("img", { src: p.url, alt: p.name }), cap);
   if (p.type === "audio") return audioStage(p.url, cap);
-  if (p.type === "model") return modelStage(p.url, cap, p.name);
+  if (p.type === "model") return modelStage(p.url, cap, p.name, p.decoders || []);
   if (p.type === "video") return h("figure", { class: "media", "data-kind": "vid" }, h("video", { src: p.url, controls: true, preload: "metadata" }), cap);
   if (p.type === "text" && !binary(p.content)) return h("figure", { class: "media", "data-kind": "txt" }, h("pre", { class: "mono" }, p.content || ""),
     h("div", { class: "cap" }, h("b", {}, p.name), h("span", { class: "dim mono" }, `${p.lineCount} LINES${p.truncated && p.lineCount >= 50 ? " · FIRST 50 SHOWN" : ""}`)));

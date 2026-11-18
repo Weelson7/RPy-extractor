@@ -3,6 +3,7 @@ reminder in every result, repack and capture refused. Real-game tests: independe
 
 from __future__ import annotations
 
+import random
 import stat
 import sys
 import tempfile
@@ -81,35 +82,76 @@ class OverwatchTests(unittest.TestCase):
             self.assertEqual(err.exception.code, "unavailable")
 
 
-class QueryTests(unittest.TestCase):
-    def test_each_query_is_one_argument_as_given_and_only_for_extract_modes(self) -> None:
-        from viwo.plugins.overwatch import DataToolExporter
+def _datatool(tmp: str, modes: str, query: str) -> tuple[list, object]:
+    """The exporter run against a stand-in DataTool: (each argv it was given, the outcome)."""
+    from viwo.plugins.overwatch import DataToolExporter
 
+    seen = []
+
+    def run(argv, timeout=None, cancel=None, on_line=None):
+        seen.append(argv)
+        return SimpleNamespace(ok=True)
+
+    tool = SimpleNamespace(argv_prefix=("DataTool",))
+    ctx = SimpleNamespace(
+        os=SimpleNamespace(
+            tools=SimpleNamespace(locate=lambda spec: tool), process=SimpleNamespace(run=run)
+        ),
+        options={"modes": modes, "query": query},
+        staging=Path(tmp) / "s",
+        game_root=Path(tmp) / "g",
+        cancel=None,
+        log=lambda *a, **k: None,
+        tool_output=lambda stage, every=0.5: None,
+    )
+    return seen, DataToolExporter().export(ctx)
+
+
+class QueryTests(unittest.TestCase):
+    """Property: each `;` entry of the query is one DataTool argument, as given, and reaches
+    only the modes it is for: `mode: words` that extract mode, `--flag` every extract mode, any
+    other entry extract-unlocks; a listing mode gets none; an entry no running mode takes is
+    said in the notes, never dropped silently."""
+
+    def test_each_query_is_one_argument_as_given_and_only_for_extract_modes(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             for asked in ("", "Tracer|skin=Classic", " A|skin=* ; B b|x=(y) & del ;; "):
-                seen = []
-
-                def run(argv, timeout=None, cancel=None, on_line=None, seen=seen):
-                    seen.append(argv)
-                    return SimpleNamespace(ok=True)
-
-                tool = SimpleNamespace(argv_prefix=("DataTool",))
-                ctx = SimpleNamespace(
-                    os=SimpleNamespace(
-                        tools=SimpleNamespace(locate=lambda spec: tool),
-                        process=SimpleNamespace(run=run),
-                    ),
-                    options={"modes": "list-heroes,extract-unlocks", "query": asked},
-                    staging=Path(tmp) / "s",
-                    game_root=Path(tmp) / "g",
-                    cancel=None,
-                    log=lambda *a, **k: None,
-                    tool_output=lambda stage, every=0.5: None,
-                )
-                DataToolExporter().export(ctx)
+                seen, _ = _datatool(tmp, "list-heroes,extract-unlocks", asked)
                 want = [q.strip() for q in asked.split(";") if q.strip()]
                 self.assertEqual([a[2] for a in seen], ["list-heroes", "extract-unlocks"])
                 self.assertEqual((seen[0][4:], seen[1][4:]), ([], want))
+
+    def test_each_query_entry_reaches_only_the_modes_it_is_for(self) -> None:
+        from viwo.plugins.overwatch import KNOWN_MODES
+
+        rng = random.Random(72)
+        extract = sorted(m for m in KNOWN_MODES if m.startswith("extract-"))
+        listing = sorted(KNOWN_MODES - set(extract))
+        words = ("Tracer|skin=*", "B b|x=(y) & del", "Rialto", "Hero: Classic")
+        with tempfile.TemporaryDirectory() as tmp:
+            for _ in range(80):
+                modes = rng.sample(extract + listing, rng.randint(1, 5))
+                want, unused, entries = {m: [] for m in modes}, [], []
+                for _ in range(rng.randint(0, 5)):
+                    kind, text = rng.choice(("plain", "mode", "flag", "listing")), rng.choice(words)
+                    if kind == "flag":
+                        text = rng.choice(("--extract-refpose", "--convert-textures=false"))
+                        entry, targets = text, extract
+                    elif kind == "plain":
+                        entry, targets = text, ["extract-unlocks"]
+                    else:
+                        mode = rng.choice(extract if kind == "mode" else listing)
+                        entry, targets = f"{mode}:{rng.choice(('', ' '))}{text}", [mode]
+                    targets = [m for m in targets if m in modes and m in extract]
+                    for m in targets:
+                        want[m].append(text)
+                    unused += [] if targets else [entry]
+                    entries.append(f"{rng.choice(('', ' '))}{entry}{rng.choice(('', ' ', ';'))}")
+                seen, outcome = _datatool(tmp, ",".join(modes), ";".join(entries))
+                self.assertEqual({a[2]: a[4:] for a in seen}, want)
+                said = [n for n in outcome.notes if n.startswith("query entries")]
+                self.assertEqual(len(said), int(bool(unused)))  # said once, or nothing to say
+                self.assertTrue(all(entry in said[0] for entry in unused))
 
     def test_the_steam_layout_is_detected_like_the_battle_net_one(self) -> None:
         from viwo.plugins.overwatch import OverwatchPlugin
