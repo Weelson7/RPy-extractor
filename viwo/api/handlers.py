@@ -138,7 +138,8 @@ def save_remaining(app: App, d: dict) -> dict:
 def assets_window(app: App, q: dict) -> dict:
     """One page of files plus the type counts of the whole workspace (a cheap listing)."""
     folder = app.workspace
-    window = sorting.list_window(folder, _int(q, "offset", 0), _int(q, "limit", 100))
+    types = frozenset(t for t in str(q.get("types") or "").split(",") if t)
+    window = sorting.list_window(folder, _int(q, "offset", 0), _int(q, "limit", 100), types)
     counts: dict[str, int] = {}
     for path in sorting.asset_files(folder) if folder.is_dir() else []:
         kind = sorting.media_type(path.suffix.lower())

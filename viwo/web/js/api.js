@@ -77,7 +77,7 @@ export const api = {
   group: (action, folder) => v1("POST", `/api/${action}`, { folder }),
   clearTrash: () => v1("POST", "/api/clear-trash", {}),
   keepSelected: (selectedExts) => v1("POST", "/api/keep-selected", { selectedExts }),
-  assets: (offset, limit) => v1("GET", `/api/assets-window?offset=${offset}&limit=${limit}`),
+  assets: (offset, limit, types = []) => v1("GET", `/api/assets-window?offset=${offset}&limit=${limit}&types=${types.join(",")}`),
   preview: (path) => v1("GET", `/api/assets-window-preview?path=${encodeURIComponent(path)}`),
   sort: (action, body = {}) => v1("POST", `/api/sort-${action}`, body),
   saveRemaining: (paths, destinationPath) => v1("POST", "/api/save-remaining-assets", { paths, destinationPath }),

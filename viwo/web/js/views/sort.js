@@ -6,9 +6,9 @@ import { modelStage } from "./sort-model.js";
 import { skeleton, withSkeleton } from "../progress.js";
 
 const LIMIT = 100;
-const TAG = { image: "IMG", audio: "AUD", video: "VID", model: "3D", text: "TXT", binary: "BIN" };
+const TAG = { image: "IMG", audio: "AUD", video: "VID", model: "3D", text: "TXT", other: "BIN" };
 const KEYS = [["↑ ↓", "NAVIGATE"], ["→", "KEEP"], ["←", "TRASH"], ["CTRL+Z", "UNDO"], ["F2", "RENAME"], ["SPACE", "PLAY / PAUSE"]];
-const S = { offset: 0, total: 0, items: [], idx: 0, seq: 0, kept: new Set(), trashed: 0, done: [], types: new Set(), loaded: false, busy: false };
+const S = { offset: 0, total: 0, items: [], idx: 0, seq: 0, asked: 0, kept: new Set(), trashed: 0, done: [], types: new Set(), loaded: false, busy: false };
 const el = {};
 
 function mount(root) {
@@ -45,10 +45,11 @@ const saveKept = () => pref(keptKey(), JSON.stringify([...S.kept].slice(-20000))
 
 async function load(keepIdx = false, last = false) {
   try {
-    const pull = () => api.assets(S.offset, LIMIT);
+    const asked = ++S.asked, pull = () => api.assets(S.offset, LIMIT, [...S.types]);
     const res = await (S.loaded ? pull() : withSkeleton(el.stage, "INDEXING WORKSPACE ASSETS…", pull, 5));
+    if (asked !== S.asked) return; // a newer pick or page was asked meanwhile: only its answer counts
     S.items = res.assets || [];
-    S.total = res.totalCount || res.total || 0;
+    S.total = res.totalCount ?? res.total ?? 0;
     S.typeCounts = res.typeCounts || null;
     if (!S.items.length && S.offset > 0) { S.offset = Math.max(0, S.offset - LIMIT); return load(); }
     S.idx = last ? S.items.length - 1 : keepIdx ? Math.min(S.idx, Math.max(0, S.items.length - 1)) : 0;
@@ -77,18 +78,17 @@ function page(dir, last = false) {
 }
 
 /** Indexes of the loaded items that pass the type filter. */
-const shown = () => S.items.map((_, i) => i).filter((i) => !S.types.size || S.types.has(S.items[i].type));
+const shown = () => S.items.map((_, i) => i); // the server lists the picked types: the page shows what it got
 const row = (i) => el.list.querySelector(`[data-i="${i}"]`);
 
-/** Type filters: whole-workspace count (from the server) and the count on this page. */
+/** Type filters: a pick lists that type over the whole workspace (the server pages it), so
+ *  the 3D models or the sounds are one click away, wherever they sit in the queue. */
 function renderFilters() {
-  const counts = {};
-  S.items.forEach((a) => { counts[a.type] = (counts[a.type] || 0) + 1; });
-  const all = S.typeCounts || counts;
-  fill(el.filters, Object.keys(TAG).filter((t) => all[t] || counts[t]).map((t) => h("button", { type: "button", class: "pick", "aria-pressed": String(S.types.has(t)),
-    title: `${fmtNum(all[t] || 0)} in the workspace, ${counts[t] || 0} on this page`,
-    onclick: () => { S.types.has(t) ? S.types.delete(t) : S.types.add(t); renderList(); if (!shown().includes(S.idx)) select(shown()[0] ?? -1); } },
-  TAG[t], h("small", {}, ` ${fmtNum(all[t] || 0)}`, S.typeCounts ? h("span", { class: "dim" }, ` · ${counts[t] || 0} on this page`) : null))));
+  const all = S.typeCounts || {};
+  fill(el.filters, Object.keys(TAG).filter((t) => all[t]).map((t) => h("button", { type: "button", class: "pick", "aria-pressed": String(S.types.has(t)),
+    title: `${fmtNum(all[t])} in the workspace: show only these`,
+    onclick: () => { S.types.has(t) ? S.types.delete(t) : S.types.add(t); S.offset = 0; load(); } },
+  TAG[t], h("small", {}, ` ${fmtNum(all[t])}`))));
 }
 
 function renderReview() {
@@ -135,8 +135,7 @@ async function preview() {
   el.acts.querySelectorAll("button:not(.undo)").forEach((b) => { b.disabled = !a; });
   if (!a) {
     el.meta.replaceChildren();
-    el.stage.replaceChildren(S.items.length ? empty("NO MATCH", "No file of the selected types on this page. Clear a type filter or go to the next page.")
-      : S.total ? empty("NOTHING ON THIS PAGE", "Go back a page to keep sorting.")
+    el.stage.replaceChildren(S.total ? empty("NOTHING ON THIS PAGE", "Go back a page to keep sorting.")
         : empty(S.trashed ? "ALL SORTED" : "QUEUE EMPTY", S.trashed ? "Every file has been kept or trashed. Review the trash, or clean up duplicates next."
           : "No files in this workspace yet. Extract a game first.",
         S.trashed ? [goBtn("#workspace", `${code("workspace")} REVIEW TRASH →`), goBtn("#cleanup", `${code("cleanup")} CLEAN UP →`, "ghost")] : goBtn("#extract", "GO TO EXTRACT")));

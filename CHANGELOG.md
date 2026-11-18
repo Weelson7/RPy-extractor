@@ -4,6 +4,15 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.74 (2026-11-18)
+- SORT: a type pick (IMG, AUD, VID, 3D, TXT, BIN) lists that type over the whole workspace,
+  from its first page; it filtered only the hundred files of the page on screen, so the
+  models of a large workspace were hundreds of pages away.
+- SORT is quick on a large workspace: the queue is kept between requests for as long as no
+  folder of the workspace has changed (every page and pick walked all its files: 2.3 s a
+  click on 24,800 files, now under 0.1 s). Only the answer to the latest pick is shown (an
+  older, slower one could replace it and leave the queue empty).
+
 ## 1.20.73 (2026-11-18)
 - Proven: the game loads the change. A patched copy of a Ren'Py, a Unity and an RPG Maker MV
   game each started and showed the edited image on its first screen (`sqc/proof/`,

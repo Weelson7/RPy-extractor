@@ -109,6 +109,12 @@ registerPanel("system", { id: "mygame-status", order: 10, render: (ctx) => panel
 
 ## Previews (SORT)
 
+A type pick in the queue (IMG, AUD, VID, 3D, TXT, BIN) lists that type over the whole
+workspace: the server pages the picked types (`/api/assets-window?types=model`), so the
+models of a 24,800-file workspace start on the first page. The server keeps the queue
+between requests while no folder of the workspace changes; the page shows only the answer
+to the latest pick.
+
 The stage's figure carries `data-kind` (`img`, `vid`, `aud`, `mdl`, `txt`, `bin`): the size
 rules of `base.css` select on it, so a picture, a video or a model fills the panel and
 follows the window. A `.glb` or `.gltf` file opens in `<model-viewer>` (pinned, Apache-2.0,

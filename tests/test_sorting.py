@@ -11,6 +11,7 @@ import random
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 from viwo.contracts import ViwoError
 from viwo.core.curation import sorting
@@ -158,6 +159,73 @@ class ReleasedMoveTests(unittest.TestCase):
         locked.winerror = 32
         self.assertIn("in use by another program", in_use(locked))
         self.assertEqual(in_use(FileNotFoundError(2, "gone")), "gone")
+
+
+class HeldQueueTests(unittest.TestCase):
+    def test_the_held_queue_is_never_stale_and_never_shared(self) -> None:
+        """The queue is kept between requests: after any file appears, goes or is renamed, at
+        any depth, the next queue is the one a fresh walk gives; a caller's changes to the
+        list it got never reach the next caller."""
+        rng = random.Random(75)
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp) / "ws"
+            (folder / "png").mkdir(parents=True)
+            for step in range(60):
+                files = [p for p in folder.rglob("*") if p.is_file()]
+                move = rng.choice(("add", "add", "deep", "drop", "rename") if files else ("add",))
+                if move in ("add", "deep"):
+                    home = (
+                        folder / rng.choice(("png", "glb", "x")) / ("sub" if move == "deep" else "")
+                    )
+                    home.mkdir(parents=True, exist_ok=True)
+                    (home / f"f{step}{rng.choice(('.png', '.glb', '.bin'))}").write_bytes(b"x")
+                elif move == "drop":
+                    rng.choice(files).unlink()
+                else:
+                    victim = rng.choice(files)
+                    victim.rename(victim.with_name(f"r{step}{victim.suffix}"))
+                got = sorting.asset_files(folder)
+                want = sorted(p for p in folder.rglob("*") if p.is_file())
+                self.assertEqual(sorted(got), want, (step, move))
+                got.clear()  # what a caller does to its list is its own business
+                self.assertEqual(sorted(sorting.asset_files(folder)), want)
+
+
+class TypeFilterTests(unittest.TestCase):
+    def test_a_type_pick_pages_that_type_over_the_whole_workspace(self) -> None:
+        """Whatever the files and the pick: the pages together hold exactly the files of the
+        picked types, each once, in the queue's order; the count is theirs; no pick is the
+        whole queue; the counts per type stay those of the whole workspace."""
+        from viwo.api.handlers import assets_window
+        from viwo.core.media import media_type
+
+        rng = random.Random(74)
+        exts = (".png", ".ogg", ".mp4", ".glb", ".txt", ".bin", ".owmdl")
+        with tempfile.TemporaryDirectory() as tmp:
+            for round_ in range(8):
+                folder = Path(tmp) / f"w{round_}"
+                for i in range(rng.randint(0, 60)):
+                    file = folder / rng.choice(("a", "b")) / f"f{i}{rng.choice(exts)}"
+                    file.parent.mkdir(parents=True, exist_ok=True)
+                    file.write_bytes(b"x")
+                folder.mkdir(exist_ok=True)
+                queue = sorting.asset_files(folder)
+                kinds = ("image", "audio", "video", "model", "text", "other")
+                pick = frozenset(rng.sample(kinds, rng.randint(0, 3)))
+                want = [p for p in queue if not pick or media_type(p.suffix) in pick]
+                got, offset, limit = [], 0, rng.randint(1, 9)
+                while True:
+                    page = sorting.list_window(folder, offset, limit, pick)
+                    self.assertEqual(page["totalCount"], len(want))
+                    got += [a["name"] for a in page["assets"]]
+                    offset += limit
+                    if not page["assets"]:
+                        break
+                self.assertEqual(got, [p.name for p in want])
+                app = SimpleNamespace(workspace=folder)
+                answer = assets_window(app, {"types": ",".join(sorted(pick)), "limit": "5"})
+                self.assertEqual(answer["totalCount"], len(want))
+                self.assertEqual(answer["total"], len(queue))  # the chips count everything
 
 
 if __name__ == "__main__":

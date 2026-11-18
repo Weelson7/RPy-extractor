@@ -4,6 +4,7 @@ Response shapes match the v1 API (doc 4.1). Paths travel URL-encoded and
 workspace-relative; every resolved path must stay inside the workspace.
 """
 
+import os
 import shutil
 import time
 from pathlib import Path
@@ -47,19 +48,53 @@ RANK = {
 }  # what shows a preview comes first
 
 
+_QUEUES: dict[Path, tuple[tuple, list[Path]]] = {}  # workspace -> (its folders as seen, queue)
+
+
+def _stamps(folders: list[str]) -> tuple:
+    """When each folder last gained, lost or renamed an entry (-1: gone)."""
+    out = []
+    for folder in folders:
+        try:
+            out.append((folder, os.stat(folder).st_mtime_ns))
+        except OSError:
+            out.append((folder, -1))
+    return tuple(out)
+
+
+def _walk(workspace: Path) -> tuple[list[str], list[Path]]:
+    """Every folder of the workspace (the reserved ones left out) and every file in them."""
+    folders, files = [str(workspace)], []
+    for here, subs, names in os.walk(workspace):
+        if Path(here) == workspace:
+            subs[:] = [s for s in subs if not ws.is_reserved(s)]
+            names = [n for n in names if not ws.is_reserved(n)]
+        folders += [os.path.join(here, s) for s in subs]
+        files += [Path(here, n) for n in names]
+    return folders, files
+
+
 def asset_files(workspace: Path) -> list[Path]:
     """The sort queue: previewable files first (images, audio, video, text), then the rest, each
-    in path order, so a session opens on something to look at rather than on raw blobs."""
-    files = (
-        p
-        for p in workspace.rglob("*")
-        if p.is_file() and not ws.is_reserved(p.relative_to(workspace).parts[0])
-    )
-    return sorted(files, key=lambda p: (RANK.get(media_type(p.suffix.lower()), 4), p))
+    in path order, so a session opens on something to look at rather than on raw blobs. Walking
+    a large workspace takes seconds and every page and pick asks for the queue, so it is kept
+    for as long as none of the workspace's folders has changed (a file appearing, going or
+    renamed changes its folder). Each caller gets a list of its own."""
+    held = _QUEUES.get(workspace)
+    if held and held[0] == _stamps([folder for folder, _ in held[0]]):
+        return list(held[1])
+    folders, files = _walk(workspace)
+    queue = sorted(files, key=lambda p: (RANK.get(media_type(p.suffix.lower()), 4), p))
+    _QUEUES[workspace] = (_stamps(folders), queue)
+    return list(queue)
 
 
-def list_window(workspace: Path, offset: int, limit: int) -> dict:
+def list_window(workspace: Path, offset: int, limit: int, types: frozenset = frozenset()) -> dict:
+    """One page of the sort queue; with `types` (image, audio, video, model, text, other), a
+    page of the files of those types only, counted and paged over the whole workspace."""
     files = asset_files(workspace) if workspace.is_dir() else []
+    if types:
+        files = [p for p in files if media_type(p.suffix.lower()) in types]
     offset, limit = max(0, offset), max(1, limit)
     page = files[offset : offset + limit]
     assets = [
