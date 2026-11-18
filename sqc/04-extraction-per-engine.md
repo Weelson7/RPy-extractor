@@ -178,7 +178,8 @@ Steps:
 
 Expected:
 - Step 1: AUTO picks `overwatch` (log `Selected plugin(s): overwatch`); the fake tool runs the
-  three default modes (`extract-unlocks`, `extract-general`, `extract-maps`), producing
+  three default modes (`extract-unlocks`, `extract-general`, `extract-maps`; `query` narrows
+  them, and every `.owmdl` also comes out as a `.glb`), producing
   `txt\extract-unlocks.txt` etc.; the warnings contain `Overwatch: personal, offline use of your
   own install; respect Blizzard's terms`. No refusal anywhere.
 - Step 2: only `extract-maps` runs.

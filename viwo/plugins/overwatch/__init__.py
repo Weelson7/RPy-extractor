@@ -18,6 +18,8 @@ from viwo.contracts.slots import Exporter, SlotDefinition
 from viwo.contracts.types import DependencySpec, DetectionResult, Outcome, OutcomeKind
 from viwo.contracts.workspace import count_files
 
+from . import owmdl
+
 DATATOOL = DependencySpec.of("datatool")
 MODES = "extract-unlocks,extract-general,extract-maps"
 KNOWN_MODES = frozenset(
@@ -53,6 +55,13 @@ MANIFEST = PluginManifest(
             "string",
             "",
         ),
+        PluginOption(
+            "models",
+            "glb: every model also as a self-contained .glb (rig, weights, colour and normal "
+            "textures); owmdl: DataTool's own files only",
+            "string",
+            "glb",
+        ),
     ),
 )
 REMINDER = "Overwatch: personal, offline use of your own install; respect Blizzard's terms"
@@ -84,10 +93,15 @@ class DataToolExporter(Exporter):
             done = ctx.os.process.run(argv, timeout=12 * 3600, cancel=ctx.cancel, on_line=relay)
             if not done.ok:
                 failed.append(mode)
+        notes = (REMINDER,) + ((f"failed modes: {', '.join(failed)}",) if failed else ())
+        if str(ctx.options.get("models") or "glb").lower() != "owmdl":
+            ctx.log("Models to glTF (.glb beside each .owmdl)", stage="export")
+            made, lost = owmdl.convert_all(ctx.staging, getattr(ctx, "each", map))
+            notes += (f"{made} model(s) also written as .glb",) if made else ()
+            notes += (f"{len(lost)} model(s) not converted, e.g. {lost[0]}",) if lost else ()
         files = count_files(ctx.staging)
         if failed and not files:
             return Outcome(OutcomeKind.FAILED, error=f"DataTool failed: {', '.join(failed)}")
-        notes = (REMINDER,) + ((f"failed modes: {', '.join(failed)}",) if failed else ())
         return Outcome(OutcomeKind.OK, files, notes=notes)
 
 

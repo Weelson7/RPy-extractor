@@ -4,6 +4,14 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.70 (2026-11-18)
+- Overwatch: every model DataTool writes (`.owmdl`) also comes out as a self-contained
+  `.glb`: all submeshes with normals, tangents and UV sets, the skeleton in its reference
+  pose with every bone weight, the colour and normal textures embedded as extracted (PNG
+  bytes untouched), the vertex colour sets kept as data. No tool is installed for it; the
+  file names say hero, event and skin. `[options.overwatch] models = owmdl` turns it off.
+  Opens in SORT's 3D preview and in any glTF viewer.
+
 ## 1.20.69 (2026-11-18)
 - SORT: the preview follows the window. Its size rules select on `data-kind`, which the
   page never set, so a video or a picture kept its own size; the figures now carry it.
