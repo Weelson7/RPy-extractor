@@ -4,6 +4,12 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.67 (2026-11-18)
+- Pinned downloads pick up where a dropped connection stopped (a Range request) and go on
+  for as long as each try brings the file further; three tries in a row that bring nothing
+  end it. They restarted from zero three times and gave up, which no 75 MB tool survived
+  on a link that drops.
+
 ## 1.20.66 (2026-11-18)
 - Overwatch: `[options.overwatch] query` (or `--option overwatch.query=...`) hands DataTool
   its own query, `;` between several (`Tracer|skin=*`), so a few heroes can be extracted

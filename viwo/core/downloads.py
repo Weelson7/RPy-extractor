@@ -3,6 +3,7 @@ an HTTPS download that returns its sha256, archive members unpacked only inside 
 (no links, devices or traversal), and a folder swap that never leaves half an install."""
 
 import hashlib
+import http.client
 import os
 import shutil
 import tarfile
@@ -21,34 +22,50 @@ POSIX = host_os_id() != "windows"
 
 
 def download(url: str, target: Path, size: int, say, cancel) -> str:
-    """Fetch url into target; returns the sha256. Short reads (flaky links) are retried."""
+    """Fetch url into target; returns the sha256. A link that drops is picked up where it
+    stopped (a Range request; from the start when the server will not), for as long as each
+    try brings the file further: three tries in a row that do not, and it is a failure."""
     if not url.startswith(("https://", "file://")):  # file: fixtures in tests
         raise ViwoError("refused", f"{target.name}: downloads must use https")
-    last = ""
-    for attempt in range(1, 4):
-        digest, got = _fetch_once(url, target, size, say, cancel)
+    target.unlink(missing_ok=True)
+    digest, got, best, idle = hashlib.sha256(), 0, 0, 0
+    while True:
+        digest, got = _fetch_more(url, target, (digest, got), (size, say, cancel))
         if got == size or not size:
-            return digest
-        last = f"{target.name}: incomplete download ({got} of {size} bytes, attempt {attempt})"
+            return digest.hexdigest()
+        best, idle = max(best, got), 0 if got > best else idle + 1
+        last = f"{target.name}: incomplete download ({got} of {size} bytes)"
+        if idle >= 3:
+            raise ViwoError("failed", last, hint="check the connection and try again")
         if say:
-            say(last + ", retrying")
-    raise ViwoError("failed", last, hint="check the connection and try again")
+            say(last + ", retrying from there")
 
 
-def _fetch_once(url: str, target: Path, size: int, say, cancel) -> tuple[str, int]:
-    digest, ticker = hashlib.sha256(), Ticker(say, f"Downloading {target.name}, KB:", size // 1024)
-    got = 0
-    request = urllib.request.Request(url, headers={"User-Agent": f"ViWo/{__version__}"})  # some
-    # build servers refuse Python's default agent (builds.bepinex.dev answers 403)
-    with urllib.request.urlopen(request, timeout=60) as response, open(target, "wb") as out:
-        while chunk := response.read(1 << 20):
-            if cancel is not None and cancel.cancelled:
-                raise ViwoError("cancelled", "download cancelled")
-            out.write(chunk)
-            digest.update(chunk)
-            got += len(chunk)
-            ticker.tick(len(chunk) // 1024)
-    return digest.hexdigest(), got
+def _fetch_more(url: str, target: Path, done: tuple, job: tuple) -> tuple:
+    """One request for what is still missing: (digest, bytes in the file). A server that
+    answers with the whole file (no 206) starts it again."""
+    (digest, got), (size, say, cancel) = done, job
+    headers = {"User-Agent": f"ViWo/{__version__}"}  # some build servers refuse Python's
+    # default agent (builds.bepinex.dev answers 403)
+    headers |= {"Range": f"bytes={got}-"} if got else {}
+    try:
+        with urllib.request.urlopen(urllib.request.Request(url, headers=headers), timeout=60) as r:
+            if got and getattr(r, "status", 200) != 206:
+                digest, got = hashlib.sha256(), 0
+            ticker = Ticker(say, f"Downloading {target.name}, KB:", size // 1024)
+            ticker.tick(got // 1024)
+            with open(target, "ab" if got else "wb") as out:
+                while chunk := r.read(1 << 20):
+                    if cancel is not None and cancel.cancelled:
+                        raise ViwoError("cancelled", "download cancelled")
+                    out.write(chunk)
+                    digest.update(chunk)
+                    got += len(chunk)
+                    ticker.tick(len(chunk) // 1024)
+    except (OSError, http.client.HTTPException) as exc:  # the link dropped: what came is kept
+        if say:
+            say(f"{target.name}: the connection dropped ({type(exc).__name__})")
+    return digest, got
 
 
 def write(src, target: Path, mode: int) -> None:

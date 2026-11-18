@@ -312,5 +312,56 @@ class EnvironmentTests(unittest.TestCase):
             self.assertIn(dep, err.exception.message)
 
 
+class _Link:
+    """A server whose connection drops after a few bytes; `ranges` says whether it honours
+    a Range request (206) or sends the whole file again (200)."""
+
+    def __init__(self, data: bytes, rng: random.Random, ranges: bool, dead: bool = False) -> None:
+        self.data, self.rng, self.ranges, self.dead, self.asked = data, rng, ranges, dead, []
+
+    def open(self, request, timeout=None):
+        start = int((request.get_header("Range") or "bytes=0-")[6:-1])
+        self.asked.append(start)
+        start = start if self.ranges else 0
+        cut = 0 if self.dead else self.rng.randint(1, max(1, len(self.data) // 3))
+        body, left = self.data[start : start + cut], [True]
+
+        def read(size):
+            if left.pop() if left else False:
+                return body
+            if start + cut < len(self.data):
+                raise ConnectionResetError("dropped")
+            return b""
+
+        status = 206 if self.ranges and start else 200
+        response = mock.MagicMock(status=status, read=read)
+        response.__enter__.return_value = response
+        return response
+
+
+class ResumeTests(unittest.TestCase):
+    def test_a_dropped_link_is_picked_up_and_the_bytes_are_the_files(self) -> None:
+        rng = random.Random(66)
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / "t.zip"
+            for _ in range(25):
+                data, said = rng.randbytes(rng.randint(1, 4000)), []
+                link = _Link(data, rng, ranges=True)
+                with mock.patch.object(downloads.urllib.request, "urlopen", link.open):
+                    digest = downloads.download(
+                        "https://x/t.zip", target, len(data), said.append, None
+                    )
+                self.assertEqual(target.read_bytes(), data)
+                self.assertEqual(digest, hashlib.sha256(data).hexdigest())
+                self.assertEqual(link.asked, sorted(set(link.asked)))  # never the same bytes twice
+                self.assertEqual(len(link.asked) > 1, any("dropped" in str(s) for s in said))
+            for link in (_Link(data, rng, ranges=False), _Link(data, rng, ranges=True, dead=True)):
+                with mock.patch.object(downloads.urllib.request, "urlopen", link.open):
+                    with self.assertRaises(ViwoError) as err:  # it never gets further: said, ended
+                        downloads.download("https://x/t.zip", target, len(data) + 1, None, None)
+                self.assertIn("incomplete download", err.exception.message)
+                self.assertLessEqual(len(link.asked), 3 * (len(data) + 2))
+
+
 if __name__ == "__main__":
     unittest.main()
