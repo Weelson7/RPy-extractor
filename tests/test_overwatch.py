@@ -8,10 +8,12 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 from tests.helpers import runtime, tree_hashes
 from viwo.contracts import CancelToken, ExtractionMode, ExtractionRequest, ViwoError
 from viwo.core.capture import CaptureRequest, capture
+from viwo.core.pipeline.probe import FolderProbe
 from viwo.core.pipeline.runner import extract
 
 FAKE = """#!{python}
@@ -77,6 +79,48 @@ class OverwatchTests(unittest.TestCase):
                     rt, CaptureRequest(game, game / "Overwatch.exe", root / "c", confirmed=True)
                 )
             self.assertEqual(err.exception.code, "unavailable")
+
+
+class QueryTests(unittest.TestCase):
+    def test_each_query_is_one_argument_as_given_and_only_for_extract_modes(self) -> None:
+        from viwo.plugins.overwatch import DataToolExporter
+
+        with tempfile.TemporaryDirectory() as tmp:
+            for asked in ("", "Tracer|skin=Classic", " A|skin=* ; B b|x=(y) & del ;; "):
+                seen = []
+
+                def run(argv, timeout=None, cancel=None, on_line=None, seen=seen):
+                    seen.append(argv)
+                    return SimpleNamespace(ok=True)
+
+                tool = SimpleNamespace(argv_prefix=("DataTool",))
+                ctx = SimpleNamespace(
+                    os=SimpleNamespace(
+                        tools=SimpleNamespace(locate=lambda spec: tool),
+                        process=SimpleNamespace(run=run),
+                    ),
+                    options={"modes": "list-heroes,extract-unlocks", "query": asked},
+                    staging=Path(tmp) / "s",
+                    game_root=Path(tmp) / "g",
+                    cancel=None,
+                    log=lambda *a, **k: None,
+                    tool_output=lambda stage, every=0.5: None,
+                )
+                DataToolExporter().export(ctx)
+                want = [q.strip() for q in asked.split(";") if q.strip()]
+                self.assertEqual([a[2] for a in seen], ["list-heroes", "extract-unlocks"])
+                self.assertEqual((seen[0][4:], seen[1][4:]), ([], want))
+
+    def test_the_steam_layout_is_detected_like_the_battle_net_one(self) -> None:
+        from viwo.plugins.overwatch import OverwatchPlugin
+
+        with tempfile.TemporaryDirectory() as tmp:
+            steam = Path(tmp) / "Overwatch"
+            (steam / "data").mkdir(parents=True)
+            for name in ("Overwatch.exe", "data/.build.config", "data/data.000.001"):
+                (steam / name).write_bytes(b"x")
+            found = OverwatchPlugin().detect(FolderProbe(steam))
+            self.assertEqual((found.confidence, len(found.evidence)), (0.95, 2))
 
 
 if __name__ == "__main__":

@@ -44,7 +44,16 @@ MANIFEST = PluginManifest(
     engine_type="overwatch",
     priority=5,
     tos_sensitive=True,
-    options=(PluginOption("modes", "DataTool modes to run, comma separated", "string", MODES),),
+    options=(
+        PluginOption("modes", "DataTool modes to run, comma separated", "string", MODES),
+        PluginOption(
+            "query",
+            "what the extract modes take, in DataTool's own words, `;` between several "
+            "(e.g. `Tracer|skin=Classic;Mercy|skin=Classic`); empty: everything",
+            "string",
+            "",
+        ),
+    ),
 )
 REMINDER = "Overwatch: personal, offline use of your own install; respect Blizzard's terms"
 
@@ -64,12 +73,16 @@ class DataToolExporter(Exporter):
         modes, problem = parse_modes(ctx.options.get("modes"))
         if problem:
             return Outcome(OutcomeKind.FAILED, error=problem)
+        asked = [q.strip() for q in str(ctx.options.get("query") or "").split(";") if q.strip()]
         failed = []
         for mode in modes:
             out = ctx.staging / mode
-            ctx.log(f"DataTool {mode}", stage="export")
-            argv = [*tool.argv_prefix, str(ctx.game_root), mode, str(out)]
-            if not ctx.os.process.run(argv, timeout=12 * 3600, cancel=ctx.cancel).ok:
+            query = asked if mode.startswith("extract-") else []  # each one argument, as given
+            ctx.log(f"DataTool {mode} {' '.join(query)}".rstrip(), stage="export")
+            argv = [*tool.argv_prefix, str(ctx.game_root), mode, str(out), *query]
+            relay = ctx.tool_output("export", every=5.0)  # DataTool's own lines, live
+            done = ctx.os.process.run(argv, timeout=12 * 3600, cancel=ctx.cancel, on_line=relay)
+            if not done.ok:
                 failed.append(mode)
         files = count_files(ctx.staging)
         if failed and not files:
@@ -85,7 +98,9 @@ class OverwatchPlugin(EnginePlugin):
         evidence = ()
         if probe.has_name("overwatch.exe", "overwatch launcher.exe"):
             evidence += ("Overwatch executable",)
-        if probe.has_name(".build.info") and probe.find("casc", limit=1):
+        battle_net = probe.has_name(".build.info") and probe.find("casc", limit=1)
+        steam = probe.has_name(".build.config") and probe.find("data/data.[0-9]*", limit=1)
+        if battle_net or steam:
             evidence += ("Blizzard CASC storage",)
         score = 0.95 if len(evidence) == 2 else (0.6 if evidence else 0.0)
         return DetectionResult("overwatch", score, evidence, "overwatch")

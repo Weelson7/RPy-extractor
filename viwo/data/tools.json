@@ -309,13 +309,13 @@
    }
   },
   "datatool": {
-   "version": "2.25.0.0+1151",
+   "version": "2.25.1.0+1153",
    "license": "MIT",
    "_note": "overtools/OWLib toolchain release: self-contained .NET 10 build for Windows (no runtime needed); Overwatch plugin stays explicit-only",
    "windows": {
-    "url": "https://github.com/overtools/OWLib/releases/download/v2.25.0.0%2B1151/toolchain-release.zip",
-    "sha256": "6bd283281cbf4df2f365fcc93804a042a23a5ce298031e715866ec465955a231",
-    "size": 75529581,
+    "url": "https://github.com/overtools/OWLib/releases/download/v2.25.1.0%2B1153/toolchain-release.zip",
+    "sha256": "44ff38739be45b8ef2264813b200f8f12074fd1d4098e40c6bb6b871908ce83b",
+    "size": 75564255,
     "kind": "zip",
     "find": "DataTool.exe"
    }

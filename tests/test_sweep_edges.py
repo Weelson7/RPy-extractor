@@ -89,7 +89,7 @@ class DataToolTests(unittest.TestCase):
             tool = SimpleNamespace(argv_prefix=("DataTool",))
 
             def ctx(located, ok_modes):
-                def run(argv, timeout, cancel):
+                def run(argv, timeout, cancel, on_line=None):
                     ok = argv[-2] in ok_modes
                     if ok:
                         (Path(argv[-1])).mkdir(parents=True, exist_ok=True)
@@ -106,6 +106,7 @@ class DataToolTests(unittest.TestCase):
                     game_root=staging,
                     cancel=None,
                     log=lambda *a, **k: None,
+                    tool_output=lambda stage, every=0.5: None,
                 )
 
             self.assertEqual(
