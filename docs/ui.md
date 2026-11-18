@@ -107,6 +107,17 @@ registerPanel("system", { id: "mygame-status", order: 10, render: (ctx) => panel
   and skipped; the app always starts. A drop-in plugin ships its module as a static file in its
   own folder; the server serves it under the URL it lists.
 
+## Previews (SORT)
+
+The stage's figure carries `data-kind` (`img`, `vid`, `aud`, `mdl`, `txt`, `bin`): the size
+rules of `base.css` select on it, so a picture, a video or a model fills the panel and
+follows the window. A `.glb` or `.gltf` file opens in `<model-viewer>` (pinned, Apache-2.0,
+installed into `third_party/` by itself the first time a model is opened and served by ViWo from `/vendor/`; nothing comes from a CDN,
+except that a model packed with Draco or Basis makes the viewer fetch its decoder): drag to
+orbit, wheel to zoom. A `.gltf` that keeps buffers or textures in other files cannot load
+from the preview route; a `.glb` holds everything. Without the viewer installed the stage
+says how to install it.
+
 ## Feedback
 
 - An error toast stays until it is dismissed (DISMISS) or the user changes view; an

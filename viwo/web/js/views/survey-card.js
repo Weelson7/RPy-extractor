@@ -1,5 +1,5 @@
 // SURVEY cards: one game's engine, coverage meter, category bar + legend, unknown blobs, missing tools.
-import { h, btn, panel, badge, meter, stackBar, stagger, fmtBytes, fmtNum, pad } from "../ui.js";
+import { h, btn, panel, badge, alert, meter, stackBar, stagger, fmtBytes, fmtNum, pad } from "../ui.js";
 
 /** Category -> [label, what it means]. Order = stacked bar order (covered first). */
 export const CATS = {
@@ -49,7 +49,7 @@ function unknownBlock(list, deep, onDeep) {
       h("span", { class: "dim small" }, "tries the carver on these blobs — slower")) : null];
 }
 
-const missingBlock = (tools) => (tools?.length ? h("div", { class: "alert", "data-kind": "warn" }, h("b", {}, "OPTIONAL TOOLS NOT INSTALLED · WOULD COVER MORE"),
+const missingBlock = (tools) => (tools?.length ? alert("warn", "OPTIONAL TOOLS NOT INSTALLED · WOULD COVER MORE",
   h("ul", { class: "mono" }, tools.map((t) => h("li", {}, t))),
   h("p", {}, h("a", { href: "#system" }, "Install them in SYSTEM (one click) →"), " then survey again.")) : null);
 

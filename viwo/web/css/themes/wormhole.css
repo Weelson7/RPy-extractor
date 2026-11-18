@@ -40,10 +40,9 @@ body::after { background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.18) 0 
 .input { border: 1px solid var(--line); border-left: 2px solid var(--red); background: rgba(10, 5, 6, 0.9); color: var(--text); font-size: 13px; }
 .input::placeholder { color: #a8827d; font-style: italic; opacity: 0.7; }
 .input:focus, .input:focus-visible { outline: none; border-color: var(--coral); box-shadow: 0 0 0 1px var(--coral), 0 0 16px rgba(255, 59, 59, 0.25); }
-.seg { border: 1px solid var(--line); background: rgba(10, 5, 6, 0.8); }
+.seg, .pick { border: 1px solid var(--line); background: rgba(10, 5, 6, 0.8); }
 .seg button:hover, .pick:hover { color: #fff; background: rgba(255, 59, 59, 0.1); }
 .seg button[aria-pressed="true"] { background: var(--red); color: #1a0405; }
-.pick { border: 1px solid var(--line); background: rgba(10, 5, 6, 0.8); }
 .pick[aria-pressed="true"] { border-color: var(--red); color: #fff; background: rgba(255, 59, 59, 0.17); box-shadow: inset 3px 0 0 var(--red); }
 /* ---------- badges, meters, stats ---------- */
 .badge { border: 1px solid currentColor; background: rgba(255, 59, 59, 0.08); color: var(--coral); font: 700 10px var(--f-head); letter-spacing: 0.14em; }
@@ -59,16 +58,16 @@ body::after { background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.18) 0 
 .stat b { font-size: 24px; line-height: 1.15; color: #fff; }
 .det[data-state="auto"] .det-h b { color: var(--red); text-shadow: 0 0 10px rgba(255, 59, 59, 0.5); }
 .lbl[data-state="live"]::before { background: var(--red); box-shadow: 0 0 8px var(--red); animation: pulse 1s infinite; }
-.scan-bar { background: rgba(255, 59, 59, 0.14); }
-.scan-bar i { background: var(--red); box-shadow: 0 0 10px var(--red); animation: scan 1.3s linear infinite; }
+.scan-bar, .bar { background: rgba(255, 59, 59, 0.14); }
+.scan-bar i, .bar i { background: var(--red); box-shadow: 0 0 10px var(--red); animation: scan 1.3s linear infinite; }
 .alarm { --b: var(--red); --f: repeating-linear-gradient(-45deg, #5a1214 0 12px, #2c0709 12px 24px); color: #fff; animation: alarm 1.6s steps(2) infinite; }
 /* ---------- log consoles ---------- */
 .log { background: rgba(5, 2, 3, 0.92); border: 1px solid var(--line-soft); font: 12px/1.55 var(--f-mono); color: var(--text-2); }
 .ln[data-level="err"] { color: #ff7266; }
 .dock { border-top: 1px solid var(--line); background: rgba(12, 7, 8, 0.97); }
 .dock-toggle:hover { color: #fff; }
-.tbl tbody tr:hover { background: rgba(255, 59, 59, 0.05); }
-.tbl tr.sel { background: rgba(255, 59, 59, 0.1); box-shadow: inset 2px 0 0 var(--red); }
+.tbl tbody tr:hover, .frow:hover { background: rgba(255, 59, 59, 0.05); }
+.tbl tr.sel, .frow[data-state="on"] { background: rgba(255, 59, 59, 0.1); box-shadow: inset 2px 0 0 var(--red); }
 .alert[data-kind="err"] { border-color: var(--red); background: rgba(255, 59, 59, 0.08); color: #ffcdc7; }
 .alert[data-kind="warn"] { border-color: var(--amber); background: rgba(255, 179, 64, 0.06); color: #ffe2b8; }
 .toast { --f: #1a0b0c; animation: tin 0.2s ease-out; transition: opacity 0.25s ease-in, transform 0.25s ease-in; }
@@ -76,7 +75,7 @@ body::after { background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.18) 0 
 .toast[data-kind="warn"] { --b: rgba(255, 179, 64, 0.6); }
 .backdrop { background: rgba(5, 2, 3, 0.8); backdrop-filter: blur(3px); }
 .modal { --f: #130a0b; animation: tin 0.18s ease-out; }
-.alist li:hover { background: rgba(255, 59, 59, 0.06); }
+.alist li:hover, .cand:hover { background: rgba(255, 59, 59, 0.06); }
 .alist li[aria-selected="true"] { background: linear-gradient(90deg, rgba(255, 59, 59, 0.25), rgba(255, 59, 59, 0.04)); box-shadow: inset 2px 0 0 var(--red); color: #fff; }
 .t-audio { color: #ff8fb0; }
 .t-video { color: #ff7a3d; }
@@ -93,9 +92,8 @@ body::after { background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.18) 0 
 /* ---------- sticky action bar + extract idle ---------- */
 .actionbar { border-top: 1px solid var(--red); background: linear-gradient(180deg, #1a0a0b, #0c0708); box-shadow: 0 -10px 24px rgba(0, 0, 0, 0.55); }
 .how li { border: 1px solid var(--line-soft); background: rgba(10, 5, 6, 0.6); }
-.cand:hover { background: rgba(255, 59, 59, 0.06); }
 .cand.on { background: linear-gradient(90deg, rgba(255, 59, 59, 0.2), rgba(255, 59, 59, 0.03)); box-shadow: inset 2px 0 0 var(--red); }
-.tcard { border: 1px solid var(--line-soft); border-left: 2px solid var(--red); background: rgba(10, 5, 6, 0.75); }
+.tcard, .pcard, .rcard { border: 1px solid var(--line-soft); border-left: 2px solid var(--red); background: rgba(10, 5, 6, 0.75); }
 .lbl[data-state="bad"] { color: #ff7266; }
 .jp-stage { font: 700 20px/1.1 var(--f-head); letter-spacing: 0.16em; text-transform: uppercase; color: #fff; text-shadow: 0 0 12px rgba(255, 59, 59, 0.55); }
 .jp[data-state="done"] .jp-stage { color: var(--cyan); text-shadow: 0 0 12px rgba(62, 242, 224, 0.45); }
@@ -144,10 +142,7 @@ body::after { background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.18) 0 
 .assure li { border: 1px solid var(--line-soft); border-left: 3px solid var(--cyan); background: rgba(62, 242, 224, 0.04); font-size: 12.5px; color: var(--text-2); }
 .fgroup { border: 1px solid var(--line-soft); border-left: 2px solid var(--red); background: rgba(10, 5, 6, 0.6); }
 .fgroup > header { border-bottom: 1px solid var(--line-soft); background: linear-gradient(90deg, rgba(255, 59, 59, 0.09), transparent 70%); }
-.frow:hover { background: rgba(255, 59, 59, 0.05); }
-.frow[data-state="on"] { background: rgba(255, 59, 59, 0.1); box-shadow: inset 2px 0 0 var(--red); }
 .fprev img { border: 1px solid var(--line-soft); background: repeating-conic-gradient(#160b0c 0 25%, #0d0708 0 50%) 0 0 / 16px 16px; }
-.pcard, .rcard { border: 1px solid var(--line-soft); border-left: 2px solid var(--red); background: rgba(10, 5, 6, 0.75); }
 .rcard.bad .mark { color: #ff7266; }
 .bad-list { font-size: 12px; color: #ff7266; }
 /* ---------- motion ---------- */
@@ -157,9 +152,6 @@ body::after { background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.18) 0 
 .land-logo .mark { filter: drop-shadow(0 0 12px rgba(255, 59, 59, 0.7)); animation: pulse 2.2s ease-in-out infinite; }
 .land-logo .word { font: 700 44px/1 var(--f-head); letter-spacing: 0.32em; text-shadow: 0 0 22px rgba(255, 59, 59, 0.6); }
 .land-stage { font: 700 20px/1.1 var(--f-head); letter-spacing: 0.18em; color: #fff; text-shadow: 0 0 12px rgba(255, 59, 59, 0.55); }
-.land-bar { background: rgba(255, 59, 59, 0.14); }
-.land-bar i { background: var(--red); box-shadow: 0 0 10px var(--red); animation: scan 1.3s linear infinite; }
-.land-bar[data-state="det"] i { animation: none; transition: width 0.3s ease-out; }
 .land-lines { border-left: 2px solid var(--red); background: linear-gradient(90deg, rgba(255, 59, 59, 0.08), transparent 80%); font-size: 12.5px; line-height: 1.55; }
 .land-lines .ln { animation: reveal 0.25s ease-out; }
 @keyframes lout { to { opacity: 0; transform: scale(1.02); filter: brightness(1.4); } }
@@ -196,6 +188,4 @@ body::after { background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.18) 0 
 .mods a b { font-size: 15px; }
 }
 .btn.primary:disabled { opacity: 1; --b: var(--red-d); --f: repeating-linear-gradient(-45deg, #3a0f11 0 8px, #210909 8px 16px); color: var(--text-2); }
-.bar { background: rgba(255, 59, 59, 0.14); }
-.bar i { background: var(--red); box-shadow: 0 0 10px var(--red); animation: scan 1.3s linear infinite; }
 .bar[data-state="det"] i { animation: none; transition: width 0.3s ease-out; }

@@ -3,15 +3,13 @@
 // or Cheat Engine on the game itself. Each run is a job; the outputs land in the active
 // workspace under .runtime/.
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, viewHead, kv, toast, toastErr, pref, emit, browseBtn, errorBox, openBtn, assure, busy, table, confirmBox } from "../ui.js";
+import { h, fill, btn, panel, badge, viewHead, kv, toast, toastErr, pref, emit, browseBtn, fileBtn, prefInput as input, errorBox, openBtn, assure, busy, table, confirmBox } from "../ui.js";
 import { jobProgress } from "../progress.js";
 import { setGame, gameField } from "../game.js";
 import { howToBtn } from "./workbooks.js";
 
 const S = { running: "" };
 const el = {};
-const input = (id, placeholder, key) => h("input", { class: "input mono grow", id, placeholder, value: pref(key) || "",
-  spellcheck: "false", oninput: (e) => pref(key, e.target.value.trim()) });
 
 function mount(root) {
   el.game = gameField("rt-game");
@@ -35,16 +33,14 @@ function mount(root) {
       h("div", { class: "col" },
         panel(`${code("runtime")}.A`, "RUNTIME AGENT", badge("PATCHED COPY", "ok"),
           h("label", { class: "lbl", for: "rt-game" }, "GAME FOLDER (THE TOP BAR'S GAME)"), h("div", { class: "row" }, el.game, browseBtn(el.game, setGame)),
-          h("label", { class: "lbl", for: "rt-exe" }, "EXECUTABLE"), h("div", { class: "row" }, el.exe,
-            browseBtn(el.exe, (p) => pref("rtExe", p), (p) => api.browseFile(p || el.game.value.trim()).then((r) => r.path))),
+          h("label", { class: "lbl", for: "rt-exe" }, "EXECUTABLE"), h("div", { class: "row" }, el.exe, fileBtn(el.exe, (p) => pref("rtExe", p), () => el.game.value.trim())),
           h("p", { class: "note" }, "Unreal: UE4SS writes Mappings.usmap and the object dump. Unity IL2CPP: BepInEx writes the interop assemblies."),
           h("div", { class: "row" }, el.buttons[0])),
         panel(`${code("runtime")}.B`, "RUNNING PROCESS", null,
           h("label", { class: "lbl", for: "rt-proc" }, "PROCESS (IMAGE NAME OR PID)"), h("div", { class: "row" }, el.proc),
           h("label", { class: "lbl", for: "rt-funcs" }, "FUNCTIONS TO TRACE (FRIDA GLOBS, COMMA-SEPARATED)"), h("div", { class: "row" }, el.funcs),
           h("label", { class: "lbl", for: "rt-secs" }, "SECONDS (TRACE, HOOK SCRIPT, PROFILE AND RECORDING)"), h("div", { class: "row" }, el.secs),
-          h("label", { class: "lbl", for: "rt-script" }, "YOUR HOOK SCRIPT (FRIDA, JAVASCRIPT)"), h("div", { class: "row" }, el.script,
-            browseBtn(el.script, (p) => pref("rtScript", p), (p) => api.browseFile(p).then((r) => r.path))),
+          h("label", { class: "lbl", for: "rt-script" }, "YOUR HOOK SCRIPT (FRIDA, JAVASCRIPT)"), h("div", { class: "row" }, el.script, fileBtn(el.script, (p) => pref("rtScript", p))),
           h("p", { class: "note" }, "Frida loads your script into the process for the seconds above and loads it again each time you save it; what it prints shows in the run's log and lands in .runtime/hook/. ViWo ships no script: you write it."),
           h("div", { class: "row" }, el.buttons[1], el.buttons[2], el.buttons[3], el.buttons[4], el.buttons[5])),
         panel(`${code("runtime")}.E`, "DEBUGGER AND MEMORY", h("div", { class: "row" }, badge("THE GAME ITSELF", "warn"),
@@ -130,6 +126,4 @@ async function run(kind) {
 
 import { registerView, code } from "../registry.js";
 
-const VIEW = { mount };
-registerView({ id: "runtime", arm: "dynamic", order: 20, title: "RUNTIME", subtitle: "agents, dumps, traces, sound, debugger", ...VIEW });
-export default VIEW;
+registerView({ id: "runtime", arm: "dynamic", order: 20, title: "RUNTIME", subtitle: "agents, dumps, traces, sound, debugger", mount });

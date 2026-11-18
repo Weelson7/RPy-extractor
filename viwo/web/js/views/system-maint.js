@@ -1,7 +1,7 @@
 // MAINTENANCE: update check (only on click), diagnostics bundle, indexes update job.
 import { code } from "../registry.js";
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, busy, toast, toastErr, openBtn, errorBox } from "../ui.js";
+import { h, fill, btn, panel, badge, kv, busy, toast, toastErr, openBtn, errorBox } from "../ui.js";
 import { jobProgress } from "../progress.js";
 
 const el = {};
@@ -9,11 +9,9 @@ const parent = (p) => String(p).replace(/[\\/][^\\/]*$/, "");
 
 function line(label, info) {
   const fresh = info.latest && info.latest !== info.current;
-  return h("div", { class: "kv" }, h("span", { class: "lbl" }, label),
-    h("span", { class: "mono" }, `current ${info.current || "none"}`),
-    h("div", { class: "row" }, fresh
-      ? [badge(`NEW: ${info.latest}`, "warn"), info.url ? h("a", { href: info.url, target: "_blank", rel: "noopener" }, "release page →") : null]
-      : badge(info.latest ? "UP TO DATE" : "NO RELEASE YET", info.latest ? "ok" : "mute")));
+  return kv(label, h("span", { class: "mono" }, `current ${info.current || "none"}`), fresh
+    ? [badge(`NEW: ${info.latest}`, "warn"), info.url ? h("a", { href: info.url, target: "_blank", rel: "noopener" }, "release page →") : null]
+    : badge(info.latest ? "UP TO DATE" : "NO RELEASE YET", info.latest ? "ok" : "mute"));
 }
 
 async function checkUpdates() {
@@ -29,8 +27,7 @@ async function checkUpdates() {
 async function diag() {
   try {
     const res = await api.diag();
-    fill(el.diag, h("div", { class: "kv" }, h("span", { class: "lbl" }, "BUNDLE"), h("code", { class: "mono path" }, res.path),
-      h("div", { class: "row" }, openBtn(parent(res.path)))),
+    fill(el.diag, kv("BUNDLE", h("code", { class: "mono path" }, res.path), openBtn(parent(res.path))),
       h("p", { class: "note" }, "Attach this zip to a bug report. Logs, run records and tool versions; secrets stripped."));
     toast("Diagnostics bundle written.", "ok", res.path);
   } catch (err) {

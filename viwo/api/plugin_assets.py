@@ -5,11 +5,16 @@ file comes only from the `ui/` folder next to that module. Static code like the 
 no token, but strict path containment (`safe_member` + `inside`).
 """
 
+import threading
 from pathlib import Path
 
+from viwo.contracts.errors import ViwoError
 from viwo.contracts.workspace import inside, safe_member
+from viwo.core import thirdparty
 
 PREFIX = "/plugins/"
+VENDOR = {"/vendor/model-viewer.min.js": "model-viewer"}  # pinned scripts the page may load
+_INSTALL = threading.Lock()  # one install at a time, whatever the page asks for at once
 
 
 def ui_modules(rt) -> list[dict]:
@@ -41,11 +46,26 @@ def resolve(rt, path: str) -> Path | None:
     return target if ok else None
 
 
+def vendor(rt, path: str) -> Path | None:
+    """The pinned script behind /vendor/<name>, under third_party/. Not there yet: installed
+    now, off screen (minimal prompts; `auto_install` off leaves it out), else None."""
+    home, tool = thirdparty.home_of(rt.config), VENDOR[path]
+    target = home / "third_party" / tool / path.rsplit("/", 1)[-1]
+    with _INSTALL:
+        if not target.is_file() and rt.config.auto_install:
+            try:
+                thirdparty.install_tool(tool, home, rt.os.process)
+            except (ViwoError, OSError):
+                return None  # the page says the viewer is missing and why that can be
+    return target if target.is_file() else None
+
+
 def serve(handler, path: str) -> bool:
-    """Answer a GET for a plugin asset; False when the path is not a plugin asset at all."""
-    if not path.startswith(PREFIX):
+    """Answer a GET for a plugin asset or a pinned script; False when the path is neither."""
+    if not path.startswith(PREFIX) and path not in VENDOR:
         return False
-    target = resolve(handler.app.rt, path)
+    rt = handler.app.rt
+    target = vendor(rt, path) if path in VENDOR else resolve(rt, path)
     if target is None:
         handler.send_error(404)
     else:

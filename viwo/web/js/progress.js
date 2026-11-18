@@ -1,14 +1,13 @@
 // Live job progress: stage rail, typed log ticker, counters parsed from events, job clock, warnings.
 // Everything shown comes from the job's own event stream (/api/jobs + /api/jobs/<id>/events).
 import { api } from "./api.js";
-import { h, fill, logLine, emit, cssVar, rail, toast, toastErr } from "./ui.js";
+import { h, fill, logLine, emit, cssVar, rail, toast, toastErr, fmtNum as fmt } from "./ui.js";
 
-const RM = window.matchMedia("(prefers-reduced-motion: reduce)");
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+export const RM = window.matchMedia("(prefers-reduced-motion: reduce)");
+export const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const clock = (s) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${(s % 60).toFixed(1).padStart(4, "0")}`;
 const add = (n = 1) => (m, v) => v + (typeof n === "function" ? n(m) : n);
-const num = (s) => Number(String(s).replace(/,/g, ""));
-const fmt = (n) => n.toLocaleString("en-US");
+export const num = (s) => Number(String(s).replace(/,/g, ""));
 /** Real progress inside a message: "Decoded files: 300 / 4,100", "x.wad: 1000/3109 lumps". */
 const FRAC = /(?<![\w./])(\d[\d,]*)\s*\/\s*(\d[\d,]*)(?![\w./])/;
 /** Throttled running counts with no total: "Scanned files: 12,400 (9,812 collected)". */
@@ -153,7 +152,6 @@ export function jobProgress(kind, { logClass = "feed", onStatus = null } = {}) {
 
   function paintRail() {
     const hide = Math.max(0, t.order.length - 10);
-    const label = { on: "in progress", done: "done", skip: "no events reported", wait: "not reached", fail: "stopped here" };
     const nodes = rail(t.order.slice(hide).map((s, j) => ({ id: s, state: railState(s, j + hide) })));
     fill(el.rail, hide ? h("li", { class: "more", "data-s": "done" }, h("i", {}), h("span", {}, `+${hide} EARLIER`)) : null, [...nodes.children]);
     el.stage.textContent = stageText();

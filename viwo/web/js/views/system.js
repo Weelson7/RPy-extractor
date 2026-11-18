@@ -1,6 +1,6 @@
 // SYSTEM: optional tools by engine (what each enables, INSTALL buttons), formats (slots), plugins, startup ini and notes.
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, viewHead, errorBox, busy, fmtNum, stat, toast, toastErr, emit, bus } from "../ui.js";
+import { h, fill, btn, panel, badge, kv, viewHead, errorBox, busy, fmtNum, stat, toast, toastErr, emit, bus } from "../ui.js";
 import { withSkeleton, jobProgress } from "../progress.js";
 import { maintenancePanel } from "./system-maint.js";
 
@@ -181,8 +181,8 @@ function pluginCard(p) {
 
 function startup(d) {
   return h("div", {},
-    h("div", { class: "kv" }, h("span", { class: "lbl" }, "STARTUP INI"), h("code", { class: "mono path" }, d.ini || "(built-in defaults)")),
-    h("div", { class: "kv" }, h("span", { class: "lbl" }, "FEATURES"), h("div", { class: "row" }, (d.features || []).map((f) => badge(f.toUpperCase(), "mute")))),
+    kv("STARTUP INI", h("code", { class: "mono path" }, d.ini || "(built-in defaults)")),
+    kv("FEATURES", h("div", { class: "row" }, (d.features || []).map((f) => badge(f.toUpperCase(), "mute")))),
     h("h4", { class: "sub-h" }, `// STARTUP NOTES (${d.problems.length})`),
     d.problems.length ? [h("p", { class: "note" }, "Most notes just say an optional tool is not installed; OPTIONAL TOOLS BY ENGINE lists them by engine."),
       h("ul", { class: "problems mono" }, d.problems.map((p) => h("li", {}, p)))] : h("p", { class: "ok-text" }, "No startup notes."));
@@ -190,6 +190,4 @@ function startup(d) {
 
 import { registerView, code } from "../registry.js";
 
-const VIEW = { mount, show: load };
-registerView({ id: "system", arm: "global", order: 10, title: "SYSTEM", subtitle: "tools and formats", ...VIEW });
-export default VIEW;
+registerView({ id: "system", arm: "global", order: 10, title: "SYSTEM", subtitle: "tools and formats", mount, show: load });

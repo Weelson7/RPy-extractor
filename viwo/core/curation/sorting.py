@@ -36,7 +36,13 @@ def resolve(workspace: Path, encoded: str) -> Path:
     return path
 
 
-RANK = {"image": 0, "audio": 1, "video": 2, "text": 3}  # what shows a preview comes first
+RANK = {
+    "image": 0,
+    "audio": 1,
+    "video": 2,
+    "model": 3,
+    "text": 3,
+}  # what shows a preview comes first
 
 
 def asset_files(workspace: Path) -> list[Path]:
@@ -183,7 +189,7 @@ def save_remaining(workspace: Path, encoded_paths: list[str], destination: Path)
 def preview(workspace: Path, encoded: str, max_lines: int = 50) -> dict:
     path = resolve(workspace, encoded)
     kind, name = media_type(path.suffix.lower()), path.name
-    if kind in ("image", "audio", "video"):
+    if kind in ("image", "audio", "video", "model"):
         return {
             "success": True,
             "type": kind,

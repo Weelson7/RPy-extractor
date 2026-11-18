@@ -1,6 +1,5 @@
 // Form renderers for SETTINGS: switches, plugin toggles, tool paths, options, slots.
-import { api } from "../api.js";
-import { h, add, badge, browseBtn, toggle } from "../ui.js";
+import { h, add, badge, fileBtn, toggle, kv } from "../ui.js";
 import { slotText } from "./system.js";
 
 const FEATURES = [
@@ -24,8 +23,7 @@ export function featuresForm(startup, touch) {
     FEATURES.map(([k, t, hint]) => toggle(`feat-${k}`, t, hint, has(k), (on) => set(k, on))),
     h("h4", { class: "sub-h" }, "// STARTUP"),
     STARTUP.map(([k, t, hint]) => toggle(`st-${k}`, t, hint, Boolean(startup[k]), (on) => { startup[k] = on; touch(); })),
-    h("div", { class: "kv" }, h("span", { class: "lbl" }, "OS / PROFILE"), h("code", { class: "mono" }, `${startup.os} / ${startup.profile}`),
-      h("div", { class: "row" }, h("span", { class: "small dim" }, "set in the ini; informational"))),
+    kv("OS / PROFILE", h("code", { class: "mono" }, `${startup.os} / ${startup.profile}`), h("span", { class: "small dim" }, "set in the ini; informational")),
   ];
 }
 
@@ -50,7 +48,7 @@ export function toolsForm(tools, touch) {
       const id = `tool-${dep}`;
       const input = h("input", { class: "input mono grow", id, value: tools[dep] || "", placeholder: "auto", spellcheck: "false",
         oninput: () => { tools[dep] = input.value.trim(); touch(); } });
-      const browse = browseBtn(input, (path) => { tools[dep] = path; touch(); }, (p) => api.browseFile(p).then((r) => r.path));
+      const browse = fileBtn(input, (path) => { tools[dep] = path; touch(); });
       return h("div", { class: "kv" }, h("label", { class: "lbl", for: id }, dep.toUpperCase()), h("div", { class: "row" }, input, browse));
     }),
   ];

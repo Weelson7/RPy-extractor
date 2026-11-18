@@ -1,6 +1,6 @@
 // Semantic components. Every view is built from these; the look lives in css/base.css (structure)
 // and css/themes/*.css (tokens). A component takes data and callbacks, never colours or sizes.
-import { h, fill, cssVar } from "./dom.js";
+import { h, fill, cssVar, pref } from "./dom.js";
 
 export const btn = (label, onclick, kind = "", extra = {}) =>
   h("button", { class: `btn ${kind}`, type: "button", onclick, ...extra }, label);
@@ -93,6 +93,14 @@ export function field(id, label, { kind = "text", value = "", choices = [], mono
   root.input = input;
   return root;
 }
+
+/** A path or text input kept in a browser preference: `pref(key)` fills it, typing rewrites it (trimmed). */
+export const prefInput = (id, placeholder, key) => h("input", { class: "input mono grow", id, placeholder, value: pref(key) || "",
+  spellcheck: "false", oninput: (e) => pref(key, e.target.value.trim()) });
+
+/** One entry of a pick list (jobs, workbooks, runbooks): a button, `aria-current` on the selected one. */
+export const listItem = (current, onclick, extra, ...kids) =>
+  h("button", { type: "button", class: "job", role: "listitem", "aria-current": current ? "true" : null, onclick, ...extra }, kids);
 
 /** Table: columns = [{key, label, kind?: "num"}], rows = [{key -> node|string}], plus optional class. */
 export function table(columns, rows, { kind = "", caption = "" } = {}) {

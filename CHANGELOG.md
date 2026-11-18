@@ -4,6 +4,14 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.69 (2026-11-18)
+- SORT: the preview follows the window. Its size rules select on `data-kind`, which the
+  page never set, so a video or a picture kept its own size; the figures now carry it.
+- SORT: a 3D preview for `.glb` and `.gltf` (orbit, zoom) through the pinned `model-viewer`
+  script, served by ViWo itself (`/vendor/`); "3D" is a type of its own in the filters.
+- Reclaim pass, web UI: 119 counted lines fewer (5,400 to 5,281 before the viewer), the UI
+  tests unchanged; dead style rules dropped.
+
 ## 1.20.68 (2026-11-18)
 - COLLECT hashes with its own read loop again (owner): `hashlib.file_digest` needs Python
   3.11, and an extraction on 3.10 failed there.

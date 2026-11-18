@@ -39,10 +39,9 @@ body::after { background: repeating-linear-gradient(0deg, rgba(247, 247, 247, 0.
 .input { border: 1px solid var(--line); border-left: 2px solid var(--red); background: rgba(248, 245, 246, 0.9); color: var(--text); font-size: 13px; }
 .input::placeholder { color: #786360; font-style: italic; opacity: 0.7; }
 .input:focus, .input:focus-visible { outline: none; border-color: var(--coral);  }
-.seg { border: 1px solid var(--line); background: rgba(248, 245, 246, 0.8); }
+.seg, .pick { border: 1px solid var(--line); background: rgba(248, 245, 246, 0.8); }
 .seg button:hover, .pick:hover { color: #070707; background: rgba(151, 44, 44, 0.1); }
 .seg button[aria-pressed="true"] { background: var(--red); color: #f6e9ea; }
-.pick { border: 1px solid var(--line); background: rgba(248, 245, 246, 0.8); }
 .pick[aria-pressed="true"] { border-color: var(--red); color: #070707; background: rgba(151, 44, 44, 0.17);  }
 /* ---------- badges, meters, stats ---------- */
 .badge { border: 1px solid currentColor; background: rgba(151, 44, 44, 0.08); color: var(--coral); font: 700 10px var(--f-head); letter-spacing: 0.14em; }
@@ -58,16 +57,16 @@ body::after { background: repeating-linear-gradient(0deg, rgba(247, 247, 247, 0.
 .stat b { font-size: 24px; line-height: 1.15; color: #070707; }
 .det[data-state="auto"] .det-h b { color: var(--red);  }
 .lbl[data-state="live"]::before { background: var(--red);   }
-.scan-bar { background: rgba(151, 44, 44, 0.14); }
-.scan-bar i { background: var(--red);   }
+.scan-bar, .bar { background: rgba(151, 44, 44, 0.14); }
+.scan-bar i, .bar i { background: var(--red);   }
 .alarm { --b: var(--red); --f: repeating-linear-gradient(-45deg, #dcb5b6 0 12px, #efdbdc 12px 24px); color: #070707;  }
 /* ---------- log consoles ---------- */
 .log { background: rgba(249, 245, 246, 0.92); border: 1px solid var(--line-soft); font: 12px/1.55 var(--f-mono); color: var(--text-2); }
 .ln[data-level="err"] { color: #762922; }
 .dock { border-top: 1px solid var(--line); background: rgba(246, 244, 244, 0.97); }
 .dock-toggle:hover { color: #070707; }
-.tbl tbody tr:hover { background: rgba(151, 44, 44, 0.05); }
-.tbl tr.sel { background: rgba(151, 44, 44, 0.1);  }
+.tbl tbody tr:hover, .frow:hover { background: rgba(151, 44, 44, 0.05); }
+.tbl tr.sel, .frow[data-state="on"] { background: rgba(151, 44, 44, 0.1);  }
 .alert[data-kind="err"] { border-color: var(--red); background: rgba(151, 44, 44, 0.08); color: #2b0f0c; }
 .alert[data-kind="warn"] { border-color: var(--amber); background: rgba(148, 106, 42, 0.06); color: #37270f; }
 .toast { --f: #f0e8e8;   }
@@ -75,7 +74,7 @@ body::after { background: repeating-linear-gradient(0deg, rgba(247, 247, 247, 0.
 .toast[data-kind="warn"] { --b: rgba(148, 106, 42, 0.6); }
 .backdrop { background: rgba(249, 245, 246, 0.8);  }
 .modal { --f: #f2eeee;  }
-.alist li:hover { background: rgba(151, 44, 44, 0.06); }
+.alist li:hover, .cand:hover { background: rgba(151, 44, 44, 0.06); }
 .alist li[aria-selected="true"] { background: linear-gradient(90deg, rgba(151, 44, 44, 0.25), rgba(151, 44, 44, 0.04));  color: #070707; }
 .t-audio { color: #56192b; }
 .t-video { color: #964d2b; }
@@ -92,9 +91,8 @@ body::after { background: repeating-linear-gradient(0deg, rgba(247, 247, 247, 0.
 /* ---------- sticky action bar + extract idle ---------- */
 .actionbar { border-top: 1px solid var(--red); background: linear-gradient(180deg, #f1e8e9, #f6f4f4);  }
 .how li { border: 1px solid var(--line-soft); background: rgba(248, 245, 246, 0.6); }
-.cand:hover { background: rgba(151, 44, 44, 0.06); }
 .cand.on { background: linear-gradient(90deg, rgba(151, 44, 44, 0.2), rgba(151, 44, 44, 0.03));  }
-.tcard { border: 1px solid var(--line-soft); border-left: 2px solid var(--red); background: rgba(248, 245, 246, 0.75); }
+.tcard, .pcard, .rcard { border: 1px solid var(--line-soft); border-left: 2px solid var(--red); background: rgba(248, 245, 246, 0.75); }
 .lbl[data-state="bad"] { color: #762922; }
 .jp-stage { font: 700 20px/1.1 var(--f-head); letter-spacing: 0.16em; text-transform: uppercase; color: #070707;  }
 .jp[data-state="done"] .jp-stage { color: var(--cyan);  }
@@ -139,10 +137,7 @@ body::after { background: repeating-linear-gradient(0deg, rgba(247, 247, 247, 0.
 .assure li { border: 1px solid var(--line-soft); border-left: 3px solid var(--cyan); background: rgba(53, 152, 142, 0.04); font-size: 12.5px; color: var(--text-2); }
 .fgroup { border: 1px solid var(--line-soft); border-left: 2px solid var(--red); background: rgba(248, 245, 246, 0.6); }
 .fgroup > header { border-bottom: 1px solid var(--line-soft); background: linear-gradient(90deg, rgba(151, 44, 44, 0.09), transparent 70%); }
-.frow:hover { background: rgba(151, 44, 44, 0.05); }
-.frow[data-state="on"] { background: rgba(151, 44, 44, 0.1);  }
 .fprev img { border: 1px solid var(--line-soft); background: repeating-conic-gradient(#f1ebec 0 25%, #f6f3f3 0 50%) 0 0 / 16px 16px; }
-.pcard, .rcard { border: 1px solid var(--line-soft); border-left: 2px solid var(--red); background: rgba(248, 245, 246, 0.75); }
 .rcard.bad .mark { color: #762922; }
 .bad-list { font-size: 12px; color: #762922; }
 /* ---------- motion ---------- */
@@ -150,8 +145,6 @@ body::after { background: repeating-linear-gradient(0deg, rgba(247, 247, 247, 0.
 .landing { background: radial-gradient(ellipse 70% 60% at 50% 40%, #f0e8e8, var(--bg) 70%);  }
 .land-logo .word { font: 700 44px/1 var(--f-head); letter-spacing: 0.32em;  }
 .land-stage { font: 700 20px/1.1 var(--f-head); letter-spacing: 0.18em; color: #070707;  }
-.land-bar { background: rgba(151, 44, 44, 0.14); }
-.land-bar i { background: var(--red);   }
 .land-lines { border-left: 2px solid var(--red); background: linear-gradient(90deg, rgba(151, 44, 44, 0.08), transparent 80%); font-size: 12.5px; line-height: 1.55; }
 
 /* ---------- CAPTURE, SETTINGS, 05.E MAINTENANCE ---------- */
@@ -162,7 +155,6 @@ body::after { background: repeating-linear-gradient(0deg, rgba(247, 247, 247, 0.
 .switch input:focus-visible + .sw { outline: 2px solid #270f0b; }
 
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {   }
   .jp[data-state="running"] .jp-bar i { width: 100%; opacity: 0.35; }
 }
 @media (max-width: 1360px) {
@@ -174,5 +166,3 @@ body::after { background: repeating-linear-gradient(0deg, rgba(247, 247, 247, 0.
 .mods a b { font-size: 15px; }
 }
 .btn.primary:disabled { opacity: 1; --b: var(--red-d); --f: repeating-linear-gradient(-45deg, #e6cecf 0 8px, #f0e3e3 8px 16px); color: var(--text-2); }
-.bar { background: rgba(151, 44, 44, 0.14); }
-.bar i { background: var(--red);   }

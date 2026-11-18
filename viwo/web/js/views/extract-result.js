@@ -1,7 +1,7 @@
 // RESULT: counts, alarms, per-backend and per-plugin tables for one /api/extract response.
 import { code } from "../registry.js";
 import { api } from "../api.js";
-import { h, fill, panel, badge, errorBox, fmtNum, stat, goBtn, openBtn, toolLink, modal } from "../ui.js";
+import { h, fill, panel, badge, kv, alert, errorBox, fmtNum, stat, goBtn, openBtn, toolLink, modal } from "../ui.js";
 import { stateBadge } from "./jobs.js";
 
 const ALARM = "GAME FOLDER CHANGED";
@@ -19,10 +19,7 @@ function alarm(lines) {
     lines.map((l) => h("p", { class: "mono" }, l)));
 }
 
-function pathRow(label, path, extra) {
-  return h("div", { class: "kv" }, h("span", { class: "lbl" }, label),
-    h("code", { class: "mono path" }, path || "—"), h("div", { class: "row" }, path ? openBtn(path) : null, extra));
-}
+const pathRow = (label, path, extra = null) => kv(label, h("code", { class: "mono path" }, path || "—"), path ? openBtn(path) : null, extra);
 
 function pluginRows(plugins) {
   return plugins.map((p) => [
@@ -59,7 +56,7 @@ export function renderResult(host, res) {
     pathRow("WORKSPACE", res.assetPath),
     h("div", { class: "row next-row" }, h("span", { class: "lbl" }, "NEXT"), goBtn("#workspace", `${code("workspace")} BROWSE BY TYPE →`, "sm"),
       goBtn("#sort", `${code("sort")} SORT →`, "sm"), goBtn("#cleanup", `${code("cleanup")} CLEAN UP →`, "sm"), goBtn("#merger", `${code("merger")} MAKE A VIDEO →`, "sm ghost")),
-    other.length ? h("div", { class: "alert", "data-kind": "warn" }, h("b", {}, "WARNINGS"), h("ul", {}, other.map((w) => h("li", {}, w)))) : null,
+    other.length ? alert("warn", "WARNINGS", h("ul", {}, other.map((w) => h("li", {}, w)))) : null,
     [...warnings, ...plugins.flatMap((p) => [p.error, ...(p.warnings || [])])].some((w) => /unavailable|install/i.test(w || ""))
       ? toolLink("Some files were skipped because an optional tool is not installed.") : null,
     h("h4", { class: "sub-h" }, "// WHICH TOOL HANDLED THE FILES"),

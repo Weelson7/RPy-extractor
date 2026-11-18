@@ -78,6 +78,9 @@ export function browseBtn(field, after = null, pick = (p) => api.browse(p).then(
   }), "ghost");
 }
 
+/** BROWSE for a file: the picker opens on the field's path, else on `from()` (the game folder, say). */
+export const fileBtn = (field, after = null, from = () => "") => browseBtn(field, after, (p) => api.browseFile(p || from()).then((r) => r.path));
+
 /** Modal dialog. actions: [{label, value, kind, primary}]. Resolves {value, text}. */
 export function modal({ title, body, actions, input, tag = "// SYS" }) {
   return new Promise((resolve) => {

@@ -1,5 +1,5 @@
 // PATCHED COPY rendering: per-container strategy in plain words, first-run states, build result cards.
-import { h, btn, badge, empty, errorBox, fmtNum, stat, goBtn, openBtn, toolLink } from "../ui.js";
+import { h, btn, badge, kv, alert, empty, errorBox, fmtNum, stat, goBtn, openBtn, toolLink } from "../ui.js";
 
 const base = (p) => String(p).split(/[\\/]/).pop();
 const stem = (p) => base(p).replace(/\.[^.]+$/, "");
@@ -36,7 +36,7 @@ export function planCard(item) {
 /** "path: reason" strings from the server, split for display. */
 export function issueList(title, lines, kind = "warn") {
   if (!lines?.length) return null;
-  return h("div", { class: "alert", "data-kind": kind }, h("b", {}, `${title} (${lines.length})`),
+  return alert(kind, `${title} (${lines.length})`,
     h("ul", {}, lines.map((l) => {
       const at = l.indexOf(": ");
       return h("li", {}, at > 0 ? [h("code", { class: "mono" }, l.slice(0, at)), ` — ${l.slice(at + 2)}`] : l);
@@ -80,9 +80,8 @@ export function resultBody(res) {
     h("p", {}, "ViWo only reads the game folder. Something else wrote to it while the copy was made."), alarms.map((a) => h("p", { class: "mono" }, a))) : null,
   h("div", { class: "stats" }, stat("CONTAINERS", fmtNum(results.length)), stat("VERIFIED", fmtNum(results.length - bad)),
     stat("FAILED", fmtNum(bad)), stat("EDITS", fmtNum(res.edits))),
-  h("div", { class: "kv" }, h("span", { class: "lbl" }, "PATCHED COPY"), h("code", { class: "mono path" }, res.target), h("div", { class: "row" }, openBtn(res.target))),
-  h("div", { class: "kv" }, h("span", { class: "lbl" }, "ORIGINAL"), h("code", { class: "mono path" }, res.game),
-    h("div", { class: "row" }, badge(alarms.length ? "CHANGED BY ANOTHER PROGRAM" : "UNTOUCHED", alarms.length ? "err" : "ok"))),
+  kv("PATCHED COPY", h("code", { class: "mono path" }, res.target), openBtn(res.target)),
+  kv("ORIGINAL", h("code", { class: "mono path" }, res.game), badge(alarms.length ? "CHANGED BY ANOTHER PROGRAM" : "UNTOUCHED", alarms.length ? "err" : "ok")),
   h("div", { class: "rcards" }, results.map(resultCard)),
   h("p", { class: "note" }, "Run the game from the patched copy to try your edits. Building again into the same folder replaces that copy.")];
 }

@@ -2,7 +2,7 @@
 // job through the same handler as POST /api/jobs; a step you do pauses the run until DONE,
 // CONTINUE (a workbook says how, in the child tool). A failed step stops the run where it is.
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, viewHead, empty, errorBox, pref, toast, toastErr, bus, emit, goBtn, confirmBox, browseBtn } from "../ui.js";
+import { h, fill, btn, panel, badge, listItem, viewHead, empty, errorBox, pref, toast, toastErr, bus, emit, goBtn, confirmBox, browseBtn } from "../ui.js";
 import { registerView, code } from "../registry.js";
 import { gameField, setGame } from "../game.js";
 import { workbookBtn } from "./workbooks.js";
@@ -48,10 +48,8 @@ const current = () => S.books.find((b) => b.id === S.sel);
 function renderList() {
   el.count.textContent = `${S.books.length}`;
   el.new.disabled = S.running; // a run in progress keeps its runbook on screen until it ends
-  fill(el.list, S.books.length ? S.books.map((b) => h("button", {
-    type: "button", class: "job", role: "listitem", "aria-current": b.id === S.sel ? "true" : null, disabled: S.running,
-    onclick: () => { S.sel = b.id; S.state = {}; S.result = {}; S.editing = false; renderList(); renderBook(); },
-  }, h("span", { class: "kind" }, b.title), b.source === "yours" ? badge("YOURS", "ok") : h("span", {}),
+  fill(el.list, S.books.length ? S.books.map((b) => listItem(b.id === S.sel, () => { S.sel = b.id; S.state = {}; S.result = {}; S.editing = false; renderList(); renderBook(); },
+    { disabled: S.running }, h("span", { class: "kind" }, b.title), b.source === "yours" ? badge("YOURS", "ok") : h("span", {}),
     h("span", { class: "mono dim small" }, `${b.steps.length} steps · ${b.steps.filter((s) => !s.do).length} yours to do`)))
     : empty("NO RUNBOOK", "NEW writes one."),
   S.problems.map((p) => h("p", { class: "note warn-text" }, p))); // never silent: unusable files are named
@@ -196,6 +194,4 @@ async function remove(b) {
   try { await api.deleteRunbook(b.id); toast(`Deleted ${b.id}.`, "ok"); await show(); } catch (err) { toastErr(err); }
 }
 
-const VIEW = { mount, show };
-registerView({ id: "runbooks", arm: "global", order: 27, title: "RUNBOOKS", subtitle: "step sequences, run and saved", ...VIEW });
-export default VIEW;
+registerView({ id: "runbooks", arm: "global", order: 27, title: "RUNBOOKS", subtitle: "step sequences, run and saved", mount, show });

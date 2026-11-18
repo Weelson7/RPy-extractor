@@ -1,7 +1,7 @@
 // ANALYSIS (static arm): the binaries a game offers (proposed by the plugins), one headless
 // analysis per target into the workspace's .analysis/, and "continue in Ghidra" (doc 6, 8.3a).
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, viewHead, toast, toastErr, pref, busy, bus, emit, browseBtn, errorBox, logLine, assure, table, alert, kv } from "../ui.js";
+import { h, fill, btn, panel, badge, viewHead, toast, toastErr, pref, busy, bus, emit, browseBtn, prefInput, errorBox, logLine, assure, table, kv } from "../ui.js";
 import { setGame, followGame } from "../game.js";
 import { featureOff } from "../feature.js";
 import { jobProgress, withSkeleton } from "../progress.js";
@@ -66,10 +66,8 @@ async function list() {
 
 /** VERSION DIFF: two Ghidra exports of one binary (an older and a newer game build). */
 function diffPanel() {
-  const folder = (id, key) => h("input", { class: "input mono grow", id, placeholder: ".analysis/ghidra-headless/<key>", value: pref(key) || "",
-    spellcheck: "false", oninput: (e) => pref(key, e.target.value.trim()) });
-  el.diffOld = folder("an-diff-old", "anDiffOld");
-  el.diffNew = folder("an-diff-new", "anDiffNew");
+  el.diffOld = prefInput("an-diff-old", ".analysis/ghidra-headless/<key>", "anDiffOld");
+  el.diffNew = prefInput("an-diff-new", ".analysis/ghidra-headless/<key>", "anDiffNew");
   el.diffOut = h("div", {});
   return panel(`${code("analysis")}.F`, "VERSION DIFF", null,
     h("label", { class: "lbl", for: "an-diff-old" }, "OLDER BUILD (ITS GHIDRA EXPORT FOLDER)"), h("div", { class: "row" }, el.diffOld, browseBtn(el.diffOld, (p) => pref("anDiffOld", p))),
@@ -145,6 +143,4 @@ function show() {
   bar();
 }
 
-const VIEW = { mount, show };
-registerView({ id: "analysis", arm: "static", order: 70, title: "ANALYSIS", subtitle: "code, headless and in Ghidra", ...VIEW });
-export default VIEW;
+registerView({ id: "analysis", arm: "static", order: 70, title: "ANALYSIS", subtitle: "code, headless and in Ghidra", mount, show });

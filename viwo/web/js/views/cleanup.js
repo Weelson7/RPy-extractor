@@ -1,6 +1,6 @@
 // CLEANUP: asset sanitizer, phase 1. Scan (read-only), tick findings, apply moves/renames, undo.
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, viewHead, assure, empty, errorBox, toast, toastErr, confirmBox, pref, fmtNum, bus, emit, stat, goBtn } from "../ui.js";
+import { h, fill, btn, panel, badge, alert, viewHead, assure, empty, errorBox, toast, toastErr, confirmBox, pref, fmtNum, bus, emit, stat, goBtn } from "../ui.js";
 import { jobProgress } from "../progress.js";
 
 /** Rule -> [title, action label, badge kind, what it means]. Object order = display order. */
@@ -259,13 +259,11 @@ function renderDone() {
       stat("TO TRASH", fmtNum(trash), "recoverable"), stat("RENAMED", fmtNum(d.moved.length - trash)), stat("FAILED", fmtNum(d.failed.length))),
     h("ol", { class: "moved mono" }, d.moved.map((m) => h("li", {}, h("b", {}, m.a === "trash" ? "TRASH" : "RENAME"), h("span", { title: m.p }, m.p),
       h("i", {}, m.a === "trash" ? "→ workspace trash" : `→ ${m.to}`))), d.more ? h("li", { class: "dim" }, `+${fmtNum(d.more)} more`) : null),
-    d.failed.length ? h("div", { class: "alert", "data-kind": "warn" }, h("b", {}, "NOT APPLIED"), h("ul", {}, d.failed.map((x) => h("li", {}, x)))) : null,
+    d.failed.length ? alert("warn", "NOT APPLIED", h("ul", {}, d.failed.map((x) => h("li", {}, x)))) : null,
     h("div", { class: "row" }, btn("UNDO THIS CLEANUP", undo, "primary"), goBtn("#workspace", "SEE TRASH IN WORKSPACE →", "ghost")),
     h("p", { class: "note" }, "UNDO stays available until your next SCAN.")));
 }
 
 import { registerView, code } from "../registry.js";
 
-const VIEW = { mount, show };
-registerView({ id: "cleanup", arm: "static", order: 50, title: "CLEANUP", subtitle: "junk, dupes, misnamed", ...VIEW });
-export default VIEW;
+registerView({ id: "cleanup", arm: "static", order: 50, title: "CLEANUP", subtitle: "junk, dupes, misnamed", mount, show });

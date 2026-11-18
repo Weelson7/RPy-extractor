@@ -2,10 +2,11 @@
 import { api } from "../api.js";
 import { h, fill, btn, panel, meter, viewHead, empty, errorBox, toast, toastErr, promptBox, modal, fmtBytes, fmtNum, pad, bus, emit, goBtn, pref } from "../ui.js";
 import { audioStage, stopAudio } from "./sort-audio.js";
+import { modelStage } from "./sort-model.js";
 import { skeleton, withSkeleton } from "../progress.js";
 
 const LIMIT = 100;
-const TAG = { image: "IMG", audio: "AUD", video: "VID", text: "TXT", binary: "BIN" };
+const TAG = { image: "IMG", audio: "AUD", video: "VID", model: "3D", text: "TXT", binary: "BIN" };
 const KEYS = [["↑ ↓", "NAVIGATE"], ["→", "KEEP"], ["←", "TRASH"], ["CTRL+Z", "UNDO"], ["F2", "RENAME"], ["SPACE", "PLAY / PAUSE"]];
 const S = { offset: 0, total: 0, items: [], idx: 0, seq: 0, kept: new Set(), trashed: 0, done: [], types: new Set(), loaded: false, busy: false };
 const el = {};
@@ -154,12 +155,13 @@ async function preview() {
 
 function stageFor(p, a) {
   const cap = h("div", { class: "cap" }, h("b", {}, p.name || a.name), h("code", { class: "mono dim" }, decodeURIComponent(a.path)));
-  if (p.type === "image") return h("figure", { class: "media img" }, h("img", { src: p.url, alt: p.name }), cap);
+  if (p.type === "image") return h("figure", { class: "media", "data-kind": "img" }, h("img", { src: p.url, alt: p.name }), cap);
   if (p.type === "audio") return audioStage(p.url, cap);
-  if (p.type === "video") return h("figure", { class: "media vid" }, h("video", { src: p.url, controls: true, preload: "metadata" }), cap);
-  if (p.type === "text" && !binary(p.content)) return h("figure", { class: "media txt" }, h("pre", { class: "mono" }, p.content || ""),
+  if (p.type === "model") return modelStage(p.url, cap, p.name);
+  if (p.type === "video") return h("figure", { class: "media", "data-kind": "vid" }, h("video", { src: p.url, controls: true, preload: "metadata" }), cap);
+  if (p.type === "text" && !binary(p.content)) return h("figure", { class: "media", "data-kind": "txt" }, h("pre", { class: "mono" }, p.content || ""),
     h("div", { class: "cap" }, h("b", {}, p.name), h("span", { class: "dim mono" }, `${p.lineCount} LINES${p.truncated && p.lineCount >= 50 ? " · FIRST 50 SHOWN" : ""}`)));
-  return h("figure", { class: "media bin" }, empty("NO PREVIEW", "ViWo cannot show this kind of file. Keep or trash it by its name and size."), cap);
+  return h("figure", { class: "media", "data-kind": "bin" }, empty("NO PREVIEW", "ViWo cannot show this kind of file. Keep or trash it by its name and size."), cap);
 }
 
 /** The server reads unknown types as text: treat mostly-unprintable content as binary. */
@@ -283,6 +285,4 @@ function onKey(e) {
 
 import { registerView, code } from "../registry.js";
 
-const VIEW = { mount, show: () => load(S.loaded) };
-registerView({ id: "sort", arm: "static", order: 40, title: "SORT", subtitle: "keep or trash, one by one", ...VIEW });
-export default VIEW;
+registerView({ id: "sort", arm: "static", order: 40, title: "SORT", subtitle: "keep or trash, one by one", mount, show: () => load(S.loaded) });

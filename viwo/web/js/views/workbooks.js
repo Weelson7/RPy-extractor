@@ -2,7 +2,7 @@
 // (doc 19.1). ViWo opens the tool pre-loaded; the workbook says what to do in it. Teaching, never
 // automation. The step reached is remembered per workbook.
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, viewHead, empty, errorBox, pref, seg, goBtn, alert, kv } from "../ui.js";
+import { h, fill, btn, panel, badge, listItem, viewHead, empty, errorBox, pref, seg, goBtn, alert, kv } from "../ui.js";
 import { registerView, code, tab } from "../registry.js";
 
 const S = { books: [], problems: [], tool: "", sel: "" };
@@ -56,9 +56,8 @@ function renderList() {
   fill(el.tools, tools.length > 1 ? seg([["", "ALL"], ...tools.map((t) => [t, named(t)])], S.tool, pickTool, { "aria-label": "Tool" }) : null);
   const shown = S.books.filter((b) => !S.tool || b.tool === S.tool);
   el.count.textContent = `${shown.length} OF ${S.books.length}`;
-  fill(el.list, shown.length ? shown.map((b) => h("button", {
-    type: "button", class: "job", role: "listitem", "data-id": b.id, "aria-current": b.id === S.sel ? "true" : null, onclick: () => renderBook(b),
-  }, h("span", { class: "kind" }, b.title), badge(named(b.tool), b.stale ? "warn" : ""),
+  fill(el.list, shown.length ? shown.map((b) => listItem(b.id === S.sel, () => renderBook(b), { "data-id": b.id },
+    h("span", { class: "kind" }, b.title), badge(named(b.tool), b.stale ? "warn" : ""),
     h("span", { class: "mono dim small" }, `${b.steps.length} steps${b.source === "yours" ? " · yours" : ""}`)))
     : empty("NO WORKBOOK", "None is shipped or saved yet; a JSON file in viwo-data/workbooks/ adds one (doc 19.1)."),
   // never silent: a file that could not be used is named
@@ -90,6 +89,4 @@ function renderBook(b) {
       : h("a", { href: "#workbooks", onclick: (e) => { e.preventDefault(); go(i); } }, s.title)))));
 }
 
-const VIEW = { mount, show };
-registerView({ id: "workbooks", arm: "global", order: 25, title: "WORKBOOKS", subtitle: "how-tos for the child tools", ...VIEW });
-export default VIEW;
+registerView({ id: "workbooks", arm: "global", order: 25, title: "WORKBOOKS", subtitle: "how-tos for the child tools", mount, show });

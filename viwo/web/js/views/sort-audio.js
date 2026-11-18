@@ -62,5 +62,5 @@ export function audioStage(url, cap) {
     wave.setAttribute("aria-label", "Waveform");
     fill(wave, bars(list));
   }, () => wave.setAttribute("aria-label", "Waveform unavailable for this file"));
-  return h("figure", { class: "media aud" }, wave, h("div", { class: "player" }, play, scrub, time), audio, cap);
+  return h("figure", { class: "media", "data-kind": "aud" }, wave, h("div", { class: "player" }, play, scrub, time), audio, cap);
 }

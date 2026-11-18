@@ -1,6 +1,6 @@
 // JOBS: job registry with state badges, detail, live event stream and cancel.
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, viewHead, empty, errorBox, toast, toastErr, logLine, fmtNum, emit, goBtn } from "../ui.js";
+import { h, fill, btn, panel, badge, listItem, viewHead, empty, errorBox, toast, toastErr, logLine, fmtNum, emit, goBtn } from "../ui.js";
 
 const STATE_KIND = { running: "live", queued: "warn", succeeded: "ok", failed: "err", cancelled: "mute" };
 /** Job kind -> [name shown to people, view that runs it]; its tab code comes from the registry. */
@@ -61,10 +61,8 @@ function renderList() {
       goBtn("#extract", "GO TO EXTRACT")));
     return;
   }
-  el.list.replaceChildren(...S.list.map((j) => h("button", {
-    type: "button", class: "job", role: "listitem", "aria-current": j.id === S.sel ? "true" : null, onclick: () => pick(j.id),
-    title: `job ${j.id}`,
-  }, h("span", { class: "kind" }, kindName(j.kind)), stateBadge(j.state),
+  el.list.replaceChildren(...S.list.map((j) => listItem(j.id === S.sel, () => pick(j.id), { title: `job ${j.id}` },
+    h("span", { class: "kind" }, kindName(j.kind)), stateBadge(j.state),
     h("span", { class: "mono dim small" }, when(j)), h("span", { class: "mono dim ev" }, `${fmtNum(j.events)} events`))));
 }
 
@@ -129,6 +127,4 @@ function hide() {
 
 import { registerView, code, tab } from "../registry.js";
 
-const VIEW = { mount, show, hide };
-registerView({ id: "jobs", arm: "global", order: 20, title: "JOBS", subtitle: "runs and their logs", strip: false, tag: "JOB", ...VIEW });
-export default VIEW;
+registerView({ id: "jobs", arm: "global", order: 20, title: "JOBS", subtitle: "runs and their logs", strip: false, tag: "JOB", mount, show, hide });

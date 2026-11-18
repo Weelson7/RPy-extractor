@@ -1,7 +1,7 @@
 // BEFORE YOU START and RESULT renderers for the capture view.
 import { code } from "../registry.js";
 import { featureOff } from "../feature.js";
-import { h, panel, badge, stat, fmtNum, goBtn, errorBox } from "../ui.js";
+import { h, panel, badge, alert, stat, fmtNum, goBtn, errorBox } from "../ui.js";
 
 const IMG = /\.(png|jpe?g|webp|gif|bmp)$/i;
 const previewUrl = (rel) => `/preview/${String(rel).split("/").map(encodeURIComponent).join("/")}`;
@@ -11,8 +11,7 @@ export function beforeYouStart(info, confirmed, onConfirm, recheck = () => {}) {
   const items = [];
   if (!info.enabled) items.push(featureOff("RUNTIME CAPTURE IS OFF", "It is an opt-in; turning it on applies at once, no restart.", "capture", recheck));
   if (!info.backend) {
-    items.push(h("div", { class: "alert", "data-kind": "warn" }, h("b", {}, "RENDERDOC NOT INSTALLED"),
-      h("p", {}, "The capture needs renderdoccmd and its Python. SYSTEM installs the pinned release with one click."),
+    items.push(alert("warn", "RENDERDOC NOT INSTALLED", "The capture needs renderdoccmd and its Python. SYSTEM installs the pinned release with one click.",
       h("p", {}, h("a", { href: "#system" }, "Open SYSTEM →"))));
   }
   const warnings = info.warnings || [];
@@ -43,7 +42,7 @@ export function renderResult(res) {
       stat("NEW VS STATIC", fmtNum(res.newVsStatic), "not found by extraction", res.newVsStatic ? "ok" : ""),
       stat("ALREADY STATIC", fmtNum(res.alreadyStatic), "dropped as duplicates"),
       stat("BACKEND", String(res.backend || "?").toUpperCase(), "capture tool")),
-    (res.warnings || []).length ? h("div", { class: "alert", "data-kind": "warn" }, h("b", {}, "NOTES"), h("ul", {}, res.warnings.map((w) => h("li", {}, w)))) : null,
+    (res.warnings || []).length ? alert("warn", "NOTES", h("ul", {}, res.warnings.map((w) => h("li", {}, w)))) : null,
     h("h4", { class: "sub-h" }, `// NEW FILES (${fmtNum(files.length)}${files.length >= 200 ? "+, first 200 listed" : ""})`),
     thumbs(files),
     files.length ? h("details", { class: "reasons" }, h("summary", {}, "FULL LIST"), h("ul", { class: "mono small" }, files.map((f) => h("li", {}, f)))) : null,

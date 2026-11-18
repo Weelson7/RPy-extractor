@@ -1,6 +1,6 @@
 // MERGER: pick candidates (numbered frame/clip groups), tune loops + conflict order, render MP4s.
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, viewHead, empty, errorBox, busy, fmtNum, bus, goBtn } from "../ui.js";
+import { h, fill, btn, panel, badge, kv, alert, viewHead, empty, errorBox, busy, fmtNum, bus, goBtn } from "../ui.js";
 import { outputPanel, applyState, refreshBar, actionBar } from "./merger-output.js";
 import { withSkeleton } from "../progress.js";
 
@@ -33,12 +33,11 @@ async function load() {
   try {
     await withSkeleton(el.list, "INDEXING WORKSPACE MEDIA…", async () => { S.st = await api.mergerState(); applyState(S.st); await list(); }, 6);
     fill(el.banner,
-      S.st.encoder ? null : h("div", { class: "alert", "data-kind": "err", role: "alert" }, h("b", {}, "FFMPEG NOT INSTALLED // BUILD DISABLED"),
-        h("p", {}, "The merger needs ffmpeg (with ffprobe) to make videos. You can still pick groups; BUILD unlocks once ffmpeg is found."),
+      S.st.encoder ? null : alert("err", "FFMPEG NOT INSTALLED // BUILD DISABLED", "The merger needs ffmpeg (with ffprobe) to make videos. You can still pick groups; BUILD unlocks once ffmpeg is found.",
         h("p", { class: "next" }, h("b", {}, "NEXT"), "Install ffmpeg with one click in SYSTEM (pinned build, into third_party/), then press REFRESH here. ",
           h("a", { href: "#system" }, "Open SYSTEM →"))),
-      h("div", { class: "kv" }, h("span", { class: "lbl" }, "SOURCE"), h("code", { class: "mono path" }, S.st.workingDir)),
-      h("div", { class: "kv" }, h("span", { class: "lbl" }, "OUTPUT"), h("code", { class: "mono path" }, S.st.mergerDir)));
+      kv("SOURCE", h("code", { class: "mono path" }, S.st.workingDir)),
+      kv("OUTPUT", h("code", { class: "mono path" }, S.st.mergerDir)));
   } catch (err) {
     fill(el.list, errorBox(err, "MERGER UNAVAILABLE"));
   }
@@ -170,6 +169,4 @@ function conflictList(spec, index, focusAt = -1) {
 
 import { registerView, code } from "../registry.js";
 
-const VIEW = { mount, show: load };
-registerView({ id: "merger", arm: "static", order: 60, title: "MERGER", subtitle: "frames → video", ...VIEW });
-export default VIEW;
+registerView({ id: "merger", arm: "static", order: 60, title: "MERGER", subtitle: "frames → video", mount, show: load });

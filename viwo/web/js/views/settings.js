@@ -1,11 +1,10 @@
 // SETTINGS: the startup ini as a form (features, plugins, tool paths, options, slots).
 // APPLY writes only what changed and reloads the runtime: no restart.
 import { api } from "../api.js";
-import { h, fill, btn, panel, viewHead, toast, toastErr, busy, emit, errorBox } from "../ui.js";
+import { h, fill, btn, panel, viewHead, toast, toastErr, busy, emit, errorBox, seg } from "../ui.js";
 import { withSkeleton } from "../progress.js";
 import { featuresForm, pluginsForm, toolsForm, optionsForm, slotsTable } from "./settings-form.js";
 import { THEMES, setTheme, currentTheme } from "../theme.js";
-import { seg } from "../ui.js";
 
 const S = { data: null, form: null, plugins: [], busy: false };
 const el = {};
@@ -121,6 +120,4 @@ function show() {
   return load();
 }
 
-const VIEW = { mount, show };
-registerView({ id: "settings", arm: "global", order: 30, title: "SETTINGS", subtitle: "plugins, features, tools", ...VIEW });
-export default VIEW;
+registerView({ id: "settings", arm: "global", order: 30, title: "SETTINGS", subtitle: "plugins, features, tools", mount, show });

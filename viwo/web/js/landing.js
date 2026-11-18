@@ -2,12 +2,10 @@
 // One line per check/install event as it arrives, a determinate bar from the "(i/N)" and
 // "X / Y" counts, a summary, then a hand-off into the app. Shown once per browser tab.
 import { api } from "./api.js";
-import { h, logLine, emit, setProgress } from "./ui.js";
+import { h, logLine, emit, progressBar, setProgress } from "./ui.js";
+import { RM, num, sleep } from "./progress.js";
 
-const RM = window.matchMedia("(prefers-reduced-motion: reduce)");
 const FRAC = /(\d[\d,]*)\s*\/\s*(\d[\d,]*)/;
-const num = (s) => Number(String(s).replace(/,/g, ""));
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const MIN_HOLD = 1200;
 
 const store = (set) => { try { if (set) sessionStorage.setItem("viwo-landed", "1"); return sessionStorage.getItem("viwo-landed"); } catch { return "1"; } };
@@ -49,7 +47,7 @@ export async function runLanding() {
   const el = {
     stage: h("b", { class: "land-stage" }, "STARTING"),
     frac: h("span", { class: "land-frac mono" }),
-    bar: h("div", { class: "bar land-bar", role: "progressbar", "aria-valuemin": "0", "aria-valuemax": "100", "aria-valuenow": "0" }, h("i", {})),
+    bar: progressBar({ class: "bar land-bar", "aria-valuenow": "0" }),
     lines: h("pre", { class: "land-lines log" }),
     sum: h("p", { class: "land-sum", "aria-live": "polite" }, "Checking the tools ViWo can use on this machine…"),
   };

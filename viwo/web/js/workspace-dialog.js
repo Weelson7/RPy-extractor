@@ -1,7 +1,7 @@
 // Workspace switcher: shows the active workspace, opens another existing folder, or converts a
 // folder ViWo did not create into a workspace (doc 4.3).
 import { api } from "./api.js";
-import { h, badge, modal, toast, toastErr, emit } from "./ui.js";
+import { h, badge, kv, modal, toast, toastErr, emit } from "./ui.js";
 
 /** Convert the folder after showing what moves; true when it became the active workspace. */
 async function convert(path) {
@@ -43,9 +43,8 @@ export async function openWorkspaceDialog() {
   try { cur = await api.workspace(); } catch (err) { toastErr(err); }
   const body = [
     h("p", {}, "Extraction, sorting, groups and the merger all work on the active workspace. Open another existing folder to switch. CONVERT INTO WORKSPACE acts on the folder typed below: its files move into groups by type, nothing is deleted."),
-    h("div", { class: "kv" }, h("span", { class: "lbl" }, "ACTIVE"), h("code", { class: "mono path" }, cur.path || "—"),
-      h("div", { class: "row" }, cur.isDefault ? badge("DEFAULT", "mute") : null,
-        cur.owned ? badge("VIWO WORKSPACE", "ok") : badge("NOT CREATED BY VIWO", "warn"))),
+    kv("ACTIVE", h("code", { class: "mono path" }, cur.path || "—"), cur.isDefault ? badge("DEFAULT", "mute") : null,
+      cur.owned ? badge("VIWO WORKSPACE", "ok") : badge("NOT CREATED BY VIWO", "warn")),
   ];
   const res = await modal({ title: "SWITCH WORKSPACE", tag: "// WORKSPACE", body,
     input: { value: cur.path, label: "FOLDER TO OPEN OR CONVERT", browse: true },

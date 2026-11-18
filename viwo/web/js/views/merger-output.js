@@ -1,7 +1,7 @@
 // RENDER: transition / end / overlay / output settings, build as a "merge" job, results.
 import { code, tab } from "../registry.js";
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, errorBox, toast, toastErr, busy, emit, logLine, openBtn } from "../ui.js";
+import { h, fill, btn, panel, badge, alert, seg, errorBox, toast, toastErr, busy, emit, logLine, openBtn } from "../ui.js";
 import { jobProgress } from "../progress.js";
 
 const O = { transitionType: "diapo", diapoDelay: 3, fadeCrossTime: 0.7, endFadeoutTime: 0, endLastImageTime: 0,
@@ -76,11 +76,9 @@ function overlayRow() {
 function renderForm() {
   if (!el.form) return;
   const fade = O.transitionType === "fade";
-  const seg = h("div", { class: "seg sm", role: "group", "aria-label": "Transition" }, ["diapo", "fade"].map((t) =>
-    h("button", { type: "button", "aria-pressed": String(O.transitionType === t), onclick: () => { O.transitionType = t; renderForm(); } },
-      t === "diapo" ? "CUT" : "CROSSFADE")));
+  const transition = seg([["diapo", "CUT"], ["fade", "CROSSFADE"]], O.transitionType, (t) => { O.transitionType = t; renderForm(); }, { class: "seg sm", "aria-label": "Transition" });
   fill(el.form,
-    h("div", { class: "row" }, h("span", { class: "lbl" }, "TRANSITION"), seg),
+    h("div", { class: "row" }, h("span", { class: "lbl" }, "TRANSITION"), transition),
     h("div", { class: "nums" }, field("IMAGE HOLD (S)", "diapoDelay"), field("CROSSFADE (S)", "fadeCrossTime", { disabled: !fade }),
       field("END FADE-OUT (S)", "endFadeoutTime"), field("HOLD LAST FRAME (S)", "endLastImageTime")),
     overlayRow(),
@@ -123,7 +121,7 @@ async function build() {
   }
 }
 
-const failures = (list) => (list?.length ? h("div", { class: "alert", "data-kind": "warn" }, h("b", {}, "GROUPS THAT FAILED"),
+const failures = (list) => (list?.length ? alert("warn", "GROUPS THAT FAILED",
   h("ul", {}, list.map((f) => h("li", {}, h("b", {}, f.candidateName), ": ", f.error)))) : null);
 
 const folderOf = (p) => p.replace(/[\\/][^\\/]*$/, "") || p;

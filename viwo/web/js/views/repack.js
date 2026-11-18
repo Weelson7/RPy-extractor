@@ -1,6 +1,6 @@
 // PATCHED COPY: round trip. Plan the edit set, pick a target, build + verify a patched copy of the game.
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, viewHead, assure, toast, toastErr, busy, pref, logLine, fmtNum, bus, emit, stat, browseBtn } from "../ui.js";
+import { h, fill, btn, panel, badge, kv, viewHead, assure, toast, toastErr, busy, pref, logLine, fmtNum, bus, emit, stat, browseBtn } from "../ui.js";
 import { jobProgress, withSkeleton } from "../progress.js";
 import { currentGame } from "../game.js";
 import { planCard, issueList, howTo, noExtraction, noEdits, resultBody, failure, SHORT } from "./repack-plan.js";
@@ -88,7 +88,7 @@ function render() {
   else if (!p) fill(el.plan, S.files === 0 ? noExtraction() : [h("p", { class: "note first" }, "Press PLAN to find the files you edited and see how each one goes back into the game. Planning only reads."),
     h("span", { class: "lbl" }, "// HOW THE ROUND TRIP WORKS"), howTo()]);
   else fill(el.plan,
-    h("div", { class: "kv" }, h("span", { class: "lbl" }, "SOURCE GAME"), h("code", { class: "mono path" }, p.game), h("div", { class: "row" }, badge("READ-ONLY", "ok"))),
+    kv("SOURCE GAME", h("code", { class: "mono path" }, p.game), badge("READ-ONLY", "ok")),
     !p.edits ? noEdits(S.ws, () => plan()) : [
       h("h4", { class: "sub-h" }, `// STRATEGY · ${fmtNum(members)} MEMBER(S) IN ${fmtNum(p.plan.length)} TARGET(S)`),
       p.plan.length ? h("div", { class: "pcards" }, p.plan.map(planCard)) : h("p", { class: "warn-text" }, "None of the edits can be written back yet (see below).")],
@@ -154,6 +154,4 @@ async function build() {
 
 import { registerView, code } from "../registry.js";
 
-const VIEW = { mount, show };
-registerView({ id: "repack", arm: "patching", order: 10, title: "PATCHED COPY", subtitle: "your edits → the game", ...VIEW });
-export default VIEW;
+registerView({ id: "repack", arm: "patching", order: 10, title: "PATCHED COPY", subtitle: "your edits → the game", mount, show });

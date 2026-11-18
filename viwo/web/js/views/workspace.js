@@ -117,6 +117,4 @@ async function clearTrash() {
 
 import { registerView, code } from "../registry.js";
 
-const VIEW = { mount, show: load };
-registerView({ id: "workspace", arm: "static", order: 30, title: "WORKSPACE", subtitle: "your files, by type", ...VIEW });
-export default VIEW;
+registerView({ id: "workspace", arm: "static", order: 30, title: "WORKSPACE", subtitle: "your files, by type", mount, show: load });

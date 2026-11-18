@@ -1,6 +1,6 @@
 // SURVEY: read-only coverage check of one game or a whole library — what ViWo can pull, and what stays locked.
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, viewHead, empty, errorBox, toast, toastErr, pref, logLine, fmtBytes, fmtNum, emit, bus, stat, browseBtn } from "../ui.js";
+import { h, fill, btn, panel, badge, viewHead, empty, errorBox, toastErr, pref, logLine, fmtBytes, fmtNum, emit, bus, stat, browseBtn } from "../ui.js";
 import { setGame, followGame } from "../game.js";
 import { jobProgress } from "../progress.js";
 import { gameCard, categoryKey, dataBytes, coveredBytes, pct, covKind } from "./survey-card.js";
@@ -140,6 +140,4 @@ function render() {
 
 import { registerView, code } from "../registry.js";
 
-const VIEW = { mount };
-registerView({ id: "survey", arm: "static", order: 10, title: "SURVEY", subtitle: "what can ViWo pull?", ...VIEW });
-export default VIEW;
+registerView({ id: "survey", arm: "static", order: 10, title: "SURVEY", subtitle: "what can ViWo pull?", mount });

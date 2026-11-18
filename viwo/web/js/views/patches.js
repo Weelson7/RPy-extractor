@@ -2,15 +2,13 @@
 // the game and written into a marked patched copy; T2 mods packed from a copy, checked against a
 // game version (the update check) and applied in load order. The game folder is only read.
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, viewHead, kv, table, seg, toast, toastErr, pref, emit, browseBtn, errorBox, openBtn, assure } from "../ui.js";
+import { h, fill, btn, panel, badge, viewHead, kv, table, seg, toast, toastErr, pref, emit, browseBtn, fileBtn, prefInput as input, errorBox, openBtn, assure } from "../ui.js";
 import { jobProgress } from "../progress.js";
 import { currentGame, setGame, gameField } from "../game.js";
 
 const S = { running: false, action: pref("modAction") || "check" };
 const el = {};
-const input = (id, placeholder, key) => h("input", { class: "input mono grow", id, placeholder, value: pref(key) || "",
-  spellcheck: "false", oninput: (e) => pref(key, e.target.value.trim()) });
-const pickFile = (field, key) => browseBtn(field, (p) => pref(key, p), (p) => api.browseFile(p || currentGame()).then((r) => r.path));
+const pickFile = (field, key) => fileBtn(field, (p) => pref(key, p), currentGame);
 
 function mount(root) {
   el.game = gameField("pt-game");
@@ -103,6 +101,4 @@ const mod = () => job("mod", () => api.mod({ action: S.action, gamePath: el.game
 
 import { registerView, code } from "../registry.js";
 
-const VIEW = { mount };
-registerView({ id: "patches", arm: "patching", order: 20, title: "PATCHES + MODS", subtitle: "patch sets, mod packages", ...VIEW });
-export default VIEW;
+registerView({ id: "patches", arm: "patching", order: 20, title: "PATCHES + MODS", subtitle: "patch sets, mod packages", mount });

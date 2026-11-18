@@ -1,7 +1,7 @@
 // CAPTURE: frames from a running game through RenderDoc. Pick game + executable, read the
 // warnings (information, never a block), confirm once, run as a job, see what came out.
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, viewHead, toast, toastErr, pref, busy, bus, emit, browseBtn, errorBox, logLine, assure } from "../ui.js";
+import { h, fill, btn, panel, badge, viewHead, toast, toastErr, pref, busy, bus, emit, browseBtn, fileBtn, errorBox, logLine, assure } from "../ui.js";
 import { setGame, followGame } from "../game.js";
 import { jobProgress, withSkeleton } from "../progress.js";
 import { beforeYouStart, renderResult, renderFailure } from "./capture-result.js";
@@ -47,7 +47,7 @@ function mount(root) {
 
 function targetPanel() {
   const browseGame = browseBtn(el.game, (path) => { setGame(path); check(); });
-  const browseExe = browseBtn(el.exe, (path) => { pref("capExe", path); bar(); }, (p) => api.browseFile(p || el.game.value.trim()).then((r) => r.path));
+  const browseExe = fileBtn(el.exe, (path) => { pref("capExe", path); bar(); }, () => el.game.value.trim());
   return panel(`${code("capture")}.A`, "TARGET", h("div", { class: "row" }, badge("READ-ONLY SOURCE", "ok"), howToBtn("renderdoccmd", "HOW TO: RENDERDOC")),
     h("label", { class: "lbl", for: "cap-game" }, "GAME FOLDER"),
     h("div", { class: "row" }, el.game, browseGame),
@@ -135,6 +135,4 @@ async function run() {
 
 import { registerView, code } from "../registry.js";
 
-const VIEW = { mount, show: bar };
-registerView({ id: "capture", arm: "dynamic", order: 10, title: "CAPTURE", subtitle: "frames from a running game", ...VIEW });
-export default VIEW;
+registerView({ id: "capture", arm: "dynamic", order: 10, title: "CAPTURE", subtitle: "frames from a running game", mount, show: bar });

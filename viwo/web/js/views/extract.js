@@ -1,6 +1,6 @@
 // EXTRACT: target, detection, mode, plugin options, filter, run + live feed.
 import { api } from "../api.js";
-import { h, fill, btn, panel, badge, meter, viewHead, toast, toastErr, pref, logLine, emit, errorBox, pct, fmtNum, bus, browseBtn } from "../ui.js";
+import { h, fill, btn, panel, badge, meter, seg, alert, viewHead, toast, toastErr, pref, logLine, emit, errorBox, pct, fmtNum, bus, browseBtn } from "../ui.js";
 import { setGame, followGame } from "../game.js";
 import { slotText } from "./system.js";
 import { jobProgress, withSkeleton } from "../progress.js";
@@ -34,7 +34,7 @@ function mount(root) {
     viewHead(code("extract"), "EXTRACT", "Pull assets from a game folder into a ViWo workspace. The game folder is opened read-only and never modified."),
     h("div", { class: "grid2" },
       h("div", { class: "col" }, targetPanel(), detectPanel(), modePanel(), runPanel()),
-      h("div", { class: "col" }, feedPanel(), el.result)),
+      h("div", { class: "col" }, panel(`${code("extract")}.E`, "LIVE FEED", null, el.idle, el.prog.el), el.result)),
     h("div", { class: "actionbar" }, el.sum, el.why, el.cancel, el.run));
   renderIdleFeed();
   loadPlugins();
@@ -91,8 +91,7 @@ function missingTools() {
   const gaps = pluginsInPlay().flatMap((p) => p.slots.filter((s) => slots[s] && !slots[s].main).map((s) => [p.name, s]));
   if (!gaps.length) return null;
   const how = [...new Set(gaps.flatMap(([, s]) => slots[s].reasons.map((r) => r.replace(/^[^(]*\(|\)$/g, ""))))];
-  return h("div", { class: "alert", "data-kind": "warn" }, h("b", {}, "OPTIONAL TOOLS NOT INSTALLED"),
-    h("p", {}, `${gaps.map(([n, s]) => `${n}: ${slotText(s)}`).join(" · ")}. Extraction still runs and copies everything else.`),
+  return alert("warn", "OPTIONAL TOOLS NOT INSTALLED", `${gaps.map(([n, s]) => `${n}: ${slotText(s)}`).join(" · ")}. Extraction still runs and copies everything else.`,
     h("ul", { class: "small" }, how.map((x) => h("li", {}, x))),
     h("p", {}, h("a", { href: "#system" }, "Open SYSTEM to install them (one click) →")));
 }
@@ -113,10 +112,9 @@ function renderDetect() {
 }
 
 function modePanel() {
-  el.seg = h("div", { class: "seg", role: "group", "aria-label": "Extraction mode" },
-    ["auto", "single", "mixed"].map((m) => h("button", { type: "button", "data-mode": m, onclick: () => { S.mode = m; renderMode(); } }, m.toUpperCase())));
+  const mode = seg(["auto", "single", "mixed"].map((m) => [m, m.toUpperCase()]), S.mode, (m) => { S.mode = m; renderMode(); }, { "aria-label": "Extraction mode" });
   renderMode();
-  return panel(`${code("extract")}.C`, "MODE", el.seg, el.mode, el.options);
+  return panel(`${code("extract")}.C`, "MODE", mode, el.mode, el.options);
 }
 
 function chips(ids, isOn, onPick, role) {
@@ -128,7 +126,6 @@ function chips(ids, isOn, onPick, role) {
 }
 
 function renderMode() {
-  el.seg?.querySelectorAll("button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.mode === S.mode)));
   const ids = S.plugins.map((p) => p.id);
   const auto = S.detect?.auto?.length ? h("b", { class: "mono" }, S.detect.auto.join(", ")) : "none yet (run DETECT ENGINE)";
   const parts = {
@@ -137,8 +134,7 @@ function renderMode() {
     mixed: [h("p", { class: "note" }, "Run several plugins into one workspace."),
       chips(ids, (id) => S.mixed.has(id), (id) => { S.mixed.has(id) ? S.mixed.delete(id) : S.mixed.add(id); renderMode(); }),
       h("div", { class: "row policy" }, h("span", { class: "lbl" }, "POLICY"),
-        h("div", { class: "seg sm" }, Object.keys(POLICIES).map((k) => h("button", { type: "button", "aria-pressed": String(S.policy === k),
-          onclick: () => { S.policy = k; renderMode(); } }, k.toUpperCase()))),
+        seg(Object.keys(POLICIES).map((k) => [k, k.toUpperCase()]), S.policy, (k) => { S.policy = k; renderMode(); }, { class: "seg sm", role: null }),
         h("span", { class: "dim" }, POLICIES[S.policy]))],
   };
   el.mode.replaceChildren(...parts[S.mode]);
@@ -242,10 +238,6 @@ function buildPayload(onExisting) {
   return payload;
 }
 
-function feedPanel() {
-  return panel(`${code("extract")}.E`, "LIVE FEED", null, el.idle, el.prog.el);
-}
-
 function renderIdleFeed() {
   el.prog.el.hidden = true;
   el.idle.hidden = false;
@@ -325,6 +317,4 @@ async function loadPlugins() {
 
 import { registerView, code } from "../registry.js";
 
-const VIEW = { mount, show };
-registerView({ id: "extract", arm: "static", order: 20, title: "EXTRACT", subtitle: "pull assets from a game", ...VIEW });
-export default VIEW;
+registerView({ id: "extract", arm: "static", order: 20, title: "EXTRACT", subtitle: "pull assets from a game", mount, show });
