@@ -1,8 +1,9 @@
 """Workspace layout contract (doc 4.3)."""
 
 import json
+import os
 import re
-from pathlib import Path, PurePosixPath
+from pathlib import Path, PurePosixPath, PureWindowsPath
 
 from .paths import files, inside, link_like, walk  # noqa: F401  (callers use ws.walk, ...)
 
@@ -70,6 +71,17 @@ def safe_member(name: str) -> PurePosixPath | None:
         if INVALID.search(part):
             return None
     return PurePosixPath(*parts)
+
+
+def relative(name: str) -> PurePosixPath | None:
+    """A name a request gives, as a path that stays under the folder it is joined to: None for
+    an absolute path, a drive or UNC root (Windows would open `\\\\host\\share` just to
+    resolve it) or a ".." part. Checked before the path touches the disk. Unlike safe_member
+    it keeps what only Windows refuses: such files exist in a workspace on Linux."""
+    parts = [p for p in name.replace("\\", "/").split("/") if p not in ("", ".")]
+    drive = os.name == "nt" and bool(PureWindowsPath(name).anchor)  # `C:x` leaves the folder
+    rooted = name.startswith(("/", "\\")) or drive
+    return None if rooted or not parts or ".." in parts else PurePosixPath(*parts)
 
 
 def writable(name: str) -> PurePosixPath | None:

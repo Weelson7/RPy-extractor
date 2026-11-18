@@ -4,6 +4,18 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.20.71 (2026-11-18)
+- Security (review, 2026-11-18), four fixes:
+  - a request's path is checked before it is joined or resolved: `/%5C%5Chost%5Cshare` on the
+    static or preview route made Windows open an SMB connection (and send the login hash);
+  - workspace files are served sandboxed and never sniffed, so a game's `.html` or `.svg`
+    opened through `/preview/` can no longer run on ViWo's origin and read the API token;
+    ViWo's page runs only its own scripts and cannot be framed;
+  - a batch tool's arguments (Ghidra's `analyzeHeadless.bat`) are always quoted: a game file
+    named `x&calc&.dll` ran `calc` during analysis;
+  - a run record masks every option of an owner the runtime does not know (an AES key given
+    to a misspelled or switched-off plugin was stored in clear).
+
 ## 1.20.70 (2026-11-18)
 - Overwatch: every model DataTool writes (`.owmdl`) also comes out as a self-contained
   `.glb`: all submeshes with normals, tangents and UV sets, the skeleton in its reference

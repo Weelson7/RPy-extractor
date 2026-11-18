@@ -39,6 +39,7 @@ class SubprocessRunner(ProcessRunner):
         self.processes = lister  # the per-OS process listing (running_images, pids_of)
         self.cap_child = lambda proc, ceiling: "no memory cap for child tools on this OS layer"
         self.capped_kwargs: dict = {}  # how a tool that will be capped is started (suspended)
+        self.command_line = lambda argv: argv  # Windows writes a batch tool's line itself
         self._cap = threading.local()  # the ceiling of the run_capped call in this thread
 
     def running_images(self) -> set[str]:
@@ -51,7 +52,7 @@ class SubprocessRunner(ProcessRunner):
         """A GUI tool as a tracked child (doc 8.3a): no pipes, same process group rules, killed
         with the tree on exit."""
         proc = subprocess.Popen(
-            [str(a) for a in argv],
+            self.command_line([str(a) for a in argv]),
             cwd=str(cwd) if cwd else None,
             env={**os.environ, **env} if env else None,
             stdin=subprocess.DEVNULL,
@@ -73,7 +74,7 @@ class SubprocessRunner(ProcessRunner):
 
     def _popen(self, argv, cwd, env) -> subprocess.Popen:
         return subprocess.Popen(
-            [str(a) for a in argv],
+            self.command_line([str(a) for a in argv]),
             cwd=str(cwd) if cwd else None,
             env={**os.environ, **env} if env else None,
             stdout=subprocess.PIPE,

@@ -61,7 +61,16 @@ description, capabilities, options, slots, dependencies, error, loaded.
    path `/preview/`, set only with the page a keyed LAN peer loads): a token of its own that
    grants `/preview/` and never the API (a browser sends a host's cookies to every port);
    otherwise 403. Tokens are compared as bytes (any text a client sends), a range number longer
-   than 18 digits is ignored (the whole file), and a file locked or gone answers 404.
+   than 18 digits is ignored (the whole file), and a file locked or gone answers 404. A
+   request's name is checked before it is joined or resolved (`contracts.workspace` `relative`,
+   `safe_member`): an absolute, drive or UNC name never reaches the disk (resolving
+   `\\host\share` on Windows opens a connection and sends the login hash).
+   **Workspace files are inert:** `/preview/` answers with `Content-Security-Policy: sandbox`
+   and `nosniff`, so a game's `.html` or `.svg` opened as a page has an origin of its own and
+   runs nothing: it cannot read ViWo's token. **The page** is served with a policy that runs
+   only ViWo's own scripts, is never framed (`frame-ancestors 'none'`, `X-Frame-Options:
+   DENY`) and connects only to this machine (and `gstatic.com`, where the 3D preview fetches a
+   decoder for a Draco or Basis model).
 6. **Absolute request paths:** a game, executable, folder, patch set, mod, copy or workspace path
    in a request is absolute (`api/app.py` `path_param`, `existing`); "" or a relative path, which
    would name the server's own folder, is refused as `not_found` / `invalid_request`

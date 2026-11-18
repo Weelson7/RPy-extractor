@@ -27,8 +27,10 @@ def encode(workspace: Path, path: Path) -> str:
 def resolve(workspace: Path, encoded: str) -> Path:
     if not encoded:
         raise ViwoError("invalid_request", "Missing asset path")
-    root = workspace.resolve()
-    path = (root / unquote(encoded)).resolve()
+    root, member = workspace.resolve(), ws.relative(unquote(encoded))
+    if member is None:  # refused before anything is resolved (a UNC name opens a connection)
+        raise ViwoError("invalid_request", "Invalid asset path")
+    path = root.joinpath(*member.parts).resolve()
     if root not in path.parents or ws.is_reserved(path.relative_to(root).parts[0]):
         raise ViwoError("invalid_request", "Invalid asset path")
     if not path.is_file():

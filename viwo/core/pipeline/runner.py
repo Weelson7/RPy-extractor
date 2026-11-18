@@ -217,7 +217,8 @@ def _masked_options(run: Run) -> dict[str, dict[str, str]]:
     out: dict[str, dict[str, str]] = {}
     for owner, values in run.request.plugin_options.items():
         plugin = run.rt.plugins.get(owner)
-        secret = {o.key for o in plugin.manifest.options if o.kind == "secret"} if plugin else set()
+        known = {o.key for o in plugin.manifest.options if o.kind == "secret"} if plugin else ()
+        secret = known if plugin else set(values)  # an unknown owner (off, misspelled): all
         out[owner] = {k: SECRET if k in secret else str(v) for k, v in values.items()}
     return out
 

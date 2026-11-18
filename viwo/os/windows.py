@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 from typing import Mapping, Sequence
 
+from viwo.contracts.errors import ViwoError
 from viwo.contracts.os import FileSystemPolicy
 
 from ._shared import HostOS, Locator, SubprocessRunner, TkShell
@@ -31,6 +32,23 @@ def _wrap(path: Path) -> tuple[str, ...]:
     if path.suffix.lower() in {".bat", ".cmd"}:
         return ("cmd", "/c", "call", str(path))
     return (str(path),)
+
+
+CMD_SYNTAX = re.compile(r"[\s&|<>()^%!,;=]")  # what cmd reads as its own outside quotes
+
+
+def _batch_line(argv: list[str]) -> list[str] | str:
+    """The command line of a batch tool, written here: cmd reads & | < > ( ) ^ in an unquoted
+    argument as its own syntax (a game file named `x&calc&.dll` would run calc), and Python
+    quotes only the arguments that hold a space. Every argument holding any of cmd's
+    characters goes in quotes; one holding a quote would end them, so it is refused."""
+    if argv[:3] != ["cmd", "/c", "call"]:
+        return argv
+    if any('"' in a for a in argv[3:]):
+        raise ViwoError("refused", "a batch tool cannot take an argument with a quote in it")
+    ends = (a + "\\" * (len(a) - len(a.rstrip("\\"))) for a in argv[3:])  # \" would unquote
+    args = (f'"{end}"' if CMD_SYNTAX.search(a) else a for a, end in zip(argv[3:], ends))
+    return "cmd /c call " + " ".join(args)
 
 
 def _cap_child(proc, ceiling: int) -> str:
@@ -205,6 +223,7 @@ class WindowsOS(HostOS):
         flags = getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
         self._process = SubprocessRunner(32767, {"creationflags": flags}, _kill_tree, _processes)
         self._process.cap_child = _cap_child
+        self._process.command_line = _batch_line
         self._process.capped_kwargs = {"creationflags": flags | 0x4}  # CREATE_SUSPENDED
         suffixes = [".exe", ".bat", ".cmd", ""]
         self._tools = Locator(tool_overrides or {}, _install_roots(), suffixes, _wrap, "windows")

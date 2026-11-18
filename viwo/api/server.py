@@ -18,7 +18,7 @@ from viwo.core.curation.sorting import resolve
 from . import plugin_assets, routes
 from .app import App, failure, get_app
 from .handlers import GET, POST
-from .peers import WILDCARD_OR_LOOPBACK, loopback, same
+from .peers import OURS, UNTRUSTED, WILDCARD_OR_LOOPBACK, loopback, same, send_all, under
 from .ranges import ABORTED, _copy, byte_range
 
 WEB_ROOT = Path(__file__).resolve().parent.parent / "web"
@@ -72,7 +72,7 @@ class Handler(BaseHTTPRequestHandler):
             "Content-Type", kind + ("; charset=utf-8" if kind.startswith("text") else "")
         )
         self.send_header("Content-Length", str(len(body)))
-        self.send_header("Cache-Control", "no-store" if html_token else "no-cache")
+        send_all(self, {**OURS, "Cache-Control": "no-store" if html_token else "no-cache"})
         if cookie:  # a LAN peer's previews load as <img>/<video>, which send no header
             value = (
                 f"{self._cookie_name()}={self.preview}; HttpOnly; SameSite=Strict; Path=/preview/"
@@ -209,6 +209,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(max(0, end - start + 1)))
         self.send_header("Accept-Ranges", "bytes")
         self.send_header("Cache-Control", "no-cache")
+        send_all(self, UNTRUSTED)  # a game's .html or .svg runs nothing here
         if span:
             self.send_header("Content-Range", f"bytes {start}-{end}/{size}")
         self.end_headers()
@@ -222,8 +223,7 @@ class Handler(BaseHTTPRequestHandler):
         rel = (path.lstrip("/") or "index.html") + (
             "index.html" if path.endswith("/") and path != "/" else ""
         )
-        target = (WEB_ROOT / rel).resolve()
-        if WEB_ROOT.resolve() not in target.parents or not target.is_file():
+        if (target := under(WEB_ROOT, rel)) is None:
             return self.send_error(404)
         local, page = loopback(str(self.client_address[0])), target.name == "index.html"
         keyed = same(key, self.token)
