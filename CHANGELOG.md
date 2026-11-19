@@ -4,6 +4,31 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.23.0 (2026-11-19)
+- Unreal: every model UnrealAssetScout exports (UEFormat `.uemodel`, the only model format the
+  pinned tool writes: it has no glTF option) also comes out as a `.glb` beside it: LOD 0 (never
+  the Nanite LOD), positions, normals, tangents, every UV set, the vertex colour sets as data,
+  one primitive per material section with its name, and for a skeletal mesh its bones in the
+  reference pose with every weight. Unreal's left-handed Z-up space swaps Y and Z, as Unreal's
+  own glTF exporter does. Option `[options.unreal] models = uemodel` keeps the tool's files
+  only. A file the converter cannot read (another UEFormat version, zstd on a Python without
+  `compression.zstd`, damage) is counted with the first reason; a skeleton alone is counted.
+- Unreal: the export's failures were never seen. UnrealAssetScout ran with compact progress and
+  no log, so its `[FAILED]` lines went nowhere and a game whose packages all need mappings said
+  only "exported nothing". The tool now writes its log into the scratch folder, read back and
+  deleted: the two free UE5 test games now say "3622 package(s) need the game's mappings
+  (.usmap)" and "815 package(s) ...". Every package of both is cooked unversioned: they need the
+  `.usmap` the RUNTIME agent (UE4SS) dumps from the running game.
+- Source: `decode.mdl` turns studio models (`.mdl` versions 44 to 49 with their `.vvd` and
+  `.vtx`) into `.glb`: LOD 0 of the default model of every body part, positions, normals, UVs,
+  the bones in their reference pose with the engine's bind matrices, up to three weights a
+  vertex, one primitive per mesh named after its material, and the material's `$basetexture`
+  embedded as the PNG `decode.vtf` makes when its `.vmt` and `.vtf` are in the run. Source's
+  Z-up axes turn to glTF's Y-up and every triangle is rewound (the `.vtx` lists front faces
+  clockwise). The `.vvd` and `.vtx` are matched by name and checksum, so models COLLECT renamed
+  (`name__1`) keep their own. Models without a mesh, untextured materials and models that
+  cannot be converted are counted. No tool installed.
+
 ## 1.22.6 (2026-11-19)
 - PATCHED COPY uses the mod-or-overwrite choice made in ASSETS and names it in its summary
   line; it wrote with the default without saying so.

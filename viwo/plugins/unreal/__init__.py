@@ -1,7 +1,8 @@
 """Unreal Engine plugin (M7): .pak via repak, IoStore (.utoc/.ucas) via retoc; AES per D18.
 
 Members come out as .uasset/.uexp/.ubulk; `export.unreal` (UnrealAssetScout) decodes them into
-PNG textures, models, animations, sounds and JSON, with the mappings the RUNTIME agent writes.
+PNG textures, models (UEFormat, and glTF through uemodel.py), animations, sounds and JSON, with
+the mappings the RUNTIME agent writes.
 """
 
 from viwo.contracts.analysis import AnalysisTarget
@@ -42,6 +43,13 @@ MANIFEST = PluginManifest(
         ),
         PluginOption(
             "engine", "Engine version for asset export (e.g. GAME_UE5_3); empty: detected", "string"
+        ),
+        PluginOption(
+            "models",
+            "glb: every exported model also as a .glb (LOD 0, skeleton and weights); uemodel: "
+            "UnrealAssetScout's UEFormat files only",
+            "string",
+            "glb",
         ),
     ),
 )

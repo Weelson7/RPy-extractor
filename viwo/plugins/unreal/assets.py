@@ -1,9 +1,13 @@
 """export.unreal (doc 16.0c): Unreal assets decoded for any UE4/UE5 game, through UnrealAssetScout
-(MIT, built on CUE4Parse; run as its own process): textures to PNG, meshes and skeletons to glTF,
-animations, sounds, and every package as JSON. The engine version is read from the game's own
-binaries (the `++UE5+Release-5.x` build string); cooked UE5 assets need the game's mappings
-(`.usmap`), which the RUNTIME agent (UE4SS) writes into the workspace, or which the user gives;
-without them those packages are counted and the way to get them is named."""
+(MIT, built on CUE4Parse; run as its own process): textures to PNG, meshes and skeletons to
+UEFormat (`.uemodel`, which the tool has no option to change; uemodel.py writes a `.glb` beside
+each, option `models`), animations, sounds, and every package as JSON. The engine version is
+read from the game's own binaries (the `++UE5+Release-5.x` build string); cooked UE5 assets
+need the game's mappings (`.usmap`), which the RUNTIME agent (UE4SS) writes into the workspace,
+or which the user gives; without them those packages are counted and the way to get them is
+named. The tool shows compact progress and writes its per-file lines (`[FAILED]`) to a log in
+the scratch folder, read back and deleted (with compact progress and no log, no failure would
+ever be seen)."""
 
 import re
 import shutil
@@ -15,6 +19,7 @@ from viwo.contracts.slots import Exporter, SlotDefinition
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 from viwo.contracts.workspace import count_files
 
+from . import uemodel
 from .keys import resolve_key
 
 UAS = DependencySpec.of("uas")
@@ -82,7 +87,8 @@ class UasExport(Exporter):
             failed, need = failed + f, need + n
         for manifest in ctx.staging.rglob(".uas-manifest.json"):
             manifest.unlink()
-        return Outcome(OutcomeKind.OK, count_files(ctx.staging), notes=_notes(failed, need))
+        notes = _notes(failed, need) + _gltf(ctx)
+        return Outcome(OutcomeKind.OK, count_files(ctx.staging), notes=notes)
 
     def _folder(self, ctx, tool, folder: Path, version: str, usmap):
         """Every mode over one Paks folder: (failed packages, those needing mappings, the
@@ -91,21 +97,15 @@ class UasExport(Exporter):
         key, problem = resolve_key(first, ctx)
         if problem:
             return 0, 0, Outcome(OutcomeKind.NEEDS_KEY, error=problem)
-        base = ["-p", str(folder), "-g", version, "-z", "-c"]
+        base = ["-p", str(folder), "-g", version, "-c"]
         base += ["-u", str(usmap)] if usmap else []
         base += ["-a", f"0x{key}"] if key else []  # one process's command line, masked below
         failed = need = 0
         for mode in MODES:
             out = (ctx.staging / mode.lower()).resolve()
-            result = ctx.os.process.run(
-                [*tool.argv_prefix, "export", mode, "-o", str(out), *base],
-                cwd=str(ctx.scratch) if ctx.scratch.is_dir() else None,
-                timeout=6 * 3600,
-                cancel=ctx.cancel,
-                on_line=ctx.tool_output("export", mask=key),
+            result, text = _run(
+                ctx, [*tool.argv_prefix, "export", mode, "-o", str(out), *base], key
             )
-            # the key is on that command line: whatever the tool echoes is masked
-            text = masked(result.stdout + result.stderr, key)
             if not result.ok:
                 said = f"{mode}: {text.strip()[-200:] or f'exit {result.returncode}'}"
                 return failed, need, Outcome(OutcomeKind.FAILED, error=said)
@@ -115,6 +115,41 @@ class UasExport(Exporter):
             if out.is_dir() and not any(p.name != ".uas-manifest.json" for p in out.rglob("*")):
                 shutil.rmtree(out, ignore_errors=True)
         return failed, need, None
+
+
+def _run(ctx, argv: list[str], key: str):
+    """One run of the tool: (its result, what it said: output and log, the key masked)."""
+    ctx.scratch.mkdir(parents=True, exist_ok=True)
+    log = (ctx.scratch / f"uas-{argv[argv.index('export') + 1].lower()}.log").resolve()
+    try:
+        result = ctx.os.process.run(
+            [*argv, "-l", str(log)],
+            cwd=str(ctx.scratch),
+            timeout=6 * 3600,
+            cancel=ctx.cancel,
+            on_line=ctx.tool_output("export", mask=key),
+        )
+        said = log.read_text("utf-8", "replace") if log.is_file() else ""
+    finally:  # a run that is cancelled or fails leaves no log behind either (the key, D18)
+        log.unlink(missing_ok=True)
+    # the key is on that command line: whatever the tool echoes is masked
+    return result, masked(result.stdout + result.stderr + said, key)
+
+
+def _gltf(ctx) -> tuple[str, ...]:
+    """Every UEFormat model also as a .glb beside it, unless the option `models` is uemodel."""
+    folder = ctx.staging / "models"
+    if str((ctx.options or {}).get("models") or "glb").lower() == "uemodel":
+        return ()
+    if not folder.is_dir():
+        return ()
+    ctx.log("Models to glTF (.glb beside each .uemodel)", stage="export")
+    made, lost, bare = uemodel.convert_all(folder, getattr(ctx, "each", map))
+    notes = (f"{made} model(s) also written as .glb (materials named, untextured)",) if made else ()
+    notes += (f"{len(lost)} model(s) not converted to .glb, e.g. {lost[0]}",) if lost else ()
+    return notes + (
+        (f"{bare} .uemodel file(s) without a mesh (a skeleton) left as they are",) if bare else ()
+    )
 
 
 def _notes(failed: int, need: int) -> tuple[str, ...]:

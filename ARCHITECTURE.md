@@ -33,7 +33,9 @@ viwo/
     pipeline.py    ExtractionRequest/Result, Stage, CONTRACT_VERSION
     types.py, errors.py, os.py, workspace.py   value types, envelope, OS interfaces, layout rules
     gltf.py        the glTF 2.0 binary writer the model converters share (Glb, affine matrices,
-                   skin, bone links, embedded PNG): Overwatch `.owmdl`, Unity Mesh
+                   skin, bone links, embedded PNG): Overwatch `.owmdl`, Unity Mesh, Unreal
+                   `.uemodel` (unreal/uemodel.py), Source `.mdl` (source/studio.py reads,
+                   source/models.py writes: decode.mdl)
   os/          LinuxOS, WindowsOS (_shared.py): processes with tree kill and tracked children,
                tool lookup, filename rules, pickers, homes, scan exclusions, process list, dumps
   backends/    core unarchivers (zip, tar, 7-Zip, py7zr, unrar) and the zip packer

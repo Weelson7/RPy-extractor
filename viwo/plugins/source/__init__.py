@@ -1,4 +1,5 @@
-"""Source engine (Valve) VPK archives: v1 and v2, multi-part (_dir.vpk + _000.vpk...)."""
+"""Source engine (Valve) VPK archives: v1 and v2, multi-part (_dir.vpk + _000.vpk...); their
+textures (decode.vtf, vtf.py) and models (decode.mdl, models.py over studio.py) decoded."""
 
 import struct
 from pathlib import Path
@@ -120,19 +121,21 @@ class SourcePlugin(EnginePlugin):
         return DetectionResult("source", score, evidence, "source")
 
     def slot_definitions(self):
+        from .models import SLOT as MDL_SLOT
         from .pack import SLOT as PACK_SLOT
         from .vtf import SLOT as VTF_SLOT
 
-        return (SLOT, PACK_SLOT, VTF_SLOT)
+        return (SLOT, PACK_SLOT, VTF_SLOT, MDL_SLOT)
 
     def pack_slot(self, unarchive_slot: str) -> str:
         return "pack.vpk" if unarchive_slot == "unarchive.vpk" else ""
 
     def backends(self):
+        from .models import MdlDecoder
         from .pack import VpkWriter
         from .vtf import VtfDecoder
 
-        return (VpkBuiltin(), VpkWriter(), VtfDecoder())
+        return (VpkBuiltin(), VpkWriter(), VtfDecoder(), MdlDecoder())
 
     def claimed_suffixes(self):
         return (".vpk",)  # numbered parts; _dir.vpk files are identified as containers first

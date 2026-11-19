@@ -1,7 +1,9 @@
 """L3: Unreal asset export (export.unreal) and the fixes it brought. The engine version comes from
 any game's build string; the mappings are the user's, else the newest the RUNTIME agent left,
 else one the game ships; every mode runs over every Paks folder with the version, mappings and
-key, failures are counted and the missing mappings named; an empty tool path in the ini means
+key, failures are counted from the tool's log (its compact progress shows none) and the missing
+mappings named; every model also comes out as .glb unless `models = uemodel`, what cannot be
+converted said; an empty tool path in the ini means
 automatic; the dynamic arm makes a fresh folder a workspace an extraction can follow into, never
 a folder with the user's files; retoc converts a container together with `global.utoc`; vgmstream
 decodes a file without subsongs as one stream. Verified on real data: a UE5.1 game (the
@@ -11,6 +13,7 @@ from __future__ import annotations
 
 import os
 import random
+import shutil
 import tempfile
 import time
 import unittest
@@ -18,6 +21,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest import mock
 
+from tests.test_uemodel import make, write
 from viwo.contracts.types import OutcomeKind
 from viwo.plugins.unreal import assets
 
@@ -106,7 +110,10 @@ class ExportTests(unittest.TestCase):
             tool_output=lambda stage, mask="": None,
         )
 
-    def fake(self, failed_json: int = 0, needs: bool = True):
+    def fake(self, failed_json: int = 0, needs: bool = True, models: bool = False):
+        """The tool as it runs with compact progress: the bar on stdout, the per-file lines
+        ([FAILED]) only in its log."""
+
         def run(argv, cwd=None, timeout=None, cancel=None, on_line=None):
             self.calls.append(argv)
             mode, out = argv[2], Path(argv[argv.index("-o") + 1])
@@ -114,9 +121,15 @@ class ExportTests(unittest.TestCase):
             (out / ".uas-manifest.json").write_text("{}")
             if mode == "Textures":
                 (out / "T_Wall.png").write_bytes(b"png")
+            if mode == "Models" and models:
+                (out / "G" / "Meshes").mkdir(parents=True)
+                write(out / "G" / "Meshes" / "SM_Rock.uemodel", make(random.Random(4), True))
+                (out / "G" / "Meshes" / "SM_Bad.uemodel").write_bytes(b"UEFORMAT")
             why = "could not load package" if needs else "bad data"
             text = "".join(f"[WRN] [FAILED]   G/P{i}.uasset: {why}\n" for i in range(failed_json))
-            return SimpleNamespace(ok=True, stdout=text if mode == "Json" else "", stderr="")
+            Path(argv[argv.index("-l") + 1]).write_text(text if mode == "Json" else "")
+            bar = f"[####] warn {failed_json} err 0 | {failed_json}/{failed_json}\n"
+            return SimpleNamespace(ok=True, stdout=bar, stderr="")
 
         return run
 
@@ -129,10 +142,31 @@ class ExportTests(unittest.TestCase):
             self.assertEqual(argv[argv.index("-g") + 1], "GAME_UE5_3")
             self.assertEqual(argv[argv.index("-a") + 1], "0x" + "ab" * 32)
             self.assertNotIn("-u", argv)
+            self.assertNotIn("-z", argv)  # with no log, compact progress hides every failure
         self.assertIn("7 package(s) need the game's mappings", out.notes[0])
         self.assertEqual(
             sorted(p.name for p in self.staging.rglob("*")), ["T_Wall.png", "textures"]
         )
+        self.assertEqual(list((self.root / "s").iterdir()), [])  # the logs read and gone
+
+    def test_models_also_come_out_as_glb_unless_the_option_says_uemodel(self) -> None:
+        with mock.patch.object(assets, "resolve_key", return_value=("", "")):
+            out = assets.UasExport().export(self.ctx(self.fake(models=True)))
+        meshes = self.staging / "models" / "G" / "Meshes"
+        self.assertEqual(
+            sorted(p.name for p in meshes.iterdir()),
+            ["SM_Bad.uemodel", "SM_Rock.glb", "SM_Rock.uemodel"],
+        )
+        self.assertEqual((meshes / "SM_Rock.glb").read_bytes()[:4], b"glTF")
+        self.assertIn("1 model(s) also written as .glb", out.notes[0])
+        self.assertIn("1 model(s) not converted to .glb, e.g. SM_Bad.uemodel", out.notes[1])
+        self.assertEqual(out.files, 4)  # the .glb counts
+        shutil.rmtree(self.staging)
+        self.calls.clear()
+        with mock.patch.object(assets, "resolve_key", return_value=("", "")):
+            out = assets.UasExport().export(self.ctx(self.fake(models=True), {"models": "uemodel"}))
+        self.assertEqual(list(self.staging.rglob("*.glb")), [])
+        self.assertEqual(out.notes, ())
 
     def test_with_mappings_failures_are_only_counted(self) -> None:
         usmap = self.root / "Mappings.usmap"

@@ -177,7 +177,18 @@ game's RPFM schema `rpfm-schema-<game>`; a table the schema lacks or misreads is
 named), `decode.loc` (`loc-builtin`, Total War localisation to JSON), `export.unreal` (`uas-export`:
 UnrealAssetScout as its own process, every mode over every Paks folder with the engine version
 read from the game's binaries, the AES key per D18 and the `.usmap` the RUNTIME agent wrote into
-the workspace; packages that need mappings are counted and the way to get them named).
+the workspace; packages that need mappings are counted and the way to get them named. The tool
+draws compact progress and writes its per-file lines to a log in the scratch folder, which is
+read back for the `[FAILED]` count and deleted. Its models are UEFormat (`.uemodel`), the only
+format it writes; with the option `models = glb` (default) each also gets a `.glb` beside it
+through `contracts/gltf.py` (`plugins/unreal/uemodel.py`, UEFormat version 10 as CUE4Parse
+writes it, plain or gzip): LOD 0 (never the Nanite LOD), positions, normals, tangents, every
+UV set, vertex colour sets as data (`_COLOR_n`), one primitive per material section with its
+name (untextured), and for a skeletal mesh its bones in the reference pose and every weight; Y
+and Z swap from Unreal's left-handed Z-up space (Unreal's own glTF exporter's choice), units
+stay centimetres. A zstd-compressed file on a Python without `compression.zstd`, another
+version, or a damaged file is counted with the first reason; a skeleton alone is counted and
+kept as `.uemodel`; `models = uemodel` writes no `.glb`).
 
 **Carve and decode:** `carve.signatures` (`signature-carver`); `decode.audio` (`vgmstream-cli`,
 spare `ffmpeg-decode`; Wwise, FMOD, CRI, XACT and console audio to WAV); `decode.image`
@@ -200,7 +211,22 @@ moves as parts finish and a cancel starts no further part, and the parts' failur
 other parts failed); `decode.redscripts` (`redscript-decompile`, redengine, option `decompile`:
 redscript's console, MIT, Windows build, decompiles `final.redscripts` into one `.script` file per
 stored script); `decode.rpyc`
-(`unrpyc-cli`, renpy, option `decompile`); `decode.slp` (`slp-builtin`, genie).
+(`unrpyc-cli`, renpy, option `decompile`); `decode.slp` (`slp-builtin`, genie);
+`decode.vtf` (`vtf-builtin`, source: VTF 7.0-7.5 to PNG); `decode.mdl` (`mdl-builtin`, source,
+a batch backend: studio models, `.mdl` versions 44 to 49, into `.glb` through
+`contracts/gltf.py` (`plugins/source/studio.py` reads, `models.py` writes). The `.vvd` and the
+`.vtx` (`.dx90` first, then `.dx80`, `.sw`, plain) are found by name in the workspace's groups
+and told apart by the checksum the three files share. LOD 0 of the default model of every
+body part: positions, normals, UVs, the bones in their reference pose with poseToBone as the
+inverse bind matrices, up to three weights a vertex, one primitive per mesh named after its
+material (skin family 0), the material's `$basetexture` embedded as the PNG `decode.vtf` makes
+when the `.vmt` and `.vtf` are in the run. Source's right-handed Z-up axes turn to glTF's
+(x, y, z) = (y, z, x), and each triangle is rewound (the `.vtx` lists front faces clockwise).
+The rest pose is the file's bind pose: a model whose data lies on its side (TF2's characters)
+lies in the `.glb` too; the game stands it up through its animations. Flexes, animations,
+eyeballs, attachments, other bodygroup choices and LODs are not in it. Each call says
+how many models it wrote, how many hold no mesh (animation libraries) and how many materials
+stayed untextured; a model that cannot be converted is counted with the first reason).
 
 **Media:** `media.probe` (`ffprobe-probe`, spare `pillow-probe`), `media.encode` (`ffmpeg`).
 
