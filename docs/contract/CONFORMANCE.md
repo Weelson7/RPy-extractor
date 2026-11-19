@@ -70,7 +70,10 @@ game: the title image as a loose override), KiriKiri (1.22.1, 2026-11-19, a test
 title background from `patch.xp3`; an image its scripts name with its folder, its logo, is
 out of a patch's reach, doc 18.4), Unreal (1.22.1, a UE5 test game: the project title in
 `DefaultGame.ini` from ViWo's `_P.pak`; the mark is the window's title, which the tool prints,
-the game running full screen behind it). Open on the other engines.
+the game running full screen behind it). A decoded file's way back (18.3) is shown too: on Ren'Py at
+1.22.4, a line edited in the decompiled `splash.rpy` is on the game's first screen, the game
+having compiled the script itself (`sqc/proof/renpy-ddlc-script.jpg`). Open on the other
+engines.
 
 Not at hand: a Godot game that ships its data, a Bethesda game, an RPG Maker game with a
 packed archive (the MV test game keeps its files loose), a real QuickBMS archive. Unity
@@ -367,12 +370,12 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 |------|-------|-----------------|
 | 18.2 provenance map, edit set, `_added/` | implemented | `core/provenance.py`, `core/roundtrip_edits.py` |
 | 18.3 repack steps, same-format rule, verification by re-extraction | implemented | `core/roundtrip.py` |
-| 18.3 asset converters: the way back of decoded files (`Decoder.encode`, ENCODE, verify on the encoded bytes, every one-way file named) | implemented (tests only: no real game yet) | `core/roundtrip_encode.py`, `core/roundtrip_plan.py`; `tests/test_roundtrip_encode.py` |
-| 18.3 mod or overwrite (`--mode`, API `mode`, default `mod`; the item says which form and why) | implemented (tests only) | `core/roundtrip_plan.py`, `EnginePlugin.loose_root` (Ren'Py), `Packer.drops` (`pack.rpa`); `tests/test_roundtrip.py`, `tests/test_roundtrip_encode.py` |
+| 18.3 asset converters: the way back of decoded files (`Decoder.encode`, ENCODE, verify on the encoded bytes, every one-way file named) | implemented; real on Ren'Py scripts (1.22.4), the other ways back tests only | `core/roundtrip_encode.py`, `core/roundtrip_plan.py`; `tests/test_roundtrip_encode.py` |
+| 18.3 mod or overwrite (`--mode`, API `mode`, default `mod`; the item says which form and why) | implemented; `mod` real on Ren'Py (1.22.4), the rest tests only | `core/roundtrip_plan.py`, `EnginePlugin.loose_root` (Ren'Py), `Packer.drops` (`pack.rpa`); `tests/test_roundtrip.py`, `tests/test_roundtrip_encode.py` |
 | 18.3 way back of `decode.vtf` (PNG to uncompressed VTF) | implemented (tests only) | `plugins/source/vtf_write.py`; `tests/test_encoders.py` |
 | 18.3 way back of `decode.slp` (PNG sheet to SLP, simplest valid encoding) | implemented (tests only) | `plugins/genie/slp_write.py`; `tests/test_encoders.py`, `tests/test_roundtrip_encode.py` (end to end through the DRS) |
 | 18.3 way back of `decode.loc` (JSON to `.loc`) | implemented (tests only) | `plugins/warscape/loc.py`; `tests/test_encoders.py` |
-| 18.3 way back of `decode.rpyc` (the `.rpy`, the stale `.rpyc` removed) | implemented (tests only; Ren'Py compiling it on start not yet seen on a real game) | `plugins/renpy/decompile.py`, `plugins/renpy/pack.py`; `tests/test_roundtrip_encode.py` |
+| 18.3 way back of `decode.rpyc` (the `.rpy`, the stale `.rpyc` removed) | implemented; real (1.22.4, Doki Doki Literature Club: the edited `.rpy` compiled by the game on start and shown, `sqc/proof/renpy-ddlc-script.jpg`) | `plugins/renpy/decompile.py`, `plugins/renpy/pack.py`; `tests/test_roundtrip_encode.py` |
 | 18.3 way back of `decode.cr2w` (WolvenKit `import --keep`, `convert deserialize`) | implemented (fake tool only: the real WolvenKit not run on it yet) | `plugins/redengine/encode.py`; `tests/test_wolvenkit_import.py` |
 | 18.3 way back of `decode.image` (PNG to uncompressed DDS; BC1-BC7 skipped with the reason) | implemented (tests only) | `core/encode_dds.py`; `tests/test_encoders.py` |
 | 18.3 way back of `decode.audio`, `decode.video`, `decode.bink2` | not possible under the rules (proprietary encoders): said per file | `Decoder.one_way` |

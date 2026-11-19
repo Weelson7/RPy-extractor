@@ -4,6 +4,13 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.22.5 (2026-11-19)
+- The way back of a decoded file is seen in a running game: Doki Doki Literature Club shows
+  a line edited in its decompiled `splash.rpy`, compiled by the game from ViWo's patched copy
+  (`sqc/proof/renpy-ddlc-script.jpg`).
+- `tools/game_shot.ps1` captures the whole window on a scaled display (it measured in scaled
+  pixels and cut the right and the bottom off).
+
 ## 1.22.4 (2026-11-19)
 - Unity under `viwo serve`: the ceiling tightened around a doubtful read is the whole
   process's, so two jobs could lift each other's and a script could lose its fields for what

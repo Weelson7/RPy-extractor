@@ -9,9 +9,11 @@ public class ViwoShot {
   [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
   [DllImport("user32.dll")] public static extern bool PrintWindow(IntPtr h, IntPtr dc, uint flags);
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
   [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int cmd);
 }
 "@
+[ViwoShot]::SetProcessDPIAware() | Out-Null  # real pixels: a scaled display cut the window short
 $dir = Split-Path -Parent $Exe
 if (-not $WorkDir) { $WorkDir = $dir }
 $game = Start-Process -FilePath $Exe -WorkingDirectory $WorkDir -PassThru
