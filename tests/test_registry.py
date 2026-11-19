@@ -229,8 +229,10 @@ class AddonTests(unittest.TestCase):
             custom = copy_hello(Path(tmp))
             plugins, _ = registry.load_enabled({"hello": True}, [custom])
             found, problems = registry.cli_commands(plugins, {"detect"})
-            self.assertEqual((list(found), problems), (["hello-list"], []))
+            # built-ins contribute too: qt ships `qt-resources` (doc 13.8)
+            self.assertEqual((sorted(found), problems), (["hello-list", "qt-resources"], []))
             self.assertEqual(found["hello-list"][0], "hello")
+            self.assertEqual(found["qt-resources"][0], "qt")
             clash = mock.Mock(cli_enabled=True)
             clash.cli_commands.return_value = (
                 CliCommand("detect", "x", lambda p: None, lambda rt, a: {}),
@@ -246,7 +248,8 @@ class AddonTests(unittest.TestCase):
             quiet = copy_hello(Path(tmp) / "two", cli=False)
             plugins, _ = registry.load_enabled({"hello": True}, [quiet])
             found, problems = registry.cli_commands(plugins, set())
-            self.assertEqual(found, {})
+            # the quiet drop-in opted out of CLI; the built-in qt still contributes its command
+            self.assertEqual(sorted(found), ["qt-resources"])
             self.assertTrue(any('"cli": true' in p for p in problems), problems)
 
     def test_ui_modules_and_asset_containment(self) -> None:

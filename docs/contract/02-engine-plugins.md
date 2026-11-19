@@ -165,6 +165,11 @@ Detection markers live in each plugin's `detect()`; slot defaults in doc 8.4.
 | bannerlord | game plugin of taleworlds: the title, by its executables | - |
 | quickbms | `unarchive.bms`: one `<ext>.bms` script per format from `[options.quickbms] scripts` (default `third_party/quickbms/scripts/`) | - |
 | overwatch | `export.overwatch` (DataTool, Windows); `tos_sensitive`: a reminder in every run's warnings | `modes` (string); `query` (string, `;` between entries, each one DataTool argument: `mode: words` goes to that extract mode, `--flag` to every extract mode, any other entry to `extract-unlocks`; an entry no running mode takes is said in the notes); `models` (`glb` or `owmdl`) |
+| qt | Qt apps (doc 13.8): `unarchive.rcc` (resource collections, versions 1-3), `decode.qm` (translations to JSON, one way), `pack.rcc` (rebuilt, name and node trees kept); `viwo qt-resources` carves QML/JS/QSS/SVG compiled into an exe or DLL (names not recovered from a stripped binary) | - |
+| chromium | Chrome/CEF/Electron `.pak` resource packs: `unarchive.pak` (DataPack versions 4 and 5, every id and version-5 alias), `pack.pak` (rebuilt byte-faithfully with the edited ids) | - |
+| pyfrozen | frozen Python: `unarchive.pyi` (PyInstaller CArchive + inner PYZ: data, binaries, every module as `.pyc`), `pack.pyi` (the exe rebuilt, bootloader and cookie kept), `decode.pyc` (disassembly, host version only); py2exe/cx_Freeze `library.zip` through the core zip | - |
+| dotnet | .NET assemblies: `unarchive.dotnet` (embedded managed resources through the ECMA-335 metadata), `pack.resources` (same-size write back, a size change refused by name), and `dotnet_assembly` analysis targets for the C# static view via the pinned ILSpy handoff | - |
+| java | Java `unarchive.jar` / `pack.jar` (`.jar`/`.war`/`.ear`, a zip, through the core zip path); no class decompiler is pinned, so `.class` files stay bytecode | - |
 
 ## 2.8 Discovery and drop-ins
 

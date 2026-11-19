@@ -18,7 +18,11 @@ contract per engine (16.0c); rung D4 (`hook.overlay`); the way back
 of premultiplied, signed and typeless block formats (DXT2/DXT4, signed BC4/BC5, typeless BC6H)
 and of ETC, ASTC, PVRTC and Basis Godot textures (no decoder either); Unreal asset export and
 the engines 13.7 still lists (GameMaker, TyranoScript, Wolf RPG), LZX-compressed XNB, Defold's
-encrypted resources; declarative (Kaitai) plugins; the indexes repository split.
+encrypted resources; declarative (Kaitai) plugins; the indexes repository split. Among the
+desktop-app frameworks (13.8): the Qt embedded-resource carve recovers textual resources by
+content, not the resource tree's names from a stripped binary; a .NET resource whose edited size
+changed is refused (the metadata offsets and PE layout are not rewritten); PyInstaller PYZ-interior
+modules are read, not repacked; no Python or Java class decompiler is pinned (bytecode only).
 
 ## Done, per engine and arm (owner)
 
@@ -52,6 +56,11 @@ run: `tests` means the suite covers the engine there. A row closes when every ce
 | Defold | tests (real data) | tests (real data) | tests (real data) | open | tests |
 | QuickBMS | tests | open | open | open | tests |
 | Overwatch (DataTool) | tests | - (read only) | - | - | Windows only |
+| Qt desktop apps (qt) | real (FDM: 258 QML + 365 SVG carved from `fdm.exe`) | tests (synthetic `.rcc`) | tests | - (not a game) | tests |
+| Chromium .pak (chromium) | tests | tests | tests | - (not a game) | tests |
+| Frozen Python (pyfrozen) | real (a PyInstaller 3.13 onefile exe) | tests (that exe, byte-faithful) | tests (that exe) | - (not a game) | tests |
+| .NET resources (dotnet) | real (framework DLLs read) | tests (same-size write back) | tests | - (not a game) | tests |
+| Java (java) | tests | tests | tests | - (not a game) | tests |
 
 What each `real` stands on (the passes' reports are in `viwo-data/`):
 
@@ -157,7 +166,7 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 2.4 detection result and scale | implemented | `contracts/types.py` `DetectionResult` |
 | 2.5 recursive unpack, depth 10, slot lookup (fallback identifiers last), cancel, member safety, altered names recorded | implemented | `core/pipeline/unpack.py`, `core/pipeline/identify.py`, `contracts/workspace.py` (`Names`, `files`); `tests/test_skips_said.py`, `tests/test_review_fixes.py` |
 | 2.6 dependency spec, per-OS executables, ViWo's own described once | implemented | `contracts/types.py` `DependencySpec`, `DependencySpec.of`; `data/dependencies.json`; `tests/test_dependencies_data.py` |
-| 2.7 twenty-one built-in plugins (and two game plugins) | implemented | `plugins/*/` |
+| 2.7 twenty-six built-in plugins (and two game plugins) | implemented | `plugins/*/`; the last five are desktop-app frameworks (doc 13.8): `qt`, `chromium`, `pyfrozen`, `dotnet`, `java` |
 | 2.8 built-in scan, drop-ins, entry points, opt-in, override | implemented | `core/wiring/registry.py`, `tests/test_registry.py` |
 | 2.9 conformance checks and sandbox | implemented | `core/wiring/conformance.py`, `tests/test_conformance_kit.py` |
 | 2.10 game plugins: discovery under their engine, selection with it (never loaded without it), what they supply through the run context | implemented | `core/wiring/registry.py` `_without_orphans`, `core/pipeline/select.py` `with_games`, `contracts/plugin.py`; `plugins/redengine/games/cyberpunk2077`, `plugins/taleworlds/games/bannerlord`; `tests/test_game_plugins.py` |
@@ -254,6 +263,7 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 8.3a Ghidra (`handoff.*`), x64dbg and Cheat Engine (`attach.*`) as tracked children | implemented | `core/handoff.py`, `core/analysis/ghidra.py` `GhidraGui`, `core/capture/handoffs.py` |
 | 8.3a first-run answers off screen | implemented | `core/capture/handoffs.py`, `core/analysis/ghidra.py`, `core/capture/renderdoc.py` |
 | 8.4 slot table | implemented | `backends/__init__.py`, `core/*` `SLOTS`, plugin `slot_definitions` (`viwo slots`) |
+| 8.4 desktop-app slots (doc 13.8): `unarchive.rcc`/`pack.rcc`, `decode.qm` (qt); `unarchive.pak`/`pack.pak` (chromium); `unarchive.pyi`/`pack.pyi`, `decode.pyc` (pyfrozen); `unarchive.dotnet`/`pack.resources` (dotnet); `unarchive.jar`/`pack.jar` (java) | implemented | `plugins/qt`, `plugins/chromium`, `plugins/pyfrozen`, `plugins/dotnet`, `plugins/java` |
 | 8.5 stage use | implemented | as listed |
 | 8.5 `export.unity` meshes as `.glb` (all channels, sub-meshes, skin and bone tree, main texture; Unity's left-handed space mirrored) through the shared glTF writer | implemented | `plugins/unity/meshes.py`, `contracts/gltf.py` (also `plugins/overwatch/owmdl.py`); `tests/test_unity_glb.py`, `tests/test_owmdl.py`. Blend shapes, more than four weights a vertex and animations stay open (16.0c) |
 | 8.5 `export.unreal` models as `.glb` beside UnrealAssetScout's UEFormat (LOD 0, all channels, sections, skeleton and weights; Y and Z swapped), option `models` | implemented (tests only) | `plugins/unreal/uemodel.py`; `tests/test_uemodel.py`, `tests/test_unreal_assets.py`. Not yet run on a real `.uemodel`: both free UE5 test games need mappings (`.usmap`) for every package, which only the RUNTIME agent dumps from the running game. Morph targets, sockets, collision and textures stay open |
@@ -348,6 +358,7 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 13.5 GPL tools as processes | implemented | `tests/test_l0_static.py` |
 | 13.7 GameMaker, TyranoScript, Wolf RPG, Unreal export (CUE4Parse) | open | - |
 | 13.7 covered: Unreal `.locres`, LÖVE, XNA/FNA, AGS, Defold (first-party readers, their ways back) | implemented (tests; real data, no game install: see the engine matrix) | `plugins/unreal/locres.py`, `plugins/love2d`, `plugins/xna`, `plugins/ags`, `plugins/defold`; `tests/test_locres.py`, `tests/test_love2d.py`, `tests/test_xna.py`, `tests/test_ags.py`, `tests/test_defold.py` |
+| 13.8 desktop-app frameworks (cold patching): Qt (rcc/QML/.qm), Chromium `.pak`, frozen Python (PyInstaller/py2exe/cx_Freeze), .NET managed resources, Java jar | implemented (tests; Qt proven on Free Download Manager, pyfrozen on a real PyInstaller exe, dotnet on real framework DLLs: see the engine matrix) | `plugins/qt`, `plugins/chromium`, `plugins/pyfrozen`, `plugins/dotnet`, `plugins/java`; `tests/test_qt.py`, `tests/test_chromium.py`, `tests/test_pyfrozen.py`, `tests/test_dotnet.py`, `tests/test_java.py` |
 
 ## 14 Scope
 
@@ -411,6 +422,9 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 18.3 way back of `decode.audio`, `decode.video`, `decode.bink2` | not possible under the rules (proprietary encoders): said per file | `Decoder.one_way` |
 | 18.4 pack slots | implemented | `plugins/*`, `backends/packers.py` |
 | 18.4 `pack.love`, `pack.clib`, `pack.arci` (LÖVE's zip behind its executable, AGS libraries in their own version, Defold's bundle with its hashes and manifest kept) | implemented (tests; real data: see the engine matrix) | `plugins/love2d`, `plugins/ags/pack.py`, `plugins/defold`; `tests/test_love2d.py`, `tests/test_ags.py`, `tests/test_defold.py` |
+| 18.4 `pack.rcc`, `pack.pak`, `pack.pyi`, `pack.jar` (doc 13.8: Qt `.rcc`, Chromium `.pak`, PyInstaller exe and Java jar rebuilt; unchanged containers byte for byte where the format allows) | implemented (tests; pyfrozen's rebuild byte-faithful on a real PyInstaller exe) | `plugins/qt/pack.py`, `plugins/chromium/pack.py`, `plugins/pyfrozen/pack.py`, `plugins/java`; `tests/test_qt.py`, `tests/test_chromium.py`, `tests/test_pyfrozen.py`, `tests/test_java.py` |
+| 18.3/18.4 `pack.resources` (an edited .NET managed resource written in place when its size is unchanged; a size change refused by name) | implemented (tests; real framework DLL edited in place and read back, by hand) | `plugins/dotnet/pack.py`, `plugins/dotnet/resources.py`; `tests/test_dotnet.py` |
+| 18.3 way back of `decode.qm`, `decode.pyc` | not possible under the rules / not pinned (Qt lrelease re-authors the hashes; no Python decompiler is pinned): said per file | `plugins/qt/__init__.py` `QmDecoder.one_way`, `plugins/pyfrozen/__init__.py` `PycDecoder.one_way` |
 | 18.6 target rules (the guard first, also for a reused copy), no anti-tamper code | implemented | `core/roundtrip.py` `prepare_copy`, `core/pipeline/guard.py` `guarded` |
 | 18.8 offset, RVA, AOB (overlapping matches counted), Keystone, capstone, bounded writes, overlapping patches refused, verify, export | implemented | `core/patchsets.py`, `core/patch_tools.py`; `tests/test_patchsets.py` |
 | 18.8 API | implemented | `POST /api/patch` and job kind `patch` |

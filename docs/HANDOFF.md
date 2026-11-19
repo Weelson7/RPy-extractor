@@ -125,6 +125,14 @@ left, by cause:
   that drive a session; the in-guest debugger bridge for host-side `read/write_mem` (now a
   `not_ready` wall); and **real in-VM proof** — no VM has run here, VirtualBox and QEMU are
   located-only (a person installs them; needs a machine). Tiers 2/3 are unimplemented.
+- Desktop-app frameworks (doc 13.8): the Qt embedded-resource carve recovers textual resources
+  by content, not the resource tree's names (a stripped binary keeps none) — reconstructing the
+  `qt_resource_struct`/`qt_resource_name` tables from a binary would give real paths. A .NET
+  managed resource whose edited size changed is refused; rewriting the ManifestResource offsets,
+  the CLI header size and the section table would lift that. PyInstaller PYZ-interior modules are
+  read but not repacked. No Python or Java class decompiler is pinned (bytecode only). Free
+  Download Manager's connection cap is native (the `MaxConnectionsPerServerLimit` setting), so
+  the full proof is a `patch.bytes` binary patch located with the disassembler (not run here).
 - The game-folder guard without a game path (doc 3.1) knows the games ViWo was given, Steam
   libraries, Epic and GOG installs and patched copies; a game ViWo was never given, from no
   store with marks, is still out of its reach.

@@ -86,3 +86,25 @@ Unreal localization (`decode.locres`), LÖVE (`love2d`), XNA/FNA/MonoGame (`xna`
 Defold (`defold`). Within them still open: LZX-compressed XNB files (XNA's
 XMemCompress) and XNB content other than Texture2D and SoundEffect, Defold's encrypted Lua
 resources, new keys in a version 3 `.locres` table (their CityHash64 is not computed).
+
+## 13.8 Desktop-application frameworks (cold patching)
+
+The same extract -> edit -> repack model, aimed at the applications the owner runs, not only
+games. First-party readers where the format is a container (doc 2.7); the static view through a
+pinned decompiler where it is code. Covered:
+
+| Framework | Plugin | Reads | Way back |
+|-----------|--------|-------|----------|
+| Qt 5/6 | `qt` | `.rcc` resource collections (versions 1-3, zlib blobs; zstd reported), `.qm` translations (to JSON), QML/JS/QSS/SVG compiled into an exe or DLL (carved, `viwo qt-resources`) | `.rcc` rebuilt, name and node trees kept, data laid out again (unchanged comes back byte for byte); `.qm` one way |
+| Chromium / CEF / Electron | `chromium` | `.pak` DataPack resources (versions 4 and 5, every id, version-5 aliases) | the pack rebuilt byte-faithfully with the edited ids |
+| Frozen Python | `pyfrozen` | PyInstaller onefile (CArchive + inner PYZ: data, binaries, every module as `.pyc`); py2exe/cx_Freeze `library.zip` through the core zip; `.pyc` disassembly (`decode.pyc`, host-version) | the PyInstaller exe rebuilt (bootloader and cookie kept, unchanged byte for byte); `library.zip` through the core zip |
+| .NET | `dotnet` | embedded managed resources (PE + ECMA-335 metadata to the ManifestResource table); C# as the static view via the pinned ILSpy handoff (doc 6) | an edited resource written back in place when its size is unchanged; a size change is refused by name (rewriting the metadata offsets and PE layout is not done) |
+| Java | `java` | `.jar`/`.war`/`.ear` (zip: resources, `.properties`, `.class`, the manifest) through the core zip | the jar rebuilt; no class decompiler is pinned, so `.class` files stay bytecode (said) |
+
+A value that lives only in native code is not a resource edit: it is a binary patch (doc 18.8).
+Free Download Manager (Qt) is the worked example: its QML UI is compiled into `fdm.exe` and comes
+out through `viwo qt-resources` (258 QML + 365 SVG on the installed build), but its connection cap
+is enforced in native code (the setting key `MaxConnectionsPerServerLimit`), so raising it is a
+binary patch on the copy, not a resource change. Open: the Qt embedded carve recovers textual
+resources by content, not the resource tree's names (a stripped binary keeps none); rebuilding a
+`.pak`/`.rcc`/CArchive in place assumes the edited data fits the container's layout.

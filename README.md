@@ -60,7 +60,11 @@ files, verified; `.locres` localization to JSON and back), Doom, RPG Maker, Kiri
 Electron/NW.js, Source, Bethesda, Age of Empires, Total War, Cyberpunk 2077, Bannerlord, LÖVE
 (`.love` or fused executables), XNA/FNA/MonoGame (`.xnb` textures and sounds), Adventure Game
 Studio (CLIB packfiles), Defold (bundled archives), Overwatch (DataTool), QuickBMS scripts for
-any other format, plus zip, tar, 7z, rar. Anything unrecognized goes through a signature carver
+any other format, plus zip, tar, 7z, rar. Desktop applications too (cold patching): Qt (`.rcc`
+resources, QML compiled into the exe, `.qm` translations; proven on Free Download Manager),
+Chromium `.pak` (Chrome, Edge, Brave, Steam, VS Code...), frozen Python (PyInstaller, py2exe,
+cx_Freeze), .NET (managed resources, C# via ILSpy) and Java (`.jar`/`.war`/`.ear`). Anything
+unrecognized goes through a signature carver
 and zlib/gzip/zstd/LZ4 stream inflation; game audio, DDS, Bink, SLP, XNB and `.rpyc` are decoded
 into files anything can open.
 

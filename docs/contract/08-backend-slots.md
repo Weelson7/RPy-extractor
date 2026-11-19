@@ -180,6 +180,11 @@ slot's identifier; doc 2.5):
 | `unarchive.archive` | redengine | `rdar-builtin` | - | |
 | `unarchive.tpac` | taleworlds | `tpac-builtin` | - | |
 | `unarchive.bms` | quickbms | `quickbms-cli` (GPL-2.0, subprocess) | - | suffixes from the scripts folder |
+| `unarchive.rcc` | qt | `rcc-builtin` | - | `qres` head; `.rcc` (doc 13.8) |
+| `unarchive.pak` | chromium | `pak-builtin` | - | DataPack version 4/5 head |
+| `unarchive.pyi` | pyfrozen | `pyi-builtin` | - | identifier: the PyInstaller MEI cookie scanned near an exe's end |
+| `unarchive.dotnet` | dotnet | `dotnet-resources` | - | identifier: a PE with a CLI header (managed assembly) |
+| `unarchive.jar` | java | `jar-builtin` | - | `.jar`, `.war`, `.ear` |
 
 **Export:** `export.unity` (`unitypy`, spare `assetstudiomod-cli`, D7; `unitypy` writes every
 Mesh twice: UnityPy's own Wavefront `.obj`, and a lossless `.glb` through
@@ -314,7 +319,10 @@ NIF is right-handed, Z up, Y forward: glTF's (x, y, z) is NIF's (-x, z, y), a ro
 winding is kept. Bethesda's array named tangents runs along V (as NifSkope and nifly write
 it): TANGENT is the other one. Collision, particles, controllers and `.bgsm` materials are not
 read. Both calls say how many models they wrote, how many hold no mesh, how many were refused
-(the first reason) and how many materials stayed untextured).
+(the first reason) and how many materials stayed untextured). Desktop-app frameworks (doc 13.8):
+`decode.qm` (`qm-builtin`, qt, in process: Qt compiled translations to JSON, one way),
+`decode.pyc` (`pyc-builtin`, pyfrozen, in process: a `.pyc`'s bytecode disassembled when its
+magic matches the running interpreter, else written out with the version named).
 
 **Media:** `media.probe` (`ffprobe-probe`, spare `pillow-probe`), `media.encode` (`ffmpeg`).
 
@@ -324,7 +332,10 @@ game's executables, candidates the unreal plugin verifies on an encrypted pak in
 **Pack (doc 18):** `pack.zip` (`zip-packer`), `pack.rpa` (`rpa-writer`), `pack.pck`
 (`godotpcktool-pack`), `pack.upak` (`repak-patch`, `_P.pak`), `pack.archive` (`wolvenkit-pack`, override archive in `archive/pc/mod`), `pack.unity` (`unitypy-pack`),
 `pack.rpgmaker` (`rpgmv-pack`), `pack.tpac` (`tpac-writer`, taleworlds, in process: a TPAC
-rewritten member by member, doc 18.4); the other writers ViWo owns are in doc 18.4. **Patch:** `patch.bytes` (`viwo-patcher`, owns the Keystone and
+rewritten member by member, doc 18.4); desktop-app frameworks (doc 13.8): `pack.rcc`
+(`rcc-writer`, qt), `pack.pak` (`pak-writer`, chromium), `pack.pyi` (`pyi-writer`, pyfrozen),
+`pack.resources` (`resources-writer`, dotnet, same-size in place), `pack.jar` (`jar-packer`,
+java); the other writers ViWo owns are in doc 18.4. **Patch:** `patch.bytes` (`viwo-patcher`, owns the Keystone and
 capstone dependencies).
 
 **Analysis (doc 6):** `analysis.native`, `.memory`, `.dotnet`, `.il2cpp`, `.script`, `.python`,

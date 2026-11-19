@@ -4,6 +4,35 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.31.0 (2026-11-19)
+- Five framework plugins for cold-patching desktop applications (doc 13.8), the same
+  extract -> edit -> repack model the game engines use, first-party readers where the format is
+  a container:
+  - **Qt** (`qt`): `.rcc` resource collections (versions 1-3, zlib blobs; zstd reported) are
+    read and rebuilt with the name and node trees kept, so an unchanged resource comes back byte
+    for byte; `.qm` translations are read into JSON (one way); and QML/JS/QSS/SVG compiled into
+    an exe or DLL are carved by `viwo qt-resources` (content, not the tree's names). Proven on
+    Free Download Manager: its QML UI (258 QML + 365 SVG) comes out of `fdm.exe`. Its connection
+    limit, though, is enforced in native code (the setting key `MaxConnectionsPerServerLimit`),
+    not a resource, so raising it is a binary patch on the copy (doc 18.8), not a resource edit.
+  - **Chromium `.pak`** (`chromium`): the DataPack format (versions 4 and 5, every resource id
+    and version-5 alias) is extracted and rebuilt byte-faithfully. Covers Chrome, Edge, Brave,
+    Steam, VS Code and other CEF/Electron apps.
+  - **Frozen Python** (`pyfrozen`): a PyInstaller onefile exe (CArchive + inner PYZ) yields its
+    data files, bundled binaries and every module as `.pyc`, and is rebuilt with edits (bootloader
+    and cookie kept, unchanged byte for byte); py2exe/cx_Freeze `library.zip` goes through the
+    core zip; `decode.pyc` disassembles a `.pyc` for the matching interpreter. Proven on a real
+    PyInstaller 3.13 exe.
+  - **.NET** (`dotnet`): embedded managed resources are listed and extracted by walking the
+    ECMA-335 metadata to the ManifestResource table, and an edit is written back in place when
+    its size is unchanged (a size change is refused by name); the C# static view is the pinned
+    ILSpy handoff. Proven against real framework assemblies.
+  - **Java** (`java`): `.jar`/`.war`/`.ear` extract and rebuild through the stdlib zip path; no
+    class decompiler is pinned, so `.class` files stay bytecode (said).
+  - Docs: contract 02, 08, 13.8, 18; CONFORMANCE engine matrix and rows; `loc_caps.ini` budgets;
+    regenerated distros; `tests/test_qt.py`, `test_chromium.py`, `test_pyfrozen.py`,
+    `test_dotnet.py`, `test_java.py`.
+
 ## 1.30.2 (2026-11-19)
 - CHANGELOG: repaired em-dashes mangled into mojibake and an entry that landed above the title,
   both from editing the file through PowerShell's default (non-UTF-8) encoding.
