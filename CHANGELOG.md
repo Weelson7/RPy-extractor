@@ -4,6 +4,19 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.25.2 (2026-11-19)
+- Total War: `decode.rigid_model_v2` reads version 5 (Rome II's older files, every string in
+  UTF-16) and the material layouts beside the default block: collision (format 1) and water
+  (format 8) groups, banners, bow waves (their second position and float kept as data) and
+  decal projection boxes (drawn see-through, the decal path kept). Each was checked on Rome II's
+  own files: positions inside every group's bounding box, normals against the triangles, U
+  and V directions against the UV gradients. Flag placements and lights hold no vertex data
+  and are named when left out; a vertex weighing on a bone past its skeleton's last keeps the
+  links as data with that reason instead of refusing the model.
+- Bethesda: `decode.nif` reads skinned Skyrim SE shapes whose vertices, triangles and weights
+  are in their NiSkinPartition, and skins whose NiSkinData holds no weights, each partition's
+  bones mapped to the skin's. Tests only: no real NIF has been read.
+
 ## 1.25.1 (2026-11-19)
 - UI review findings closed. ANALYSIS has the action bar of the other views: pick a target in
   TARGETS, ANALYZE in the bar runs it, disabled with the reason beside it (list the targets,

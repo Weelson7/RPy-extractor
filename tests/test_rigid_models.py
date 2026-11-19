@@ -188,7 +188,7 @@ class RigidModelTests(unittest.TestCase):
             bones = len(sk["names"]) if sk else 3
             formats = [rng.choice((0, 3, 4)) for _ in range(rng.randint(1, 3))] + [3]
             groups = [new_group(rng, f, bones, k) for k, f in enumerate(formats)]
-            odd = new_group(rng, 0, bones, 9) | {"type": 87, "format": 26994}
+            odd = new_group(rng, 0, bones, 9) | {"type": 99, "format": 26994}
             spot = rng.randrange(len(groups) + 1)
             raw = rmv2(rng.choice((6, 7)), "skel", groups[:spot] + [odd] + groups[spot:])
             dds = DXT1 + bytes(rng.randrange(256) for _ in range(8))
@@ -196,8 +196,8 @@ class RigidModelTests(unittest.TestCase):
                 model = lay_out(Path(tmp), raw, sk, dds, rng.random() < 0.5)
                 out = models.RigidModelDecoder().decode(model, Path(tmp) / "o", ctx())
                 self.assertEqual((out.kind, out.files, out.error), (OutcomeKind.OK, 1, ""), case)
-                self.assertIn("1 mesh group(s) of formats not read left out, e.g. material "
-                              "type 87, format 26994", out.notes[-1])  # fmt: skip
+                self.assertIn("1 mesh group(s) of layouts not read left out, e.g. material "
+                              "type 99, vertex format 26994", out.notes[-1])  # fmt: skip
                 if sk is None:
                     self.assertIn("keep their bone links as data", out.notes[1])
                     self.assertIn("its skeleton 'skel' is not in the run", out.notes[1])
@@ -312,9 +312,9 @@ class RigidModelTests(unittest.TestCase):
     def test_what_is_not_read_is_refused_by_name_and_counted(self) -> None:
         rng = random.Random(52)
         good = rmv2(6, "", [new_group(rng, 0, 1, 0)])
-        odd = new_group(rng, 0, 1, 1) | {"type": 87, "format": 26994}
+        odd = new_group(rng, 0, 1, 1) | {"type": 99, "format": 26994}
         old = bytearray(good)
-        old[4:8] = struct.pack("<I", 5)
+        old[4:8] = struct.pack("<I", 1)
         empty = bytearray(good[:148])
         empty[8:12] = struct.pack("<I", 0)  # no LOD: nothing to draw
         short = struct.pack("<HH5I", 30, 0, 380, 368, 2, 380, 0) + bytes(372)  # a shorter block
@@ -335,10 +335,10 @@ class RigidModelTests(unittest.TestCase):
             self.assertTrue(out.error.startswith("5 model(s) not converted, e.g. "), out.error)
             self.assertEqual([p.name for p in (Path(tmp) / "o").iterdir()], ["good.glb"])
             for name, why in (
-                ("old", "rigid model version 5: versions 6 and 7 are read"),
-                ("decal", "no mesh group of a format read (material type 87, vertex format"),
+                ("old", "rigid model version 1: versions 5, 6 and 7 are read"),
+                ("decal", "no mesh group of a layout read (material type 99, vertex format"),
                 ("other", "not a rigid model"),
-                ("combo", "(material type 30, vertex format"),
+                ("combo", "(material type 30, its vertices do not fit the banner layout)"),
             ):
                 alone = models.RigidModelDecoder().decode(root / f"{name}.rigid_model_v2",
                                                           Path(tmp) / name, ctx())  # fmt: skip

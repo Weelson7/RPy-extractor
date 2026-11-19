@@ -452,7 +452,7 @@ class NifModelTests(unittest.TestCase):
         cases["oblivion.nif"] = nif_file(11, [("NiNode", bytes(64))], [], head=(0x14000005, 11))
         cases["fallout3.nif"] = nif_file(34, [("NiNode", bytes(64))], [], head=(0x14020007, 11))
         cases["strips.nif"] = nif_file(83, [("NiNode", bytes(80)), ("NiTriStrips", bytes(9))], [])
-        sse = Scene(rng, 100)  # a skinned Skyrim SE shape: its vertices are in its partition
+        sse = Scene(rng, 100)  # a skinned Skyrim SE shape whose skin instance is not there
         top, body = sse.ref("BSFadeNode"), sse.ref("BSTriShape")
         sse.blocks[top][1] = sse.av("root", place(rng)) + struct.pack("<IiI", 1, body, 0)
         sse.blocks[body][1] = sse.av("body", place(rng)) + bytes(16)
@@ -478,7 +478,7 @@ class NifModelTests(unittest.TestCase):
                 ("oblivion.nif", "user version 11"),
                 ("fallout3.nif", "stream 34: 20.2.0.7, 12, stream 83/100/130 are read"),
                 ("strips.nif", "NiTriStrips blocks are not read"),
-                ("partition.nif", "keeps its vertices in its NiSkinPartition"),
+                ("partition.nif", "a reference points at no block of the kind it needs (5)"),
             ):
                 alone = nifmodels.NifDecoder().decode(root / "nif" / name, root / name, ctx())
                 self.assertEqual(alone.kind, OutcomeKind.FAILED, name)

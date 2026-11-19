@@ -233,20 +233,28 @@ eyeballs, attachments, other bodygroup choices and LODs are not in it. Each call
 how many models it wrote, how many hold no mesh (animation libraries) and how many materials
 stayed untextured; a model that cannot be converted is counted with the first reason);
 `decode.rigid_model_v2` (`rmv2-builtin`, warscape, a batch backend: Total War rigid models,
-versions 6 (Rome II, Attila, Thrones of Britannia; read on Rome II's packs) and 7 (Warhammer,
-the same layout with a 28-byte LOD header, tests only); 5 (UTF-16 names), 8 and others are
-refused by name. `plugins/warscape/rigid.py` reads, `models.py` writes. LOD 0, each mesh
-group a primitive whose material is named after the group and keeps the shader, the material
-type and every texture path as extras; vertex formats 0 (static: position from the group's
-pivot, two UV sets, normal and directions stored B, G, R, colour), 3 (weighted: two bones,
-one stored weight, the second weighing the rest) and 4 (cinematic: four bones and weights);
-a group of another format or material layout (texture combos, decals, water) is left out
-and counted, a file of only such groups refused with its material type. Bone links are scaled to sum to one; with the skeleton the
+versions 5 (Rome II's older files: every string in UTF-16, so the skeleton name and the
+material block's fields sit further on), 6 (Rome II, Attila, Thrones of Britannia; both read on
+Rome II's packs) and 7 (Warhammer, version 6's layout with a 28-byte LOD header, tests only);
+1, 3, 8 and others are refused by name. `plugins/warscape/rigid.py` reads, `models.py` writes.
+LOD 0, each mesh group a primitive whose material is named after the group (else its colour
+map or decal) and keeps the shader, the material type, the vertex layout and every texture
+path as extras. The material type decides the block: the default block names a vertex format,
+0 (static: position from the group's pivot, two UV sets, normal and directions stored B, G, R,
+colour), 1 (collision: position and normal as floats), 3 (weighted: two bones, one stored
+weight, the second weighing the rest), 4 (cinematic: four bones and weights) or 8 (water:
+position, UV); types 29 and 30 are banners (static without the second UV), 22 a bow wave
+(position, a second position and a float kept as data as stored, `_POSITION_1`, `_VALUE_0`,
+UV), 67 and 87 a decal's projection box (four floats a vertex; drawn see-through, its decal
+path in the extras). Flag placements (26) and lights and effects (45) hold no vertex data; they
+and any other type or format are left out and counted with why, a file of only such groups is
+refused with it, and a group whose vertices do not fit its type's layout is left out the same
+way. Bone links are scaled to sum to one; with the skeleton the
 header names in the run (`animations/skeletons/<name>.anim` version 5 for names and parents,
 `<name>.bone_inv_trans_mats` for the bind matrices; the reference pose is their inverse; of
 several files of that name, `name__1` included, the first pair that reads and agrees) they
-form a glTF skin, without it they stay as data (`_JOINTS_0`, `_WEIGHTS_0`) and the call says
-so with the reason; no pose is invented. Warscape is left-handed, Y up: X is mirrored on every
+form a glTF skin, without it (or when a vertex weighs on a bone past its last) they stay as
+data (`_JOINTS_0`, `_WEIGHTS_0`) and the call says so with the reason; no pose is invented. Warscape is left-handed, Y up: X is mirrored on every
 position, direction and matrix, every triangle is rewound, a tangent's handedness is taken
 after the mirror. The colour map (texture type 0) is embedded as PNG through Pillow when its
 `.dds` is in the run, found by name in the `dds/` group (the first of a name two folders
@@ -256,11 +264,18 @@ SE), 130 (Fallout 4); others refused by name; tests only, no Bethesda game at ha
 `plugins/bethesda/nif.py` reads, `nifmodels.py` writes. Blocks read: the node kinds of
 `nif.NODES`, NiTriShape and BSLODTriShape with NiTriShapeData, BSTriShape, BSMeshLODTriShape
 and BSSubIndexTriShape with their own vertex data, NiSkinInstance, BSDismemberSkinInstance
-and NiSkinData, BSSkin::Instance and BSSkin::BoneData, BSLightingShaderProperty with its
-BSShaderTextureSet, BSEffectShaderProperty; a file holding NiTriStrips, BSDynamicTriShape,
-BSSegmentedTriShape or NiTriShapeDynamic is refused naming the type, and so is a skinned
-Skyrim SE shape whose vertices live in its NiSkinPartition, or a skin whose weights are only
-there. The node tree becomes glTF nodes; each shape a node with a mesh of one primitive
+and NiSkinData, NiSkinPartition (`partition.py`), BSSkin::Instance and BSSkin::BoneData,
+BSLightingShaderProperty with its BSShaderTextureSet, BSEffectShaderProperty; a file holding
+NiTriStrips, BSDynamicTriShape, BSSegmentedTriShape or NiTriShapeDynamic is refused naming the
+type. A skinned Skyrim SE BSTriShape with data size 0 takes its vertices (BSTriShape's layout,
+from the partition block's descriptor), its triangles (each partition's copy with the shape's
+indices) and its links from its NiSkinPartition; so does a skin whose NiSkinData holds no
+weights. Links from a partition are its own: each vertex's slots map through that partition's
+bone list to the skin's bones, through its vertex map to the shape's vertex (a vertex two
+partitions share takes the first); the weights the Skyrim SE vertex data repeats are not read.
+A vertex in no partition, a partition without weights or bone indices, or an index past its
+bones is refused by name. The partition is read as nif.xml describes it: no real NIF has been
+read. The node tree becomes glTF nodes; each shape a node with a mesh of one primitive
 (positions, normals, tangents, every UV set, colours as `_COLOR_0`, triangles as stored) and
 its shader as the material (named after the shader, Fallout 4's `.bgsm` path, else its colour
 map); a skin's inverse bind matrices are what Gamebryo skins with (bone^-1 * shape *

@@ -14,7 +14,8 @@ type and size, so a block is read inside its own bytes and the others are passed
           tangents and bitangents, bounds, colours, the UV set, triangle count, triangles
   BSTriShape, BSMeshLODTriShape, BSSubIndexTriShape  NiAVObject, bounds, skin, shader, alpha,
           vertex descriptor u64 (size and offsets in dwords; attribute flags from bit 44),
-          triangle count (u32 from 130), vertex count, data size, the vertices, triangles
+          triangle count (u32 from 130), vertex count, data size, the vertices, triangles; a
+          skinned Skyrim SE one has data size 0: its NiSkinPartition holds them (partition.py)
   NiSkinInstance, BSDismemberSkinInstance: data, partition, root, bones; NiSkinData: root
           parent to skin, per bone skin to bone and (when it has them) its vertex weights;
           BSSkin::Instance: root, data, bones; BSSkin::BoneData: skin to bone per bone
@@ -170,21 +171,33 @@ def _unit(values) -> array:
 
 
 def bs_tri_shape(nif: Nif, raw, at: int) -> dict:
-    """A BSTriShape (and its kinds that add their fields after it): its own vertex data."""
+    """A BSTriShape (and its kinds that add their fields after it): its own vertex data; a
+    skinned Skyrim SE one without it is marked `partition` (its NiSkinPartition holds it)."""
     skin, shader, _, desc = struct.unpack_from("<3iQ", raw, at + 16)
     wide = nif.stream >= 130
     tris, n, size = struct.unpack_from("<IHI" if wide else "<HHI", raw, at + 36)
     at += 46 if wide else 44
-    flags, stride = desc >> 44 & 0xFFF, (desc & 0xF) * 4
+    stride = (desc & 0xF) * 4
+    if not size and skin >= 0 and nif.stream == 100:
+        return {"count": n, "skin": skin, "shader": shader, "partition": True}
     if not size:
-        why = "keeps its vertices in its NiSkinPartition" if skin >= 0 else "holds no vertices"
+        why = "keeps its vertices in its skin partition" if skin >= 0 else "holds no vertices"
         raise ValueError(f"a BSTriShape {why}: not read")
-    blob = raw[at : at + stride * n]
-    out = {"count": n, "skin": skin, "shader": shader, "uvs": []}
+    out = vertices(raw[at : at + stride * n], n, desc, nif.stream == 100)
     out["triangles"] = array("H", bytes(raw[at + stride * n : at + size]))
-    if size != stride * n + 6 * tris or len(out["triangles"]) != 3 * tris or not flags & 1:
+    if size != stride * n + 6 * tris or len(out["triangles"]) != 3 * tris:
         raise ValueError("a BSTriShape's data does not match its vertex layout")
-    full = bool(flags & FULL) or nif.stream == 100  # Skyrim SE stores full floats
+    return out | {"skin": skin, "shader": shader}
+
+
+def vertices(blob, n: int, desc: int, full: bool) -> dict:
+    """`n` vertices of the layout the vertex descriptor `desc` gives (a BSTriShape's or a
+    Skyrim SE NiSkinPartition's); `full`: positions are floats whatever the flags say."""
+    flags, stride = desc >> 44 & 0xFFF, (desc & 0xF) * 4
+    if len(blob) != stride * n or not flags & 1:
+        raise ValueError("a BSTriShape's data does not match its vertex layout")
+    out = {"count": n, "uvs": []}
+    full = bool(flags & FULL) or full  # Skyrim SE stores full floats
     out["positions"] = array("f", column(blob, stride, 0, "3f" if full else "3e"))
     uv, uv2, normal, tangent, colour, weight = (
         (desc >> 4 * (b + 1) & 0xF) * 4 if flags >> b & 1 else -1 for b in range(1, 7)
@@ -235,8 +248,9 @@ def skin(nif: Nif, ref: int, count: int) -> dict | None:
         held = nif.block(data, ("BSSkin::BoneData",))[1]
         (m,) = struct.unpack_from("<I", held, 0)
         binds = [transform(held, 20 + 68 * k) for k in range(m)]
-        return {"bones": bones, "binds": binds, "root": root, "to_skin": None, "links": None}
-    data, _, root, n = struct.unpack_from("<iiiI", raw, 0)
+        return {"bones": bones, "binds": binds, "root": root, "to_skin": None, "links": None,
+                "partition": -1}  # fmt: skip
+    data, partition, root, n = struct.unpack_from("<iiiI", raw, 0)
     bones = list(struct.unpack_from(f"<{n}i", raw, 16))
     held = nif.block(data, ("NiSkinData",))[1]
     m, has = struct.unpack_from("<IB", held, 52)
@@ -247,7 +261,7 @@ def skin(nif: Nif, ref: int, count: int) -> dict | None:
             binds.append(transform(held, at))
             at += 70
     return {"bones": bones, "binds": binds, "root": root, "to_skin": transform(held, 0),
-            "links": links}  # fmt: skip
+            "links": links, "partition": partition}  # fmt: skip
 
 
 def material(nif: Nif, ref: int) -> tuple[str, str]:

@@ -1,22 +1,25 @@
 """decode.rigid_model_v2 (doc 16.0c): Total War rigid models into glTF binaries (`.glb`), in
-process, on the shared writer (viwo/contracts/gltf.py) over rigid.py's reader (versions 6 and 7).
-LOD 0 only: each mesh group a primitive with its positions, normals, tangents, both UV sets of a
-static mesh, the vertex colours as data (`_COLOR_0`), its triangles, and a material named after
-the group, holding the shader, the material type and every texture path as extras; the colour
+process, on the shared writer (viwo/contracts/gltf.py) over rigid.py's reader (versions 5, 6, 7).
+LOD 0 only: each mesh group a primitive with what its vertex layout holds (positions; normals,
+tangents, one or two UV sets, the vertex colours as data (`_COLOR_0`) when it has them; a bow
+wave's second position and float as data, as stored: `_POSITION_1`, `_VALUE_0`), its
+triangles, and a material named after the group (else its colour map, its decal), holding the
+shader, the material type, the layout and every texture path as extras; a decal's projection
+box is drawn see-through (alpha 0.25, its decal path in the extras). The colour
 map (texture type 0) is embedded as PNG when its `.dds` is in the run (Pillow reads it), else
 the material is untextured and counted. A weighted or cinematic group carries its bone links
 (2 or 4 a vertex, scaled to sum to one): with the skeleton the header names in the run (its
 `.anim` for names and parents, its `.bone_inv_trans_mats` for the bind matrices; the reference
 pose is the inverse of those), as a glTF skin; without it, as data (`_JOINTS_0`, `_WEIGHTS_0`),
-counted with the reason; no pose is invented. A static group in a skinned model follows the
-first bone. A group of a format not read (decals, water) is left out and counted; a file
-holding only such groups is refused with its type. Warscape is left-handed, Y up: X is mirrored
-on every position, direction and matrix, each triangle is wound the other way so its front
+counted with the reason (also when a vertex weighs on a bone past the skeleton's last); no pose
+is invented. A group without bones in a skinned model follows the first bone. A group of a
+layout not read (flag placements and effects hold no vertex data) is left out and counted with
+why; a file holding only such groups is refused with it. Warscape is left-handed, Y up: X is
+mirrored on every position, direction and matrix, each triangle is wound the other way so its front
 stays its front, and a tangent's handedness is taken after the mirror. Textures are found by
 name in the workspace's `dds/` group, or by their game path above the model's folder; a name
 two folders share is taken as the first of that name. A skeleton is the first pair of its name
-(COLLECT's `name__1` included) whose `.anim` reads and whose bind matrices match its bones.
-A material block of another layout (texture combos, decals, water) is not read."""
+(COLLECT's `name__1` included) whose `.anim` reads and whose bind matrices match its bones."""
 
 import glob
 import io
@@ -117,15 +120,22 @@ def _rig(glb: Glb, held) -> list[int]:
 
 
 def _attributes(glb: Glb, data: dict) -> dict:
-    normals = gltf.unit(_mirror(data["normals"]))
+    """POSITION, and NORMAL, TANGENT, TEXCOORD_n, _COLOR_0 and the layout's data (as stored)
+    when the layout has them."""
     out = {"POSITION": glb.accessor(_mirror(data["positions"]), "VEC3", FLOAT)}
-    out["NORMAL"] = glb.accessor(normals, "VEC3", FLOAT)
-    u, v = gltf.unit(_mirror(data["along_u"])), _mirror(data["along_v"])
-    out["TANGENT"] = glb.accessor(gltf.tangents(normals, u, v), "VEC4", FLOAT)
+    if "normals" in data:
+        normals = gltf.unit(_mirror(data["normals"]))
+        out["NORMAL"] = glb.accessor(normals, "VEC3", FLOAT)
+    if "normals" in data and "along_u" in data:
+        u, v = gltf.unit(_mirror(data["along_u"])), _mirror(data["along_v"])
+        out["TANGENT"] = glb.accessor(gltf.tangents(normals, u, v), "VEC4", FLOAT)
     for n, uv in enumerate(data["uvs"]):
         out[f"TEXCOORD_{n}"] = glb.accessor(uv, "VEC2", FLOAT)
     if "colours" in data:
         out["_COLOR_0"] = glb.accessor(data["colours"], "VEC4", FLOAT)
+    for key, values in data["data"].items():
+        width = len(values) // (len(data["positions"]) // 3)
+        out[key] = glb.accessor(values, ("SCALAR", "VEC2", "VEC3", "VEC4")[width - 1], FLOAT)
     return out
 
 
@@ -146,13 +156,22 @@ def _links(glb: Glb, attributes: dict, data: dict, bones: int) -> None:
 
 
 def _material(glb: Glb, model: Path, mesh: dict, cache: dict) -> tuple[int, bool]:
+    """Named after the group (else its colour map, its decal, its type); a decal's projection
+    box is drawn see-through."""
     colour = next((path for kind, path in mesh["textures"] if kind == 0 and path), "")
     file = find(model, colour) if colour else None
     png = _cached(cache, ("png", file), lambda: _png(file)) if file else None
-    entry = {"name": mesh["name"] or colour.rpartition("/")[2] or f"group_{mesh['type']}"}
+    decal = mesh.get("decal", "")
+    named = colour or decal
+    entry = {"name": mesh["name"] or named.rpartition("/")[2] or f"group_{mesh['type']}"}
     entry["pbrMetallicRoughness"] = {"metallicFactor": 0.0}
     entry["extras"] = {"shader": mesh["shader"], "material_type": mesh["type"],
+                       "layout": mesh["layout"].name,
                        "textures": [path for _, path in mesh["textures"] if path]}  # fmt: skip
+    if decal:
+        entry["extras"]["decal"] = decal
+        entry["pbrMetallicRoughness"]["baseColorFactor"] = [1.0, 1.0, 1.0, 0.25]
+        entry["alphaMode"] = "BLEND"
     if png is not None:
         image = gltf.texture(glb, png, f"{Path(colour).stem}.png")
         entry["pbrMetallicRoughness"]["baseColorTexture"] = {"index": image}
@@ -160,9 +179,10 @@ def _material(glb: Glb, model: Path, mesh: dict, cache: dict) -> tuple[int, bool
     return len(glb.doc["materials"]) - 1, png is not None
 
 
-def _primitive(glb: Glb, model: Path, mesh: dict, bones: int, cache: dict) -> dict:
-    """A mesh group as a primitive: attributes, links, triangles wound the other way."""
-    data = rigid.vertices(mesh)
+def _primitive(glb: Glb, model: Path, mesh: tuple, bones: int, cache: dict) -> dict:
+    """A mesh group (and its vertices) as a primitive: attributes, links, triangles wound the
+    other way."""
+    mesh, data = mesh
     count = len(data["positions"]) // 3
     tri = mesh["indices"]
     if max(tri) >= count:
@@ -176,23 +196,32 @@ def _primitive(glb: Glb, model: Path, mesh: dict, bones: int, cache: dict) -> di
     return {"attributes": attributes, "indices": indices, "material": material, "_": textured}
 
 
+def _needed(shown: list) -> int:
+    """The highest bone any vertex weighs on (-1: none)."""
+    links = [data["links"] for _, data in shown if "links" in data]
+    return max((j for joints, weights, _ in links for j, w in zip(joints, weights) if w > 0),
+               default=-1)  # fmt: skip
+
+
 def convert(model: Path, out: Path, cache: dict) -> dict | None:
     """model (.rigid_model_v2) -> out (.glb): what it held (materials, untextured ones,
     groups left out, how its bones went); None: it holds no mesh."""
     held = rigid.read(model.read_bytes())
-    shown = [m for m in held["meshes"] if m["format"] in rigid.FORMATS and m["count"]]
-    shown = [m for m in shown if len(m["indices"])]
-    left = [m for m in held["meshes"] if m["format"] not in rigid.FORMATS]
+    shown = [m for m in held["meshes"] if m["layout"] and m["count"] and len(m["indices"])]
+    left = [m for m in held["meshes"] if not m["layout"]]
     if not shown:
         if left:
-            what = f"material type {left[0]['type']}, vertex format {left[0]['format']}"
-            raise ValueError(f"no mesh group of a format read ({what}; formats 0, 3, 4 are)")
+            raise ValueError(f"no mesh group of a layout read ({left[0]['why']})")
         return None
     glb, roots, rig, bones = Glb(), [], "", 0
-    if any(m["format"] != 0 for m in shown):
-        name = held["skeleton"]
+    shown = [(mesh, rigid.vertices(mesh)) for mesh in shown]
+    if any(mesh["layout"].bones[1] for mesh, _ in shown):
+        name, need = held["skeleton"], _needed(shown)
         skeleton = _cached(cache, ("skeleton", name), lambda: _skeleton(model, name))
         rig = skeleton if isinstance(skeleton, str) else "skinned"
+        if rig == "skinned" and need >= len(skeleton[0]):
+            rig = f"its skeleton {name!r} has {len(skeleton[0])} bones, a vertex weighs on "
+            rig += f"bone {need}"
         if rig == "skinned":
             roots, bones = _rig(glb, skeleton), len(skeleton[0])
     primitives = [_primitive(glb, model, mesh, bones, cache) for mesh in shown]
@@ -227,7 +256,7 @@ class RigidModelDecoder(Decoder):
             if result:
                 said["materials"] += result["materials"]
                 said["bare"] += result["bare"]
-                left += [f"material type {m['type']}, format {m['format']}" for m in result["left"]]
+                left += [m["why"] for m in result["left"]]
                 data += [result["rig"]] if result["rig"] not in ("", "skinned") else []
         return _outcome(len(paths), said, lost, left, data)
 
@@ -241,7 +270,7 @@ def _outcome(total: int, said: dict, lost: list, left: list, data: list) -> Outc
         notes += (f"{len(data)} model(s) keep their bone links as data (_JOINTS_0, _WEIGHTS_0),"
                   f" e.g. {data[0]}",)  # fmt: skip
     if left:
-        notes += (f"{len(left)} mesh group(s) of formats not read left out, e.g. {left[0]}",)
+        notes += (f"{len(left)} mesh group(s) of layouts not read left out, e.g. {left[0]}",)
     partial = f"{len(lost)} model(s) not converted, e.g. {lost[0]}" if lost else ""
     kind = OutcomeKind.FAILED if lost and not said["made"] else OutcomeKind.OK
     return Outcome(kind, said["made"], error=partial, notes=notes)

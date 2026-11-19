@@ -1,12 +1,15 @@
 """decode.nif (doc 16.0c): Bethesda NIF models into glTF binaries (`.glb`), in process, on the
 shared writer (viwo/contracts/gltf.py) over nif.py's reader (Skyrim, Skyrim SE, Fallout 4).
 The node tree becomes glTF nodes (names, local transforms); each shape (NiTriShape with its
-NiTriShapeData, BSTriShape with its own vertices) a node with a mesh of one primitive: its
+NiTriShapeData, BSTriShape with its own vertices or, skinned in Skyrim SE, with those of its
+NiSkinPartition: partition.py) a node with a mesh of one primitive: its
 positions, normals, tangents, every UV set, vertex colours as data (`_COLOR_0`), triangles as
 stored, and its shader property as the material, named after the property (Fallout 4: its
 `.bgsm` path) or else its colour texture; that texture is embedded as PNG when the `.dds` is in
 the run (Pillow reads it), otherwise the material is untextured and counted. A skinned shape
-gets its skin: its bones as joints, every weight (normalised to sum to one), and as inverse
+gets its skin: its bones as joints, every weight (normalised to sum to one; from the
+NiSkinPartition, each partition's bones mapped to the skin's, when NiSkinData or the shape's
+own vertices do not hold them), and as inverse
 bind matrices the transforms Gamebryo skins with: bone^-1 * shape * rootParentToSkin *
 rootParent^-1 * bone * skinToBone, which is skinToBone when the file is consistent. NIF is
 right-handed, Z up, Y forward: glTF's (x, y, z) is NIF's (-x, z, y), a rotation, so a model
@@ -27,6 +30,7 @@ from viwo.contracts.slots import Decoder, SlotDefinition
 from viwo.contracts.types import Outcome, OutcomeKind
 
 from . import nif as reader
+from . import partition
 
 SLOT = SlotDefinition("decode.nif", "decode", "bethesda", "nif-builtin", suffixes=(".nif",))
 P, S = (0, 2, 1), (-1.0, 1.0, 1.0)  # glTF axis n is NIF axis P[n] times S[n]
@@ -115,7 +119,10 @@ def _tree(nif) -> dict:
             objects[ref] = (name, local, reader.children(raw, at), None)
         else:
             read = reader.tri_shape if kind in reader.TRI else reader.bs_tri_shape
-            objects[ref] = (name, local, [], read(nif, raw, at))
+            shape = read(nif, raw, at)
+            if shape.pop("partition", False):  # Skyrim SE skinned: its NiSkinPartition holds it
+                shape |= partition.shape(nif, shape["skin"])
+            objects[ref] = (name, local, [], shape)
     return objects
 
 
@@ -147,8 +154,11 @@ class _Scene:
         """The shape's skin: joints, inverse bind matrices, the links in `attributes`."""
         held = reader.skin(self.nif, shape["skin"], shape["count"])
         links, bones = shape.get("links") or held["links"], held["bones"]
-        if links is None:
-            raise ValueError("a skin whose weights are only in its NiSkinPartition: not read")
+        if links is None and held["partition"] < 0:
+            raise ValueError("a skin without weights and without a NiSkinPartition: not read")
+        if links is None:  # NiSkinData without weights: the partitions hold them
+            links = partition.links(partition.read(self.nif, held["partition"])["parts"],
+                                    shape["count"])  # fmt: skip
         if any(b not in self.objects for b in bones) or len(held["binds"]) != len(bones):
             raise ValueError("a skin's bones are not nodes of the file")
         binds, root = array("f"), held["root"]
