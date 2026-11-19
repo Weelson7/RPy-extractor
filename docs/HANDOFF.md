@@ -169,10 +169,16 @@ left, by cause:
   encrypted resources are uncompressed (the key cannot be self-verified), GameMaker's full
   re-chunk (only same-size edits go back), new keys in version 3 `.locres`.
 - `hook.overlay`: neither candidate fits the rules (doc 11.7).
-- Coverage: 98.2 % line / 95.0 % branch overall at 1.20.58; 84 of 200 files are under the
-  per-file target of 98 / 95 (`coverage run -m unittest discover -s tests -t .`, then
-  `combine` and `json`). The furthest are `os/linux.py`, `contracts/paths.py` (links need
-  rights Windows does not give) and the packers' error paths.
+- Coverage: 98.2 % line / 95.0 % branch overall at 1.20.58 (`coverage run -m unittest discover
+  -s tests -t .`, then `combine` and `json`). Many files are still under the per-file target of
+  98 / 95. The furthest are `os/linux.py`, `contracts/paths.py` (links need rights Windows does
+  not give), the isolation arm (`core/isolation/*`: QEMU/VBox/gdb need the VMs) and the packers'
+  error paths. Raised to 100 % line / 100 % branch (a single Windows L0-L4 run): `core/hooks.py`,
+  `plugins/dotnet/pe.py`, `plugins/qt/{qm,binres,pack,rcc}.py`, `plugins/chromium/pack.py` (their
+  bad-magic, overrun, unknown-member and verify-mismatch paths; `tests/test_job_hooks.py`,
+  `test_dotnet.py`, `test_qt.py`, `test_chromium.py`). Still open and high-value next:
+  `plugins/dotnet/{meta,resources}.py` (need no-tables / linked-resource metadata fixtures),
+  `plugins/qt/__init__.py`, `plugins/dotnet/pack.py`.
 - Completeness (doc 16.0c): everything out of every game, decoded, on all three arms. Notes
   kept for it: Unity IL2CPP MonoBehaviour fields come out for the scripts whose rebuilt
   layout fits (the rest are listed without fields); Unreal models are UEFormat (glTF needs

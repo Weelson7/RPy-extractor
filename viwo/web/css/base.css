@@ -44,6 +44,14 @@ h2, h3, h4 { margin: 0; }
 .path-steps .facts dd { word-break: normal; overflow-wrap: anywhere; }
 .rb-json summary { cursor: pointer; }
 .rb-json pre { margin-top: 6px; }
+/* the structured step editor (runbook-edit.js): compact, so a form of several steps stays scannable */
+.rb-edit { gap: 12px; }
+.rb-edit .col { gap: 10px; }
+.rb-steps, .rb-inputs, .rb-opts { gap: 8px; }
+.rb-step { padding: 10px; }
+.rb-step-h { gap: 6px; }
+.rb-opt-key, .rb-in-name { flex: 0 0 11em; }
+.rb-json-src, .rb-edit textarea.input { width: 100%; }
 .msingles .sub-h { margin-top: 14px; }
 .rail { grid-area: rail; display: flex; flex-direction: column; padding: 18px 0 14px; overflow-y: auto; }
 .mods { list-style: none; margin: 0; padding: 0 12px; display: flex; flex-direction: column; gap: 4px; }

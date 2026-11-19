@@ -10,7 +10,7 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 
-from viwo.plugins.dotnet import DotnetResources, resources
+from viwo.plugins.dotnet import DotnetResources, pe, resources
 from viwo.plugins.dotnet.pack import ResourcesWriter
 
 CTX = SimpleNamespace(cancel=SimpleNamespace(cancelled=False))
@@ -123,6 +123,37 @@ class DotnetTests(unittest.TestCase):
             out = ResourcesWriter().pack(copy, {"resources/Other.resources": big}, CTX)
             self.assertEqual(out.files, 0)
             self.assertIn("Other.resources", " ".join(out.notes))
+
+
+def _native_pe() -> bytes:
+    """A valid PE32 with one section but no CLI data directory (a native, unmanaged assembly)."""
+    dos = bytearray(0x80)
+    dos[0:2] = b"MZ"
+    struct.pack_into("<I", dos, 0x3C, 0x80)
+    coff = b"PE\x00\x00" + struct.pack("<HHIIIHH", 0x8664, 1, 0, 0, 0, 224, 0x2102)
+    opt = bytearray(224)
+    struct.pack_into("<H", opt, 0, 0x10B)  # PE32
+    struct.pack_into("<I", opt, 92, 16)  # NumberOfRvaAndSizes; the CLI directory (14) stays 0
+    sec = bytearray(40)
+    sec[0:5] = b".text"
+    struct.pack_into("<IIII", sec, 8, 0x100, 0x2000, 0x100, 0x400)
+    return bytes(dos) + coff + bytes(opt) + bytes(sec)
+
+
+class DotnetPeTests(unittest.TestCase):
+    """pe.py error paths: an RVA in no section, a native PE with no CLI header, a missing BSJB."""
+
+    def test_to_offset_rejects_an_rva_in_no_section(self) -> None:
+        with self.assertRaisesRegex(ValueError, "no section"):
+            pe.to_offset([(0x2000, 0x100, 0x400, 0x100)], 0x9999)
+
+    def test_cli_header_refuses_a_pe_without_a_cli_directory(self) -> None:
+        with self.assertRaisesRegex(ValueError, "no CLI header"):
+            pe.cli_header(_native_pe())
+
+    def test_streams_needs_the_bsjb_signature(self) -> None:
+        with self.assertRaisesRegex(ValueError, "BSJB"):
+            pe.streams(b"\x00" * 32, 0)
 
 
 if __name__ == "__main__":

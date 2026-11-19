@@ -8,8 +8,9 @@ import { gameField, setGame } from "../game.js";
 import { workbookBtn } from "./workbooks.js";
 import { recordingPanel, refreshRecording } from "./recording.js";
 import { stepDetail } from "./runbook-step.js";
+import { editor } from "./runbook-edit.js";
 
-const S = { books: [], problems: [], sel: "", state: {}, result: {}, running: false, stop: false, resume: null, editing: false };
+const S = { books: [], problems: [], sel: "", state: {}, result: {}, running: false, stop: false, resume: null, editing: false, kinds: [] };
 const el = {};
 const STATE = { run: ["RUNNING", "live"], done: ["DONE", "ok"], fail: ["FAILED", "err"], wait: ["YOUR TURN", "warn"], differs: ["DIFFERS: YOUR CALL", "warn"] };
 const secrets = {}; // secret input values: this page only, never kept (doc 19.3)
@@ -41,6 +42,7 @@ async function show() {
     const res = await api.runbooks();
     S.books = res.runbooks || [];
     S.problems = res.problems || [];
+    S.kinds = res.kinds || [];
   } catch (err) { return fill(el.list, errorBox(err, "RUNBOOKS UNAVAILABLE")); }
   if (!current()) S.sel = S.books[0]?.id || "";
   renderList();
@@ -174,27 +176,22 @@ function stop() {
   toast("The run stops after the current step.", "warn");
 }
 
-/** EDIT / NEW: the runbook as JSON; SAVE validates it on the server and writes your copy. */
+/** EDIT / NEW: the structured step editor (runbook-edit.js), with a JSON escape hatch. SAVE
+ * validates on the server (core/runbooks.py) and writes your copy; a rule error shows inline. */
 function edit(b) {
   if (S.running) return;
   S.editing = true;
-  const raw = { id: b.id, title: b.title, summary: b.summary, inputs: b.inputs, steps: b.steps };
-  const area = h("textarea", { class: "input mono", id: "rb-json", rows: "24", spellcheck: "false", value: JSON.stringify(raw, null, 1) });
-  fill(el.book, h("div", { class: "job-h" }, h("b", {}, "EDIT"), h("span", { class: "dim" }, b.source === "viwo" ? "saved as your copy, which replaces the shipped one" : "")),
-    h("label", { class: "lbl", for: "rb-json" }, "RUNBOOK (JSON, DOC 19.2)"), area,
-    h("div", { class: "row" }, btn("SAVE", () => save(area.value), "primary"), btn("CANCEL", () => { S.editing = false; renderBook(); }, "ghost")));
+  fill(el.book, editor(b, S.kinds, { onSave: save, onCancel: () => { S.editing = false; renderBook(); } }));
 }
 
-async function save(text) {
-  if (S.running) return toast("A runbook is running: save when it ends.", "warn");
-  let raw;
-  try { raw = JSON.parse(text); } catch (err) { return toast(`Not valid JSON: ${err.message}`, "warn"); }
-  try {
-    await api.saveRunbook(raw);
-    toast(`Saved ${raw.id}.`, "ok");
-    Object.assign(S, { editing: false, sel: raw.id, state: {}, result: {} });
-    await show();
-  } catch (err) { toastErr(err, "Not saved: "); }
+/** SAVE from the editor: the already-built runbook object (the editor surfaces a rejection
+ * inline, so this rethrows instead of toasting a dropped step away). */
+async function save(raw) {
+  if (S.running) throw new Error("A runbook is running: save when it ends.");
+  await api.saveRunbook(raw);
+  toast(`Saved ${raw.id}.`, "ok");
+  Object.assign(S, { editing: false, sel: raw.id, state: {}, result: {} });
+  await show();
 }
 
 async function remove(b) {

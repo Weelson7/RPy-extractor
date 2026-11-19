@@ -4,6 +4,31 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.35.0 (2026-11-19)
+- **Structured runbook step editor** (doc 19.2; `web/js/views/runbook-edit.js`): a runbook's
+  steps are now editable in the UI without hand-writing JSON. EDIT opens a form for the
+  id/title/summary, the inputs (a secret toggle, a default unless secret) and the steps: add,
+  remove, reorder, pick each step's kind (ACTION or YOU DO), an action's job from the known
+  kinds, and its target and options as typed key/value (a value that is one secret input alone
+  is masked). The runbook as JSON stays one toggle away as an escape hatch, editable and kept in
+  sync through one working copy. SAVE validates on the server (`core/runbooks.py`); a rule error
+  shows inline and no step is dropped. `tests/ui/smoke.mjs` drives it (add a step and an option,
+  save, reload) and asserts it round-trips, a boolean option kept and an untouched step
+  preserved.
+- **Pillow is a declared dependency** (`pyproject.toml`): `core/decode.py` and many plugins
+  import PIL unconditionally, but Pillow only arrived transitively through UnityPy (`.[unity]`),
+  so a minimal install broke image decoding (found on the Linux 3.10 suite). It is now a base
+  `dependencies` pin (`Pillow==11.3.0`, the last line that supports Python 3.10; 12.x needs
+  >=3.11). It is a base pip dependency, not a tools.json `python` slot (ViWo never installs it
+  at runtime), so it needs no hash lock and `tools/pin_python.py` leaves it alone.
+- **Coverage lift** (doc 17.5): seven under-target core/plugin files brought to 100 % line and
+  100 % branch with focused unit tests of their error and edge paths (bad magic, overruns,
+  unknown members, verify mismatches, a cancelled or not-found job hook): `core/hooks.py`
+  (89.4/78.6 -> 100/100), `plugins/dotnet/pe.py` (90.7/75.0), `plugins/qt/binres.py`
+  (73.9/56.2), `plugins/qt/qm.py` (89.3/75.0), `plugins/qt/pack.py` (87.1/75.0),
+  `plugins/qt/rcc.py` (91.8/85.0) and `plugins/chromium/pack.py` (90.8/83.3). Left for next,
+  with a reason, in HANDOFF (the .NET metadata-table and Qt builtin readers).
+
 ## 1.34.0 (2026-11-19)
 - The remaining OPEN engines of doc 13.7 closed, each first-party, no tool installed:
   - **GameMaker Studio** (`plugins/gamemaker/`): a new built-in engine plugin reads the `FORM`

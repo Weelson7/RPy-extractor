@@ -72,5 +72,31 @@ class ChromiumTests(unittest.TestCase):
             self.assertEqual(PakWriter().verify(copy, {"20.dat": edit}, CTX), [])
 
 
+class ChromiumPackEdgeTests(unittest.TestCase):
+    def test_pack_names_unknown_members_and_reports_a_bad_container(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            copy = root / "c.pak"
+            copy.write_bytes(make_pak(4, [(10, b"a"), (20, b"bb")], []))
+            e1 = root / "e1"
+            e1.write_bytes(b"ZZ")
+            # 99.dat is a valid id form but not in the pack; x.dat has no id at all
+            out = PakWriter().pack(copy, {"99.dat": e1, "x.dat": e1}, CTX)
+            self.assertTrue(out.ok and out.files == 0, out)
+            self.assertIn("2 member(s)", " ".join(out.notes))
+            bad = root / "bad.pak"
+            bad.write_bytes(b"nope")
+            self.assertFalse(PakWriter().pack(bad, {"10.dat": e1}, CTX).ok)
+
+    def test_verify_flags_a_member_that_differs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            pak = root / "p.pak"
+            pak.write_bytes(make_pak(4, [(10, b"a"), (20, b"bb")], []))  # id 20 holds b"bb"
+            other = root / "o"
+            other.write_bytes(b"DIFFERS")
+            self.assertEqual(PakWriter().verify(pak, {"20.dat": other}, CTX), ["20.dat"])
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -452,7 +452,7 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 19.1 workbooks from the indexes repository | open | `docs/indexes.md` |
 | 19.2 runbook files, validation, `{name}` values, save and delete of the user's copy | implemented | `core/guides.py`, `core/runbooks.py`, `data/runbooks/` (three); `tests/test_runbooks.py` |
 | 19.2 one step at a time through the job handlers, stop on failure, resume from any step, pause for a step you do | implemented | `api/handlers_runbooks.py`, `cli_guides.py` (`viwo runbook`), `web/js/views/runbooks.js`, `runbook-step.js` (each step as a readable row, its JSON behind a toggle) |
-| 19.2 a structured step editor (today: the runbook as JSON) | open | - |
+| 19.2 a structured step editor (add/remove/reorder steps, a step's job and its target and options as typed key/value, a secret-referencing value masked; the JSON stays as an escape hatch, kept in sync) | implemented | `web/js/views/runbook-edit.js`; `tests/ui/smoke.mjs` (add a step and an option, save, reload, round-trips) |
 | 19.3 the recorder: start, pause, continue, note, stop (saved as a runbook), discard; every action route recorded | implemented | `api/recording.py`; REC chip and RECORD A WORKFLOW (`web/js/views/recording.js`) |
 | 19.3 portable parameters, secret options as secret inputs never written, expectations and replay that stops where an answer differs | implemented | `core/workflows.py`, `api/handlers_runbooks.py` `run_step`, `cli_guides.py`; `tests/test_workflows.py` |
 | 19.3 what is done inside a child tool: a note the user writes (the tool stays native) | implemented | `api/recording.py` `note` |

@@ -148,6 +148,71 @@ class QtBinResTests(unittest.TestCase):
         self.assertTrue(found[0][0].endswith(".qml"))
         self.assertEqual(found[0][1], qml)
 
+    def test_kind_rejects_binary_and_unrecognized_text(self) -> None:
+        self.assertIsNone(binres._kind(b"\x00" * 50 + b"import QtQuick"))  # too many NULs: not text
+        self.assertIsNone(binres._kind(b"just some plain prose, nothing Qt here"))  # no pattern
+
+    def test_carve_skips_a_bad_length_a_start_offset_and_a_non_text_blob(self) -> None:
+        qml = b"import QtQuick\nItem{}"
+        too_short = struct.pack(">I", 5) + qml  # length 5 < 16, and the match sits at offset 4
+        self.assertEqual(binres.carve(too_short), [])  # bad length and prefix < 0 both skipped
+        nulls = b"import QtQuick\n" + b"\x00" * 200  # a valid length but the blob is not text
+        self.assertEqual(binres.carve(struct.pack(">I", len(nulls)) + nulls), [])
+
+
+class QtQmEdgeTests(unittest.TestCase):
+    def test_blocks_rejects_bad_magic_and_an_overrun(self) -> None:
+        with self.assertRaisesRegex(ValueError, "not a .qm"):
+            qm.blocks(b"\x00" * 16)
+        with self.assertRaisesRegex(ValueError, "past the end"):
+            qm.blocks(qm.MAGIC + b"\x69" + struct.pack(">I", 99))  # declares 99, has none
+
+    def test_messages_stops_at_an_unknown_sub_record(self) -> None:
+        body = bytes([0x06]) + struct.pack(">I", 1) + b"A" + bytes([0x55])  # 0x55 not a sub record
+        qmfile = qm.MAGIC + b"\x69" + struct.pack(">I", len(body)) + body
+        self.assertEqual(qm.messages(qmfile), [])  # it broke before a record was completed
+
+
+class QtRccEdgeTests(unittest.TestCase):
+    def test_parse_header_rejects_bad_magic(self) -> None:
+        with self.assertRaisesRegex(ValueError, "not an rcc"):
+            rcc.parse_header(b"XXXX" + b"\x00" * 16)
+
+    def test_blob_reports_zstd_and_a_short_blob(self) -> None:
+        with self.assertRaisesRegex(ValueError, "zstd"):
+            rcc.blob(struct.pack(">I", 3) + b"abc", 0, 0, rcc.COMPRESSED_ZSTD)
+        with self.assertRaisesRegex(ValueError, "past the end"):
+            rcc.blob(struct.pack(">I", 10) + b"abc", 0, 0, 0)  # declares 10, has 3
+
+    def test_extract_notes_a_blob_it_cannot_read(self) -> None:
+        raw = bytearray(make_rcc({"a.txt": b"hello"}, 3))
+        _, _, files, _, _ = rcc.read_tree(bytes(raw))
+        struct.pack_into(">H", raw, files[0][3] + 4, rcc.COMPRESSED_ZSTD)  # flag the file node zstd
+        notes = {path: note for path, _, note in rcc.extract(bytes(raw))}
+        self.assertIn("zstd", notes["a.txt"])
+
+
+class QtRccPackEdgeTests(unittest.TestCase):
+    def test_pack_reports_a_container_it_cannot_read(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            bad = root / "bad.rcc"
+            bad.write_bytes(b"not an rcc at all")
+            src = root / "s"
+            src.write_bytes(b"x")
+            out = RccWriter().pack(bad, {"d.json": src}, CTX)
+            self.assertFalse(out.ok, out)
+            self.assertIn("rcc not rebuilt", out.error)
+
+    def test_verify_flags_a_member_that_differs(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            copy = root / "c.rcc"
+            copy.write_bytes(make_rcc(FILES, 3))  # d.json holds b"{}"
+            other = root / "o"
+            other.write_bytes(b'{"n":1}')  # differs from what the rcc holds
+            self.assertEqual(RccWriter().verify(copy, {"d.json": other}, CTX), ["d.json"])
+
 
 if __name__ == "__main__":
     unittest.main()

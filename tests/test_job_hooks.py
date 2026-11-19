@@ -8,12 +8,14 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 from tests.helpers import runtime, write_ini
 from tests.test_cli import run
 from viwo.api import app as app_module
 from viwo.api.handlers import POST
 from viwo.contracts import ViwoError
+from viwo.contracts.types import ProcessResult
 from viwo.core.hooks import Hooks
 from viwo.core.jobs import JobRunner
 from viwo.core.wiring import distros
@@ -162,6 +164,47 @@ class ClientTests(Setup):
         app.jobs.hooks = None
         app.reload()  # the ini's hooks again after a reload
         self.assertEqual(sorted(app.jobs.hooks.commands), ["before_cleanup"])
+
+
+class DirectHookTests(unittest.TestCase):
+    """core/hooks.py leaf paths with a fake runner: an unexpected error, a cancelled timeout and
+    a command the shell cannot find are each a quiet warning; a run with no sink raises nothing."""
+
+    def _hooks(self, result=None, raises=None) -> Hooks:
+        def run(argv, cwd=None, timeout=None, cancel=None, env=None, on_line=None):
+            if raises is not None:
+                raise raises
+            return result
+
+        proc = SimpleNamespace(run=run, shell_command=lambda command: ["sh", "-c", command])
+        return Hooks(commands={"before_any": "echo hi"}, timeout=1, cwd=None, process=proc)
+
+    @staticmethod
+    def _job() -> SimpleNamespace:
+        return SimpleNamespace(kind="extract", job_id="j1", state="running", error=None, where={})
+
+    def _fire(self, hooks: Hooks, cancel=None, with_sink: bool = True) -> list:
+        events: list = []
+        hooks.fire("before", self._job(), events.append if with_sink else None, cancel)
+        return events
+
+    def test_an_unexpected_error_in_a_hook_is_a_warning_not_a_raise(self) -> None:
+        warns = [
+            e for e in self._fire(self._hooks(raises=RuntimeError("boom"))) if e.level == "warn"
+        ]
+        self.assertTrue(warns and "hook not run" in warns[-1].message, warns)
+        self.assertIn("RuntimeError", warns[-1].message)
+
+    def test_a_cancelled_timeout_and_a_missing_command_are_named(self) -> None:
+        cancel = SimpleNamespace(cancelled=True)
+        events = self._fire(self._hooks(ProcessResult(-9, "", "", timed_out=True)), cancel)
+        self.assertTrue(any("the job was cancelled" in e.message for e in events), events)
+        for code in (9009, 127):  # the shell's own "command not found" codes (cmd, sh)
+            events = self._fire(self._hooks(ProcessResult(code, "", "")))
+            self.assertTrue(any(f"command not found ({code})" in e.message for e in events), code)
+
+    def test_a_run_without_a_sink_raises_nothing(self) -> None:
+        self.assertEqual(self._fire(self._hooks(ProcessResult(0, "", "")), with_sink=False), [])
 
 
 if __name__ == "__main__":

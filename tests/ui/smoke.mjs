@@ -193,6 +193,31 @@ report.checks.runbookSteps = await evaluate(`[...document.querySelectorAll('#vie
   return { json: Boolean(json && JSON.parse(json.querySelector('pre').textContent)), open: Boolean(json?.open), facts: li.querySelectorAll('.facts dt').length, raw }; })`);
 await shot("runbook-steps");
 
+// RUNBOOK EDITOR: add a step, type its title and an option, save, reload — it round-trips (doc 19.2)
+step = "runbook-edit";
+await click("runbooks", "EDIT");
+await waitFor("Boolean(document.querySelector('#view-runbooks .rb-edit'))", 10000);
+const stepsBefore = await evaluate("document.querySelectorAll('#view-runbooks .rb-step').length");
+await click("runbooks", "ADD STEP");
+await waitFor(`document.querySelectorAll('#view-runbooks .rb-step').length === ${stepsBefore + 1}`, 10000);
+await evaluate(`(() => { const st = [...document.querySelectorAll('#view-runbooks .rb-step')].pop();
+  const t = st.querySelector('.field input'); t.value = 'SMOKE STEP'; t.dispatchEvent(new Event('input', { bubbles: true }));
+  [...st.querySelectorAll('button')].find((b) => b.textContent.trim() === 'ADD OPTION').click(); return true; })()`);
+await waitFor("Boolean([...document.querySelectorAll('#view-runbooks .rb-step')].pop().querySelector('.rb-opt'))", 10000);
+await evaluate(`(() => { const st = [...document.querySelectorAll('#view-runbooks .rb-step')].pop(), o = st.querySelector('.rb-opt');
+  const k = o.querySelector('.rb-opt-key'), v = o.querySelector('.rb-opt-val');
+  k.value = 'folder'; k.dispatchEvent(new Event('input', { bubbles: true }));
+  v.value = '{game}'; v.dispatchEvent(new Event('input', { bubbles: true })); return true; })()`);
+await shot("runbook-editing");
+await click("runbooks", "SAVE");
+await waitFor("!document.querySelector('#view-runbooks .rb-edit') && document.querySelectorAll('#view-runbooks .path-steps > li').length > 0", 15000);
+report.checks.runbookEdit = await evaluate(`(async () => { const { api } = await import('./js/api.js'); const res = await api.runbooks();
+  const b = res.runbooks.find((x) => x.steps.some((s) => s.title === 'SMOKE STEP')); if (!b) return { found: false };
+  const last = b.steps[b.steps.length - 1], first = b.steps[0];
+  return { found: true, id: b.id, steps: b.steps.length, lastTitle: last.title, folder: last.with && last.with.folder,
+    firstGame: first.with && first.with.gamePath, planKept: first.with && first.with.plan }; })()`);
+await shot("runbook-edited");
+
 writeFileSync(`${OUT}/report.json`, JSON.stringify(report, null, 2));
 process.stdout.write(JSON.stringify(report));
 ws.close();

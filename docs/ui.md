@@ -74,11 +74,16 @@ the HOW TO buttons in ANALYSIS, RUNTIME and CAPTURE open it on one tool (`pref("
 `howToBtn(tool)`), a runbook step on one workbook (`workbookBtn(id)`). RUNBOOKS (doc 19.2) runs
 one step per request (`/api/runbooks/step`), waits for DONE, CONTINUE on a step you do, keeps
 each runbook's input values (`pref("rb.<id>.<name>")`; a secret input's value stays in the page
-only) and edits a runbook as JSON. Each step is a readable row (`runbook-step.js`): an action
+only). Each step is a readable row (`runbook-step.js`): an action
 says what it runs (the job and the tab that runs it), its target (the game, folder or target
 key) and its options as key/value, each `{name}` with the run's value beside it (a secret
 input's shows as `<secret>`, an empty one as "not set yet"); the step as the file holds it is
-behind its JSON toggle. Its RECORD A WORKFLOW panel (`recording.js`, doc 19.3)
+behind its JSON toggle. EDIT opens the structured step editor (`runbook-edit.js`): the
+id/title/summary, the inputs (a secret toggle, a default unless secret), and the steps (add,
+remove, reorder; each step's kind, an action's job and its target and options as typed key/value
+with a secret-referencing value masked, or a step you do with its text and workbook). The runbook
+as JSON stays a toggle away as an escape hatch, editable and kept in sync through one working
+copy; SAVE validates on the server and a rule error shows inline (no step is dropped). Its RECORD A WORKFLOW panel (`recording.js`, doc 19.3)
 drives the server's recorder; while it records, the status strip shows a REC chip with the
 steps caught so far, whatever view is open; a replayed step that answers otherwise than
 recorded pauses as DIFFERS: YOUR CALL with what changed. The game selector is one browser
@@ -200,6 +205,8 @@ PATCHED COPY plans and writes with the same choice and names it in its summary l
   rail stage after an extraction, workspace-wide type counts in SORT, the cleanup scan as
   a visible job, and ASSETS' mod/overwrite choice (MOD first) and a plan with WRITE held
   back while nothing was edited; on every view, buttons with their spacing and step codes shown
-  once; MERGER's single files under SINGLE FILES, tickable; ANALYZE held back with its reason; and
-  each runbook step readable with its JSON behind a closed toggle. Skipped when no Chromium or Node is found; `VIWO_UI=0` disables it;
+  once; MERGER's single files under SINGLE FILES, tickable; ANALYZE held back with its reason;
+  each runbook step readable with its JSON behind a closed toggle; and the runbook step editor
+  (EDIT, ADD STEP, a title and an option typed in, SAVE) round-tripping on reload with a boolean
+  option kept and an untouched step preserved. Skipped when no Chromium or Node is found; `VIWO_UI=0` disables it;
   `VIWO_UI_OUT=<folder>` keeps the screenshots.

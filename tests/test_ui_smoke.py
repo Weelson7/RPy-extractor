@@ -155,6 +155,15 @@ class UiSmokeTests(unittest.TestCase):
             self.assertFalse(s["raw"], s)  # no JSON outside the toggle
         self.assertTrue(any(s["facts"] for s in steps), steps)  # an action shows its options
 
+    def test_runbook_editor_adds_a_step_and_round_trips_on_save(self) -> None:
+        e = self.report["checks"].get("runbookEdit")
+        self.assertTrue(e and e.get("found"), e)
+        self.assertEqual(e["lastTitle"], "SMOKE STEP", e)
+        self.assertEqual(e["folder"], "{game}", e)  # the option typed in the editor round-trips
+        self.assertEqual(e["firstGame"], "{game}", e)  # an untouched step is preserved
+        self.assertTrue(e["planKept"], e)  # a boolean option is not stringified on the way back
+        self.assertGreaterEqual(e["steps"], 4, e)
+
     def test_three_arms_and_the_global_strip(self) -> None:
         a = self.report["checks"]["arms"]
         # JOBS has no chip: the top bar's job chip opens it

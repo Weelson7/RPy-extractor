@@ -111,9 +111,15 @@ does not have is said; a `--from` outside its steps is refused). API: `GET /api/
 answer plus `step`. UI: RUNBOOKS in the global strip: the list; a runbook's inputs (the game
 from the top bar, the active workspace), its steps with their state (an action step as what it
 runs, its target and its options as key/value, the step's JSON behind a toggle), RUN, RUN
-FROM HERE, DONE, CONTINUE, STOP, each step's job linked to JOBS; EDIT shows the runbook as
-JSON to change and save (a shipped one is saved as the user's copy), DELETE removes the user's
-copy.
+FROM HERE, DONE, CONTINUE, STOP, each step's job linked to JOBS; EDIT opens the structured step
+editor (`runbook-edit.js`): the id, title and summary, the inputs (each with its label, a secret
+toggle, and a default unless it is secret), and the steps — add, remove, reorder (UP, DOWN), and
+per step its kind (ACTION or YOU DO), an action step's job (from the known kinds) and its target
+and options as typed key/value (a value that is one secret input alone is masked), or a step you
+do with its text and an optional workbook. The runbook as JSON stays one toggle away as an escape
+hatch, editable and kept in sync through one working copy (APPLY JSON reads it back). SAVE
+validates on the server (`core/runbooks.py`) and writes the user's copy; a rule error shows inline
+and no step is dropped. A shipped one is saved as the user's copy; DELETE removes the user's copy.
 
 Code: `viwo/core/guides.py` (the files of 19.1 and 19.2), `viwo/core/runbooks.py`,
 `viwo/data/runbooks/`, `viwo/api/handlers_runbooks.py`, `viwo/cli_guides.py`,
