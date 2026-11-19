@@ -172,7 +172,8 @@ slot's identifier; doc 2.5):
 | `unarchive.xp3` | kirikiri | `xp3-builtin` | - | |
 | `unarchive.love` | love2d | `love-zip` | - | `.love` with a zip head; an `.exe` whose tail is a zip end record, `love.dll` beside it |
 | `unarchive.clib` | ags | `clib-builtin` | - | `CLIB\x1a` head; an executable with the CLIB tail signature |
-| `unarchive.arci` | defold | `arci-builtin` | - | `.arci`, with its `.arcd` and `.dmanifest`; LZ4 through the `lz4` pin |
+| `unarchive.arci` | defold | `arci-builtin` | - | `.arci`, with its `.arcd` and `.dmanifest`; LZ4 through the `lz4` pin; encrypted resources (XTEA-CTR) when a key verifies |
+| `unarchive.gamemaker` | gamemaker | `gm-builtin` | - | identifier: a `FORM` head whose first chunk is `GEN8` (`data.win`, `game.unx`, `.ios`, `.dat`) |
 | `unarchive.asar` | electron | `asar-builtin` | - | |
 | `unarchive.vpk` | source | `vpk-builtin` | - | identifier for `_dir.vpk` sets |
 | `unarchive.bsa`, `unarchive.ba2` | bethesda | `bsa-builtin`, `ba2-builtin` | - | LZ4 through the `lz4` pin |
@@ -337,7 +338,9 @@ game's executables, candidates the unreal plugin verifies on an encrypted pak in
 (`godotpcktool-pack`), `pack.upak` (`repak-patch`, `_P.pak`), `pack.archive` (`wolvenkit-pack`, override archive in `archive/pc/mod`), `pack.unity` (`unitypy-pack`),
 `pack.rpgmaker` (`rpgmv-pack`), `pack.wolf` (`wolf-writer`, wolfrpg, in process: a DXArchive
 version 6 rebuilt with the edits, stored raw), `pack.tpac` (`tpac-writer`, taleworlds, in process: a TPAC
-rewritten member by member, doc 18.4); desktop-app frameworks (doc 13.8): `pack.rcc`
+rewritten member by member, doc 18.4), `pack.gamemaker` (`gm-writer`, gamemaker, in process: an
+edited member written back in place when its size is unchanged, a size change refused by name);
+desktop-app frameworks (doc 13.8): `pack.rcc`
 (`rcc-writer`, qt), `pack.pak` (`pak-writer`, chromium), `pack.pyi` (`pyi-writer`, pyfrozen),
 `pack.resources` (`resources-writer`, dotnet, same-size in place), `pack.jar` (`jar-packer`,
 java); the other writers ViWo owns are in doc 18.4. **Patch:** `patch.bytes` (`viwo-patcher`, owns the Keystone and

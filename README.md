@@ -59,8 +59,9 @@ Engines: Ren'Py, Unity, Godot, Unreal (pak and IoStore, AES keys from you or the
 files, verified; `.locres` localization to JSON and back), Doom, RPG Maker, KiriKiri,
 Electron/NW.js, Source, Bethesda, Age of Empires, Total War, Cyberpunk 2077, Bannerlord, LÖVE
 (`.love` or fused executables), XNA/FNA/MonoGame (`.xnb` textures and sounds, uncompressed, LZ4
-and LZX), Adventure Game Studio (CLIB packfiles), Defold (bundled archives), Wolf RPG
-(`Data.wolf` / DXArchive), Overwatch (DataTool), QuickBMS scripts for
+and LZX), Adventure Game Studio (CLIB packfiles), Defold (bundled archives, encrypted resources
+decrypted when a key verifies), Wolf RPG (`Data.wolf` / DXArchive), GameMaker Studio (the `FORM`
+data file: textures, audio and strings), TyranoScript (loose HTML5/JS), Overwatch (DataTool), QuickBMS scripts for
 any other format, plus zip, tar, 7z, rar. A format can also be described rather than coded: a
 bundled Kaitai `.ksy` definition is read by a first-party interpreter and parsed to a tree. Desktop applications too (cold patching): Qt (`.rcc`
 resources, QML compiled into the exe, `.qm` translations; proven on Free Download Manager),

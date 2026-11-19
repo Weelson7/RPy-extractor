@@ -4,6 +4,30 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.34.0 (2026-11-19)
+- The remaining OPEN engines of doc 13.7 closed, each first-party, no tool installed:
+  - **GameMaker Studio** (`plugins/gamemaker/`): a new built-in engine plugin reads the `FORM`
+    data file (`data.win`, `game.unx`, `game.ios`, `game.droid`, audiogroup `.dat`), surfacing
+    every chunk (`chunks/<NAME>.bin`), the TXTR texture PNGs, the AUDO audio (`.wav`/`.ogg`) and
+    the STRG strings (`strings.json`, a read-only view). `pack.gamemaker` writes an edited member
+    back in place when its size is unchanged and refuses a size change, and `strings.json`, by
+    name (full re-chunking, which would move every absolute pointer, is not done). UndertaleModTool
+    (GPL) is never imported. Implemented from the public format description; not verified against a
+    built game.
+  - **TyranoScript / TyranoBuilder** (`plugins/tyranoscript/`): a new built-in engine plugin that
+    recognises the loose HTML5/JS engine by its `tyrano/` folder plus scenario/config (not the
+    shell or the `.ks`/`.tjs` names alone, so RPG Maker MV and KiriKiri do not trip it), names the
+    scenario scripts as its completeness claim, and lets edited files go back loosely into the
+    patched copy, which the engine reads straight from disk. A shell (`app.asar`, `package.nw`) is
+    unpacked by the `electron` plugin first.
+  - **Defold encrypted resources** (`plugins/defold/crypt.py`): encrypted resources are now
+    decrypted (XTEA in counter mode, the engine's own construction, verified against Defold's
+    `crypt.cpp` test vector) when a key verifies against the bundle — the user's `decryption_key`
+    secret, else the engine's built-in default key — the key checked against a compressed+encrypted
+    resource before use (D18) and never logged. An edited encrypted resource is re-encrypted on the
+    way back. When no key verifies (or the only encrypted resources are uncompressed, with no
+    self-verifying check), they are still refused by name with the reason. No key search is authored.
+
 ## 1.33.0 (2026-11-19)
 - Four OPEN conformance items closed, each first-party, no tool installed:
   - **Texture ways back** (`backends/blocks/`, `core/encode_dds.py`): premultiplied **DXT2/DXT4**

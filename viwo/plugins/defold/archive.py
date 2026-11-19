@@ -117,18 +117,28 @@ def pack_entry(version: int, entry: Entry) -> bytes:
     return struct.pack(">IIII", entry.offset, entry.size, entry.packed, entry.flags)
 
 
-def stored_form(entry: Entry, data: bytes, lz4) -> tuple[Entry, bytes]:
+def _encrypt(body: bytes, entry: Entry, key: bytes | None) -> bytes:
+    """`body` encrypted when the entry is an encrypted one and a key is at hand (the compress-
+    then-encrypt order the bundler uses), else `body` unchanged."""
+    if entry.flags & ENCRYPTED and key:
+        from .crypt import crypt
+
+        return crypt(body, key)
+    return body
+
+
+def stored_form(entry: Entry, data: bytes, lz4, key: bytes | None = None) -> tuple[Entry, bytes]:
     """An edited resource as the archive holds it: LZ4 when the original was and it saves at
-    least 5 % (Defold's own rule), else as it is."""
+    least 5 % (Defold's own rule), then encrypted when the original was, else as it is."""
     if entry.flags & COMPRESSED and lz4 is not None:
         packed = lz4.block.compress(data, mode="high_compression", store_size=False)
         if len(packed) <= 0.95 * len(data):
-            return replace(entry, size=len(data), packed=len(packed)), packed
+            return replace(entry, size=len(data), packed=len(packed)), _encrypt(packed, entry, key)
     flags = entry.flags & ~COMPRESSED
-    return replace(entry, size=len(data), packed=RAW, flags=flags), data
+    return replace(entry, size=len(data), packed=RAW, flags=flags), _encrypt(data, entry, key)
 
 
-def write_archive(index: Index, data_src, edits: dict[bytes, bytes], out, lz4) -> bytes:
+def write_archive(index: Index, data_src, edits: dict[bytes, bytes], out, lz4, key=None) -> bytes:
     """Write the data file into `out` (stored data in the original order, each start aligned to
     4 as Defold writes it) and return the new index."""
     entries, at = list(index.entries), 0
@@ -137,7 +147,7 @@ def write_archive(index: Index, data_src, edits: dict[bytes, bytes], out, lz4) -
         at += -at % 4
         entry = entries[i]
         if entry.digest in edits:
-            entry, stored = stored_form(entry, edits[entry.digest], lz4)
+            entry, stored = stored_form(entry, edits[entry.digest], lz4, key)
         else:
             data_src.seek(entry.offset)
             stored = data_src.read(entry.stored)

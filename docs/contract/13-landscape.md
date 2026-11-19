@@ -101,14 +101,17 @@ read by a tiny stdlib subset reader, never PyYAML.
 
 ## 13.7 Engines not covered (open)
 
-GameMaker (UndertaleModTool CLI, GPL-3.0), TyranoScript beyond the wrapper and zip paths;
 Unreal asset export (a CUE4Parse wrapper). Covered by first-party readers (doc 2.7):
 Unreal localization (`decode.locres`), LÖVE (`love2d`), XNA/FNA/MonoGame (`xna`, LZX read
-through the first-party `lzx.py`), AGS (`ags`), Defold (`defold`), Wolf RPG (`wolfrpg`, DXArchive
-version 6). Within them still open: XNB content other than Texture2D and SoundEffect, Wolf RPG's
-DXA-compressed members (ViWo's DXA decoder is unverified against DxLib) and its archive versions
-other than 6, Defold's encrypted Lua resources, new keys in a version 3 `.locres` table (their
-CityHash64 is not computed).
+through the first-party `lzx.py`), AGS (`ags`), Defold (`defold`, encrypted resources too when a
+key verifies), Wolf RPG (`wolfrpg`, DXArchive version 6), GameMaker Studio (`gamemaker`, the
+`FORM` data file; UndertaleModTool, GPL-3.0, is never imported), TyranoScript (`tyranoscript`,
+loose HTML5/JS, the wrapper and zip paths through `electron`/the core zip). Within them still
+open: XNB content other than Texture2D and SoundEffect, Wolf RPG's DXA-compressed members (ViWo's
+DXA decoder is unverified against DxLib) and its archive versions other than 6, a Defold bundle
+whose only encrypted resources are uncompressed (no self-verifying check for the key), GameMaker's
+full re-chunk (only same-size in-place edits go back; a size change is refused by name), new keys
+in a version 3 `.locres` table (their CityHash64 is not computed).
 
 ## 13.8 Desktop-application frameworks (cold patching)
 

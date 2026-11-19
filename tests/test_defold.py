@@ -27,8 +27,13 @@ from viwo.core.pipeline.runner import extract
 from viwo.core.roundtrip import repack
 from viwo.plugins.defold import ArciBuiltin, ArciWriter, DefoldPlugin
 from viwo.plugins.defold.archive import read_index
+from viwo.plugins.defold.crypt import DEFAULT_KEY, crypt
 
 CTX = SimpleNamespace(cancel=SimpleNamespace(cancelled=False))
+
+
+def octx(key: str = "") -> SimpleNamespace:
+    return SimpleNamespace(cancel=SimpleNamespace(cancelled=False), options={"decryption_key": key})
 
 
 def varint(n: int) -> bytes:
@@ -234,6 +239,90 @@ class DefoldTests(unittest.TestCase):
             _, got = read(root / "copy" / "game.arci", root / "back")
             self.assertEqual(got, {"main/title.txt": b"Jumper, edited"})
             self.assertEqual(tree_hashes(game), before)
+
+
+def enc_bundle(folder: Path, plain: bytes, enc: bytes, key: bytes) -> Path:
+    """A version-6 bundle: one plain resource and one that is LZ4-compressed then XTEA-encrypted
+    with `key`, exactly as Defold's bundler stores an encrypted resource."""
+    folder.mkdir(parents=True, exist_ok=True)
+    packed = lz4.block.compress(enc, store_size=False)
+    recs = {  # digest -> (stored bytes, size, packed field, flags)
+        hashlib.sha1(plain).digest(): (plain, len(plain), 0xFFFFFFFF, 0),
+        hashlib.sha1(crypt(packed, key)).digest(): (crypt(packed, key), len(enc), len(packed), 3),
+    }
+    order, arcd, offsets = sorted(recs), bytearray(), {}
+    for d in order:
+        arcd += b"\0" * (-len(arcd) % 4)
+        offsets[d] = len(arcd)
+        arcd += recs[d][0]
+    hashes = b"".join(d.ljust(64, b"\0") for d in order)
+    table = b"".join(
+        struct.pack(">QII", recs[d][3] << 60 | offsets[d], recs[d][1], recs[d][2]) for d in order
+    )
+    body = hashes + table
+    head = struct.pack(">IIQIIII", 6, 0, 0, len(order), 48 + len(hashes), 48, 20)
+    (folder / "game.arci").write_bytes(head + hashlib.md5(body).digest() + body)
+    (folder / "game.arcd").write_bytes(bytes(arcd))
+    man = manifest(
+        [
+            ("/plain.txt", hashlib.sha1(plain).digest(), len(plain)),
+            ("/enc.luac", hashlib.sha1(crypt(packed, key)).digest(), len(enc)),
+        ]
+    )
+    (folder / "game.dmanifest").write_bytes(man)
+    return folder / "game.arci"
+
+
+class DefoldEncryptionTests(unittest.TestCase):
+    def test_crypt_matches_the_defold_engine_vector(self) -> None:
+        expected = bytes.fromhex("81b4a1042dace5cb7789ec1161c3dcfab9a325")
+        self.assertEqual(crypt(b"ABCDEFGH12345678XYZ", b"12345678abcdefgh"), expected)
+        self.assertEqual(crypt(expected, b"12345678abcdefgh"), b"ABCDEFGH12345678XYZ")
+
+    def test_the_builtin_default_key_decrypts_an_encrypted_resource(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            archive = enc_bundle(
+                root / "g", b"plain body", b"-- lua source\nreturn 1\n", DEFAULT_KEY
+            )
+            result, got = read(archive, root / "o")
+            self.assertEqual(got["enc.luac"], b"-- lua source\nreturn 1\n")
+            self.assertEqual(got["plain.txt"], b"plain body")
+            self.assertFalse(any("not decrypted" in n for n in result.notes), result.notes)
+
+    def test_a_user_key_is_verified_and_a_wrong_key_is_refused_by_name(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            archive = enc_bundle(root / "g", b"plain", b"secret lua body", b"mysecretkey12345")
+            ArciBuiltin().extract(archive, root / "ok", octx("mysecretkey12345"))
+            got = {p.name: p.read_bytes() for p in (root / "ok").rglob("*") if p.is_file()}
+            self.assertEqual(got.get("enc.luac"), b"secret lua body")
+            bad = ArciBuiltin().extract(
+                archive, root / "bad", octx("")
+            )  # only the default is tried
+            names = {p.name for p in (root / "bad").rglob("*") if p.is_file()}
+            self.assertNotIn("enc.luac", names)
+            self.assertTrue(any("not decrypted" in n for n in bad.notes), bad.notes)
+
+    def test_an_edited_encrypted_resource_is_re_encrypted_on_the_way_back(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            archive = enc_bundle(root / "g", b"plain", b"old lua", b"mysecretkey12345")
+            edit = root / "new.luac"
+            new = b"local function noop() end\n" * 50  # compressible: stays LZ4 + encrypted
+            edit.write_bytes(new)
+            done = ArciWriter().pack(archive, {"enc.luac": edit}, octx("mysecretkey12345"))
+            self.assertEqual(done.kind, OutcomeKind.OK, done.error)
+            _, got = read_with(archive, root / "back", octx("mysecretkey12345"))
+            self.assertEqual(got["enc.luac"], new)
+
+
+def read_with(archive: Path, out: Path, ctx):
+    result = ArciBuiltin().extract(archive, out, ctx)
+    assert result.kind is OutcomeKind.OK, result.error
+    return result, {
+        f.relative_to(out).as_posix(): f.read_bytes() for f in out.rglob("*") if f.is_file()
+    }
 
 
 if __name__ == "__main__":

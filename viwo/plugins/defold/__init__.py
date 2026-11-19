@@ -1,17 +1,21 @@
 """Defold: the bundled archive (`game.arci` index, `game.arcd` data, `game.dmanifest` names;
-archive.py). Every resource out under its URL (LZ4-compressed ones through the `lz4` package;
-encrypted ones, Defold's Lua cipher, refused by name), and the archive rebuilt in the patched
-copy with the edited resources: the engine loads nothing over its bundle."""
+archive.py). Every resource out under its URL (LZ4-compressed ones through the `lz4` package),
+and the archive rebuilt in the patched copy with the edited resources: the engine loads nothing
+over its bundle. Encrypted resources (Defold's XTEA-CTR cipher, crypt.py) are decrypted when a
+key verifies against the bundle (the user's `decryption_key`, else the engine's built-in default)
+and refused by name with the reason when none does; an edited encrypted resource is re-encrypted
+on the way back with that same verified key."""
 
 import os
 from pathlib import Path
 
 from viwo.contracts import workspace as ws
-from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest
+from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest, PluginOption
 from viwo.contracts.slots import Packer, SlotDefinition, Unarchiver
 from viwo.contracts.types import DependencySpec, DetectionResult, Outcome, OutcomeKind
 
 from .archive import COMPRESSED, ENCRYPTED, manifest_names, read_index, write_archive
+from .crypt import DEFAULT_KEY, crypt
 
 MANIFEST = PluginManifest(
     "defold",
@@ -21,6 +25,14 @@ MANIFEST = PluginManifest(
     priority=13,
     description="Defold games: the bundled archive (game.arci, game.arcd, game.dmanifest)",
     capabilities=("detect", "unpack", "pack"),
+    options=(
+        PluginOption(
+            "decryption_key",
+            "Resource key (XTEA)",
+            kind="secret",
+            help="Defold resource key; blank tries the engine's built-in default",
+        ),
+    ),
 )
 LZ4 = DependencySpec(
     "lz4", "lz4 (Defold resources)", kind="python", import_name="lz4", hint="pip install lz4"
@@ -55,11 +67,41 @@ def read_all(index_path: Path):
     return index, names, note
 
 
-def _resource(fh, entry, lz4) -> bytes | None:
+def _keys(ctx) -> list[bytes]:
+    """The candidate keys to try, most likely first: the user's `decryption_key` (a secret, never
+    logged), then the engine's built-in default (D18: the plugin verifies before it uses one)."""
+    user = str((getattr(ctx, "options", None) or {}).get("decryption_key", "") or "")
+    return ([user.encode("utf-8")] if user else []) + [DEFAULT_KEY]
+
+
+def _pick_key(index, data_path: Path, candidates: list[bytes], lz4) -> bytes | None:
+    """The first candidate that decrypts a compressed+encrypted resource to a valid LZ4 block of
+    its declared size (the only self-verifying check Defold's hashes allow), or None when the
+    bundle has no such resource or none of the keys works."""
+    checks = [e for e in index.entries if e.flags & ENCRYPTED and e.flags & COMPRESSED]
+    if lz4 is None or not checks:
+        return None
+    with open(data_path, "rb") as fh:
+        return next((key for key in candidates if _verifies(fh, checks[0], key, lz4)), None)
+
+
+def _verifies(fh, entry, key: bytes, lz4) -> bool:
+    fh.seek(entry.offset)
+    size = max(entry.size, 1)
+    try:
+        data = lz4.block.decompress(crypt(fh.read(entry.stored), key), uncompressed_size=size)
+    except (lz4.block.LZ4BlockError, ValueError):
+        return False
+    return len(data) == entry.size
+
+
+def _resource(fh, entry, lz4, key: bytes | None) -> bytes | None:
     fh.seek(entry.offset)
     stored = fh.read(entry.stored)
     if len(stored) != entry.stored:
         raise ValueError("a resource runs past the end of the data file")
+    if entry.flags & ENCRYPTED:  # decrypt first: the bundler compresses, then encrypts
+        stored = crypt(stored, key)
     if not entry.flags & COMPRESSED:
         return stored
     if lz4 is None:
@@ -87,29 +129,33 @@ class ArciBuiltin(Unarchiver):
         lz4, names, counts = _lz4(), ws.Names(dest), {"written": 0, "locked": [], "packed": 0}
         try:
             index, urls, note = read_all(archive)
-            with open(archive.with_suffix(".arcd"), "rb") as fh:
+            data_path = archive.with_suffix(".arcd")
+            key = _pick_key(index, data_path, _keys(ctx), lz4)
+            with open(data_path, "rb") as fh:
                 for entry in index.entries:
                     if ctx.cancel.cancelled:
                         break
-                    self._one(fh, entry, urls, (names, counts, lz4))
+                    self._one(fh, entry, urls, (names, counts, lz4, key))
         except (OSError, ValueError, RuntimeError) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"bad Defold archive: {exc}"[:300])
         notes = (note,) if note else ()
         if counts["locked"]:
             first = ", ".join(counts["locked"][:3])
-            notes += (f"{len(counts['locked'])} encrypted resource(s) not decrypted: {first}",)
+            why = "no verified key" if lz4 else "the 'lz4' package is needed to verify a key"
+            n = len(counts["locked"])
+            notes += (f"{n} encrypted resource(s) not decrypted ({why}): {first}",)
         if counts["packed"]:
             notes += (f"{counts['packed']} LZ4 resource(s) need the 'lz4' Python package",)
         return Outcome(OutcomeKind.OK, counts["written"], notes=notes + names.save())
 
     @staticmethod
     def _one(fh, entry, urls: dict, run: tuple) -> None:
-        names, counts, lz4 = run
+        names, counts, lz4, key = run
         targets = [u.lstrip("/") for u in urls.get(entry.digest, [])] or [entry.digest.hex()]
-        if entry.flags & ENCRYPTED:
+        if entry.flags & ENCRYPTED and key is None:
             counts["locked"].append(targets[0])
             return
-        data = _resource(fh, entry, lz4)
+        data = _resource(fh, entry, lz4, key)
         if data is None:
             counts["packed"] += 1
             return
@@ -133,12 +179,14 @@ class ArciWriter(Packer):
         temps = [p.with_name(p.name + ".viwo-tmp") for p in (container, data)]
         try:
             index, urls, _ = read_all(container)
+            lz4 = _lz4()
+            key = _pick_key(index, data, _keys(ctx), lz4)
             edits, shared = _edits(urls, members)
-            plain = {e.digest for e in index.entries if not e.flags & ENCRYPTED}
-            if set(edits) - plain:
-                raise ValueError("an edit names no unencrypted resource of this archive")
+            editable = {e.digest for e in index.entries if not e.flags & ENCRYPTED or key}
+            if set(edits) - editable:
+                raise ValueError("an edit names an encrypted resource and no key was verified")
             with open(data, "rb") as src, open(temps[1], "wb") as out:
-                blob = write_archive(index, src, edits, out, _lz4())
+                blob = write_archive(index, src, edits, out, lz4, key)
             temps[0].write_bytes(blob)
             os.replace(temps[1], data)
             os.replace(temps[0], container)

@@ -152,18 +152,22 @@ left, by cause:
   only: a real game pass for each is open, redscripts with the compiler installed in the copy;
   `pack.tpac` rewrote one real Bannerlord package by hand, unchanged and with a BC7 texture
   edited, but no repack run has put one in a patched copy the game then started: it may check
-  the item checksum ViWo keeps but cannot compute), the engines doc 13.7 still lists (GameMaker,
-  TyranoScript), a structured runbook editor, more workbooks.
-- LÖVE, XNA/FNA, AGS, Defold, Unreal `.locres` and Wolf RPG (first-party readers and their
-  ways back): checked on real data from the engines' own releases (CLIB 30 templates, a Defold
-  index-6 example bundle, the official `love.exe` fused with a test zip, MonoGame's test XNB
-  files), never on a game install, and no game has run with a change. Wolf RPG (DXArchive v6,
-  at 1.32) and XNB LZX (XNA's XMemCompress, first-party `lzx.py`, at 1.32) are proven only on
-  fixtures the tests write byte by byte, never on a real file. Unverified on real data: LZ4
-  XNB, CLIB 6 to 21, Defold index 4 and 5, any `.locres`, any Wolf RPG archive, any LZX XNB.
+  the item checksum ViWo keeps but cannot compute), the one engine doc 13.7 still lists (Unreal
+  asset export, a CUE4Parse wrapper), a structured runbook editor, more workbooks.
+- LÖVE, XNA/FNA, AGS, Defold, Unreal `.locres`, Wolf RPG, GameMaker and TyranoScript (first-party
+  readers and their ways back): checked on real data from the engines' own releases (CLIB 30
+  templates, a Defold index-6 example bundle, the official `love.exe` fused with a test zip,
+  MonoGame's test XNB files), never on a game install, and no game has run with a change. Wolf RPG
+  (DXArchive v6), XNB LZX, GameMaker (the `FORM` container, at 1.33) and TyranoScript (loose
+  HTML5/JS, at 1.33) are proven only on fixtures the tests write byte by byte, never on a real
+  file. Defold's XTEA-CTR resource decryption (at 1.33) matches the engine's own test vector but
+  has not been re-run against the real example's two encrypted resources (operator's job).
+  Unverified on real data: LZ4 XNB, CLIB 6 to 21, Defold index 4 and 5 and its encrypted
+  resources, any `.locres`, any Wolf RPG archive, any LZX XNB, any GameMaker or TyranoScript game.
   Open in them: XNB content other than Texture2D/SoundEffect, Wolf RPG's DXA-compressed members
-  (ViWo's DXA decoder is unverified) and versions other than 6, Defold's encrypted Lua, new
-  keys in version 3 `.locres`.
+  (ViWo's DXA decoder is unverified) and versions other than 6, a Defold bundle whose only
+  encrypted resources are uncompressed (the key cannot be self-verified), GameMaker's full
+  re-chunk (only same-size edits go back), new keys in version 3 `.locres`.
 - `hook.overlay`: neither candidate fits the rules (doc 11.7).
 - Coverage: 98.2 % line / 95.0 % branch overall at 1.20.58; 84 of 200 files are under the
   per-file target of 98 / 95 (`coverage run -m unittest discover -s tests -t .`, then
