@@ -7,6 +7,7 @@ stand-in assemblies Cpp2IL rebuilds from GameAssembly and the metadata (a separa
 once per export, into the run's scratch folder."""
 
 import json
+import threading
 from pathlib import Path
 
 from viwo.contracts import workspace as ws
@@ -16,6 +17,7 @@ CPP2IL = DependencySpec.of("cpp2il")
 
 FONT_EXT = {b"OTTO": ".otf", b"true": ".ttf", b"\x00\x01\x00\x00": ".ttf", b"ttcf": ".ttc"}
 BLOB = 4096  # raw byte fields above this size are summarised, not inlined as hex
+_DOUBTFUL = threading.Lock()  # the process ceiling is tightened by one read at a time
 ROOM = 1 << 30  # memory one MonoBehaviour read with a rebuilt layout may add (doc 9.2)
 
 
@@ -91,19 +93,30 @@ class Dump:
     def _read(self, obj, script) -> dict:
         """The object's fields. A rebuilt layout that does not fit its object reads a garbage
         length and asks for the machine's memory: with the ceiling at what ViWo holds plus
-        ROOM, that read fails at once, and the script is not tried again."""
+        ROOM, that read fails at once; failing twice, the script is not tried again."""
         if script is None:
             return obj.read_typetree()
         if script in self.misfits:
             raise ValueError("its script's rebuilt layout does not fit (listed without fields)")
-        self.host.memory_room(ROOM)
-        try:
-            return obj.read_typetree()
-        except MemoryError:
-            self.misfits.add(script)
-            raise ValueError("its script's rebuilt layout does not fit: it asked for the memory")
-        finally:
-            self.host.memory_room(None)
+        for last in (False, True):
+            try:
+                return self._tight(obj)
+            except MemoryError:
+                if last:  # twice: the layout's own asking, not another job's growth
+                    self.misfits.add(script)
+        raise ValueError("its script's rebuilt layout does not fit: it asked for the memory")
+
+    def _tight(self, obj) -> dict:
+        """One read under the tightened ceiling. The ceiling is the whole process's, so one
+        such read runs at a time (two jobs of `viwo serve` would lift each other's), and what
+        another thread takes meanwhile counts against it: a failure is tried a second time,
+        measured afresh, before the script is given up."""
+        with _DOUBTFUL:
+            self.host.memory_room(ROOM)
+            try:
+                return obj.read_typetree()
+            finally:
+                self.host.memory_room(None)
 
     def add(self, obj, kind: str) -> None:
         source = Path(str(getattr(obj.assets_file, "name", "") or "unknown")).name

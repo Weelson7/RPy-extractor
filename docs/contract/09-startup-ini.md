@@ -56,6 +56,12 @@ memory_limit     = 50            ; percent of the machine's memory ViWo's own pr
                                  ; needs it or failed (doc 8).
                                  ; Around one doubtful read (a Unity MonoBehaviour with a rebuilt
                                  ; layout) the ceiling is what ViWo holds plus 1 GB (`memory_room`).
+                                 ; It is the whole process's: such reads run one at a time (two
+                                 ; jobs of `viwo serve` take turns), and one that fails is read a
+                                 ; second time, measured afresh, before its script is given up,
+                                 ; so what another job took meanwhile costs no fields. Another
+                                 ; thread asking for more than that 1 GB in the same instant
+                                 ; fails as one counted failure of its own stage.
 
 [plugins]
 generic     = on                 ; always on

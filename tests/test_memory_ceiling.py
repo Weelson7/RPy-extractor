@@ -149,15 +149,56 @@ class UnityMisfitTests(unittest.TestCase):
                     )  # fmt: skip
                     dump.add(obj, "MonoBehaviour")
                     expect_fields += script not in misfit
-                for script in misfit:  # a misfit layout is tried once, never again
-                    self.assertLessEqual(reads[script], 1)
+                for script in misfit:  # a misfit layout is confirmed by a second read, then left
+                    self.assertIn(reads[script], (0, 2))
                 self.assertEqual(dump.misfits, {(0, s) for s in misfit if reads[s]})
                 self.assertEqual(dump.no_layout.get("MonoBehaviour", 0), n - expect_fields)
                 self.assertEqual(rooms.count(None), sum(reads.values()))  # always restored
+                self.assertEqual(rooms[1::2], [None] * (len(rooms) // 2))  # and never nested
                 self.assertTrue(all(r in (None, objects.ROOM) for r in rooms))
                 summary, notes = dump.close()
                 self.assertIn(f"{n} object(s)", summary)  # every object is still listed
                 self.assertEqual(any("does not fit" in x for x in notes), bool(dump.misfits))
+
+    def test_two_jobs_never_tighten_at_once_and_a_neighbours_growth_costs_no_fields(self) -> None:
+        """The ceiling is the process's: reads of two dumps (two jobs of `viwo serve`) take
+        turns, and a read that failed for what another thread held is tried again."""
+        import threading
+        import time
+
+        rooms, lock, failed = [], threading.Lock(), []
+
+        def room(extra) -> None:
+            with lock:
+                rooms.append(extra)
+
+        def read(i: int):
+            time.sleep(0.001)
+            if i % 5 == 0 and i not in failed:  # once: a neighbour grew meanwhile
+                failed.append(i)
+                raise MemoryError()
+            return {"m_Name": "x"}
+
+        def job(base: int, tmp: str) -> None:
+            dump = objects.Dump(Path(tmp) / str(base), SimpleNamespace(memory_room=room))
+            for i in range(base, base + 40):
+                head = SimpleNamespace(m_Script=SimpleNamespace(m_FileID=0, m_PathID=i))
+                obj = SimpleNamespace(
+                    path_id=i, assets_file=SimpleNamespace(name="level0"),
+                    read_typetree=lambda i=i: read(i), parse_monobehaviour_head=lambda h=head: h,
+                )  # fmt: skip
+                dump.add(obj, "MonoBehaviour")
+            dumps.append(dump)
+            dump.close()
+
+        dumps: list = []
+        with tempfile.TemporaryDirectory() as tmp:
+            threads = [threading.Thread(target=job, args=(n * 100, tmp)) for n in range(4)]
+            [t.start() for t in threads]
+            [t.join() for t in threads]
+        self.assertEqual(rooms[0::2], [objects.ROOM] * (len(rooms) // 2))  # tighten, restore,
+        self.assertEqual(rooms[1::2], [None] * (len(rooms) // 2))  # never one inside another
+        self.assertEqual([(d.misfits, d.no_layout) for d in dumps], [(set(), {})] * 4)
 
 
 if __name__ == "__main__":

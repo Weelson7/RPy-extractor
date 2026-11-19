@@ -68,7 +68,7 @@ Literature Club: the menu background repacked into `images.rpa`), Unity (Baldi's
 Classic Remastered: a texture repacked into `sharedassets0.assets`), RPG Maker MV (a test
 game: the title image as a loose override), KiriKiri (1.22.1, 2026-11-19, a test game: the
 title background from `patch.xp3`; an image its scripts name with its folder, its logo, is
-out of a patch's reach, doc 18.4), Unreal (1.22.2, a UE5 test game: the project title in
+out of a patch's reach, doc 18.4), Unreal (1.22.1, a UE5 test game: the project title in
 `DefaultGame.ini` from ViWo's `_P.pak`; the mark is the window's title, which the tool prints,
 the game running full screen behind it). Open on the other engines.
 

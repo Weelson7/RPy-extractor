@@ -4,6 +4,12 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.22.4 (2026-11-19)
+- Unity under `viwo serve`: the ceiling tightened around a doubtful read is the whole
+  process's, so two jobs could lift each other's and a script could lose its fields for what
+  another job held. Such reads now run one at a time, and a failed one is read a second time
+  before its script is given up (doc 9.2).
+
 ## 1.22.3 (2026-11-19)
 - The game loads the change on Unreal too: a UE5 test game starts with the window title set
   in its `DefaultGame.ini`, loaded from ViWo's `_P.pak` (`sqc/proof/unreal-voids-cave.jpg`).
