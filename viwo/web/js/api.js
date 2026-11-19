@@ -122,6 +122,8 @@ export const api = {
   runtime: (kind, body) => v1("POST", `/api/runtime/${kind}`, body),
   attachTargets: (gamePath) => v1("GET", `/api/runtime/attach?gamePath=${encodeURIComponent(gamePath)}`),
   attach: (body) => v1("POST", "/api/runtime/attach", body),
+  isolationTiers: () => v1("GET", "/api/runtime/isolation"),
+  isolate: (body) => v1("POST", "/api/runtime/isolation", body),
   patch: (body) => v1("POST", "/api/patch", body),
   mod: (body) => v1("POST", "/api/mod", body),
 };

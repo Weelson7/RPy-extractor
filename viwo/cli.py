@@ -6,7 +6,7 @@ import json
 import os
 import sys
 
-from viwo import cli_args, cli_arms, cli_format
+from viwo import cli_args, cli_arms, cli_format, cli_isolate
 from viwo.cli_boot import boot_for_cli, boot_from, global_flags
 from viwo.cli_check import slots_check, unpack_forced
 from viwo.cli_extra import (
@@ -54,6 +54,7 @@ def _parser(rt=None) -> argparse.ArgumentParser:
     sv.add_argument("--host", help="override [server] host")
     sv.add_argument("--port", type=int, help="override [server] port")
     sv.add_argument("--no-browser", action="store_true", help="do not open the browser")
+    cli_isolate.isolate_command(command)  # the patching arm's T4 session command (doc 11.8)
     if rt is not None:
         add_plugin_commands(sub, common, rt)
     cli_arms.group_commands(ap, sub)

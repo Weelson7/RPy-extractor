@@ -1,15 +1,17 @@
-"""Pluggable patcher / isolation arm (doc 11.8), Tier 1. One slot family, `isolation.<tier>`:
-VirtualBox (T1, orchestrated here through VBoxManage), QEMU (T2) and DRAKVUF/LibVMI (T3) declared
-and reporting their requirement through wall(). The atomic live edit (suspend -> write -> verify
--> resume) lives here so every backend's session shares it. Nothing auto-runs: a session starts
-only when a caller asks for it (the CLI / API surface is open work, doc 11.8)."""
+"""Pluggable patcher / isolation arm (doc 11.8). One slot family, `isolation.<tier>`: VirtualBox
+(T1, VBoxManage, in-guest debugger byte edits), QEMU (T2, out-of-guest over its gdbstub and QMP)
+and DRAKVUF/LibVMI (T3, bare-metal Linux VMI; not-ready elsewhere). The atomic live edit (suspend
+-> write -> verify -> resume) lives here so every backend's session shares it, and the cold+live
+bridge (live.py) turns one located patch into either a cold byte write or a live one. A session
+starts only when a caller asks for it (`viwo isolate`, `/api/runtime/isolation`)."""
 
 from viwo.contracts.patcher import PatchSession, Wall, WallReport
 from viwo.contracts.slots import SlotDefinition
 
+from .qemu import QemuPatcher
 from .scylla import ScyllaDump
-from .tiers import QemuPatcher, VmiPatcher
 from .vbox import VirtualBoxPatcher
+from .vmi import VmiPatcher
 
 __all__ = ["SLOTS", "ScyllaDump", "atomic_write", "backends", "tiers"]
 

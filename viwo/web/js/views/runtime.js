@@ -21,6 +21,7 @@ function mount(root) {
   el.progHost = h("div", {});
   el.result = h("div", {});
   el.attach = h("div", {}, h("p", { class: "dim" }, "LIST TARGETS names the game's executables x64dbg and Cheat Engine can take."));
+  el.tiers = h("div", {}, h("p", { class: "dim" }, "LIST TIERS shows the isolation boundaries (VirtualBox, QEMU, DRAKVUF/LibVMI) and whether each can run here."));
   el.buttons = [btn("RUN AGENT", () => run("agent"), "primary"), btn("DUMP MEMORY", () => run("dump"), ""),
     btn("TRACE CALLS", () => run("trace"), ""), btn("PROFILE CPU", () => run("profile"), ""), btn("RECORD SOUND", () => run("record"), ""),
     btn("RUN HOOK SCRIPT", () => run("hook"), "")];
@@ -46,7 +47,10 @@ function mount(root) {
         panel(`${code("runtime")}.E`, "DEBUGGER AND MEMORY", h("div", { class: "row" }, badge("THE GAME ITSELF", "warn"),
           howToBtn("x64dbg", "HOW TO: X64DBG"), howToBtn("cheatengine", "HOW TO: CHEAT ENGINE")),
           h("p", { class: "note" }, "x64dbg attaches to the running game (the pid above, else the process of the target's executable) or starts it: a patch made live lands in the real process. Cheat Engine opens a table that attaches as soon as the game runs."),
-          h("div", { class: "row" }, btn("LIST TARGETS", (e) => busy(e.currentTarget, listAttach), "")), el.attach)),
+          h("div", { class: "row" }, btn("LIST TARGETS", (e) => busy(e.currentTarget, listAttach), "")), el.attach),
+        panel(`${code("runtime")}.F`, "ISOLATION PATCHER", badge("COLD + LIVE", "warn"),
+          h("p", { class: "note" }, "Run the target behind an isolation boundary and patch it live: the same patch set you apply cold (PATCHES) is written into the running or guest process (suspend, write, verify, resume). A tier that cannot run here says exactly what it needs. Drive a session with the CLI: viwo isolate."),
+          h("div", { class: "row" }, btn("LIST TIERS", (e) => busy(e.currentTarget, listTiers), "")), el.tiers)),
       h("div", { class: "col" }, el.progHost, el.result)));
 }
 
@@ -76,6 +80,18 @@ async function attach(t, tool, confirm = false) {
     if (err.code === "needs_decision" && !confirm && /confirm/i.test(err.message || "") && await confirmBox(`${tool.label}: THE GAME ITSELF`, err.hint)) return attach(t, tool, true);
     toastErr(err, `${tool.label} failed: `);
   }
+}
+
+async function listTiers() {
+  try {
+    const res = await api.isolationTiers();
+    fill(el.tiers, table([{ key: "tier", label: "TIER" }, { key: "ready", label: "READY" }, { key: "need", label: "REQUIREMENT / WALL" }],
+      res.tiers.map((t) => ({
+        tier: h("span", { class: "mono" }, `T${t.tier} ${t.backend}`),
+        ready: badge(t.ready ? "READY" : "NOT READY", t.ready ? "ok" : "warn"),
+        need: h("span", { class: "note" }, t.ready ? "—" : (t.detail || t.requirement)),
+      })), { caption: "Isolation tiers" }));
+  } catch (err) { fill(el.tiers, errorBox(err, "LISTING FAILED")); }
 }
 
 function body(kind) {

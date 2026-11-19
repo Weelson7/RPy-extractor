@@ -12,8 +12,10 @@ them from the tables below (`tools/presentation/reference.py`, `conformance()`).
 
 **Partial**, by cause: no pinned QuickBMS script in the indexes (16.0b); coverage per file (17.5).
 
-**Open:** the patcher / isolation CLI/API surface and real in-VM proof (11.8 T4: contract,
-Scylla and the VirtualBox backend are built and unit-tested, QEMU/VMI declared); the completeness
+**Open:** real in-VM proof of the patcher / isolation arm (11.8 T4: the contract, Scylla, all
+three tiers — VirtualBox, QEMU out-of-guest over its gdbstub+QMP, DRAKVUF/LibVMI — the cold+live
+bridge and the `viwo isolate` / `/api/runtime/isolation` session are built and unit-tested on
+fakes and in-process loopback stubs, but no VM, QEMU or VMI host has run here); the completeness
 contract per engine (16.0c); rung D4 (`hook.overlay`); the way back
 of premultiplied, signed and typeless block formats (DXT2/DXT4, signed BC4/BC5, typeless BC6H)
 and of ETC, ASTC, PVRTC and Basis Godot textures (no decoder either); Unreal asset export and
@@ -327,8 +329,9 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 11.8 patcher / isolation contract (`start`, `read/write_mem`, `suspend/resume`, `snapshot/rollback`, `dump`, `wall()`); atomic suspend-write-verify-resume | implemented | `contracts/patcher.py`, `core/isolation/__init__.py` `atomic_write`, `tiers`; `tests/test_isolation.py` |
 | 11.8 Scylla dump-to-patch (`attach.dump` / `scylla-gui`), launch-and-guide handoff; pinned | implemented | `core/isolation/scylla.py`; `data/tools.json` (Scylla 0.9.8, GPL-3.0); rides `viwo attach` (`tests/test_isolation.py`). GUI-only, never automated; no process has been dumped here |
 | 11.8 T1 VirtualBox backend (vTPM 2.0, snapshots, pause/resume, dumpvmcore via VBoxManage) | partial | `core/isolation/vbox.py`: orchestration unit-tested with a fake VBoxManage (`tests/test_isolation.py`). VirtualBox is located, not installed (kernel driver, elevation); `write_mem` is a `not_ready` wall (the in-guest debugger does the byte edit); no real VM has run |
-| 11.8 T2 QEMU, T3 DRAKVUF/LibVMI | open | `core/isolation/tiers.py`: declared `PatcherBackend`s that announce their requirement and refuse through `wall()` (`ready`/`start`); not implemented. QEMU located (WHPX/TCG); VMI needs a bare-metal Linux KVM/Xen host |
-| 11.8 patcher / isolation CLI and API surface | open | the backends and contract exist; no `viwo` command or `/api` route drives a session yet (HANDOFF) |
+| 11.8 T2 QEMU (out-of-guest over the gdbstub + QMP, WHPX/TCG) | implemented (tests-only) | `core/isolation/qemu.py` with the first-party GDB-remote-serial client `gdb.py` (read/write_mem, suspend/resume) and `qmp.py` (savevm/loadvm snapshots, dump-guest-memory); `tests/test_isolation_tiers.py` drives the real protocol against an in-process loopback gdbstub and QMP, plus a fake `qemu-system-x86_64` for WHPX-else-TCG. **No real VM has run here** |
+| 11.8 T3 DRAKVUF/LibVMI (bare-metal Linux VMI) | implemented (tests-only) | `core/isolation/vmi.py`: `vmi-dump-memory` read/dump, `virsh`/`xl` pause-resume, `write_mem` a `not_ready` wall (no stock LibVMI write CLI); not-ready off a Linux KVM/Xen host (Windows, WSL2). `tests/test_isolation_bridge.py` tests the command construction and the not-ready path with fakes. **No VMI host has run here** |
+| 11.8 cold+live bridge and CLI/API session | implemented (tests-only) | `core/isolation/live.py` (`located_va`/`write_located`/`apply_live`: one located patch written cold or at its virtual address live), `viwo isolate` (`cli_isolate.py`), `GET`/`POST /api/runtime/isolation` (`api/handlers_isolation.py`), RUNTIME ISOLATION PATCHER; `tests/test_isolation_bridge.py`. **No VM has been patched live here** |
 
 ## 12 Core, jobs, CLI
 

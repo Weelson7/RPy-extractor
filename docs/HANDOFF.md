@@ -118,13 +118,17 @@ left, by cause:
 - The memory ceiling, the child cap and `memory_room` have a Linux side still only unit-tested.
 
 **Open in the code**
-- Patcher / isolation (doc 11.8, rung T4): the contract (`viwo/contracts/patcher.py`), the
-  `core/isolation/` arm (VirtualBox T1 through `VBoxManage`, Scylla dump-to-patch as `attach.dump`,
-  QEMU T2 and DRAKVUF/LibVMI T3 declared and reporting not-ready through `wall()`) and
-  `tests/test_isolation.py` (a fake VBoxManage) are in. Open: a `viwo` command and an `/api` route
-  that drive a session; the in-guest debugger bridge for host-side `read/write_mem` (now a
-  `not_ready` wall); and **real in-VM proof** — no VM has run here, VirtualBox and QEMU are
-  located-only (a person installs them; needs a machine). Tiers 2/3 are unimplemented.
+- Patcher / isolation (doc 11.8, rung T4) is **built across all three tiers**: the contract
+  (`viwo/contracts/patcher.py`), VirtualBox T1 (`vbox.py`, `VBoxManage`), QEMU T2 out of the guest
+  over its gdbstub + QMP (`qemu.py` with the first-party GDB-remote-serial client `gdb.py` and
+  `qmp.py`), DRAKVUF/LibVMI T3 (`vmi.py`: `vmi-dump-memory`, `virsh`/`xl`, not-ready off a Linux
+  VMI host), Scylla dump-to-patch (`attach.dump`), the cold+live bridge (`live.py`: one located
+  patch written cold or live) and the session surface (`viwo isolate`, `/api/runtime/isolation`,
+  RUNTIME). Tested on fakes and in-process loopback gdbstub/QMP stubs (`tests/test_isolation.py`,
+  `test_isolation_tiers.py`, `test_isolation_bridge.py`). **Still open, and the only open piece:
+  real in-VM proof** — no VM, QEMU or VMI host has run here; VirtualBox and QEMU are located-only
+  (a person installs them and runs `viwo isolate` against a real guest; needs a machine). T3 also
+  needs a bare-metal Linux KVM/Xen host, and a LibVMI/DRAKVUF write helper for a live `write_mem`.
 - Desktop-app frameworks (doc 13.8): the Qt embedded-resource carve recovers textual resources
   by content, not the resource tree's names (a stripped binary keeps none) — reconstructing the
   `qt_resource_struct`/`qt_resource_name` tables from a binary would give real paths. A .NET

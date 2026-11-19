@@ -9,7 +9,7 @@ ARMS = {
         "the game is running",
         ("capture", "dump", "trace", "hook", "profile", "agent", "record", "attach"),
     ),
-    "patching": ("you change its content", ("repack", "patch", "mod")),
+    "patching": ("you change its content", ("repack", "patch", "mod", "isolate")),
     "system": ("tools, config, the web UI", SYSTEM),
 }
 VALUED = {"--ini", "--os", "--profile", "--features", "--plugin", "--slot"}

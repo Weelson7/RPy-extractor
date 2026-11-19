@@ -151,14 +151,15 @@ Open: `hook.overlay`. Checked on 2026-11-10, neither candidate can be wired with
   be started as the game's wrapper, unpinned; not built, and not verifiable on Windows.
 - ReShade ships only as an installer.
 
-## 11.8 Patcher / isolation (Tier 1 foundation)
+## 11.8 Patcher / isolation
 
 Cold and live patching (doc 16.2b T1-T3, 18.8) work even when the target defends itself
 (self-checksums, anti-debug) or holds fragile state, and TPM-gated local logic can be met with a
 virtual TPM, by running the target behind an isolation boundary and driving the edit there. The
-boundary is a pinned third-party VM, emulator or VMI tool run as a separate process; ViWo authors
-no hypervisor, driver or evasion code (CLAUDE.md). The pieces are in place; the CLI/API surface
-and real in-VM proof are open work.
+boundary is a pinned or located third-party VM, emulator or VMI tool run as a separate process;
+ViWo authors no hypervisor, driver or evasion code (CLAUDE.md). The three tiers, the cold+live
+bridge and the CLI/API surface are built; **real in-VM proof is the one open piece** (no VM, QEMU
+or VMI host has run here: VirtualBox and QEMU are located-only and a person installs them).
 
 **Contract** (`viwo/contracts/patcher.py`, a thin contract): a `PatcherBackend` in an
 `isolation.<tier>` slot has `ready(os)` (can it run here?) and `start(target, ctx, *,
@@ -184,8 +185,13 @@ Pinned in `tools.json` (the `.rar` release, 1,009,540 bytes, sha256
 | Tier | Slot / backend | Tool (licence) | What it does | State |
 |------|----------------|----------------|--------------|-------|
 | T1 | `isolation.vbox` / `vbox` | VirtualBox 7.x `VBoxManage` (base package, GPL-3.0; NOT the Extension Pack) | registers a VM with a **virtual TPM 2.0** (EFI), boots the target, takes/restores **snapshots** for iterative patch retries, pauses/resumes it, and `debugvm dumpvmcore` to a patchable file; the in-guest debugger does the byte-level read/write (VBoxManage has no host-side poke, so `write_mem` is a `not_ready` wall that says so) | orchestration built and unit-tested with a fake `VBoxManage`; no real VM has run here |
-| T2 | `isolation.qemu` / `qemu` | QEMU `qemu-system-x86_64` (GPL-2.0) | out-of-guest patching through QEMU's gdbstub, WHPX acceleration when present else TCG | **declared**: `ready()`/`wall()` announce the requirement; `start()` refuses (not implemented) |
-| T3 | `isolation.vmi` / `libvmi` | DRAKVUF / LibVMI (GPL-3.0) | watch and patch from outside the guest | **declared**: needs a bare-metal Linux KVM/Xen host; `wall()` says so on Windows |
+| T2 | `isolation.qemu` / `qemu` | QEMU `qemu-system-x86_64` (GPL-2.0) | boots the target with its **gdbstub** (`-gdb tcp::PORT -S`) and a **QMP** control channel, and patches it **out of the guest**: `read_mem`/`write_mem`, `suspend`/`resume` over the GDB remote serial protocol (a first-party stdlib client, `gdb.py` — no gdb binary is located; the client speaks QEMU's own gdbstub), and `snapshot`/`rollback` (savevm/loadvm) and `dump` (dump-guest-memory) over QMP (`qmp.py`). **WHPX** acceleration is used when QEMU reports it, else **TCG**, and which one is said | orchestration built and unit-tested with a fake `qemu-system-x86_64`, an in-process loopback gdbstub and a loopback QMP; no real VM has run here |
+| T3 | `isolation.vmi` / `libvmi` | DRAKVUF / LibVMI (GPL-3.0) | on a bare-metal Linux KVM/Xen host, reads/dumps guest memory with `vmi-dump-memory` and pauses/resumes the domain with `virsh suspend`/`resume` (KVM) or `xl pause`/`xl unpause` (Xen); LibVMI ships no stock memory-write CLI, so `write_mem` is a `not_ready` wall saying a write helper is needed. On Windows and WSL2 there is no such host: `ready()`/`start()`/`wall()` report not-ready with the requirement | command construction and the not-ready path unit-tested with fakes; no VMI host has run here |
+
+The GDB remote serial client is first-party on purpose: it is a wire-protocol speaker (packets
+`$…#cc`, `m`/`M` read/write, `\x03` interrupt, `c` continue), not hypervisor, driver or evasion
+code (CLAUDE.md), and it keeps the dependency to QEMU alone — no gdb binary need be located on
+Windows, where none is authoritative.
 
 VirtualBox and QEMU are **unmanaged / located-only** (doc 10, 16.3): ViWo does not install them. A
 hypervisor needs a kernel driver and a one-time elevation, which the minimal-prompts and
@@ -193,3 +199,19 @@ third_party-only rules forbid, so the backend locates the user's own install (th
 `qemu` dependencies). The exact VirtualBox base-package build the T1 backend targets is recorded
 for provenance (doc 10): `VirtualBox-7.2.22-175245-Win.exe`, 178,101,352 bytes, sha256
 `afd0ff1656cbe04ed88ce619594ae021419d97cce89fa9bdc443e9a963f1713f`.
+
+**The cold+live bridge** (`core/isolation/live.py`). One patch recipe applies either way. A patch
+set locates an edit in a PE as a **file offset** (`core/patchsets.py`, `core/patch_tools.py`
+`address_of`); cold it is written into the patched copy (existing `patchsets.write`), live it is
+written at the **virtual address** the same offset loads to, under the atomic suspend → write →
+verify → resume. `located_va(data, offset, base)` turns the offset into that address (the PE's
+preferred image base, or `base` when ASLR moved the module); `write_located` applies one edit and
+`apply_live` applies a whole set. So the same recipe — or its AOB signature — drives both arms.
+
+**CLI / API** (doc 12.4). `viwo isolate` with no executable lists the tiers and whether each can
+run here; `viwo isolate EXE --tier vbox|qemu|libvmi [--image I] [--pid N] [--patchset P.patch.json]
+[--base ADDR] [--snapshot] --workspace W` starts the target under a tier (the first ready one by
+default), applies the patch set live and closes. `GET /api/runtime/isolation` → `{tiers, enabled}`;
+`POST /api/runtime/isolation {exePath, tier?, image?, pid?, patchSet?, base?, snapshot?}` drives one
+session. A tier that cannot run here answers `unavailable` with exactly what it needs (never
+silent). RUNTIME shows the tiers and their readiness (ISOLATION PATCHER, LIST TIERS).

@@ -4,6 +4,29 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.32.0 (2026-11-19)
+- The patcher / isolation arm is finished across all three tiers (doc 11.8, rung T4); ViWo
+  authors no hypervisor, driver or evasion code — it orchestrates located third-party tools.
+  - **QEMU (Tier 2)** runs the target out of the guest. The backend boots the user's own
+    `qemu-system-x86_64` with its gdbstub (`-gdb tcp::PORT -S`) and a QMP control channel, uses
+    **WHPX** acceleration when QEMU reports it else **TCG** (and says which), and reads/writes
+    guest memory and suspends/resumes over the **GDB remote serial protocol** through a small
+    first-party stdlib client (`gdb.py` — it speaks QEMU's own gdbstub, so no gdb binary is
+    located); snapshots (savevm/loadvm) and a guest-memory dump go through QMP (`qmp.py`).
+  - **DRAKVUF / LibVMI (Tier 3)** orchestrates a bare-metal Linux KVM/Xen host: it reads/dumps
+    guest memory with `vmi-dump-memory` and pauses/resumes the domain with `virsh` (KVM) or `xl`
+    (Xen). LibVMI ships no stock memory-write CLI, so a live `write_mem` is a `not_ready` wall
+    that says a write helper is needed. On Windows and WSL2 the tier reports not-ready with the
+    exact requirement, never silently.
+  - **The cold+live bridge** (`live.py`): one patch recipe applies either way. The same located
+    file offset the cold writer uses is turned into the virtual address it loads to (the PE's
+    image base, or a given base when ASLR moved the module) and written into the live target
+    under the atomic suspend -> write -> verify -> resume.
+  - **`viwo isolate`** and **`GET`/`POST /api/runtime/isolation`** drive a session (list the
+    tiers, start a target under one, patch it live, close); RUNTIME shows the tiers' readiness.
+  - Unit-tested on fakes and in-process loopback gdbstub/QMP stubs. **Not yet proven on a real
+    VM, QEMU or VMI host** (located-only tools; a person installs them and runs it on a machine).
+
 ## 1.31.3 (2026-11-19)
 - Chromium `.pak` is identified by its DataPack header (version 4 or 5), not the `.pak` extension
   alone — `.pak` is also Unreal's and Quake's, so a non-Chromium `.pak` is no longer mis-claimed

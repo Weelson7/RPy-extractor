@@ -22,6 +22,7 @@ from viwo.core.wiring.registry import cli_commands
 
 from .cli_dynamic import attach, capture, runtime
 from .cli_guides import runbook, workbook
+from .cli_isolate import isolate
 from .cli_patch import mod, patch
 
 
@@ -150,7 +151,7 @@ def _analyze(rt, args) -> Envelope:
 def workspace_command(rt, args) -> Envelope:
     """One of the TOOLS commands (below)."""
     handler = TOOLS[args.command]
-    if handler in (runtime, patch, mod):  # long runs: progress lines on stderr
+    if handler in (runtime, patch, mod, isolate):  # long runs: progress lines on stderr
         return handler(rt, args, event_printer(args))
     return handler(rt, args)
 
@@ -274,6 +275,7 @@ TOOLS = {  # the tool commands (the dynamic and patching arms, survey, analyze, 
     "diff": _diff,
     "patch": patch,
     "mod": mod,
+    "isolate": isolate,
     "config": lambda _rt, a: _config(a),
     "install": _install,
     "diag": _system,
