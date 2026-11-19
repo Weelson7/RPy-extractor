@@ -4,6 +4,11 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.23.2 (2026-11-19)
+- SLP way back: paint outside a sprite's frames (the sheet's cells are as large as the
+  largest frame) cannot be kept; it was dropped without a word and is now counted in the
+  result, which also says that colours go through the game's palette.
+
 ## 1.23.1 (2026-11-19)
 - The SLP way back read back on real files: an icon sheet of Age of Empires II HD, marked,
   re-encoded into `interfac.drs` and the game's loose copy of it, decodes again with the mark

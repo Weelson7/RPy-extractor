@@ -83,8 +83,9 @@ def _row(row: list) -> tuple[int, int, bytes]:
     return left, right, body + b"\x0f"
 
 
-def _frames(png: bytes, original: bytes) -> list[tuple[bytes, list]]:
-    """(the original's 32-byte frame record, rows of pixels) per frame, cut from the sheet."""
+def _frames(png: bytes, original: bytes) -> tuple[list[tuple[bytes, list]], int]:
+    """(the original's 32-byte frame record, rows of pixels) per frame, cut from the sheet,
+    and how many painted pixels lie outside every frame (a frame keeps its size)."""
     from PIL import Image
 
     count = struct.unpack_from("<i", original, 4)[0]
@@ -99,18 +100,20 @@ def _frames(png: bytes, original: bytes) -> list[tuple[bytes, list]]:
         image = opened.convert("RGBA")
     if image.size != want:
         raise ValueError(f"the sheet is {image.size[0]}x{image.size[1]}, the SLP needs {want}")
-    pixels = image.load()
-    out = []
+    pixels, out, kept = image.load(), [], 0
+    alpha = image.getchannel("A").point(lambda a: 255 if a >= 128 else 0)
     for i, (w, h) in enumerate(sizes):
         x0, y0 = (i % cols) * cell_w, (i // cols) * cell_h
         out.append((records[i], [[pixels[x0 + x, y0 + y] for x in range(w)] for y in range(h)]))
-    return out
+        kept += alpha.crop((x0, y0, x0 + w, y0 + h)).histogram()[255]
+    return out, alpha.histogram()[255] - kept
 
 
-def write_slp(png: bytes, original: bytes, colors: list) -> bytes:
+def write_slp(png: bytes, original: bytes, colors: list) -> tuple[bytes, int]:
+    """(the SLP, the painted pixels outside every frame, which no frame can hold)."""
     if not original[:4].startswith(b"2."):
         raise ValueError(f"not an SLP 2.x file ({original[:4]!r})")
-    pal, frames = _Palette(colors), _frames(png, original)
+    pal, (frames, outside) = _Palette(colors), _frames(png, original)
     records, body, base = b"", b"", 32 + 32 * len(frames)
     for record, rows in frames:
         coded = [_row([pal.pixel(p) for p in row]) for row in rows]
@@ -123,4 +126,4 @@ def write_slp(png: bytes, original: bytes, colors: list) -> bytes:
             stream += commands
         body += outline + struct.pack(f"<{len(coded)}I", *offsets) + stream
         records += struct.pack("<II", cmds_at, outline_at) + record[8:]
-    return original[:32] + records + body
+    return original[:32] + records + body, outside

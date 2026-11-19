@@ -146,11 +146,14 @@ class SlpDecoder(Decoder):
         from .slp_write import write_slp
 
         try:
-            data = write_slp(edited.read_bytes(), original.read_bytes(), _colors(original))
+            data, lost = write_slp(edited.read_bytes(), original.read_bytes(), _colors(original))
             out.write_bytes(data)
         except (ValueError, struct.error, OSError) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"{edited.name}: {exc}")
-        return Outcome(OutcomeKind.OK, 1)
+        notes = ("colours go through the game's palette (the nearest one where none is exact)",)
+        if lost:  # never silent: a frame keeps its size, the sheet's cells are larger
+            notes += (f"{edited.name}: {lost} painted pixel(s) outside the frames are not kept",)
+        return Outcome(OutcomeKind.OK, 1, notes=notes)
 
     def decode(self, path: Path, dest: Path, ctx) -> Outcome:
         try:

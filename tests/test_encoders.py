@@ -172,8 +172,12 @@ class SlpBackTests(unittest.TestCase):
             sizes = [(rng.randint(1, 30), rng.randint(1, 10)) for _ in range(rng.randint(1, 20))]
             original, _ = random_slp(rng, sizes)
             edit = random_sheet(rng, sizes)
-            blob = write_slp(png_of(edit), original, COLORS)
+            blob, outside = write_slp(png_of(edit), original, COLORS)
+            self.assertEqual(outside, 0)
             self.assertEqual(sheet(frames(blob, COLORS)).tobytes(), edit.tobytes())
+            full = Image.new("RGBA", edit.size, COLORS[40])  # paint over the cells' padding
+            lost = edit.width * edit.height - sum(w * h for w, h in sizes)
+            self.assertEqual(write_slp(png_of(full), original, COLORS)[1], lost)  # counted
             self.assertEqual(blob[:32], original[:32])  # header and comment kept
             for i in range(len(sizes)):  # sizes, hotspots, palette and properties kept
                 self.assertEqual(
@@ -186,14 +190,14 @@ class SlpBackTests(unittest.TestCase):
             sizes = [(rng.randint(1, 70), rng.randint(1, 6)) for _ in range(rng.randint(1, 4))]
             original, _ = random_slp(rng, sizes)
             shown = sheet(frames(original, COLORS))
-            again = write_slp(png_of(shown), original, COLORS)
+            again, _ = write_slp(png_of(shown), original, COLORS)
             self.assertEqual(sheet(frames(again, COLORS)).tobytes(), shown.tobytes())
 
     def test_a_player_colour_stays_one_and_a_wrong_sheet_is_named(self) -> None:
         rng = random.Random(53)
         original, _ = random_slp(rng, [(3, 1)])
         edit = sheet([(3, 1, [[COLORS[PLAYER + 2], (1, 2, 3, 255), None]])])
-        blob = write_slp(png_of(edit), original, COLORS)
+        blob, _ = write_slp(png_of(edit), original, COLORS)
         self.assertIn(bytes([0x16, 2]), blob)  # one player colour (count 1, colour 2)
         near = min(COLORS, key=lambda c: sum((a - b) ** 2 for a, b in zip(c, (1, 2, 3))))
         self.assertEqual(frames(blob, COLORS)[0][2][0][1], near)  # not in the palette: nearest
