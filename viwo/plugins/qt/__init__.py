@@ -10,6 +10,7 @@ its connection limit, however, is enforced in native code (the setting key
 not a resource edit."""
 
 import json
+import struct
 from pathlib import Path
 
 from viwo.contracts import workspace as ws
@@ -38,7 +39,7 @@ class RccBuiltin(Unarchiver):
     def extract(self, archive: Path, dest: Path, ctx) -> Outcome:
         try:
             entries = rcc.extract(archive.read_bytes())
-        except (OSError, ValueError) as exc:
+        except (OSError, ValueError, struct.error) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"bad rcc: {exc}")
         names, written, skipped = ws.Names(dest), 0, 0
         for path, content, note in entries:
@@ -63,7 +64,7 @@ class QmDecoder(Decoder):
     def decode(self, path: Path, dest: Path, ctx) -> Outcome:
         try:
             (dest / f"{path.stem}.qm.json").write_bytes(qm.to_json(path.read_bytes()))
-        except (OSError, ValueError) as exc:
+        except (OSError, ValueError, struct.error) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"{path.name}: {exc}")
         return Outcome(OutcomeKind.OK, 1)
 

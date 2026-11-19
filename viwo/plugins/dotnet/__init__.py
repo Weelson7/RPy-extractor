@@ -6,6 +6,7 @@ A2): this plugin proposes each managed assembly as a `dotnet_assembly` analysis 
 not re-author a decompiler. Linked (non-embedded) resources and IL2CPP games are named, not
 rebuilt here."""
 
+import struct
 from pathlib import Path
 
 from viwo.contracts import workspace as ws
@@ -48,7 +49,7 @@ class DotnetResources(Unarchiver):
         try:
             raw = archive.read_bytes()
             listed = resources.listed(raw)
-        except (OSError, ValueError, IndexError) as exc:
+        except (OSError, ValueError, IndexError, struct.error) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"bad .NET assembly: {exc}")
         names, written, linked = ws.Names(dest), 0, 0
         for name, offset, length, embedded in listed:

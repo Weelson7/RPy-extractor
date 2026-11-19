@@ -4,6 +4,11 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.32.1 (2026-11-19)
+- The Qt, frozen-Python and .NET readers no longer crash on a malformed file: a short or fuzzed
+  header raised `struct.error` out of their extract path instead of a named failure. They now
+  catch it like the other hostile-input readers (fixes `test_untrusted_input`).
+
 ## 1.32.0 (2026-11-19)
 - The patcher / isolation arm is finished across all three tiers (doc 11.8, rung T4); ViWo
   authors no hypervisor, driver or evasion code — it orchestrates located third-party tools.

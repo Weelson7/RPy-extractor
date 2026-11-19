@@ -57,7 +57,7 @@ class PyiBuiltin(Unarchiver):
             start, toc_abs, toc_len, _ = c.find_archive(raw)
             entries = c.toc(raw, toc_abs, toc_len)
             magic = c.pyz_magic(raw, start, entries) or importlib.util.MAGIC_NUMBER
-        except (OSError, ValueError) as exc:
+        except (OSError, ValueError, struct.error) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"bad PyInstaller exe: {exc}")
         names, written, bad = ws.Names(dest), 0, 0
         for entry in entries:
