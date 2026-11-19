@@ -115,6 +115,7 @@ class FfmpegImage(DdsWayBack, FfmpegDecode):
 
 class FfmpegVideo(FfmpegDecode):
     backend_id, suffix, one_way = "ffmpeg-video", ".mp4", ONE_WAY_VIDEO
+    lossless = False  # H.264 by ffmpeg's defaults: a re-encode
 
 
 class FfprobeProbe(Prober):

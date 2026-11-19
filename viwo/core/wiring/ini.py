@@ -6,8 +6,9 @@ from pathlib import Path
 
 from viwo import CONTRACT_VERSION
 from viwo.contracts.errors import ViwoError
+from viwo.core.hooks import KINDS, TIMEOUT, valid_key
 
-KNOWN_SECTIONS = {"startup", "plugins", "slots", "slot_policy", "tools", "server"}
+KNOWN_SECTIONS = {"startup", "plugins", "slots", "slot_policy", "tools", "server", "hooks"}
 POLICIES = ("failover", "main_only", "supplement")  # doc 8.2
 FORM_KEYS = ("os", "profile", "features", "auto_install", "strict_preflight", "av_exclusions")
 STARTUP_KEYS = {*FORM_KEYS, "base", "contract", "memory_limit"}
@@ -31,6 +32,8 @@ class StartupConfig:
     policies: dict[str, str] = field(default_factory=dict)  # [slot_policy] slot -> POLICIES
     tools: dict[str, str] = field(default_factory=dict)
     options: dict[str, dict[str, str]] = field(default_factory=dict)
+    hooks: dict[str, str] = field(default_factory=dict)  # [hooks] before_<kind> -> command
+    hook_timeout: float = TIMEOUT  # [hooks] timeout, seconds; 0 = no limit
     source: str = "defaults"
     path: Path | None = None  # the ini file itself (None = built-in defaults)
     contract: str = CONTRACT_VERSION
@@ -113,6 +116,23 @@ def _read_policies(cfg: configparser.ConfigParser, out: StartupConfig) -> None:
         else:
             known = ", ".join(POLICIES)
             out.problems.append(f"[slot_policy] {slot} = {value}: {known}; failover used")
+
+
+def _read_hooks(cfg: configparser.ConfigParser, out: StartupConfig) -> None:
+    """[hooks] (doc 9.5): before_<kind> | after_<kind> | before_any | after_any = command,
+    timeout = seconds. A bad key or timeout is a problem, then ignored. Read raw: `%VAR%`
+    stays as written (cmd's variables), never ini interpolation."""
+    for key, value in cfg.items("hooks", raw=True) if cfg.has_section("hooks") else ():
+        if key == "timeout":
+            try:
+                out.hook_timeout = max(0.0, float(value))
+            except ValueError:
+                out.problems.append(f"[hooks] timeout = {value}: seconds; kept {TIMEOUT:g}")
+        elif valid_key(key):
+            out.hooks[key] = value.strip()
+        else:
+            kinds = "any, " + ", ".join(KINDS)
+            out.problems.append(f"[hooks] {key}: before_<kind> or after_<kind> ({kinds}); ignored")
 
 
 def _read_options(cfg: configparser.ConfigParser, out: StartupConfig) -> None:
@@ -198,6 +218,7 @@ def load_ini(path: Path | None) -> StartupConfig:
         _read_startup(cfg, out)
         _read_tables(cfg, out, path.parent)
         _read_policies(cfg, out)
+        _read_hooks(cfg, out)
         _read_options(cfg, out)
         _read_server(cfg, out, path.parent)
     except (configparser.Error, ValueError) as exc:

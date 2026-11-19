@@ -15,6 +15,7 @@ from viwo.contracts.pipeline import (
     MixedPolicy,
     OnExisting,
 )
+from viwo.core.hooks import Hooks
 from viwo.core.jobs import JobRunner
 from viwo.core.pipeline.runner import extract
 from viwo.core.wiring.boot import Runtime, boot
@@ -26,7 +27,7 @@ class App:
     def __init__(self, rt: Runtime, ini: Path | None = None) -> None:
         self.rt, self.ini = rt, ini
         self.server = server = rt.config.server
-        self.jobs = JobRunner()
+        self.jobs = JobRunner(hooks=Hooks.of(rt))  # [hooks] around every job (doc 9.5)
         self.workspace = server.workspace
         self.history: list[dict] = []
         self.recording: Any = None  # the workflow being recorded (api/recording.py, doc 19.3)
@@ -40,6 +41,7 @@ class App:
     def reload(self) -> None:
         """Boot again (after installing a tool) so new tools bind; jobs and workspace stay."""
         self.rt = boot(self.ini)
+        self.jobs.hooks = Hooks.of(self.rt)
 
     def log(self, line: str) -> None:
         stamped = f"[{time.strftime('%H:%M:%S')}] {line}"
@@ -105,6 +107,7 @@ class App:
             "extract",
             lambda jid, s, c: extract(self.rt, request, jid, s, c, self.server.workspace),
             background=False,
+            where={"workspace": self.workspace, "game": request.game_path},
         )
         if job.error:
             asks = job.error["code"] == "needs_decision"
@@ -120,11 +123,11 @@ class App:
             "jobId": job.job_id,
         }
 
-    def job(self, kind: str, run: Callable[..., dict]) -> dict:
+    def job(self, kind: str, run: Callable[..., dict], where: dict | None = None) -> dict:
         """run(job_id, sink, cancel) in the foreground as a visible job; the v1 answer shape:
-        the result plus jobId, or the failure dict."""
+        the result plus jobId, or the failure dict. `where`: its workspace and game."""
         job = self.jobs.submit_with_listener(
-            lambda e: self.log(e.legacy_line()), kind, run, background=False
+            lambda e: self.log(e.legacy_line()), kind, run, background=False, where=where
         )
         if job.error:
             return {**failure(job.error), "jobId": job.job_id}
@@ -156,9 +159,11 @@ class App:
         except OSError as exc:  # a read-only, vanished or open file: said, not a 500
             return failure(ViwoError("failed", f"{exc.filename or target}: {in_use(exc)}"))
 
-    def locked_job(self, kind: str, folder: Path, fn: Callable[..., dict], writes: bool = True):
+    def locked_job(self, kind: str, folder: Path, fn: Callable[..., dict], writes=True, game=None):
         """fn(sink, cancel) runs as a job under the workspace lock."""
-        return self.locked(lambda: self.job(kind, lambda jid, s, c: fn(s, c)), folder, writes)
+        where = {"workspace": folder, "game": game}
+        run = lambda: self.job(kind, lambda jid, s, c: fn(s, c), where)  # noqa: E731
+        return self.locked(run, folder, writes)
 
 
 def in_use(exc: OSError) -> str:

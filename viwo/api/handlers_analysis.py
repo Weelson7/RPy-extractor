@@ -66,7 +66,7 @@ def run_analysis(app: App, d: dict) -> dict:
     def run(sink, cancel) -> dict:
         return {"success": True, **analyze(app.rt, req, sink, cancel)}
 
-    return app.locked_job("analyze", req.workspace, run)
+    return app.locked_job("analyze", req.workspace, run, game=req.game)
 
 
 def open_handoff(app: App, d: dict) -> dict:

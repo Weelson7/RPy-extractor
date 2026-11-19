@@ -26,6 +26,7 @@ class Job:
     created: float = field(default_factory=time.time)  # JobHandle (doc 12.3)
     started: float = 0.0  # when the function began running (0 while queued)
     finished: float = 0.0
+    where: dict = field(default_factory=dict)  # workspace, game: what the hooks are told
 
     def summary(self) -> dict:
         """JobHandle {id, kind, state, created, started, finished} plus counts (doc 12.3)."""
@@ -46,19 +47,37 @@ class Job:
 KEEP = 200  # finished jobs kept in memory
 
 
+def _reported(result) -> dict:
+    """The workspace a job ended in, when its result names one (an extraction into a new
+    folder): what the after hooks are told."""
+    found = result.get("workspace") if isinstance(result, dict) else None
+    found = found or getattr(result, "workspace", None)
+    return {"workspace": found} if isinstance(found, str) and found else {}
+
+
 class JobRunner:
-    def __init__(self, listener: ProgressSink | None = None) -> None:
+    """Runs jobs; `hooks` (core/hooks.py, `[hooks]` of doc 9.5) fire around every one."""
+
+    def __init__(self, listener: ProgressSink | None = None, hooks=None) -> None:
         self._jobs: dict[str, Job] = {}
         self._listener = listener
         self._lock = threading.Lock()  # request threads submit and list at the same time
+        self.hooks = hooks
 
-    def submit(self, kind: str, fn: JobFn, background: bool = True) -> Job:
-        return self.submit_with_listener(self._listener, kind, fn, background)
+    def submit(self, kind: str, fn: JobFn, background: bool = True, where=None) -> Job:
+        return self.submit_with_listener(self._listener, kind, fn, background, where)
 
     def submit_with_listener(
-        self, listener: ProgressSink | None, kind: str, fn: JobFn, background: bool = True
+        self,
+        listener: ProgressSink | None,
+        kind: str,
+        fn: JobFn,
+        background: bool = True,
+        where: dict | None = None,
     ) -> Job:
+        """`where`: the job's workspace and game, as far as they are known (the hooks')."""
         job = Job(f"{time.strftime('%Y%m%d-%H%M%S')}-{next(_IDS):04d}", kind)
+        job.where = {k: str(v) for k, v in (where or {}).items() if v}
         with self._lock:
             self._forget_old()
             self._jobs[job.job_id] = job
@@ -90,17 +109,26 @@ class JobRunner:
 
     def _run(self, job: Job, fn: JobFn, listener: ProgressSink | None = None) -> None:
         job.state, job.started = "running", time.time()
+        sink, hooks = self._sink(job, listener), self.hooks
         try:
-            job.result = fn(job.job_id, self._sink(job, listener), job.cancel)
+            if hooks is not None:
+                hooks.fire("before", job, sink, job.cancel)
+            job.result = fn(job.job_id, sink, job.cancel)
             job.state = "cancelled" if job.cancel.cancelled else "succeeded"
         except ViwoError as exc:
             job.state = "cancelled" if exc.code == "cancelled" else "failed"
             job.error = exc.to_dict()
+        except KeyboardInterrupt:  # Ctrl+C in the CLI: the after hooks still hear of it
+            job.state = "cancelled"
+            raise
         except Exception as exc:  # internal errors become a failed job, never a crash
             job.state = "failed"
             job.error = ViwoError("internal", f"{type(exc).__name__}: {exc}").to_dict()
         finally:
             job.finished = time.time()
+            if hooks is not None:
+                job.where |= _reported(job.result)
+                hooks.fire("after", job, sink)
             job.done.set()
 
     def get(self, job_id: str) -> Job:

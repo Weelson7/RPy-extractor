@@ -12,11 +12,10 @@ them from the tables below (`tools/presentation/reference.py`, `conformance()`).
 
 **Partial**, by cause: no pinned QuickBMS script in the indexes (16.0b); coverage per file (17.5).
 
-**Open:** the completeness contract per engine (16.0c); rung D4 (`hook.overlay`); sanitizer phases
-2-3; `[hooks]`; the way back of premultiplied, signed and typeless block formats (DXT2/DXT4,
-signed BC4/BC5, typeless BC6H) and of ETC, ASTC, PVRTC and Basis Godot textures (no decoder
-either); Unreal asset export and the engines of 13.7;
-declarative (Kaitai) plugins; the indexes repository split.
+**Open:** the completeness contract per engine (16.0c); rung D4 (`hook.overlay`); the way back
+of premultiplied, signed and typeless block formats (DXT2/DXT4, signed BC4/BC5, typeless BC6H)
+and of ETC, ASTC, PVRTC and Basis Godot textures (no decoder either); Unreal asset export and
+the engines of 13.7; declarative (Kaitai) plugins; the indexes repository split.
 
 ## Done, per engine and arm (owner)
 
@@ -128,6 +127,7 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 1.1 run: UTF-8, pump threads, never raises on exit code, tree kill on timeout/cancel | implemented | `os/_shared.py` `SubprocessRunner` |
 | 1.1 launch tracked children, killed at exit | implemented | `SubprocessRunner.launch`, `_reap_children` |
 | 1.1 max_command_length used by long command lines | implemented | merger build (`core/merger/build.py`) |
+| 1.1 shell_command: a user's command line through the host's shell | implemented | `contracts/os.py` (`/bin/sh -c`), `os/windows.py` (`cmd /d /s /c`, the line as written) |
 | 1.2 locator search order and known dirs | implemented | `os/_shared.py` `Locator`, `os/*.py` `_install_roots`; `core/wiring/boot.py` merges `[tools]` over `third_party/` |
 | 1.3 no installation in the OS layer | implemented | `core/thirdparty.py` |
 | 1.4 open folder, pickers | implemented | `os/_shared.py` `TkShell`, `os/*.py` shells (tkinter only) |
@@ -194,12 +194,13 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | Item | State | Where / missing |
 |------|-------|-----------------|
 | 5.1 phase 1 rules | implemented | `core/sanitizer_rules.py` |
-| 5.1 phase 2 (lossless conversions, `.sanitizer/cache/`, `replace`) | open | - |
-| 5.1 phase 3 (transcode presets, renumbering) | open | - |
+| 5.1 phase 2 (lossless open-format copies through the bound lossless `decode.*` slots, `.sanitizer/cache/`, `replace`, provenance for the way back, run-record gating of plugin slots) | implemented | `core/sanitizer_convert.py` `Convert`, `commit`; `Decoder.lossless` (`contracts/slots.py`); `tests/test_sanitizer_phases.py` (fake ffmpeg; no real decoder run through it yet) |
+| 5.1 phase 3 (lossy transcode presets through `media.encode`, marked and never in `all-safe`; renumbering) | implemented | `core/sanitizer_convert.py` `Transcode`, `core/sanitizer_rules.py` `Renumber`; `tests/test_sanitizer_phases.py`. The presets (libopus, libx264) have not run on the pinned ffmpeg: tests use a stand-in |
 | 5.1 plugin rule providers | implemented | the rule types in `contracts/sanitizer.py` (a plugin cannot import core), `collect_rules`; Ren'Py's `renpy.cache` (`plugins/renpy/__init__.py`); `tests/test_plugin_providers.py` |
 | 5.2 rule model, cost order, batch rule last | implemented | `contracts/sanitizer.py` (the types), `core/sanitizer_rules.py` |
 | 5.2 plan pages, stale plan refused, journal, undo, undoable cancel | implemented | `core/sanitizer.py` |
-| 5.3 routes and CLI | implemented | `api/handlers_tools.py`, `cli_extra.py` |
+| 5.2 files made journaled; undo removes them while unchanged, keeps and names an edited one | implemented | `core/sanitizer_journal.py`, `core/provenance.py` `add`/`forget` |
+| 5.3 routes and CLI (recipes with `unready`, `accept: all`, `--recipe`), CLEANUP's recipe picker with the LOSSY mark | implemented | `api/handlers_tools.py`, `cli_extra.py`, `cli_args.py`, `web/js/views/cleanup.js`, `web/js/views/cleanup-recipes.js` |
 
 ## 06 Static analysis (rungs A1-A4)
 
@@ -264,7 +265,7 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 9.3 boot sequence, exit codes 2/3/4 | implemented | `core/wiring/boot.py`, `cli.py`, `api/server.py` |
 | 9.4 validation, secrets refused, `viwo config check` | implemented | `core/wiring/ini.py`, `core/wiring/distros.py` |
 | 9.2 `[slot_policy]` (`failover`, `main_only`) | implemented | `core/wiring/ini.py` `_read_policies`; shown by `viwo slots` and `viwo info` |
-| 9.5 `[hooks]` lifecycle hooks | open | no design yet: the contract names no events, and the two clients share no lifecycle point (the API runs every action as a job, the CLI runs only `extract` and `replay` as one) |
+| 9.5 `[hooks]` lifecycle hooks: before/after each job, environment, output as events, warnings only, timeout | implemented | `core/hooks.py`, `core/jobs.py` `JobRunner._run`, `core/wiring/ini.py` `_read_hooks`, `api/app.py`, `cli.py` `_as_job`; `tests/test_job_hooks.py`. The CLI commands that are no job kind fire none (listed in 9.5) |
 | 9.1 `--plugin <id>=on\|off`, `--slot <slot>=<main>[,<spare>]` for one run | implemented | `cli_boot.py`, `core/wiring/boot.py`; `tests/test_cli_overrides.py` |
 | 9.6 `/api/distro`, SETTINGS writes and reloads | implemented | `api/routes.py`, `core/wiring/settings.py`, `api/app.py` `reload` |
 

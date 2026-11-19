@@ -116,13 +116,16 @@ class Decoder(Backend):
     `one_way` is the reason given for each edited file when it does not. `adds`: the file
     `member_back` names is a new loose file (game-relative) the engine reads beside the
     member, which stays (redscript sources beside `final.redscripts`); `back_note` is said in
-    the plan for each file that goes back this way (what the copy needs for it to work)."""
+    the plan for each file that goes back this way (what the copy needs for it to work).
+    `lossless`: what decode writes holds everything it read, nothing lost on top (the
+    sanitizer's open-format copies, doc 5.1 phase 2); False for one that re-encodes (video)."""
 
     families = frozenset({"decode"})
     encodes = False
     one_way = "this decoder has no way back yet"
     adds = False
     back_note = ""
+    lossless = True
 
     @abstractmethod
     def decode(self, path: Path, dest: Path, ctx: "ExtractionContext") -> Outcome:

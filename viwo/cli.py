@@ -26,6 +26,7 @@ from viwo.core.pipeline.runner import detect_all, extract
 from viwo.core.wiring.memory import guard
 
 EXIT = {"invalid_request": 2, "needs_decision": 2, "refused": 3, "cancelled": 130}
+DIAG = "run `viwo diag` and attach the bundle to a bug report"
 
 
 def _parser(rt=None) -> argparse.ArgumentParser:
@@ -92,7 +93,11 @@ def _run(args, rt=None) -> Envelope:
     if args.command in ("info", "slots", "detect"):
         return _query(rt, args)
     if args.command in TOOLS:
-        return workspace_command(rt, args)
+        kind = _job_kind(args)
+        if kind is None:  # not a job: no hooks (doc 9.5)
+            return workspace_command(rt, args)
+        where = {"workspace": _arg(args, "workspace", "out", "copy"), "game": _arg(args, "game")}
+        return _as_job(rt, args, kind, lambda jid, s, c: workspace_command(rt, args), where)
     sink = event_printer(args)
     if args.command == "unpack":
         from viwo.core.context import require
@@ -109,12 +114,46 @@ def _run(args, rt=None) -> Envelope:
         )
     else:
         request = cli_args.request(args)
-    job = JobRunner(sink).submit(
-        "extract", lambda jid, s, c: extract(rt, request, jid, s, c), background=False
-    )
+    where = {"workspace": request.workspace, "game": request.game_path}
+    result = _as_job(rt, args, "extract", lambda j, s, c: extract(rt, request, j, s, c), where)
+    return Envelope.success(result.to_legacy_dict(), list(result.warnings))
+
+
+JOB_COMMANDS = {"sanitize": "cleanup"} | dict.fromkeys(  # a command -> its job kind (doc 12.3)
+    "survey repack capture dump trace hook profile agent record analyze patch mod install "
+    "indexes".split()
+)
+
+
+def _job_kind(args) -> str | None:
+    """The job kind of a tool command, None for one that is no job (a plan, a check, a list:
+    the API answers those without a job too)."""
+    if args.command not in JOB_COMMANDS or getattr(args, "plan", False):
+        return None
+    if getattr(args, "list", False) or getattr(args, "action", "") == "check":
+        return None
+    return JOB_COMMANDS[args.command] or args.command
+
+
+def _arg(args, *names: str):
+    """The first of these arguments the command has and was given (survey's is `folder`)."""
+    names = ("game", "folder") if names == ("game",) else names
+    return next((v for n in names if (v := getattr(args, n, None))), None)
+
+
+def _as_job(rt, args, kind: str, work, where: dict):
+    """One command as a foreground job: the `[hooks]` of doc 9.5 fire around it and print
+    their lines like the job's own; the job's error is raised as the command's."""
+    from viwo.core.hooks import Hooks
+
+    runner = JobRunner(event_printer(args), Hooks.of(rt))
+    job = runner.submit(kind, work, background=False, where=where)
     if job.error:
-        raise ViwoError(**{k: job.error[k] for k in ("code", "message", "owner", "hint")})
-    return Envelope.success(job.result.to_legacy_dict(), list(job.result.warnings))
+        error = {k: job.error[k] for k in ("code", "message", "owner", "hint")}
+        if error["code"] == "internal" and not error["hint"]:
+            error["hint"] = DIAG  # a crash inside the job, as main says it for one outside
+        raise ViwoError(**error)
+    return job.result
 
 
 @contextlib.contextmanager
@@ -175,7 +214,7 @@ def main(argv: list[str] | None = None) -> int:
             ViwoError(
                 "internal",
                 f"{type(exc).__name__}: {exc}",
-                hint="run `viwo diag` and attach the bundle to a bug report",
+                hint=DIAG,
             )
         )
     if args.json:

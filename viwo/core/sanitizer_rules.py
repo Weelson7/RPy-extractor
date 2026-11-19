@@ -1,11 +1,12 @@
 """Sanitizer rule providers (doc 5.2): the core rules, and every rule in play collected.
 
 The object model core rules and plugin rules share (`SanitizerRule`, `BatchRule`,
-`RuleContext`) is in `viwo/contracts/sanitizer.py`, where plugins reach it; `fix` is
-report-only in phase 1 (phase 2 writes into `.sanitizer/cache/`).
+`RuleContext`) is in `viwo/contracts/sanitizer.py`, where plugins reach it. The rules whose
+findings write files (phases 2-3) are in `sanitizer_convert.py`.
 """
 
 import mmap
+import re
 import struct
 from pathlib import Path
 from typing import Sequence
@@ -128,13 +129,63 @@ class Duplicates(BatchRule):
         return out
 
 
-def core_rules() -> list[SanitizerRule]:
-    return [ZeroByte(), Junk(), Identity(), Duplicates()]
+SEQUENCE = re.compile(r"^(.*?)(\d+)$")
+
+
+class Renumber(BatchRule):
+    """core.renumber (phase 3, opt-in): the files of one folder named `<prefix><number>` with
+    one extension, two or more, get contiguous zero-padded numbers in their numeric order,
+    from the lowest one (`a1 a3 a10` -> `a01 a02 a03`). A number held twice leaves the
+    sequence as it is, said. Each step lowers a number, so no rename lands on a name another
+    member of the sequence still holds."""
+
+    rule_id, category, cost, default_enabled = "core.renumber", "naming", 4, False
+
+    def inspect_all(self, files: list[Path], ctx: RuleContext, earlier: list[dict]) -> list[dict]:
+        groups: dict[tuple, list] = {}
+        for path in files:
+            if found := SEQUENCE.match(path.stem):
+                key = (path.parent.as_posix(), found.group(1), path.suffix.lower())
+                groups.setdefault(key, []).append((int(found.group(2)), found.group(2), path))
+        out = []
+        for key in sorted(groups):
+            if len(groups[key]) > 1:
+                items = sorted(groups[key], key=lambda i: (i[0], i[2].name))
+                out += self._sequence(key[1], items, ctx)
+        return out
+
+    def _sequence(self, prefix: str, items: list, ctx: RuleContext) -> list[dict]:
+        numbers = [n for n, _, _ in items]
+        if len(set(numbers)) < len(numbers):
+            twice = next(n for n in numbers if numbers.count(n) > 1)
+            why = f"two files numbered {twice} in the sequence {prefix}#: left as they are"
+            return [ctx.finding(self.rule_id, items[0][2], why, "none", severity="info")]
+        start, count = numbers[0], len(items)
+        width = max(len(str(start + count - 1)), *(len(digits) for _, digits, _ in items))
+        out = []
+        for i, (_, _, path) in enumerate(items):
+            name = f"{prefix}{start + i:0{width}d}{path.suffix}"
+            if name != path.name:
+                what = f"sequence {prefix}#: number {i + 1} of {count}"
+                out.append(
+                    ctx.finding(self.rule_id, path, what, "rename", to=name, severity="info")
+                )
+        return out
+
+
+def core_rules(rt=None) -> list[SanitizerRule]:
+    """Phase 1 rules; with a runtime also the opt-in phase 2-3 rules (they need its slots)."""
+    rules = [ZeroByte(), Junk(), Identity(), Duplicates(), Renumber()]
+    if getattr(rt, "bindings", None) is not None:  # a runtime with its slots bound
+        from .sanitizer_convert import phase_rules
+
+        rules += phase_rules(rt)
+    return rules
 
 
 def collect_rules(rt=None) -> list[SanitizerRule]:
     """Core rules plus every plugin's `sanitizer_rules()`, in cost order; bad ids dropped."""
-    rules = core_rules()
+    rules = core_rules(rt)
     for plugin_id, plugin in sorted(getattr(rt, "plugins", {}).items()):
         for rule in plugin.sanitizer_rules():
             if isinstance(rule, SanitizerRule) and rule.rule_id.startswith(f"{plugin_id}."):

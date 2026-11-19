@@ -108,8 +108,12 @@ Decoder      (decode)       decode(path, dest, ctx) -> Outcome      viewable cop
                               it; `out`: the edited file's path in the decoder's output
                             adds: bool   member_back names a new loose file beside the member,
                               which stays (redscript sources); back_note: said in the plan
+                            lossless: bool (default true)   what decode writes holds all it
+                              read; false for a re-encode (Bink to MP4): the sanitizer's
+                              open-format copies use only lossless ones (doc 5.1)
 Prober       (probe)        probe(path, ctx) -> Outcome             facts in notes ("format=png")
-MediaEncoder (media.encode) the merger's ffmpeg builds; honours max_command_length
+MediaEncoder (media.encode) the merger's ffmpeg builds and the sanitizer's transcodes (doc
+                            5.1 phase 3); honours max_command_length
 Packer       (pack)         pack(container, members, ctx); output_for(container); verify(...);
                             override (a separate file), drops (None removes a member)
 Patcher      (patch)        byte writes, Keystone assembly, capstone disassembly (doc 18.8)

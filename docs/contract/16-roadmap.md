@@ -78,8 +78,6 @@ The arm homes of the UI (`viwo/web/js/views/home.js`) show the same rungs as SHI
 
 | Item | Doc |
 |------|-----|
-| sanitizer phases 2-3 (lossless conversions, transcode presets) | 5.1 |
-| `[hooks]` lifecycle hooks | 9.5 |
 | Unreal asset export (CUE4Parse wrapper), GameMaker and the engines of 13.7 | 13.7 |
 | coverage per file at 98 % line / 95 % branch (owner's target) | 17.5 |
 | the `vidya_wormhole_indexes` repository split and its first release | `docs/indexes.md` |

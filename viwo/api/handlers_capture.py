@@ -57,7 +57,7 @@ def run_capture(app: App, d: dict) -> dict:
     def run(sink, cancel) -> dict:
         return {"success": True, **capture(app.rt, request, sink, cancel)}
 
-    return app.locked_job("capture", workspace, run)
+    return app.locked_job("capture", workspace, run, game=game)
 
 
 def runtime_job(app: App, d: dict, kind: str) -> dict:
@@ -84,7 +84,8 @@ def runtime_job(app: App, d: dict, kind: str) -> dict:
         path_param(d, "exePath") or Path(""),
         script=path_param(d, "scriptPath") or Path(""),
     )
-    return app.job(kind, lambda jid, s, c: {"success": True, **run(app.rt, kind, req, s, c)})
+    where = {"workspace": app.workspace, "game": path_param(d, "gamePath")}
+    return app.job(kind, lambda jid, s, c: {"success": True, **run(app.rt, kind, req, s, c)}, where)
 
 
 def _number(d: dict, key: str, cast, default):

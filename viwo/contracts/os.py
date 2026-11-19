@@ -36,6 +36,11 @@ class ProcessRunner(ABC):
         the whole process tree is killed and timed_out=True is returned. on_line, when
         given, receives every stdout/stderr line as it arrives (output is still captured)."""
 
+    def shell_command(self, command: str) -> list[str]:
+        """argv that runs a command line the user wrote (a `[hooks]` command, doc 9.5) through
+        the host's shell, as written."""
+        return ["/bin/sh", "-c", command]
+
     def run_capped(self, ceiling: int, argv: Sequence[str], **options) -> ProcessResult:
         """run(), the tool held under `ceiling` bytes of memory where the OS layer can."""
         return self.run(argv, **options)

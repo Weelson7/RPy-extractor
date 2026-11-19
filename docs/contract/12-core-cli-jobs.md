@@ -31,12 +31,15 @@ installer) are module functions taking the runtime (`extract` in `core/pipeline/
 Job       { id, kind, state, events[], result, error, created, started, finished }
 state     queued -> running -> succeeded | failed | cancelled
 summary   { id, kind, state, events (count), error, created, started, finished, elapsed }
-kinds     extract survey repack patch mod preflight install capture dump trace agent record
-          analyze cleanup merge indexes
+kinds     extract survey repack patch mod preflight install capture dump trace hook profile
+          agent record analyze cleanup merge indexes
 ```
 
 - Jobs run in worker threads; the server keeps the last 200 finished jobs in memory (run
-  records stay on disk). The CLI runs the same code in the foreground (`JobRunner`).
+  records stay on disk). The CLI runs the same code in the foreground (`JobRunner`): `extract`,
+  `replay` and every command that is a job kind (doc 9.5 lists them) run as a job there too.
+- **Hooks:** the job runner is the one lifecycle point: the `[hooks]` of the ini (doc 9.5) run
+  before and after every job of either client, told its kind, workspace, game and state.
 - **Run record:** a finished extraction writes the request (secrets as `<secret>`), the effective
   ini, the slot bindings, each tool's version and the result to
   `.extraction_metadata/runs/<job id>.json` (`viwo/core/records.py`). `viwo replay RECORD` re-runs
@@ -74,7 +77,7 @@ Commands are grouped by arm; `viwo -h` lists them, `viwo <arm>` lists one arm, a
 | static | `extract GAME --workspace W [--plugin ID \| --mixed A,B] [--policy selected\|detected\|all] [--exts .png,.ogg] [--on-existing new\|replace\|cancel] [--option plugin.key=value] [--carve off\|unknown\|all]` | extraction run |
 | static | `replay RECORD --workspace W [--on-existing ...] [--option ...]` | re-run a run record (secrets asked again) |
 | static | `unpack ARCHIVE --out DIR [--slot SLOT] [--backend main\|spare\|ID] [--option ...]` | one archive (nested too; `--slot` forces one slot, no nesting) |
-| static | `sanitize WORKSPACE [--apply] [--undo TOKEN]` | cleanup plan, apply, undo (doc 5) |
+| static | `sanitize WORKSPACE [--recipe ID] [--apply] [--undo TOKEN]` | cleanup plan, apply, undo; recipes of phases 1-3, a lossy one applied only when named (doc 5) |
 | static | `analyze GAME [--list] [--workspace W --target KEY] [--slot SLOT] [--set KEY=VALUE] [--open [HANDOFF]] [--timeout S]` | static analysis (doc 6) |
 | static | `diff OLD NEW [--out DIR]` | function-level diff of two analyses |
 | dynamic | `capture GAME --exe EXE --workspace W [--confirm] [--auto SECONDS]` | RenderDoc capture (doc 11) |

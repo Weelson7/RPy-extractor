@@ -112,12 +112,17 @@ def _sanitize(rt, args) -> Envelope:
 
     if not args.workspace.is_dir():
         raise ViwoError("not_found", f"workspace not found: {args.workspace}")
+    sink = event_printer(args)
     if args.undo:
-        return Envelope.success(sanitizer.undo(args.workspace, args.undo))
-    result = sanitizer.plan(args.workspace, rules=collect_rules(rt))
-    if args.apply:
-        result["applied"] = sanitizer.apply(args.workspace, result["planId"])
-    return Envelope.success(result)
+        return Envelope.success(sanitizer.undo(args.workspace, args.undo, sink))
+    rules = collect_rules(rt)
+    result = sanitizer.plan(args.workspace, sink, rules=rules, recipe=args.recipe)
+    if args.apply:  # a lossy recipe runs only when --recipe names it: then all of it
+        accept = "all" if args.recipe else "all-safe"
+        done = sanitizer.apply(args.workspace, result["planId"], accept, sink, rules=rules)
+        result["applied"] = done
+        return Envelope.success(result, result["warnings"] + done["failed"])
+    return Envelope.success(result, result["warnings"])
 
 
 def _survey(rt, args) -> Envelope:

@@ -109,16 +109,14 @@ def capture_command(command) -> None:
     cp.add_argument("--exe", type=Path, required=True, help="the game executable to launch")
     cp.add_argument("--workspace", type=Path, required=True, help="where captures are gathered")
     cp.add_argument("--confirm", action="store_true", help=f"I confirm: {CONFIRMATION}")
-    cp.add_argument(
-        "--auto",
-        type=float,
-        default=DEFAULT_AUTO,
-        metavar="SECONDS",
-        help="one frame after SECONDS, then the game stops (default 30; 0 = press F12 yourself)",
-    )
+    cp.add_argument("--auto", type=float, default=DEFAULT_AUTO, metavar="SECONDS", help=AUTO)
 
 
+AUTO = "one frame after SECONDS, then the game stops (default 30; 0 = press F12 yourself)"
 MODE_HELP = "mod (default): over the game's own files where the engine can; overwrite: rewritten"
+RECIPE_HELP = (
+    "default phase1-safe; phase3-audio and phase3-video are LOSSY: they run only when named"
+)
 
 
 def tool_commands(command) -> None:
@@ -141,9 +139,12 @@ def tool_commands(command) -> None:
     diff_command(command)
     patch_command(command)
     mod_command(command)
+    from viwo.core.sanitizer import RECIPES
+
     sz = command("sanitize", "find empty, junk, duplicate, mislabeled or broken files")
     sz.add_argument("workspace", type=Path, help="a ViWo workspace")
-    sz.add_argument("--apply", action="store_true", help="apply every safe action of the plan")
+    sz.add_argument("--recipe", choices=[r["id"] for r in RECIPES], help=RECIPE_HELP)
+    sz.add_argument("--apply", action="store_true", help="apply every action of the plan")
     sz.add_argument("--undo", metavar="TOKEN", help="undo an earlier --apply")
     ins = command("install", "install pinned tools into third_party/ (checksums verified)")
     ins.add_argument("ids", nargs="*", help="dependency ids (see `viwo slots`)")

@@ -35,6 +35,7 @@ def _wrap(path: Path) -> tuple[str, ...]:
 
 
 CMD_SYNTAX = re.compile(r"[\s&|<>()^%!,;=]")  # what cmd reads as its own outside quotes
+SHELL = ["cmd", "/d", "/s", "/c"]  # a [hooks] command (doc 9.5): cmd without AutoRun
 
 
 def _batch_line(argv: list[str]) -> list[str] | str:
@@ -42,6 +43,8 @@ def _batch_line(argv: list[str]) -> list[str] | str:
     argument as its own syntax (a game file named `x&calc&.dll` would run calc), and Python
     quotes only the arguments that hold a space. Every argument holding any of cmd's
     characters goes in quotes; one holding a quote would end them, so it is refused."""
+    if argv[:4] == SHELL and len(argv) == 5:  # the user's own command line, as written
+        return f'cmd /d /s /c "{argv[4]}"'  # /s: cmd drops these outer quotes, nothing else
     if argv[:3] != ["cmd", "/c", "call"]:
         return argv
     if any('"' in a for a in argv[3:]):
@@ -224,6 +227,7 @@ class WindowsOS(HostOS):
         self._process = SubprocessRunner(32767, {"creationflags": flags}, _kill_tree, _processes)
         self._process.cap_child = _cap_child
         self._process.command_line = _batch_line
+        self._process.shell_command = lambda command: [*SHELL, command]
         self._process.capped_kwargs = {"creationflags": flags | 0x4}  # CREATE_SUSPENDED
         suffixes = [".exe", ".bat", ".cmd", ""]
         self._tools = Locator(tool_overrides or {}, _install_roots(), suffixes, _wrap, "windows")

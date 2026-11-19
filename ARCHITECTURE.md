@@ -61,7 +61,9 @@ viwo/
                  decode_dds.py: the DDS way back and the Pillow spare (BC6H, BC7)
     curation/    extension groups, sorting with undo, three trash areas
     merger/      media merger: candidates, timeline, ffmpeg builds
-    sanitizer.py, sanitizer_rules.py   cleanup: plan, apply, undo
+    sanitizer.py, sanitizer_rules.py   cleanup: plan, apply, undo (phases 1-3, doc 5)
+    sanitizer_convert.py, _journal.py  open-format copies, transcodes; the journal and undo
+    hooks.py                           [hooks]: the user's commands around every job (doc 9.5)
     survey.py, surveys.py              coverage report per game or library, numbered reports
     analysis/    static analysis: targets, Ghidra (headless + GUI), managed analyzers, Detect It
                  Easy, emulate/symbolic workers, version diff; nothing here runs the game

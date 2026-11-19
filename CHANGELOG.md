@@ -4,6 +4,28 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.28.0 (2026-11-19)
+- Sanitizer phase 2 (doc 5.1): `phase2-convert` writes an open-format copy of each workspace
+  file a bound lossless `decode.*` slot reads (the decoders an extraction runs, failover
+  included; `Decoder.lossless`, false for the video decoders that re-encode), placed and
+  recorded as DECODE does, so an edited copy goes back through the round trip;
+  `phase2-replace` then moves the original to the workspace trash. Files a decoder already
+  read are left out, and a plugin's slot when the run records name other plugins.
+- Sanitizer phase 3, opt-in: `phase3-audio` (Opus in Ogg) and `phase3-video` (H.264/AAC MP4)
+  through the pinned ffmpeg of `media.encode`, LOSSY: marked in the recipe and on each finding,
+  never taken by `all-safe`, never ticked for you in CLEANUP; `phase3-renumber` gives a
+  folder's numbered sequences contiguous zero-padded numbers in their order.
+- Every file the sanitizer makes is journaled: undo removes it while it is unchanged and keeps
+  (and names) one you edited. The apply report says per file what it became (`converted`).
+- `viwo sanitize --recipe ID`; `GET /api/sanitizer/recipes` lists every recipe with `phase`,
+  `lossy` and why it cannot act now; apply takes `accept: "all"`. CLEANUP has a recipe picker.
+- `[hooks]` (doc 9.5): `before_<kind>`, `after_<kind>`, `before_any`, `after_any` run your own
+  command around every job, in the CLI and the API, told the job in `VIWO_*` variables; its
+  lines join the job's events; a failing, missing or slow hook (`timeout`, default 60 s) is a
+  warning and the job goes on. The CLI runs every command that is a job kind as a job now.
+- `ProcessRunner.shell_command` (doc 1.1): a user's command line through `cmd /d /s /c` or
+  `/bin/sh -c`, as written.
+
 ## 1.27.5 (2026-11-19)
 - Python 3.10 is enough (owner): `requires-python >= 3.10`, ruff's target `py310`, the CI matrix
   3.10 and 3.13, and the package locks built for 3.10 too (`tools/pin_python.py`). The one call

@@ -157,13 +157,16 @@ def repack(data: dict) -> str:
 
 def sanitize(data: dict) -> str:
     if "restored" in data:
-        return f"Restored {data['restored']} file(s)"
-    lines = [f"{f['action']:<7} {f['path']}  ({f['message']})" for f in data["findings"]]
+        return f"Restored {data['restored']} file(s), removed {data.get('removed', 0)} made"
+    lines = [f"{f['action']:<9} {f['path']}  ({f['message']})" for f in data["findings"]]
     lines.append(
         f"{len(data['findings'])} finding(s) in {data['scanned']} file(s), plan {data['planId']}"
+        f" ({data['recipeId']})"
     )
     if "applied" in data:
         done = data["applied"]
+        for item in done.get("converted", ()):  # what each file became (doc 5.1)
+            lines.append(f"{item['action']:<9} {item['path']} -> {', '.join(item['made'])}")
         lines.append(f"Applied {done['applied']} action(s); undo with --undo {done['undoToken']}")
     return "\n".join(lines)
 

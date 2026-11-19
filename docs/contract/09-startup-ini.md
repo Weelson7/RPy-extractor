@@ -84,6 +84,12 @@ unarchive.7z   = supplement         ; or run; supplement: both run, the spare ad
 ; <dependency id> = path to the executable (relative to the ini); wins over third_party/
 sevenzip = C:/Program Files/7-Zip/7z.exe
 
+[hooks]
+; your own commands around every job (9.5); `%VAR%` is read as written
+timeout        = 60              ; seconds a hook may run (0 = no limit); killed past it, said
+before_any     = echo %VIWO_JOB_KIND% starts
+after_extract  = python tools/notify.py   ; before_<kind> | after_<kind> | before_any | after_any
+
 [options.quickbms]
 scripts = C:/tools/quickbms/scripts   ; plugin options; secrets are refused here
 
@@ -120,15 +126,52 @@ The web UI's landing screen runs the same preflight as a job (kind `preflight`).
   family: a problem for that entry only; the default is used (`/api/distro` lists it).
 - `contract` with another major: exit 2.
 - A key in `[options.*]` containing `key`, `secret`, `password` or `token`: refused with a problem.
+- A `[hooks]` key that is not `timeout`, `before_<kind>` or `after_<kind>` (a job kind of doc
+  12.3, or `any`), or a `timeout` that is no number: a problem, then ignored (60 s kept).
 - Paths are relative to the ini's folder.
 - `viwo config check FILE...` applies the rules strictly (file names of distros, known sections,
   plugins, slots and backends, no secrets) and exits 2 on any problem; a test keeps the generated
   distros in sync with the registry.
 
-## 9.5 Not implemented
+## 9.5 Lifecycle hooks (`[hooks]`)
 
-`[hooks]` lifecycle hooks are open (CONFORMANCE): a `[hooks]` section is an unknown section,
-said at boot and ignored.
+A hook is a command line the user writes in `[hooks]`; ViWo runs it before and after each job
+(`viwo/core/hooks.py`, fired by the job runner, `viwo/core/jobs.py`), in the CLI and the API
+alike (owner, 2026-11-19).
+
+```text
+before_<kind> | after_<kind>   kind: every job kind of doc 12.3 (extract, survey, repack, patch,
+                               mod, preflight, install, capture, dump, trace, hook, profile,
+                               agent, record, analyze, cleanup, merge, indexes)
+before_any | after_any         every job
+timeout                        seconds a hook may run, default 60; 0 = no limit
+order                          before_any, before_<kind>, the job, after_<kind>, after_any
+environment                    VIWO_HOOK (the key), VIWO_JOB_ID, VIWO_JOB_KIND, VIWO_JOB_STATE
+                               (running before; succeeded | failed | cancelled after),
+                               VIWO_JOB_ERROR (the error code, "" when none), VIWO_WORKSPACE,
+                               VIWO_GAME ("" when the job has none), over ViWo's own environment
+```
+
+- The command runs through the host's shell (`ProcessRunner.shell_command`, doc 1.1: Windows
+  `cmd /d /s /c`, Linux `/bin/sh -c`) from the ini's folder, as written: `%VAR%` and `$VAR` are
+  the shell's. In the ini a ` ;` or ` #` after a space starts a comment.
+- Never a secret: the variables name the job, its folders and its state; no option of the job
+  is passed, so a masked option stays masked.
+- Every line a hook prints is an event of its job, `[HOOKS:<KEY>] line`: the CLI prints it on
+  stderr with the job's progress, the API's console and the job's events hold it. A hook that
+  exits non-zero, is not found (the shell's 9009 or 127) or cannot start, and one killed past
+  `timeout` (the whole tree) or by the job's cancel, is a warn event: the job goes on and ends
+  as it would without the hook (no gates). A failed job's after hooks still run, told its state.
+- After hooks hear the workspace a job ended in when its result names one (an extraction into a
+  new folder).
+- Which work fires them: every job of the API (`App.job`, `App.locked_job`, `/api/extract`,
+  `POST /api/jobs`, runbook steps); in the CLI `extract`, `replay` and the commands that are a
+  job kind (`sanitize` as `cleanup`, `survey`, `repack`, `capture`, `dump`, `trace`, `hook`,
+  `profile`, `agent`, `record`, `analyze`, `patch`, `mod`, `install`, `indexes`), each run as a
+  foreground job. They do **not** fire for what is no job in either client: `info`, `slots`,
+  `detect`, `unpack`, `diff`, `attach` (a tracked child, no job), `config`, `diag`, `workbook`,
+  `serve`, a plugin's own commands, `repack --plan`, `patch --plan`, `mod check`,
+  `analyze --list`; `runbook --run` fires them for each action step (each step is a job).
 
 ## 9.6 Relationship to the UI
 

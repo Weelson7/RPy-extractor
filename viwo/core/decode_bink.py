@@ -32,6 +32,7 @@ class BinkGame(Decoder):
     backend_id, license, isolation = "bink-game", "the game's own Bink DLL", "subprocess"
     requires = (FFMPEG,)
     one_way = "Bink 2 video needs RAD's encoder, which is proprietary: ViWo ships none"
+    lossless = False  # frames piped into ffmpeg's MP4: a re-encode
 
     def decode(self, path: Path, dest: Path, ctx) -> Outcome:
         tool, dll = ctx.os.tools.locate(FFMPEG), bink_dll(ctx.game_root)

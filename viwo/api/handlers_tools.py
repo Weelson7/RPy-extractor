@@ -33,7 +33,7 @@ def survey_library(app: App, d: dict) -> dict:
         tell(sink, f"Report saved: {saved['path']}", "report")
         return {"success": True, "games": games, "reportId": saved["id"], **_meta(saved)}
 
-    return app.job("survey", run)
+    return app.job("survey", run, {"game": folder})
 
 
 def _reports_dir(app: App) -> Path:
@@ -63,10 +63,11 @@ def sanitize_handler(op: str) -> Callable[[App, dict], dict]:
                 opts = {k: d.get(k) for k in ("path", "offset", "limit")}
                 opts["recipe"], opts["rules"] = d.get("recipeId"), collect_rules(app.rt)
                 return {"success": True, **sanitizer.plan(folder, sink, cancel, **opts)}
-            if op == "apply":
-                accept = d.get("accept") or "all-safe"
-                plan_id = str(d.get("planId", ""))
-                return {"success": True, **sanitizer.apply(folder, plan_id, accept, sink, cancel)}
+            if op == "apply":  # "all-safe" never takes a lossy finding: "all" or indexes do
+                accept, plan_id = d.get("accept") or "all-safe", str(d.get("planId", ""))
+                rules = collect_rules(app.rt)
+                done = sanitizer.apply(folder, plan_id, accept, sink, cancel, rules)
+                return {"success": True, **done}
             token = str(d.get("undoToken", ""))
             return {"success": True, **sanitizer.undo(folder, token, sink, cancel)}
 
@@ -124,7 +125,7 @@ def apply_patch_set(app: App, d: dict) -> dict:
 
     if isinstance(refused := safe(lambda: guarded(game, out, "patched copy")), dict):
         return refused  # before the lock file lands in it
-    return app.locked_job("patch", out, run)
+    return app.locked_job("patch", out, run, game=game)
 
 
 def mod_package(app: App, d: dict) -> dict:
@@ -156,7 +157,7 @@ def mod_package(app: App, d: dict) -> dict:
     refused = safe(lambda: guarded(game, copy, "patched copy")) if action == "apply" else None
     if isinstance(refused, dict):
         return refused  # before the lock file lands in it
-    return app.locked_job("mod", copy, run)
+    return app.locked_job("mod", copy, run, game=game)
 
 
 def run_preflight(app: App, d: dict) -> dict:

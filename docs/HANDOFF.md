@@ -110,8 +110,10 @@ The presentation tools (`tools/presentation/`: `frames.py`, `deck.py`, `tech_pdf
 - `memory_image` targets (doc 6.5): a full-memory minidump takes Ghidra long (a 14.6 MB dump
   of `ping.exe`: 47 min, 21,859 functions decompiled); a game's dump is far larger. Not yet
   run on a game's dump; the Linux `.mem` layout has no reader.
-- CONFORMANCE rows: sanitizer phases 2-3, `[hooks]` (no design yet: which events, and the
-  CLI runs only `extract` and `replay` as jobs), the way back of premultiplied DXT2/DXT4, signed BC4/BC5 and
+- Sanitizer phases 2-3 (doc 5.1) are tests only, on a stand-in ffmpeg: the transcode presets
+  (libopus, libx264 of the pinned ffmpeg 6.1.1) and a real decoder through `core.convert` on a
+  real workspace are to be run once; `[hooks]` (doc 9.5) ran on Windows only (`cmd /d /s /c`).
+- CONFORMANCE rows: the way back of premultiplied DXT2/DXT4, signed BC4/BC5 and
   typeless BC6H DDS and of ETC, ASTC, PVRTC or Basis Godot textures (no decoder for those
   either) (doc 18.3; the BC1-BC7, `.ctex` and redscripts ways back are tests only: a real
   game pass for each is open, redscripts with the compiler installed in the copy; `pack.tpac`

@@ -141,6 +141,13 @@ analyzer when the remembered one is not listed); ANALYZE in the bar runs the pic
 says why it waits (enter the game folder, list the targets, analysis is off, pick a target, no
 analyzer for it yet); CANCEL joins it while a run goes. A target's extra slots (EMULATE,
 SOLVE...) and CONTINUE IN GHIDRA stay on its row; VERSION DIFF keeps its COMPARE.
+CLEANUP: SCAN's panel lists every recipe of doc 5.1 as a radio (`views/cleanup-recipes.js`,
+`pref("cleanupRecipe")`), each marked LOSSLESS or LOSSY, with its phase and rule count or why
+it cannot act now (no lossless decoder, no ffmpeg); SCAN runs the picked one. A plan's
+`warnings` stand above the findings. Findings are ticked for you except report-only and LOSSY
+ones (tick those yourself); the bar counts trash, rename, copy and LOSSY copy; an applied row
+says what it became (RENAMED, IN TRASH, COPY MADE, LOSSY COPY MADE), and LAST CLEANUP lists
+each file with what it became and counts the copies UNDO removes.
 
 Spacing between buttons is `base.css`'s, never a view's: buttons in a `.row` keep its gap, and a
 row of buttons right after a note, a field, a table or another row inside a panel body, a

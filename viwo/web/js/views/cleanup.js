@@ -1,7 +1,8 @@
-// CLEANUP: asset sanitizer, phase 1. Scan (read-only), tick findings, apply moves/renames, undo.
+// CLEANUP: asset sanitizer (doc 5). Pick a recipe, scan (read-only), tick findings, apply, undo.
 import { api } from "../api.js";
 import { h, fill, btn, panel, badge, alert, viewHead, assure, empty, errorBox, toast, toastErr, confirmBox, pref, fmtNum, bus, emit, stat, goBtn } from "../ui.js";
 import { jobProgress } from "../progress.js";
+import { recipePicker, MORE_RULES, DONE } from "./cleanup-recipes.js";
 
 /** Rule -> [title, action label, badge kind, what it means]. Object order = display order. */
 const RULES = {
@@ -10,6 +11,7 @@ const RULES = {
   "core.extension": ["WRONG EXTENSION", "RENAME", "ok", "The bytes say another format (a PNG named .jpg, say). Only the name changes; the content is untouched."],
   "core.duplicate": ["EXACT DUPLICATES", "TRASH", "", "Byte-identical copies. The cleanest copy stays put; the extra copies move to the workspace trash."],
   "core.health": ["HEALTH", "REPORT ONLY", "mute", "Truncated, corrupt or padded files. Listed so you can check them; ViWo changes nothing."],
+  ...MORE_RULES,
 };
 const MEDIA = { image: /\.(png|jpe?g|gif|webp|bmp|avif)$/i, audio: /\.(ogg|mp3|wav|opus|flac|m4a|aac)$/i };
 const S = { groups: [], recipe: null, plan: null, sel: new Set(), applied: new Set(), done: null, busy: false, ws: null, files: null };
@@ -17,7 +19,7 @@ const el = {};
 const KEEP = 200; // moved entries remembered with the undo token
 
 function mount(root) {
-  el.recipe = h("div", { class: "recipe" });
+  el.recipe = recipePicker((r) => { S.recipe = r; });
   el.stats = h("div", { class: "stats" });
   el.scan = btn("SCAN", () => scan(), "primary");
   el.find = h("div", { class: "fgroups" });
@@ -29,30 +31,20 @@ function mount(root) {
   el.why = h("span", { class: "ab-why" });
   el.apply = btn("APPLY SELECTED", apply, "primary lg");
   root.append(
-    viewHead(code("cleanup"), "CLEANUP", "Find empty files, engine junk, mislabeled extensions and exact duplicates in the active workspace. Scan first; only the findings you tick are applied."),
+    viewHead(code("cleanup"), "CLEANUP", "Find empty files, engine junk, mislabeled extensions and exact duplicates, make open-format copies, transcode or renumber in the active workspace. Pick a recipe and scan; only the findings you tick are applied."),
     assure([["NOTHING IS DELETED", "trashed files move to the workspace trash — see WORKSPACE"],
-      ["NOTHING LOSSY", "no file content is rewritten: only moves and renames"],
+      ["NOTHING LOSSY UNLESS PICKED", "no content is rewritten; a LOSSY recipe writes copies and runs only when you pick it and tick its findings"],
       ["UNDO", "every apply is journaled and can be reversed"]]),
     h("div", { class: "tool-grid" },
       h("div", { class: "col" }, panel(`${code("cleanup")}.A`, "SCAN", el.scan, el.recipe, el.stats, el.progHost, ruleKey()), el.done),
       panel(`${code("cleanup")}.B`, "FINDINGS", el.count, el.find)),
     h("div", { class: "actionbar" }, el.sum, el.why, el.apply));
-  loadRecipe();
   bus.addEventListener("wspath", (e) => switchTo(e.detail.path || ""));
   switchTo(bus.ws?.path || "");
 }
 
 const ruleKey = () => h("details", { class: "optgroup rulekey" }, h("summary", {}, "WHAT EACH RULE DOES"),
   h("dl", {}, Object.values(RULES).map(([t, a, k, why]) => [h("dt", {}, t, " ", badge(a, k)), h("dd", {}, why)])));
-
-async function loadRecipe() {
-  try {
-    const r = (await api.recipes()).recipes.find((x) => !x.lossy);
-    S.recipe = r;
-    fill(el.recipe, h("span", { class: "lbl" }, "RECIPE"), h("b", {}, r.name), badge("LOSSLESS", "ok"),
-      h("span", { class: "dim small" }, `${r.rules.length} rules`));
-  } catch { fill(el.recipe, h("span", { class: "dim small" }, "Phase-1 safe rules.")); }
-}
 
 const store = (v) => pref(`cleanupUndo:${S.ws}`, v === undefined ? undefined : v ? JSON.stringify(v) : "");
 
@@ -77,11 +69,11 @@ async function scan() {
   S.busy = true;
   render();
   try {
-    const plan = await asJob(() => api.sanitize("plan", {}), (r) => `${fmtNum(r.findings.length)} FINDING(S)`);
+    const plan = await asJob(() => api.sanitize("plan", { recipeId: S.recipe?.id }), (r) => `${fmtNum(r.findings.length)} FINDING(S)`);
     Object.assign(S, { plan, done: null, files: plan.scanned });
     store(null);
-    S.applied.clear();
-    S.sel = new Set(plan.findings.map((f, i) => (f.action === "none" ? -1 : i)).filter((i) => i >= 0));
+    S.applied.clear(); // a LOSSY finding is never ticked for you
+    S.sel = new Set(plan.findings.map((f, i) => (f.action === "none" || f.lossy ? -1 : i)).filter((i) => i >= 0));
   } catch (err) {
     S.plan = null;
     S.err = err;
@@ -112,7 +104,8 @@ function render() {
   const f = S.plan?.findings || [];
   S.groups = [];
   el.count.textContent = S.plan ? `${fmtNum(f.length)} FINDING(S)` : "";
-  fill(el.find, S.err ? errorBox(S.err, "SCAN FAILED", S.err.code === "busy" ? "A job is writing to this workspace. Scan again once it has finished." : "")
+  const warned = S.plan?.warnings?.length ? alert("warn", "THE RECIPE CANNOT ACT FULLY", ...S.plan.warnings) : null;
+  fill(el.find, warned, S.err ? errorBox(S.err, "SCAN FAILED", S.err.code === "busy" ? "A job is writing to this workspace. Scan again once it has finished." : "")
     : !S.plan ? idle() : !f.length ? (S.plan.scanned ? empty("WORKSPACE IS CLEAN", `${fmtNum(S.plan.scanned)} files scanned. Nothing to clean.`,
       goBtn("#sort", `${code("sort")} SORT →`), goBtn("#merger", `${code("merger")} MAKE A VIDEO →`, "ghost")) : noFiles())
       : groups(f));
@@ -173,7 +166,7 @@ function row({ f, i }) {
   return h("li", { class: "frow", "data-state": done ? "done" : null, "data-i": i }, pick,
     h(f.action === "none" ? "span" : "label", { class: "fpath mono", for: f.action === "none" ? null : id, title: f.path }, f.path),
     h("span", { class: "fmsg" }, f.message, f.to ? h("b", { class: "mono" }, ` → ${f.to}`) : null),
-    done ? badge(f.action === "rename" ? "RENAMED" : "IN TRASH", "ok") : previewLink(f.path));
+    done ? badge(DONE[f.action] || "DONE", "ok") : previewLink(f.path));
 }
 
 function previewLink(path) {
@@ -199,7 +192,7 @@ function bar() {
   const sel = [...S.sel].map((i) => f[i]).filter(Boolean);
   const n = (a) => sel.filter((x) => x.action === a).length;
   el.sum.textContent = S.applied.size && !sel.length ? `${S.applied.size} APPLIED · undo in LAST CLEANUP · ${f.length - S.applied.size} finding(s) left as is`
-    : S.plan ? `${sel.length} SELECTED · ${n("trash")} → workspace trash · ${n("rename")} rename · ${f.length - sel.length} left as is`
+    : S.plan ? `${sel.length} SELECTED · ${n("trash")} → workspace trash · ${n("rename")} rename · ${n("convert") + n("replace")} copy · ${n("transcode")} LOSSY copy · ${f.length - sel.length} left as is`
     : `${(S.ws || "").split(/[\\/]/).pop() || "workspace"} · scan to list findings`;
   el.why.textContent = S.busy ? "working…" : !S.plan ? "scan first" : !sel.length ? "tick findings to apply" : "";
   el.apply.disabled = Boolean(el.why.textContent);
@@ -215,16 +208,17 @@ async function apply() {
   try {
     const res = await asJob(() => api.sanitize("apply", { planId: S.plan.planId, accept: idx }), (r) => `${fmtNum(r.applied)} APPLIED`);
     const failed = new Set((res.failed || []).map((x) => x.split(": ")[0]));
-    const real = new Set((res.moved || []).map((m) => m.from)); // what the server actually moved
+    const made = new Map((res.converted || []).map((c) => [c.path, c.made.join(", ")])); // what each file became
+    const real = new Set([...(res.moved || []).map((m) => m.from), ...made.keys()]); // what the server actually did
     const ok = idx.filter((i) => (res.moved ? real.has(S.plan.findings[i].path) : !failed.has(S.plan.findings[i].path)));
     ok.forEach((i) => S.applied.add(i));
     S.sel.clear();
     const prev = S.done?.token === res.undoToken ? S.done : { applied: 0, failed: [], moved: [], more: 0 }; // one plan = one undo journal
-    const moved = [...prev.moved, ...ok.map((i) => S.plan.findings[i]).map((x) => ({ a: x.action, p: x.path, to: x.to || "" }))];
+    const moved = [...prev.moved, ...ok.map((i) => S.plan.findings[i]).map((x) => ({ a: x.action, p: x.path, to: made.get(x.path) || x.to || "" }))];
     S.done = { token: res.undoToken, applied: prev.applied + res.applied, failed: [...prev.failed, ...(res.failed || [])], at: Date.now(),
       moved: moved.slice(0, KEEP), more: prev.more + Math.max(0, moved.length - KEEP) };
     store(S.done);
-    toast(`Cleanup applied: ${fmtNum(res.applied)} file(s) moved or renamed.`, failed.size ? "warn" : "ok", failed.size ? `${failed.size} failed` : "UNDO is available.");
+    toast(`Cleanup applied: ${fmtNum(res.applied)} file(s) moved, renamed or copied.`, failed.size ? "warn" : "ok", failed.size ? `${failed.size} failed` : "UNDO is available.");
     emit("workspace");
   } catch (err) {
     toastErr(err, "Cleanup not applied: ");
@@ -237,7 +231,7 @@ async function undo(e) {
   e.currentTarget.disabled = true;
   try {
     const res = await asJob(() => api.sanitize("undo", { undoToken: S.done.token }), (r) => `${fmtNum(r.restored)} RESTORED`);
-    toast(`Undo: ${fmtNum(res.restored)} file(s) back where they were.`, "ok");
+    toast(`Undo: ${fmtNum(res.restored)} file(s) back where they were, ${fmtNum(res.removed || 0)} copy(ies) removed.`, res.notRestored?.length ? "warn" : "ok", res.notRestored?.length ? `${res.notRestored.length} kept (changed or gone)` : "");
     S.done = null;
     S.applied.clear();
   } catch (err) {
@@ -253,11 +247,12 @@ async function undo(e) {
 function renderDone() {
   const d = S.done;
   if (!d) return fill(el.done);
-  const trash = d.moved.filter((m) => m.a === "trash").length;
+  const count = (...a) => d.moved.filter((m) => a.includes(m.a)).length;
   fill(el.done, panel(`${code("cleanup")}.C`, "LAST CLEANUP", badge("UNDO AVAILABLE", "ok"),
     h("div", { class: "stats" }, stat("APPLIED", fmtNum(d.applied), new Date(d.at).toLocaleTimeString()),
-      stat("TO TRASH", fmtNum(trash), "recoverable"), stat("RENAMED", fmtNum(d.moved.length - trash)), stat("FAILED", fmtNum(d.failed.length))),
-    h("ol", { class: "moved mono" }, d.moved.map((m) => h("li", {}, h("b", {}, m.a === "trash" ? "TRASH" : "RENAME"), h("span", { title: m.p }, m.p),
+      stat("TO TRASH", fmtNum(count("trash", "replace")), "recoverable"), stat("RENAMED", fmtNum(count("rename"))),
+      stat("COPIES", fmtNum(count("convert", "replace", "transcode")), "undo removes them"), stat("FAILED", fmtNum(d.failed.length))),
+    h("ol", { class: "moved mono" }, d.moved.map((m) => h("li", {}, h("b", {}, m.a.toUpperCase()), h("span", { title: m.p }, m.p),
       h("i", {}, m.a === "trash" ? "→ workspace trash" : `→ ${m.to}`))), d.more ? h("li", { class: "dim" }, `+${fmtNum(d.more)} more`) : null),
     d.failed.length ? alert("warn", "NOT APPLIED", h("ul", {}, d.failed.map((x) => h("li", {}, x)))) : null,
     h("div", { class: "row" }, btn("UNDO THIS CLEANUP", undo, "primary"), goBtn("#workspace", "SEE TRASH IN WORKSPACE →", "ghost")),

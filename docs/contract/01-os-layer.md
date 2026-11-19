@@ -24,6 +24,9 @@ max_command_length -> int            Windows 32767; Linux from SC_ARG_MAX
 python_executable  -> str
 run(argv, cwd=None, timeout=None, cancel=None, env=None, on_line=None) -> ProcessResult
 launch(argv, cwd=None, env=None) -> Child { pid, alive(), kill() }
+shell_command(command) -> argv       a command line the user wrote ([hooks], doc 9.5) through
+                                     the host's shell, as written: Windows `cmd /d /s /c`,
+                                     Linux `/bin/sh -c`
 running_images() -> {lowercase image names}
 ProcessResult { returncode, stdout, stderr, timed_out, ok }
 ```
