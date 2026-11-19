@@ -101,7 +101,8 @@ class FfmpegDecode(_CliDecoder):
 
 
 class FfmpegImage(FfmpegDecode):
-    """The way back writes an uncompressed DDS itself (encode_dds.py, doc 18.3)."""
+    """The way back writes the DDS itself, uncompressed or BC1/BC3/BC4/BC5 (encode_dds.py,
+    encode_bc.py, doc 18.3)."""
 
     backend_id, suffix, encodes = "ffmpeg-image", ".png", True
 

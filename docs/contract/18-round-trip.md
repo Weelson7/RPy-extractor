@@ -65,15 +65,19 @@ write only into the marked patched copy.
 **The way back of a decoded file.** The provenance origin names the decoder's backend and the
 file it read (a batch decoder names its slot: the file is the one whose name starts the
 output's, `0000000000001234.xbm` for `0000000000001234.xbm.png`; a file SORT moved is found by
-its name). The member it becomes is `Decoder.member_back(member)`, in the source's container
-(or loose); the encoder is the backend that decoded it, else one bound in its slot that
-encodes. It is skipped, with the reason, when its decoder is one way (`Decoder.one_way`) or
-refuses that member (`Decoder.refuses`: a block-compressed DDS, an animated VTF), when
-the file it came from came out of a nested container or a wrapper, is gone, or was edited too
-(that edit is used), or when another edited file goes back into the same member. A member
-`member_back` renames replaces the original: the original is removed from the copy (loose) or
-from its archive (a packer with `drops`: `pack.rpa`), and the new file goes loose where the
-engine reads it (`loose_root`).
+its name). The member it becomes is `Decoder.member_back(member, out)` (`out`: the edited
+file's path in the decoder's output), in the source's container (or loose); the encoder is the
+backend that decoded it, else one bound in its slot that encodes. It is skipped, with the
+reason, when its decoder is one way (`Decoder.one_way`) or refuses that member
+(`Decoder.refuses`: a BC7 DDS, an animated VTF, a VRAM-compressed Godot texture), when the file
+it came from came out of a nested container or a wrapper, is gone, or was edited too (that edit
+is used), or when another edited file goes back into the same member. A member `member_back`
+renames replaces the original: the original is removed from the copy (loose) or from its
+archive (a packer with `drops`: `pack.rpa`), and the new file goes loose where the engine reads
+it (`loose_root`). A decoder that `adds` (redscripts) names instead a new loose file the engine
+reads beside the member, which stays: it is added to the copy (`mod`), one per edited file, and
+its `back_note` (what the copy needs for it to work) is shown with the file in the plan and once
+among the warnings.
 
 | Decoder | Way back |
 |---------|----------|
@@ -82,9 +86,10 @@ engine reads it (`loose_root`).
 | `decode.loc` | the edited JSON to the table: version, order and flags kept, removed keys left out, new keys at the end with the table's most common flag |
 | `decode.rpyc` | the edited `.rpy` itself, as `<name>.rpy` beside where the `.rpyc` was (an archived one: loose under `game/`); the stale `.rpyc` is removed from the copy or its RPA, so Ren'Py compiles the script on start and the old one neither wins nor loads twice |
 | `decode.cr2w` | WolvenKit's console: an edited PNG, DDS, TGA or glTF with `import --keep` beside a copy of the original resource, an edited JSON with `convert deserialize`; capped like the export |
-| `decode.image` | PNG to DDS when the original is uncompressed (8-bit channels at 24 or 32 bits in any byte order, 8-bit luminance, DX10 R8G8B8A8/B8G8R8A8): its header with the PNG's size, mipmaps rebuilt. A block-compressed original (BC1-BC7) needs an encoder ViWo does not ship; a cube map, volume or array texture holds several images: both skipped with that reason |
+| `decode.image` | PNG to DDS in the original's format, its header kept (DX10 too) with the PNG's size, mipmaps rebuilt (box filter). Uncompressed: 8-bit channels at 24 or 32 bits in any byte order, 8-bit luminance, DX10 R8G8B8A8/B8G8R8A8. Block-compressed: BC1 (DXT1), BC3 (DXT5), BC4 (ATI1, BC4U) and BC5 (ATI2, BC5U), FourCC or DX10 (UNORM, sRGB, typeless), through ViWo's own encoder (`core/encode_bc.py`, pure Python, deterministic): each 4x4 block fitted on its range (colour: the corners of its colour box on the covariance's diagonal, RGB565 endpoints, BC1 alpha under 128 transparent; one channel: its minimum and maximum, eight levels), so a colour channel stays within its block's range plus the RGB565 step, one channel within (max - min) / 14 plus rounding, a flat colour within 1 (exact where an endpoint holds it), alpha exact at 0 and 255. ATI2 keeps the channel order ffmpeg shows (red and green swapped). A 2048x2048 texture with its mipmaps takes 10 to 20 s in BC1 or BC3 and 3 to 9 s in BC4 or BC5 (measured at 1.23 on a busy desktop; pure Python, one core). BC2 (DXT2/3), premultiplied DXT4, signed BC4/BC5, BC6H and BC7 have no encoder, and a cube map, volume or array texture holds several images: skipped with that reason |
+| `decode.ctex` | PNG to the Godot texture (`.ctex` Godot 4, `.stex` Godot 3), its header kept (version, flags, mipmap limit, format field) with the PNG's size, in the original's form: PNG mipmaps for a PNG texture, lossless WebP for a WebP one (a lossy original too: the same data format, nothing more lost), each behind the original's `PNG `/`WEBP` tag or none, the original's channels kept; an uncompressed one in its 8-bit format (L8, LA8, R8, RG8, RGB8, RGBA8). Mipmaps rebuilt down to 1x1 when it had them. A VRAM-compressed (S3TC, BPTC, ETC, ASTC) or Basis Universal texture is skipped with the reason, and so is a WebP one when the Pillow at hand cannot write WebP; without Pillow the reason says how to install it |
+| `decode.redscripts` | the edited `.script` as a loose source, `r6/scripts/<its path in the decompiled tree>.reds`, added to the patched copy beside `final.redscripts`, which stays (the game's modding convention): checked as UTF-8 and written as it is. It takes effect only with the redscript compiler installed in the copy, which compiles it when the game starts (ViWo does not compile): the plan says so. A decompiled file declares again what `final.redscripts` holds; if redscript refuses that, the change belongs in an `@replaceMethod`/`@wrapMethod` annotation |
 | `decode.audio`, `decode.video`, `decode.bink2` | one way: Wwise, FMOD, CRI, XACT and Bink need their vendors' proprietary encoders |
-| `decode.redscripts` | one way: the scripts go back as `.reds` files redscript compiles on start, not wired yet |
 
 ## 18.4 Pack slots
 
@@ -127,7 +132,7 @@ Packer (family pack)
 EnginePlugin.pack_slot(unarchive_slot) -> "pack.<...>" | ""
 EnginePlugin.loose_root(container) -> game-relative folder | None   loose files loaded over it
 Decoder.encodes, one_way, encode(edited, original, out, ctx), refuses(original),
-  member_back(member)   doc 8.3
+  member_back(member, out), adds, back_note   doc 8.3
 ```
 
 ## 18.6 Rules
@@ -143,7 +148,8 @@ Decoder.encodes, one_way, encode(edited, original, out, ctx), refuses(original),
    choice with third-party tools, under the disclaimer.
 3. Same format, or through the decoder's way back (18.3): an edited decoded file is encoded
    into its member's own format first. Unity's exporter takes an edited PNG back into its
-   Texture2D itself (`pack.unity`); Godot's `.ctex` from a PNG is open.
+   Texture2D itself (`pack.unity`); Godot's `.ctex` goes back through `decode.ctex`, its PCK
+   member through `pack.pck`.
 4. A repack is verified before it is reported as successful.
 
 ## 18.8 Binary patch sets (`viwo/core/patchsets.py`, `viwo/core/patch_tools.py`, rung T1)

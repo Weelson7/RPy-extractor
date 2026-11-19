@@ -21,6 +21,7 @@ class Way:
     source: Path  # the workspace file decode read: the member as extracted
     derived: str  # the edited decoded file (workspace path)
     drop: str = ""  # the member the encoded one replaces (a .rpyc for its .rpy), removed
+    note: str = ""  # what the copy needs for this file to work (Decoder.back_note)
 
     def shown(self, member: str) -> dict:
         out = {
@@ -29,6 +30,7 @@ class Way:
             "encoder": self.slot,
             "backend": self.backend,
         }
+        out |= {"note": self.note} if self.note else {}
         return out | ({"replaces": self.drop} if self.drop else {})
 
 
@@ -85,32 +87,49 @@ def _encoder(rt, slot: str, used: str):
 
 def ways_back(rt, workspace: Path, decoded: list) -> tuple[list[Edit], list[str]]:
     """The edits that edited decoded files become, and those that cannot go back, each with
-    its reason (never silent)."""
+    its reason (never silent). Two edited files that become one member: the second is named."""
     index, edits, skipped, seen = _Index(workspace), [], [], {}
     for entry, file in decoded:
         backend, source, out = origin_parts(str(entry.get("origin", "")))
         slot, every = index.sources(rt, backend, source, out)
         found = [e for e in every if e.get("kind") in ("member", "loose", "exported")]
-        why = _blocked(workspace, slot, (every, found), seen)
+        why = _blocked(workspace, slot, (every, found))
         encoder, one_way = _encoder(rt, slot, backend) if not why else (None, "")
         if encoder is not None:
             rel = ws.safe_member(found[0]["path"])
             why = _refusal(encoder, workspace.joinpath(*rel.parts))
+            key = (found[0]["path"], encoder.member_back(found[0].get("member", ""), out))
+            if not why and key in seen:
+                why = f"{seen[key]} goes back into the same member ({key[0]}); edit one of them"
         if why or encoder is None:
             skipped.append(f"{entry['path']}: {why or f'{slot} is one way: {one_way}'}")
             continue
-        seen[found[0]["path"]] = entry["path"]
-        for target in found:  # every container that held the same member
-            rel = ws.safe_member(target["path"])
-            way = Way(slot, encoder.backend_id, workspace.joinpath(*rel.parts), entry["path"])
-            member = encoder.member_back(target.get("member", ""))
-            way.drop = target.get("member", "") if member != target.get("member", "") else ""
-            kind, container = target["kind"], target.get("container", "")
-            edits.append(Edit(file, kind, container, member, target.get("plugin", ""), way))
+        seen[key] = entry["path"]
+        edits += _edits(encoder, slot, found, (file, entry["path"], out), workspace)
     return edits, skipped
 
 
-def _blocked(workspace: Path, slot: str, sources: tuple, seen: dict) -> str:
+def _edits(encoder, slot: str, found: list, edited: tuple, workspace: Path) -> list[Edit]:
+    """The edits of one edited decoded file: one per container that held its member, or one
+    new loose file (`Decoder.adds`). edited: (the file, its workspace path, its output path)."""
+    file, derived, out = edited
+    edits = []
+    for target in found[:1] if encoder.adds else found:
+        rel = ws.safe_member(target["path"])
+        way = Way(slot, encoder.backend_id, workspace.joinpath(*rel.parts), derived)
+        way.note = encoder.back_note
+        original = target.get("member", "")
+        member = encoder.member_back(original, out)
+        if encoder.adds:  # beside the member, which stays: a file added to the copy
+            edits.append(Edit(file, "added", "", member, "", way))
+            continue
+        way.drop = original if member != original else ""
+        kind, container = target["kind"], target.get("container", "")
+        edits.append(Edit(file, kind, container, member, target.get("plugin", ""), way))
+    return edits
+
+
+def _blocked(workspace: Path, slot: str, sources: tuple) -> str:
     """Why an edited decoded file cannot go back, "" when it can. sources: (every provenance
     entry of the file it was decoded from, those a packer can write back)."""
     every, found = sources
@@ -122,8 +141,6 @@ def _blocked(workspace: Path, slot: str, sources: tuple, seen: dict) -> str:
     if not found:
         return "the file it was decoded from is no longer in the workspace (moved or trashed)"
     first = found[0]["path"]
-    if first in seen:
-        return f"{seen[first]} goes back into the same member ({first}); edit one of them"
     rel = ws.safe_member(first)
     source = workspace.joinpath(*rel.parts) if rel else None
     if source is None or not source.is_file():

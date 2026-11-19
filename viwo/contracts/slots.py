@@ -113,11 +113,16 @@ class Carver(Backend):
 
 class Decoder(Backend):
     """The way back (doc 18.3) is optional: `encodes` says whether `encode` writes anything;
-    `one_way` is the reason given for each edited file when it does not."""
+    `one_way` is the reason given for each edited file when it does not. `adds`: the file
+    `member_back` names is a new loose file (game-relative) the engine reads beside the
+    member, which stays (redscript sources beside `final.redscripts`); `back_note` is said in
+    the plan for each file that goes back this way (what the copy needs for it to work)."""
 
     families = frozenset({"decode"})
     encodes = False
     one_way = "this decoder has no way back yet"
+    adds = False
+    back_note = ""
 
     @abstractmethod
     def decode(self, path: Path, dest: Path, ctx: "ExtractionContext") -> Outcome:
@@ -133,9 +138,10 @@ class Decoder(Backend):
         can: the plan names it as skipped instead of failing it at build time."""
         return ""
 
-    def member_back(self, member: str) -> str:
+    def member_back(self, member: str, out: str = "") -> str:
         """The member `encode` writes for `member`: the same one, unless the engine reads the
-        edited form itself (a Ren'Py `.rpy` beside its `.rpyc`), which then replaces it."""
+        edited form itself (a Ren'Py `.rpy` beside its `.rpyc`), which then replaces it. `out`
+        is the edited file's path in the decoder's output (one of many a member decoded to)."""
         return member
 
 

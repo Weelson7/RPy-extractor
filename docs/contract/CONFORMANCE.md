@@ -15,7 +15,7 @@ ships sanitizer rules (5.1); no pinned QuickBMS script in the indexes (16.0b); c
 
 **Open:** the completeness contract per engine (16.0c); rung D4 (`hook.overlay`); sanitizer phases
 2-3; the `supplement` slot policy; `[hooks]`; `memory_image` targets;
-`keys.*` slots; the way back of Godot `.ctex`, Bannerlord TPAC, redscripts and block-compressed DDS; Unreal asset export and the engines of 13.7;
+`keys.*` slots; the way back of Bannerlord TPAC, of BC2/BC6H/BC7 DDS and of VRAM-compressed Godot textures; Unreal asset export and the engines of 13.7;
 declarative (Kaitai) plugins; the indexes repository split.
 
 ## Done, per engine and arm (owner)
@@ -380,9 +380,10 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 18.3 way back of `decode.loc` (JSON to `.loc`) | implemented (tests only) | `plugins/warscape/loc.py`; `tests/test_encoders.py` |
 | 18.3 way back of `decode.rpyc` (the `.rpy`, the stale `.rpyc` removed) | implemented; real (1.22.4, Doki Doki Literature Club: the edited `.rpy` compiled by the game on start and shown, `sqc/proof/renpy-ddlc-script.jpg`) | `plugins/renpy/decompile.py`, `plugins/renpy/pack.py`; `tests/test_roundtrip_encode.py` |
 | 18.3 way back of `decode.cr2w` (WolvenKit `import --keep`, `convert deserialize`) | implemented (fake tool only: the real WolvenKit not run on it yet) | `plugins/redengine/encode.py`; `tests/test_wolvenkit_import.py` |
-| 18.3 way back of `decode.image` (PNG to uncompressed DDS; BC1-BC7 skipped with the reason) | implemented (tests only) | `core/encode_dds.py`; `tests/test_encoders.py` |
+| 18.3 way back of `decode.image` (PNG to uncompressed DDS, or BC1/BC3/BC4/BC5 through ViWo's own range-fit encoder; BC2, BC6H, BC7, signed BC4/BC5 skipped with the reason) | implemented (tests only; the encoder's blocks also checked once against the pinned ffmpeg's decoder by hand, not in the suite) | `core/encode_dds.py`, `core/encode_bc.py`; `tests/test_encoders.py`, `tests/test_encode_bc.py` |
+| 18.3 way back of `decode.ctex` (PNG to the Godot texture in its form: PNG or lossless WebP mipmaps, or uncompressed 8-bit; VRAM-compressed and Basis skipped with the reason) | implemented (tests only: no Godot game with PCK data here) | `plugins/godot/ctex.py`, `plugins/godot/ctex_write.py`; `tests/test_godot_ctex.py` |
+| 18.3 way back of `decode.redscripts` (the edited source as `r6/scripts/<path>.reds` beside `final.redscripts`; the plan says the copy needs the redscript compiler) | implemented (tests only: fake redscript, the compiler not run on it) | `plugins/redengine/games/cyberpunk2077/scripts.py`, `Decoder.adds`/`back_note`, `core/roundtrip_encode.py`; `tests/test_redscripts.py` |
 | 18.3 way back of `decode.audio`, `decode.video`, `decode.bink2` | not possible under the rules (proprietary encoders): said per file | `Decoder.one_way` |
-| 18.3 way back of `decode.redscripts`, Godot `.ctex` | open | - |
 | 18.4 pack slots | implemented | `plugins/*`, `backends/packers.py` |
 | 18.6 target rules (the guard first, also for a reused copy), no anti-tamper code | implemented | `core/roundtrip.py` `prepare_copy`, `core/pipeline/guard.py` `guarded` |
 | 18.8 offset, RVA, AOB (overlapping matches counted), Keystone, capstone, bounded writes, overlapping patches refused, verify, export | implemented | `core/patchsets.py`, `core/patch_tools.py`; `tests/test_patchsets.py` |

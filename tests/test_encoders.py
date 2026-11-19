@@ -4,7 +4,7 @@ original's header facts; an SLP sheet written back decodes to the sheet (palette
 player colours, shadows, transparency), and so does a decoded random SLP written back; a Total
 War table decoded and written back is byte for byte the original, and an edit lands with the
 original's flags and order; an edited `.rpy` is the member that replaces its `.rpyc`. What has
-no way back says why (audio, video, a block-compressed DDS, an animated VTF)."""
+no way back says why (audio, video, a BC7 DDS, an animated VTF)."""
 
 from __future__ import annotations
 
@@ -138,11 +138,10 @@ class DdsBackTests(unittest.TestCase):
             if fmt in ("BGRA", "RGBA"):  # Pillow reads the same file to the same pixels
                 self.assertEqual(Image.open(io.BytesIO(blob)).convert("RGBA").tobytes(), want)
 
-    def test_block_compressed_and_cube_maps_say_why_they_stay_one_way(self) -> None:
+    def test_bc7_and_cube_maps_say_why_they_stay_one_way(self) -> None:
         png = png_of(noise(random.Random(42), (4, 4)))
-        for original, why in (
-            (dds("DXT1", (4, 4)), "encoder ViWo does not ship"),
-            (dds("DX10:71", (4, 4)), "encoder ViWo does not ship"),
+        for original, why in (  # BC1-BC5 go back: tests/test_encode_bc.py
+            (dds("DX10:98", (4, 4)), "BC7.*no encoder"),
             (dds("BGRA", (4, 4), caps2=0x200), "cube map"),
         ):
             with self.assertRaisesRegex(ValueError, why):

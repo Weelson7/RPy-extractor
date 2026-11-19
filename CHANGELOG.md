@@ -4,6 +4,26 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.24.0 (2026-11-19)
+- Block-compressed DDS go back (doc 18.3): an edited PNG of a BC1 (DXT1), BC3 (DXT5), BC4
+  (ATI1, BC4U) or BC5 (ATI2, BC5U) texture, FourCC or DX10, is written in the original's
+  format with its header and a rebuilt mip chain, through ViWo's own pure-Python encoder
+  (`core/encode_bc.py`, range fit per 4x4 block, deterministic; a 2048x2048 texture with its
+  mips takes 10 to 20 s in BC1/BC3, 3 to 9 s in BC4/BC5). ATI2 keeps the red/green order
+  ffmpeg shows. BC2,
+  premultiplied DXT2/DXT4, signed BC4/BC5, BC6H and BC7 are still skipped with the reason.
+- Godot: `decode.ctex` turns imported textures (`.ctex` Godot 4, `.stex` Godot 3) into PNG in
+  process when their mipmaps are PNG or WebP or uncompressed 8-bit, and writes an edited PNG
+  back in the same form (header, tag and channels kept, lossless WebP for a WebP original,
+  mips rebuilt). VRAM-compressed and Basis Universal textures are counted as not decoded, and
+  skipped on the way back, with the reason; so is WebP when Pillow lacks it.
+- Cyberpunk 2077: an edited decompiled script goes back the game's way, as
+  `r6/scripts/<its path>.reds` added to the patched copy beside `final.redscripts`; the plan
+  says it needs the redscript compiler installed in the copy (ViWo does not compile). Two
+  scripts decompiled from the one cache both go back. Decoders can now add a file beside the
+  member (`Decoder.adds`) and say what the copy needs (`Decoder.back_note`); `member_back`
+  receives the edited file's path in the decoder's output.
+
 ## 1.23.2 (2026-11-19)
 - SLP way back: paint outside a sprite's frames (the sheet's cells are as large as the
   largest frame) cannot be kept; it was dropped without a word and is now counted in the

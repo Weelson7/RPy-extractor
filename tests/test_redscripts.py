@@ -2,7 +2,9 @@
 redscript for one file per stored script, keeps everything it writes inside the run, counts what
 came out and names a missing tool and a run that wrote nothing; end to end through a fake
 redscript CLI the scripts land in the workspace, and `decompile = off` leaves the cache as it is.
-Verified on real data: the game's `r6/cache/final.redscripts` (1786 scripts)."""
+Verified on real data: the game's `r6/cache/final.redscripts` (1786 scripts).
+The way back (doc 18.3): an edited script becomes `r6/scripts/<its path>.reds` in the patched
+copy, beside the cache, which stays; the plan says the copy needs the redscript compiler."""
 
 from __future__ import annotations
 
@@ -18,6 +20,7 @@ from tests.test_redengine import rdar
 from viwo.contracts import CancelToken, ExtractionRequest
 from viwo.contracts.types import OutcomeKind
 from viwo.core.pipeline.runner import extract
+from viwo.core.roundtrip import repack
 from viwo.plugins.redengine.games.cyberpunk2077.scripts import RedscriptDecompile
 
 FAKE = """import sys
@@ -93,6 +96,33 @@ class BackendTests(unittest.TestCase):
             self.assertEqual(out.error, "redscript wrote nothing")
 
 
+class WayBackTests(unittest.TestCase):
+    def test_a_script_goes_back_as_a_loose_source_under_r6_scripts(self) -> None:
+        rng = random.Random(10)
+        back = RedscriptDecompile()
+        self.assertTrue(back.encodes and back.adds and "redscript compiler" in back.back_note)
+        for _ in range(60):
+            parts = [
+                rng.choice(["core", "cyberpunk", "a b", "é"]) for _ in range(rng.randint(0, 3))
+            ]
+            name = rng.choice(["Thing", "x.y", "_"])
+            out = "/".join(["final_redscripts", *parts, f"{name}.script"])
+            out = out.replace("/", "\\") if rng.random() < 0.3 else out
+            got = back.member_back("r6/cache/final.redscripts", out)
+            self.assertEqual(got, "/".join(["r6/scripts", *parts, f"{name}.reds"]))
+
+    def test_the_source_is_written_as_it_is_and_must_be_text(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "s.script").write_bytes("func F() -> Int32 { return 1; } // é\r\n".encode())
+            done = RedscriptDecompile().encode(root / "s.script", root / "x", root / "o.reds", None)
+            self.assertTrue(done.ok)
+            self.assertEqual((root / "o.reds").read_bytes(), (root / "s.script").read_bytes())
+            (root / "s.script").write_bytes(b"\xff\xfe\x00broken")
+            bad = RedscriptDecompile().encode(root / "s.script", root / "x", root / "o.reds", None)
+            self.assertIn("not UTF-8", bad.error)
+
+
 class PipelineTests(unittest.TestCase):
     def run_game(self, root: Path, extra: str = ""):
         game = root / "cp"
@@ -114,6 +144,28 @@ class PipelineTests(unittest.TestCase):
             self.assertTrue((ws / "redscripts" / "final.redscripts").is_file())  # as shipped
             names = sorted(p.name for p in (ws / "script").iterdir())
             self.assertEqual(names, ["Thing0.script", "Thing1.script", "Thing2.script"])
+
+    def test_edited_scripts_go_back_beside_the_cache_and_the_plan_says_what_it_needs(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.run_game(root)
+            ws = root / "ws"
+            (ws / "script" / "Thing1.script").write_text("// edited é\n", encoding="utf-8")
+            (ws / "script" / "Thing2.script").write_text("// also\n", encoding="utf-8")
+            rt = runtime(root)
+            plan = repack(rt, ws, None, apply=False)
+            item = plan["plan"][0]
+            self.assertEqual((item["container"], item["mode"], item["drops"]), ("", "mod", []))
+            scripts = ["r6/scripts/core/m1/Thing1.reds", "r6/scripts/core/m2/Thing2.reds"]
+            self.assertEqual(item["members"], scripts)  # two scripts of one cache: both go
+            self.assertTrue(all("redscript compiler" in w["note"] for w in item["ways"]))
+            self.assertEqual(sum("redscript compiler" in w for w in plan["warnings"]), 1)
+            copy = root / "copy"
+            report = repack(rt, ws, copy)
+            self.assertTrue(report["verified"], report)
+            self.assertEqual((copy / scripts[0]).read_text(encoding="utf-8"), "// edited é\n")
+            self.assertEqual((copy / "r6" / "cache" / "final.redscripts").read_bytes(), b"compiled")
+            self.assertFalse((root / "cp" / "r6" / "scripts").exists())  # the game: only read
 
     def test_decompile_off_leaves_the_cache_alone(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:

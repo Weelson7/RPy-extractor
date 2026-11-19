@@ -93,9 +93,12 @@ Decoder      (decode)       decode(path, dest, ctx) -> Outcome      viewable cop
                               format of `original` (the file decode read) with the content
                               of `edited` (a file decode wrote, then the user changed)
                             refuses(original) -> reason | ""   a cheap look (the header): the
-                              plan names such a member as skipped (BC-compressed DDS)
-                            member_back(member) -> member   the same, or the one the engine
-                              reads instead (`.rpyc` -> `.rpy`), which then replaces it
+                              plan names such a member as skipped (a BC7 DDS)
+                            member_back(member, out) -> member   the same, or the one the
+                              engine reads instead (`.rpyc` -> `.rpy`), which then replaces
+                              it; `out`: the edited file's path in the decoder's output
+                            adds: bool   member_back names a new loose file beside the member,
+                              which stays (redscript sources); back_note: said in the plan
 Prober       (probe)        probe(path, ctx) -> Outcome             facts in notes ("format=png")
 MediaEncoder (media.encode) the merger's ffmpeg builds; honours max_command_length
 Packer       (pack)         pack(container, members, ctx); output_for(container); verify(...);
@@ -212,6 +215,8 @@ other parts failed); `decode.redscripts` (`redscript-decompile`, redengine, opti
 redscript's console, MIT, Windows build, decompiles `final.redscripts` into one `.script` file per
 stored script); `decode.rpyc`
 (`unrpyc-cli`, renpy, option `decompile`); `decode.slp` (`slp-builtin`, genie);
+`decode.ctex` (`ctex-builtin`, godot, in process: `.ctex`/`.stex` textures whose mipmaps are PNG
+or WebP, or uncompressed 8-bit, to PNG; a VRAM-compressed or Basis texture is a counted failure);
 `decode.vtf` (`vtf-builtin`, source: VTF 7.0-7.5 to PNG); `decode.mdl` (`mdl-builtin`, source,
 a batch backend: studio models, `.mdl` versions 44 to 49, into `.glb` through
 `contracts/gltf.py` (`plugins/source/studio.py` reads, `models.py` writes). The `.vvd` and the

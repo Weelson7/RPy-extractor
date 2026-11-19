@@ -33,7 +33,7 @@ class UnrpycCli(Decoder):
         shutil.copyfile(edited, out)
         return Outcome(OutcomeKind.OK, 1)
 
-    def member_back(self, member: str) -> str:
+    def member_back(self, member: str, out: str = "") -> str:
         return member[:-1] if member.lower().endswith(".rpyc") else member
 
     def decode(self, path: Path, dest: Path, ctx) -> Outcome:

@@ -1,4 +1,5 @@
-"""Godot engine plugin (doc 13.3): PCK v1-v4, embedded PCKs, GDRE Tools / GodotPckTool."""
+"""Godot engine plugin (doc 13.3): PCK v1-v4, embedded PCKs, GDRE Tools / GodotPckTool, imported
+textures (`.ctex`, `.stex`) to PNG and back (ctex.py, ctex_write.py)."""
 
 from viwo.contracts.analysis import AnalysisTarget
 from viwo.contracts.plugin import (
@@ -12,6 +13,8 @@ from viwo.contracts.plugin import (
 from viwo.contracts.slots import SlotDefinition
 from viwo.contracts.types import DetectionResult
 
+from .ctex import SLOT as CTEX_SLOT
+from .ctex import CtexDecoder  # decode.ctex: imported textures to PNG and back
 from .gdscript import GdreDecompile, engine_version
 from .pck import (
     MAGIC,
@@ -42,7 +45,7 @@ MANIFEST = PluginManifest(
         ),
     ),
     description="Godot 3/4 games: PCK archives, embedded PCKs, encrypted PCKs with a key",
-    capabilities=("detect", "unpack", "export", "pack"),
+    capabilities=("detect", "unpack", "export", "pack", "decode"),
     dependencies=("gdre", "godotpcktool"),
 )
 EXPORT_SLOT = SlotDefinition("export.godot", "export", "godot", "gdre-recover")
@@ -116,10 +119,12 @@ class GodotPlugin(EnginePlugin):
             EXPORT_SLOT,
             SlotDefinition("pack.pck", "pack", "godot", "godotpcktool-pack"),
             SlotDefinition("analysis.gdscript", "analysis", "godot", "gdre-decompile"),
+            CTEX_SLOT,
         )
 
     def backends(self):
-        return (GdreTools(), GodotPckTool(), GodotPckPacker(), GdreRecover(), GdreDecompile())
+        backends = (GdreTools(), GodotPckTool(), GodotPckPacker(), GdreRecover(), GdreDecompile())
+        return (*backends, CtexDecoder())
 
     def pack_slot(self, unarchive_slot: str) -> str:
         return "pack.pck" if unarchive_slot == "unarchive.pck" else ""

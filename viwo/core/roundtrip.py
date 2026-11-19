@@ -226,6 +226,7 @@ def repack(rt, workspace: Path, target: Path | None, sink=None, cancel=None, **h
     edits, skipped = edit_set(workspace, decoded)
     back, one_way = ways_back(rt, workspace, decoded)
     items, warnings = plan(rt, game, edits + back, original_hashes(workspace), mode)
+    warnings += sorted({e.way.note for e in back if e.way.note})  # what the copy needs
     report = {
         "game": str(game),
         "target": str(target or ""),
