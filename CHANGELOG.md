@@ -4,6 +4,10 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.22.3 (2026-11-19)
+- The game loads the change on Unreal too: a UE5 test game starts with the window title set
+  in its `DefaultGame.ini`, loaded from ViWo's `_P.pak` (`sqc/proof/unreal-voids-cave.jpg`).
+
 ## 1.22.2 (2026-11-19)
 - The game loads the change on KiriKiri too: a test game shows its marked title background
   from ViWo's `patch.xp3` (`sqc/proof/kirikiri-ubu.jpg`).

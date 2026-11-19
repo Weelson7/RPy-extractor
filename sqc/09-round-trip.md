@@ -100,7 +100,9 @@ Steps, per engine (a free title of `games.md`, from a worktree at a committed ve
 
 Expected: the patched copy starts and `shot.png` (the game's own window) shows the mark; the
 game folder is unchanged. Recorded: `sqc/proof/renpy-ddlc.jpg`, `sqc/proof/unity-baldi.jpg`,
-`sqc/proof/rpgmaker-mv.jpg`, `sqc/proof/kirikiri-ubu.jpg`. On KiriKiri pick an image the
+`sqc/proof/rpgmaker-mv.jpg`, `sqc/proof/kirikiri-ubu.jpg`, `sqc/proof/unreal-voids-cave.jpg` (Unreal: no image goes back
+yet, so the mark is `ProjectDisplayedTitle` in `DefaultGame.ini`, read in the window title
+`game_shot.ps1` prints). On KiriKiri pick an image the
 scripts name without its folder (`storage="sky0"`): one named with its folder is read from
 the game's own archive, whatever the patch holds.
 
