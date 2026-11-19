@@ -569,6 +569,21 @@
     "find": "x64dbg.exe"
    }
   },
+  "scylla": {
+   "version": "0.9.8",
+   "license": "GPL-3.0",
+   "_note": "NtQuery/Scylla, the x64/x86 process dumper and IAT rebuilder behind the dump-to-patch handoff (attach.dump, doc 11.8); GUI-only, launched and guided, never automated; GPL, always a separate process; the release asset is a .rar, 7-Zip unpacks it; Windows only",
+   "windows": {
+    "url": "https://github.com/NtQuery/Scylla/releases/download/v0.9.8/Scylla_v0.9.8.rar",
+    "sha256": "48a4338d999ec5f33b5964c51893a04fc9e2d104b0c7786f50751f7db5dcbe52",
+    "size": 1009540,
+    "kind": "sfx",
+    "find": "Scylla_x64.exe",
+    "needs": [
+     "sevenzip"
+    ]
+   }
+  },
   "cheatengine": {
    "version": "7.6",
    "license": "Cheat Engine license (source available, freeware)",

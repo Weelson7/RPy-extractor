@@ -1,0 +1,66 @@
+"""Pluggable patcher / isolation arm (doc 11.8), Tier 1. One slot family, `isolation.<tier>`:
+VirtualBox (T1, orchestrated here through VBoxManage), QEMU (T2) and DRAKVUF/LibVMI (T3) declared
+and reporting their requirement through wall(). The atomic live edit (suspend -> write -> verify
+-> resume) lives here so every backend's session shares it. Nothing auto-runs: a session starts
+only when a caller asks for it (the CLI / API surface is open work, doc 11.8)."""
+
+from viwo.contracts.patcher import PatchSession, Wall, WallReport
+from viwo.contracts.slots import SlotDefinition
+
+from .scylla import ScyllaDump
+from .tiers import QemuPatcher, VmiPatcher
+from .vbox import VirtualBoxPatcher
+
+__all__ = ["SLOTS", "ScyllaDump", "atomic_write", "backends", "tiers"]
+
+SLOTS = (
+    SlotDefinition("isolation.vbox", "isolation", "core", "vbox"),
+    SlotDefinition("isolation.qemu", "isolation", "core", "qemu"),
+    SlotDefinition("isolation.vmi", "isolation", "core", "libvmi"),
+)
+
+
+def backends() -> list:
+    """The three tier backends. Scylla's dump-to-patch handoff is an attach-family tool, wired
+    in core/capture (so it rides `viwo attach`), not an isolation backend."""
+    return [VirtualBoxPatcher(), QemuPatcher(), VmiPatcher()]
+
+
+def tiers(rt) -> list[dict]:
+    """Every isolation backend with its tier, slot, requirement and readiness wall (for SYSTEM /
+    a CLI): announces what each tier needs and whether it can run here, never silently missing."""
+    out = []
+    for sid, slot in sorted(rt.slots.items()):
+        backend = rt.backends.get(slot.default_main) if slot.family == "isolation" else None
+        if backend is None:
+            continue
+        report = backend.ready(rt.os)
+        out.append(
+            {
+                "slot": sid,
+                "backend": backend.backend_id,
+                "tier": backend.tier,
+                "requirement": backend.requirement,
+                "ready": not report.blocked,
+                "wall": report.wall.value,
+                "detail": report.detail,
+            }
+        )
+    return out
+
+
+def atomic_write(session: PatchSession, addr: int, data: bytes) -> WallReport:
+    """A live edit that is never seen half-applied: suspend the target, write, read the bytes
+    back to prove they held (a self-check that reverts them is an integrity-check wall), and
+    resume whatever happened. The suspend/resume and the I/O are the session's own (the
+    boundary's tool); this is only the order that makes the edit atomic (doc 11.8)."""
+    session.suspend()
+    try:
+        blocked = session.write_mem(addr, data)
+        if blocked.blocked:
+            return blocked
+        if session.read_mem(addr, len(data)) != data:
+            return WallReport(Wall.INTEGRITY_CHECK, "the write did not hold on readback")
+        return WallReport()
+    finally:
+        session.resume()

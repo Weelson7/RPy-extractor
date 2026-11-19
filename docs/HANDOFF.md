@@ -104,6 +104,13 @@ The presentation tools (`tools/presentation/`: `frames.py`, `deck.py`, `tech_pdf
   QuickBMS on a real archive, Overwatch (the independent operator's).
 
 **Open in the code**
+- Patcher / isolation (doc 11.8, rung T4): the contract (`viwo/contracts/patcher.py`), the
+  `core/isolation/` arm (VirtualBox T1 through `VBoxManage`, Scylla dump-to-patch as `attach.dump`,
+  QEMU T2 and DRAKVUF/LibVMI T3 declared and reporting not-ready through `wall()`) and
+  `tests/test_isolation.py` (a fake VBoxManage) are in. Open: a `viwo` command and an `/api` route
+  that drive a session; the in-guest debugger bridge for host-side `read/write_mem` (now a
+  `not_ready` wall); and **real in-VM proof** — no VM has run here, VirtualBox and QEMU are
+  located-only (a person installs them; needs a machine). Tiers 2/3 are unimplemented.
 - The game-folder guard without a game path (doc 3.1) knows the games ViWo was given, Steam
   libraries, Epic and GOG installs and patched copies; a game ViWo was never given, from no
   store with marks, is still out of its reach.

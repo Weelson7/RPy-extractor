@@ -13,6 +13,7 @@ from viwo.contracts.errors import ViwoError
 from viwo.contracts.slots import SlotDefinition
 
 from ..context import core_context
+from ..isolation.scylla import ScyllaDump
 from ..pipeline.collect import Source, collect, sha256
 from ..pipeline.failover import run_with_failover
 from ..pipeline.guard import change_warning, guarded, snapshot
@@ -34,15 +35,16 @@ SLOTS = (
     SlotDefinition("attach.debug", "attach", "core", "x64dbg-gui"),
     SlotDefinition("attach.memory", "attach", "core", "cheatengine-gui"),
     SlotDefinition("attach.net", "attach", "core", "mitmproxy-gui"),
+    SlotDefinition("attach.dump", "attach", "core", "scylla-gui"),
 )
 
 
 def backends() -> list:
-    """RenderDoc serves capture.gpu; x64dbg, Cheat Engine and mitmproxy the attach slots;
-    Frida and the loopback recorder serve no slot (one tool each, nothing to fail over to) and
-    are listed for their dependencies (preflight, SYSTEM)."""
+    """RenderDoc serves capture.gpu; x64dbg, Cheat Engine, mitmproxy and Scylla the attach slots
+    (Scylla's dump-to-patch is an attach tool, doc 11.8); Frida and the loopback recorder serve
+    no slot (one tool each, nothing to fail over to) and are listed for their dependencies."""
     tools = [FridaTrace(), LoopbackRecorder(), RenderDocCapture()]
-    return [*tools, X64dbgGui(), CheatEngineGui(), MitmproxyGui()]
+    return [*tools, X64dbgGui(), CheatEngineGui(), MitmproxyGui(), ScyllaDump()]
 
 
 def _known_hashes(workspace: Path) -> set[str]:

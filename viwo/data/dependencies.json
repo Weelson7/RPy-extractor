@@ -337,5 +337,34 @@
    "x64dbg"
   ],
   "hint": "install x64dbg (GPL-3, run as a separate process): `viwo install x64dbg`"
+ },
+ "scylla": {
+  "label": "Scylla (process dump + IAT rebuild)",
+  "env_var": "VIWO_SCYLLA",
+  "executables": [
+   "Scylla_x64",
+   "Scylla_x86"
+  ],
+  "hint": "install Scylla (GPL-3, run as a separate process): `viwo install scylla`"
+ },
+ "virtualbox": {
+  "label": "VirtualBox (VBoxManage)",
+  "env_var": "VIWO_VBOXMANAGE",
+  "executables": [
+   "VBoxManage"
+  ],
+  "install_dirs": [
+   "Oracle/VirtualBox",
+   "VirtualBox"
+  ],
+  "hint": "ViWo does not install VirtualBox (kernel driver, one-time elevation): install the base package (GPL-3, 7.x) yourself or set VIWO_VBOXMANAGE. Reference build VirtualBox-7.2.22-175245-Win.exe, 178101352 bytes, sha256 afd0ff1656cbe04ed88ce619594ae021419d97cce89fa9bdc443e9a963f1713f"
+ },
+ "qemu": {
+  "label": "QEMU (qemu-system-x86_64)",
+  "env_var": "VIWO_QEMU",
+  "executables": [
+   "qemu-system-x86_64"
+  ],
+  "hint": "ViWo does not install QEMU: install it yourself (GPL-2, WHPX or TCG) or set VIWO_QEMU"
  }
 }

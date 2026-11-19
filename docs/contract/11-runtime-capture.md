@@ -150,3 +150,46 @@ Open: `hook.overlay`. Checked on 2026-11-10, neither candidate can be wired with
   ViWo rewriting the manifests. A `mangohud` the user installed with their distribution could
   be started as the game's wrapper, unpinned; not built, and not verifiable on Windows.
 - ReShade ships only as an installer.
+
+## 11.8 Patcher / isolation (Tier 1 foundation)
+
+Cold and live patching (doc 16.2b T1-T3, 18.8) work even when the target defends itself
+(self-checksums, anti-debug) or holds fragile state, and TPM-gated local logic can be met with a
+virtual TPM, by running the target behind an isolation boundary and driving the edit there. The
+boundary is a pinned third-party VM, emulator or VMI tool run as a separate process; ViWo authors
+no hypervisor, driver or evasion code (CLAUDE.md). The pieces are in place; the CLI/API surface
+and real in-VM proof are open work.
+
+**Contract** (`viwo/contracts/patcher.py`, a thin contract): a `PatcherBackend` in an
+`isolation.<tier>` slot has `ready(os)` (can it run here?) and `start(target, ctx, *,
+snapshot=False)`, which boots the target and returns a `PatchSession`. The session is the live
+handle: `suspend`/`resume`, `read_mem`/`write_mem`, `snapshot`/`rollback`, `dump` (to a patchable
+file) and `close`. A live edit is **atomic** — suspend → `write_mem` → `read_mem` to verify →
+resume — in `core.isolation.atomic_write`. Crucially, when an edit cannot land the backend reports
+**which `Wall`** it hit (`server_side`, `vm_detected`, `remote_attestation`, `integrity_check`,
+`not_ready`) rather than failing blind (owner: never silent). A readback that does not match is an
+`integrity_check` wall.
+
+**Scylla dump-to-patch** (`core/isolation/scylla.py`, `attach.dump` / `scylla-gui`): "Continue in
+Scylla" attaches to the running game and dumps its in-memory image to a reconstructed PE (IAT
+rebuilt) in the workspace, which then feeds the cold-patch flow (patch sets). Scylla (NtQuery/
+Scylla 0.9.8, GPL-3.0) is GUI-only with no reliable CLI, so it is a launch-and-guide handoff like
+the debugger — opened as a tracked child, the console saying the steps — never a faked automation.
+It is an attach-family tool, so it rides `viwo attach` / RUNTIME behind the `capture` switch (11.1).
+Pinned in `tools.json` (the `.rar` release, 1,009,540 bytes, sha256
+`48a4338d999ec5f33b5964c51893a04fc9e2d104b0c7786f50751f7db5dcbe52`, unpacked with 7-Zip).
+
+**Tiers** (slot family `isolation`):
+
+| Tier | Slot / backend | Tool (licence) | What it does | State |
+|------|----------------|----------------|--------------|-------|
+| T1 | `isolation.vbox` / `vbox` | VirtualBox 7.x `VBoxManage` (base package, GPL-3.0; NOT the Extension Pack) | registers a VM with a **virtual TPM 2.0** (EFI), boots the target, takes/restores **snapshots** for iterative patch retries, pauses/resumes it, and `debugvm dumpvmcore` to a patchable file; the in-guest debugger does the byte-level read/write (VBoxManage has no host-side poke, so `write_mem` is a `not_ready` wall that says so) | orchestration built and unit-tested with a fake `VBoxManage`; no real VM has run here |
+| T2 | `isolation.qemu` / `qemu` | QEMU `qemu-system-x86_64` (GPL-2.0) | out-of-guest patching through QEMU's gdbstub, WHPX acceleration when present else TCG | **declared**: `ready()`/`wall()` announce the requirement; `start()` refuses (not implemented) |
+| T3 | `isolation.vmi` / `libvmi` | DRAKVUF / LibVMI (GPL-3.0) | watch and patch from outside the guest | **declared**: needs a bare-metal Linux KVM/Xen host; `wall()` says so on Windows |
+
+VirtualBox and QEMU are **unmanaged / located-only** (doc 10, 16.3): ViWo does not install them. A
+hypervisor needs a kernel driver and a one-time elevation, which the minimal-prompts and
+third_party-only rules forbid, so the backend locates the user's own install (the `virtualbox` /
+`qemu` dependencies). The exact VirtualBox base-package build the T1 backend targets is recorded
+for provenance (doc 10): `VirtualBox-7.2.22-175245-Win.exe`, 178,101,352 bytes, sha256
+`afd0ff1656cbe04ed88ce619594ae021419d97cce89fa9bdc443e9a963f1713f`.
