@@ -126,4 +126,8 @@ The presentation tools (`tools/presentation/`: `frames.py`, `deck.py`, `tech_pdf
   kept for it: Unity IL2CPP MonoBehaviour fields come out for the scripts whose rebuilt
   layout fits (the rest are listed without fields); Unreal models are UEFormat (glTF needs
   another exporter); a REDengine TweakDB reader was prototyped and not shipped (one game);
-  Total War schemas install with `viwo install rpfm-schema-<game>`.
+  Total War schemas install with `viwo install rpfm-schema-<game>`. Models as `.glb`: Total
+  War rigid models version 5 (UTF-16 names, Rome II ships some) and 8 (Warhammer III) are
+  refused, version 7 is tests only, as is all of NIF (no Bethesda game at hand); a skinned
+  Skyrim SE shape (vertices in its NiSkinPartition), NiTriStrips and Fallout 4's `.bgsm`
+  materials are not read yet.

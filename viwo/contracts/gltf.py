@@ -1,8 +1,10 @@
 """glTF 2.0 binaries (`.glb`) for the plugins that turn a game's models into an open format
 (doc 16.0c): one buffer with its views and accessors and the JSON beside it; affine matrices
 as three rows of four (glTF wants columns: `columns`); a skin's joint nodes and inverse bind
-matrices; bone links four to a set (JOINTS_n, WEIGHTS_n); PNG images embedded as they are.
-The plugin reads its engine's format and converts its axes; this module only writes."""
+matrices; bone links four to a set (JOINTS_n, WEIGHTS_n), made to sum to one when asked
+(`weighed`); unit normals and tangents with their handedness from a stored V direction; PNG
+images embedded as they are. The plugin reads its engine's format and converts its axes; this
+module only writes."""
 
 import json
 import math
@@ -132,6 +134,39 @@ def links(glb: Glb, attributes: dict, joints: array, weights: array, per_vertex:
             weight[k - group :: 4] = array("f", kept)
         attributes[f"JOINTS_{group // 4}"] = glb.accessor(bones, "VEC4", USHORT)
         attributes[f"WEIGHTS_{group // 4}"] = glb.accessor(weight, "VEC4", FLOAT)
+
+
+def unit(values: array) -> array:
+    """Three-number vectors scaled to length one (a zero one stays as it is)."""
+    for i in range(0, len(values), 3):
+        size = math.sqrt(values[i] ** 2 + values[i + 1] ** 2 + values[i + 2] ** 2) or 1.0
+        values[i], values[i + 1], values[i + 2] = (v / size for v in values[i : i + 3])
+    return values
+
+
+def tangents(normals: array, along_u: array, along_v: array) -> array:
+    """TANGENT from a stored U direction (already in glTF's axes), w the side the stored V
+    direction lies on (cross(N, T) . V), so a mirror or a swap upstream keeps its sign."""
+    out = array("f", bytes(16 * (len(normals) // 3)))
+    for k, i in enumerate(range(0, len(normals), 3)):
+        (nx, ny, nz), (tx, ty, tz), v = normals[i : i + 3], along_u[i : i + 3], along_v[i : i + 3]
+        side = (ny * tz - nz * ty) * v[0] + (nz * tx - nx * tz) * v[1] + (nx * ty - ny * tx) * v[2]
+        out[4 * k : 4 * k + 4] = array("f", (tx, ty, tz, -1.0 if side < 0 else 1.0))
+    return out
+
+
+def weighed(joints, weights, per: int) -> tuple[array, array]:
+    """Each vertex's links for `links`: a slot that weighs nothing is marked empty (0xFFFF),
+    the others scaled to sum to one (the stored ones round: bytes, half floats)."""
+    joints, weights = array("H", joints), array("f", weights)
+    for i in range(0, len(joints), per):
+        total = sum(w for w in weights[i : i + per] if w > 0) or 1.0
+        for k in range(i, i + per):
+            if weights[k] > 0:
+                weights[k] /= total
+            else:
+                joints[k], weights[k] = 0xFFFF, 0.0
+    return joints, weights
 
 
 def finish(glb: Glb, name: str, primitives: list[dict], roots: list[int], out: Path) -> None:

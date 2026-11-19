@@ -4,6 +4,25 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.25.0 (2026-11-19)
+- Total War: `decode.rigid_model_v2` turns rigid models (versions 6 and 7; 5, 8 and others
+  refused by name) into `.glb`: LOD 0, each mesh group a primitive with positions (from the
+  group's pivot), normals, tangents, both UV sets of a static group, colours as data, a
+  material named after the group with every texture path kept, the colour map embedded as PNG
+  when its `.dds` is in the run. Weighted and cinematic groups carry their bone links; with
+  the skeleton the model names in the run (`.anim` and `.bone_inv_trans_mats`) they form a skin
+  in the bind pose, without it they stay as data (`_JOINTS_0`, `_WEIGHTS_0`) and that is said.
+  Groups of other formats (decals, water) are left out and counted. X is mirrored, triangles
+  rewound. No tool installed.
+- Bethesda: `decode.nif` turns NIF models as Skyrim, Skyrim SE and Fallout 4 ship them
+  (20.2.0.7, user version 12, streams 83, 100, 130) into `.glb`: the node tree as glTF nodes,
+  NiTriShape and BSTriShape shapes with every channel, skins with Gamebryo's bind matrices,
+  the shader as the material and its colour map as PNG. Other versions, NiTriStrips,
+  BSDynamicTriShape and skinned Skyrim SE shapes whose vertices are in their skin partition
+  are refused by name. Tests only: no Bethesda game at hand.
+- The shared glTF writer gained unit normals, tangents with their handedness from a stored V
+  direction, and bone links scaled to sum to one.
+
 ## 1.24.0 (2026-11-19)
 - Block-compressed DDS go back (doc 18.3): an edited PNG of a BC1 (DXT1), BC3 (DXT5), BC4
   (ATI1, BC4U) or BC5 (ATI2, BC5U) texture, FourCC or DX10, is written in the original's

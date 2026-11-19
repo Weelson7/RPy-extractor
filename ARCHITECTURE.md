@@ -35,7 +35,10 @@ viwo/
     gltf.py        the glTF 2.0 binary writer the model converters share (Glb, affine matrices,
                    skin, bone links, embedded PNG): Overwatch `.owmdl`, Unity Mesh, Unreal
                    `.uemodel` (unreal/uemodel.py), Source `.mdl` (source/studio.py reads,
-                   source/models.py writes: decode.mdl)
+                   source/models.py writes: decode.mdl), Total War `.rigid_model_v2`
+                   (warscape/rigid.py reads, warscape/models.py writes: decode.rigid_model_v2),
+                   Bethesda `.nif` (bethesda/nif.py reads, bethesda/nifmodels.py writes:
+                   decode.nif)
   os/          LinuxOS, WindowsOS (_shared.py): processes with tree kill and tracked children,
                tool lookup, filename rules, pickers, homes, scan exclusions, process list, dumps
   backends/    core unarchivers (zip, tar, 7-Zip, py7zr, unrar) and the zip packer

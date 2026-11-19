@@ -3,7 +3,8 @@
 Header: magic PFH4/PFH5/PFH6, pack type, dependency count and index size, file count and
 index size, timestamp. Index entries: u32 size (+ u32 timestamp when the type carries the
 0x40 bit, as boot.pack does), zero-terminated path; the file data follows the index in entry
-order, uncompressed. An encrypted index (0x80) is reported, not guessed.
+order, uncompressed. An encrypted index (0x80) is reported, not guessed. Rigid models are
+decoded to glTF (decode.rigid_model_v2, models.py over rigid.py).
 """
 
 import struct
@@ -98,7 +99,9 @@ class WarscapePlugin(EnginePlugin):
         return DetectionResult("warscape", 0.85 if packs else 0.0, evidence, "warscape")
 
     def slot_definitions(self):
-        return (SLOT, LOC_SLOT, DB_SLOT, PACK_SLOT)
+        from .models import SLOT as MODEL_SLOT
+
+        return (SLOT, LOC_SLOT, DB_SLOT, PACK_SLOT, MODEL_SLOT)
 
     def export_slot(self) -> str:
         return "export.warscape"
@@ -107,4 +110,6 @@ class WarscapePlugin(EnginePlugin):
         return "pack.pack" if unarchive_slot == "unarchive.pack" else ""
 
     def backends(self):
-        return (PackBuiltin(), LocBuiltin(), DbBuiltin(), MoviePack())
+        from .models import RigidModelDecoder
+
+        return (PackBuiltin(), LocBuiltin(), DbBuiltin(), MoviePack(), RigidModelDecoder())

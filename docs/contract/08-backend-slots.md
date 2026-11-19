@@ -231,7 +231,45 @@ The rest pose is the file's bind pose: a model whose data lies on its side (TF2'
 lies in the `.glb` too; the game stands it up through its animations. Flexes, animations,
 eyeballs, attachments, other bodygroup choices and LODs are not in it. Each call says
 how many models it wrote, how many hold no mesh (animation libraries) and how many materials
-stayed untextured; a model that cannot be converted is counted with the first reason).
+stayed untextured; a model that cannot be converted is counted with the first reason);
+`decode.rigid_model_v2` (`rmv2-builtin`, warscape, a batch backend: Total War rigid models,
+versions 6 (Rome II, Attila, Thrones of Britannia; read on Rome II's packs) and 7 (Warhammer,
+the same layout with a 28-byte LOD header, tests only); 5 (UTF-16 names), 8 and others are
+refused by name. `plugins/warscape/rigid.py` reads, `models.py` writes. LOD 0, each mesh
+group a primitive whose material is named after the group and keeps the shader, the material
+type and every texture path as extras; vertex formats 0 (static: position from the group's
+pivot, two UV sets, normal and directions stored B, G, R, colour), 3 (weighted: two bones,
+one stored weight, the second weighing the rest) and 4 (cinematic: four bones and weights);
+a group of another format or material layout (texture combos, decals, water) is left out
+and counted, a file of only such groups refused with its material type. Bone links are scaled to sum to one; with the skeleton the
+header names in the run (`animations/skeletons/<name>.anim` version 5 for names and parents,
+`<name>.bone_inv_trans_mats` for the bind matrices; the reference pose is their inverse; of
+several files of that name, `name__1` included, the first pair that reads and agrees) they
+form a glTF skin, without it they stay as data (`_JOINTS_0`, `_WEIGHTS_0`) and the call says
+so with the reason; no pose is invented. Warscape is left-handed, Y up: X is mirrored on every
+position, direction and matrix, every triangle is rewound, a tangent's handedness is taken
+after the mirror. The colour map (texture type 0) is embedded as PNG through Pillow when its
+`.dds` is in the run, found by name in the `dds/` group (the first of a name two folders
+share) or by its game path above the model's folder); `decode.nif` (`nif-builtin`, bethesda,
+a batch backend: NIF 20.2.0.7, user version 12, Bethesda stream 83 (Skyrim), 100 (Skyrim
+SE), 130 (Fallout 4); others refused by name; tests only, no Bethesda game at hand.
+`plugins/bethesda/nif.py` reads, `nifmodels.py` writes. Blocks read: the node kinds of
+`nif.NODES`, NiTriShape and BSLODTriShape with NiTriShapeData, BSTriShape, BSMeshLODTriShape
+and BSSubIndexTriShape with their own vertex data, NiSkinInstance, BSDismemberSkinInstance
+and NiSkinData, BSSkin::Instance and BSSkin::BoneData, BSLightingShaderProperty with its
+BSShaderTextureSet, BSEffectShaderProperty; a file holding NiTriStrips, BSDynamicTriShape,
+BSSegmentedTriShape or NiTriShapeDynamic is refused naming the type, and so is a skinned
+Skyrim SE shape whose vertices live in its NiSkinPartition, or a skin whose weights are only
+there. The node tree becomes glTF nodes; each shape a node with a mesh of one primitive
+(positions, normals, tangents, every UV set, colours as `_COLOR_0`, triangles as stored) and
+its shader as the material (named after the shader, Fallout 4's `.bgsm` path, else its colour
+map); a skin's inverse bind matrices are what Gamebryo skins with (bone^-1 * shape *
+rootParentToSkin * rootParent^-1 * bone * skinToBone, skinToBone in a consistent file).
+NIF is right-handed, Z up, Y forward: glTF's (x, y, z) is NIF's (-x, z, y), a rotation, so
+winding is kept. Bethesda's array named tangents runs along V (as NifSkope and nifly write
+it): TANGENT is the other one. Collision, particles, controllers and `.bgsm` materials are not
+read. Both calls say how many models they wrote, how many hold no mesh, how many were refused
+(the first reason) and how many materials stayed untextured).
 
 **Media:** `media.probe` (`ffprobe-probe`, spare `pillow-probe`), `media.encode` (`ffmpeg`).
 

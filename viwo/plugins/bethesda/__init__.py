@@ -1,4 +1,5 @@
-"""Bethesda (Gamebryo / Creation Engine): BSA and BA2 archives."""
+"""Bethesda (Gamebryo / Creation Engine): BSA and BA2 archives; NIF models decoded
+(decode.nif, nifmodels.py over nif.py)."""
 
 import mmap
 import struct
@@ -104,14 +105,16 @@ class BethesdaPlugin(EnginePlugin):
         return DetectionResult("bethesda", score, evidence, "bethesda")
 
     def slot_definitions(self):
+        from .nifmodels import SLOT as NIF_SLOT
         from .pack import SLOTS as PACK_SLOTS
 
-        return SLOTS + PACK_SLOTS
+        return SLOTS + PACK_SLOTS + (NIF_SLOT,)
 
     def pack_slot(self, unarchive_slot: str) -> str:
         return {"unarchive.bsa": "pack.bsa", "unarchive.ba2": "pack.ba2"}.get(unarchive_slot, "")
 
     def backends(self):
+        from .nifmodels import NifDecoder
         from .pack import LooseOverride
 
-        return (BsaBuiltin(), Ba2Builtin(), LooseOverride())
+        return (BsaBuiltin(), Ba2Builtin(), LooseOverride(), NifDecoder())
