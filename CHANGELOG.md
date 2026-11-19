@@ -4,6 +4,11 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.27.1 (2026-11-19)
+- `tools/game_shot.ps1`: several keys separated by `|` (PowerShell's `-File` passes one string),
+  the window looked for again for 30 s after the keys (a game swapping windows), and `-Screen`
+  to copy the screen where printing a full-screen DirectX window gives black.
+
 ## 1.27.0 (2026-11-19)
 - The game-folder guard without a game path (doc 3.1) knows games now. Every game ViWo is
   given is remembered in `viwo-data/games.json`; `dump`, `trace`, `hook`, `profile`, `record`,

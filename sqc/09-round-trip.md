@@ -97,7 +97,9 @@ Steps, per engine (a free title of `games.md`, from a worktree at a committed ve
    first screen (the title or menu background), in `W`.
 2. `viwo repack W --out P`; read `Result: ... (verified)`.
 3. `powershell -File tools\game_shot.ps1 -Exe P\<game exe> -Out shot.png -Wait 15`; a dialog in
-   front of the menu is dismissed with `-Keys "{ENTER}"` (SendKeys syntax, one wait per key).
+   front of the menu is dismissed with `-Keys "{ENTER}"` (SendKeys syntax, several separated by
+   `|`, one wait per key); a game drawing full screen through DirectX prints black, `-Screen`
+   copies the screen instead.
 
 Expected: the patched copy starts and `shot.png` (the game's own window) shows the mark; the
 game folder is unchanged. Recorded: `sqc/proof/renpy-ddlc.jpg`, `sqc/proof/unity-baldi.jpg`,
