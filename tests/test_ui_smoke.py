@@ -139,7 +139,8 @@ class UiSmokeTests(unittest.TestCase):
         self.assertEqual(a["dynamic"], ["dynamic", "capture", "runtime"])
         self.assertEqual(a["afterGlobal"], a["dynamic"])  # a strip view keeps the arm
         self.assertEqual(
-            (a["patching"], a["patchingHash"]), (["patching", "repack", "patches"], "#patching")
+            (a["patching"], a["patchingHash"]),
+            (["patching", "repack", "assets", "patches"], "#patching"),
         )
 
     def test_toast_sits_at_the_top_right_under_the_bar(self) -> None:
@@ -184,6 +185,14 @@ class UiSmokeTests(unittest.TestCase):
         self.assertTrue(
             any("on this page" in f for f in c["sortFilters"]) or len(c["sortFilters"]) > 0
         )
+
+    def test_assets_offers_mod_or_overwrite_and_plans(self) -> None:
+        c = self.report["checks"]
+        self.assertEqual(c["assetsModes"], [["MOD", "true"], ["OVERWRITE", "false"]])
+        self.assertTrue(c["assetsPlanned"], c)
+        self.assertTrue(c["assetsWrite"]["disabled"], c["assetsWrite"])  # nothing edited yet
+        self.assertTrue(c["assetsWrite"]["why"], c["assetsWrite"])  # and it says why
+        self.assertEqual(c["assetsNull"], [])
 
     def test_cleanup_runs_as_a_visible_job(self) -> None:
         c = self.report["checks"]

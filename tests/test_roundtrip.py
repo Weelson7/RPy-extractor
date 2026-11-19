@@ -46,13 +46,26 @@ class RoundTripTests(unittest.TestCase):
         ws = self.extract(game)
         (ws / "png" / "bg.png").write_bytes(b"NEW-BG")
         (ws / "rpy" / "script.rpy").write_text("label start:\n    'edited'\n")
-        plan = repack(self.rt, ws, None, apply=False)
+        plan = repack(self.rt, ws, None, apply=False, mode="overwrite")
         self.assertEqual(
-            [(p["container"], p["slot"]) for p in plan["plan"]],
-            [("", "override"), ("game/archive.rpa", "pack.rpa")],
+            [(p["container"], p["slot"], p["mode"]) for p in plan["plan"]],
+            [("", "override", "overwrite"), ("game/archive.rpa", "pack.rpa", "overwrite")],
         )
+        modded = self.root / "modded"  # the default: Ren'Py reads game/ before its archives
+        mod = repack(self.rt, ws, modded)
+        self.assertEqual(
+            [(p["slot"], p["mode"], p["members"]) for p in mod["plan"]],
+            [
+                ("override", "overwrite", ["game/script.rpy"]),
+                ("override", "mod", ["game/images/bg.png"]),
+            ],
+        )
+        self.assertTrue(mod["verified"], mod)
+        self.assertEqual((modded / "game" / "images" / "bg.png").read_bytes(), b"NEW-BG")
+        archive = (game / "game" / "archive.rpa").read_bytes()
+        self.assertEqual((modded / "game" / "archive.rpa").read_bytes(), archive)  # untouched
         out = self.root / "patched"
-        report = repack(self.rt, ws, out)
+        report = repack(self.rt, ws, out, mode="overwrite")
         self.assertTrue(report["verified"], report)
         with open(out / "game" / "archive.rpa", "rb") as fh:
             index = read_index(fh)
@@ -61,7 +74,7 @@ class RoundTripTests(unittest.TestCase):
         self.assertIn("'edited'", (out / "game" / "script.rpy").read_text())
         self.assertEqual(tree_hashes(game), before)  # the original is never written
         self.assertTrue((out / MARKER / "report.json").is_file())
-        self.assertTrue(repack(self.rt, ws, out)["verified"])  # a patched copy can be rebuilt
+        self.assertTrue(repack(self.rt, ws, out, mode="overwrite")["verified"])  # rebuilt again
 
     def test_zip_container_and_target_rules(self) -> None:
         game = self.root / "love"

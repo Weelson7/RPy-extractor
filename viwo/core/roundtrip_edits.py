@@ -37,6 +37,7 @@ class Edit:
     container: str
     member: str
     plugin: str = ""  # owner of "exported" files
+    way: object = None  # an edited decoded file: its way back (roundtrip_encode.Way)
 
 
 def format_ok(file: Path, member: str) -> bool:
@@ -71,8 +72,10 @@ def added_files(workspace: Path) -> list[Edit]:
     return [Edit(file, "added", "", rel.as_posix()) for file, rel in rels if rel is not None]
 
 
-def edit_set(workspace: Path) -> tuple[list[Edit], list[str]]:
-    """Workspace files whose content differs from what extraction wrote, plus added files."""
+def edit_set(workspace: Path, decoded: list | None = None) -> tuple[list[Edit], list[str]]:
+    """Workspace files whose content differs from what extraction wrote, plus added files.
+    With `decoded` (a list), edited files DECODE wrote are put there as (entry, file) for
+    their way back (roundtrip_encode) instead of being skipped."""
     edits, skipped, missing = [], [], []
 
     def look(entry: dict) -> tuple[dict, Path | None, str]:
@@ -90,7 +93,9 @@ def edit_set(workspace: Path) -> tuple[list[Edit], list[str]]:
             continue
         kind = entry.get("kind", "derived")
         member = entry.get("member", "")
-        if kind not in ("loose", "member", "exported"):
+        if decoded is not None and str(entry.get("origin", "")).startswith("decode:"):
+            decoded.append((entry, file))
+        elif kind not in ("loose", "member", "exported"):
             skipped.append(f"{entry['path']}: {kind} file, writing it back is not supported yet")
         elif kind != "exported" and not format_ok(file, member or entry["path"]):
             skipped.append(f"{entry['path']}: format differs from the original member (18.3)")

@@ -118,6 +118,9 @@ def capture_command(command) -> None:
     )
 
 
+MODE_HELP = "mod (default): over the game's own files where the engine can; overwrite: rewritten"
+
+
 def tool_commands(command) -> None:
     """survey, repack, capture, sanitize, config, install, diag, indexes, workbook."""
     cf = command("config", "generate the distro config files, or check config files strictly")
@@ -130,6 +133,7 @@ def tool_commands(command) -> None:
     rk.add_argument("workspace", type=Path, help="the workspace holding your edited files")
     rk.add_argument("--out", type=Path, help="target folder for the patched copy")
     rk.add_argument("--plan", action="store_true", help="only show what would be written")
+    rk.add_argument("--mode", choices=["mod", "overwrite"], default="mod", help=MODE_HELP)
     capture_command(command)
     runtime_commands(command)
     agent_commands(command)

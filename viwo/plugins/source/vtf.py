@@ -87,9 +87,26 @@ def to_png(blob: bytes) -> bytes:
 class VtfDecoder(Decoder):
     backend_id, owner, license = "vtf-builtin", "source", "MIT"
     parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
+    encodes = True  # an edited PNG back to a VTF (vtf_write.py, doc 18.3)
 
     def dependencies(self):
         return (PILLOW,)
+
+    def refuses(self, original: Path) -> str:
+        from .vtf_write import refusal
+
+        with open(original, "rb") as fh:
+            why = refusal(fh.read(512))
+        return f"{original.name}: {why}" if why else ""
+
+    def encode(self, edited: Path, original: Path, out: Path, ctx) -> Outcome:
+        from .vtf_write import write_vtf
+
+        try:
+            out.write_bytes(write_vtf(edited.read_bytes(), original.read_bytes()))
+        except (ValueError, struct.error, OSError) as exc:
+            return Outcome(OutcomeKind.FAILED, error=f"{edited.name}: {exc}")
+        return Outcome(OutcomeKind.OK, 1)
 
     def decode(self, path: Path, dest: Path, ctx) -> Outcome:
         try:

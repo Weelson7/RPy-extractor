@@ -15,7 +15,7 @@ ships sanitizer rules (5.1); no pinned QuickBMS script in the indexes (16.0b); c
 
 **Open:** the completeness contract per engine (16.0c); rung D4 (`hook.overlay`); sanitizer phases
 2-3; the `supplement` slot policy; `[hooks]`; `memory_image` targets;
-`keys.*` slots; asset converters for round trip; Unreal asset export and the engines of 13.7;
+`keys.*` slots; the way back of Godot `.ctex`, Bannerlord TPAC, redscripts and block-compressed DDS; Unreal asset export and the engines of 13.7;
 declarative (Kaitai) plugins; the indexes repository split.
 
 ## Done, per engine and arm (owner)
@@ -365,7 +365,16 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 |------|-------|-----------------|
 | 18.2 provenance map, edit set, `_added/` | implemented | `core/provenance.py`, `core/roundtrip_edits.py` |
 | 18.3 repack steps, same-format rule, verification by re-extraction | implemented | `core/roundtrip.py` |
-| 18.3 asset converters (PNG back to Texture2D, `.ctex`) | open | - |
+| 18.3 asset converters: the way back of decoded files (`Decoder.encode`, ENCODE, verify on the encoded bytes, every one-way file named) | implemented (tests only: no real game yet) | `core/roundtrip_encode.py`, `core/roundtrip_plan.py`; `tests/test_roundtrip_encode.py` |
+| 18.3 mod or overwrite (`--mode`, API `mode`, default `mod`; the item says which form and why) | implemented (tests only) | `core/roundtrip_plan.py`, `EnginePlugin.loose_root` (Ren'Py), `Packer.drops` (`pack.rpa`); `tests/test_roundtrip.py`, `tests/test_roundtrip_encode.py` |
+| 18.3 way back of `decode.vtf` (PNG to uncompressed VTF) | implemented (tests only) | `plugins/source/vtf_write.py`; `tests/test_encoders.py` |
+| 18.3 way back of `decode.slp` (PNG sheet to SLP, simplest valid encoding) | implemented (tests only) | `plugins/genie/slp_write.py`; `tests/test_encoders.py`, `tests/test_roundtrip_encode.py` (end to end through the DRS) |
+| 18.3 way back of `decode.loc` (JSON to `.loc`) | implemented (tests only) | `plugins/warscape/loc.py`; `tests/test_encoders.py` |
+| 18.3 way back of `decode.rpyc` (the `.rpy`, the stale `.rpyc` removed) | implemented (tests only; Ren'Py compiling it on start not yet seen on a real game) | `plugins/renpy/decompile.py`, `plugins/renpy/pack.py`; `tests/test_roundtrip_encode.py` |
+| 18.3 way back of `decode.cr2w` (WolvenKit `import --keep`, `convert deserialize`) | implemented (fake tool only: the real WolvenKit not run on it yet) | `plugins/redengine/encode.py`; `tests/test_wolvenkit_import.py` |
+| 18.3 way back of `decode.image` (PNG to uncompressed DDS; BC1-BC7 skipped with the reason) | implemented (tests only) | `core/encode_dds.py`; `tests/test_encoders.py` |
+| 18.3 way back of `decode.audio`, `decode.video`, `decode.bink2` | not possible under the rules (proprietary encoders): said per file | `Decoder.one_way` |
+| 18.3 way back of `decode.redscripts`, Godot `.ctex` | open | - |
 | 18.4 pack slots | implemented | `plugins/*`, `backends/packers.py` |
 | 18.6 target rules (the guard first, also for a reused copy), no anti-tamper code | implemented | `core/roundtrip.py` `prepare_copy`, `core/pipeline/guard.py` `guarded` |
 | 18.8 offset, RVA, AOB (overlapping matches counted), Keystone, capstone, bounded writes, overlapping patches refused, verify, export | implemented | `core/patchsets.py`, `core/patch_tools.py`; `tests/test_patchsets.py` |

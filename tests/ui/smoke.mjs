@@ -131,6 +131,17 @@ await evaluate("location.hash = '#sort'");
 await waitFor("document.querySelectorAll('#view-sort .tfilter button').length > 0", 15000);
 report.checks.sortFilters = await evaluate("[...document.querySelectorAll('#view-sort .tfilter button')].map((b) => b.textContent.replace(/\\s+/g, ' ').trim())");
 
+// ASSETS: the mod / overwrite choice and a plan of the extracted workspace (nothing edited yet)
+step = "assets";
+await evaluate("location.hash = '#assets'");
+await sleep(800);
+report.checks.assetsModes = await evaluate("[...document.querySelectorAll('#view-assets .seg button')].map((b) => [b.textContent, b.getAttribute('aria-pressed')])");
+await click("assets", "PLAN");
+report.checks.assetsPlanned = await waitFor("Boolean(document.querySelector('#view-assets .stats .stat') || document.querySelector('#view-assets .empty'))", 20000);
+report.checks.assetsWrite = await evaluate("(() => { const b = [...document.querySelectorAll('#view-assets button')].find((x) => x.textContent.trim() === 'WRITE'); return b ? { disabled: b.disabled, why: document.querySelector('#view-assets .ab-why').textContent } : null; })()");
+report.checks.assetsNull = await nullText("assets");
+await shot("assets-planned");
+
 // CLEANUP: the scan runs as a visible job
 step = "cleanup";
 await evaluate("location.hash = '#cleanup'");

@@ -56,6 +56,12 @@ class RenPyPlugin(EnginePlugin):
     def pack_slot(self, unarchive_slot: str) -> str:
         return "pack.rpa" if unarchive_slot == "unarchive.rpa" else ""
 
+    def loose_root(self, container: str) -> str | None:
+        """Ren'Py opens a loose file under game/ before looking in its archives (unless the
+        game sets config.force_archives), and archive members are named from game/."""
+        parts = Path(container).parts
+        return "/".join(parts[: parts.index("game") + 1]) if "game" in parts[:-1] else None
+
     def source_roots(self, game_root: Path, probe: GameProbe):
         game_dir = game_root / "game"
         return (game_dir,) if game_dir.is_dir() else (game_root,)

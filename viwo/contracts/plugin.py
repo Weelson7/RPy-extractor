@@ -187,6 +187,11 @@ class EnginePlugin(ABC):
         """Round trip: the pack.* slot that writes back into this kind of container."""
         return ""
 
+    def loose_root(self, container: str) -> str | None:
+        """Round trip `mod` (doc 18.3): the game-relative folder whose loose files the engine
+        loads over this container's members, or None when it loads none."""
+        return None
+
     def export_slot(self) -> str:
         """Slot id run in the EXPORT stage, "" for none."""
         return ""

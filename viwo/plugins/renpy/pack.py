@@ -28,11 +28,13 @@ def _copy(src, out, offset: int, length: int) -> None:
         length -= len(chunk)
 
 
-def write_rpa(original: Path, members: dict[str, Path], target: Path) -> int:
-    """Write the rebuilt archive to target; returns the member count."""
+def write_rpa(original: Path, members: dict[str, Path | None], target: Path) -> int:
+    """Write the rebuilt archive to target; returns the member count. A member mapped to None
+    is left out (a stale .rpyc whose edited .rpy now lives beside the archive)."""
     with open(original, "rb") as src:
         index = read_index(src)
-        names = list(index) + [m for m in members if m not in index]
+        names = [n for n in index if n not in members or members[n] is not None]
+        names += [m for m, f in members.items() if f is not None and m not in index]
         table: dict[str, list[tuple[int, int, bytes]]] = {}
         with open(target, "wb") as out:
             out.write(b"\0" * HEADER)
@@ -55,6 +57,7 @@ def write_rpa(original: Path, members: dict[str, Path], target: Path) -> int:
 class RpaWriter(Packer):
     backend_id, owner, license = "rpa-writer", "renpy", "MIT"
     parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
+    drops = True  # doc 18.3: a member mapped to None leaves the archive
 
     def pack(self, container, members, ctx) -> Outcome:
         temp = container.with_name(container.name + ".viwo-tmp")

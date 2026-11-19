@@ -4,6 +4,21 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.22.0 (2026-11-19)
+- Everything decoded goes back (doc 18.3): an edited decoded file (a PNG, glTF, JSON
+  table or `.rpy` that DECODE wrote) is encoded into the format of the member it came from by
+  the decoder that read it (`Decoder.encode`), then planned, packed and verified like any other
+  edit; the plan says per file the member, the encoder and the container's packer, and every
+  file that cannot go back is named with its reason (audio and video: proprietary encoders).
+  First ways back: VTF (uncompressed), SLP (through the palette), Total War `.loc`, Ren'Py
+  `.rpy` (the stale `.rpyc` removed so it cannot win), CR2W through WolvenKit's `import` and
+  `convert deserialize`, DDS when the original is uncompressed. `viwo repack --mode
+  mod|overwrite` and the API's `mode`: `mod` (default) keeps the game's own files untouched
+  where the engine loads something over them, `overwrite` rewrites the container; Ren'Py
+  changes by that default (edited archive members go loose under `game/`, which Ren'Py reads
+  first; `--mode overwrite` rewrites the RPA as before). The ASSETS tab in PATCHING shows it
+  all and writes it.
+
 ## 1.21.1 (2026-11-19)
 - Overwatch: the character of each skin is named `... - (main) <id>.glb` and so listed first;
   a skin's dozens of props and effect shapes had the same kind of name, and nothing said

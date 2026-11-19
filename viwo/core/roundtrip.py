@@ -1,17 +1,17 @@
-"""Round trip (doc 18): edit set -> plan -> patched copy -> pack -> verify -> report.
+"""Round trip (doc 18): edit set -> plan -> patched copy -> encode -> pack -> verify -> report.
 
 The game folder is only read. Edited workspace files are found by hash against the
-provenance map; loose files are overridden in the copy, container members go through the
-owning plugin's pack.* slot, and every packed container is re-extracted to verify it.
+provenance map; an edited decoded file is encoded back into its member first
+(roundtrip_encode); loose files are overridden in the copy, container members go through the
+owning plugin's pack.* slot or, as a mod, where the engine loads them over the container
+(roundtrip_plan), and every packed container is re-extracted to verify it.
 """
 
 import json
 import os
 import shutil
 import tempfile
-from collections import defaultdict
 from contextlib import suppress
-from dataclasses import dataclass, field
 from pathlib import Path
 
 from viwo.contracts import workspace as ws
@@ -25,7 +25,9 @@ from .pipeline.guard import PATCHED, change_warning, guarded, snapshot
 from .pipeline.identify import identify
 from .pipeline.ticker import Ticker
 from .records import record_context
-from .roundtrip_edits import Edit, edit_set, original_hashes
+from .roundtrip_edits import edit_set, original_hashes
+from .roundtrip_encode import encode_all, ways_back
+from .roundtrip_plan import MODES, PlanItem, describe, plan
 from .steps import tell, teller
 from .workspace import read_json, workspace_lock, write_atomic
 
@@ -34,52 +36,7 @@ UNVERIFIED = (
     "(doc 18.3); the in-place save keeps the others"
 )
 MARKER = PATCHED
-CORE_PACK = {"unarchive.zip": "pack.zip"}
-
-
-@dataclass
-class PlanItem:
-    container: str  # game-relative; "" for loose files
-    slot: str  # "override" or a pack.* slot
-    members: dict[str, Path] = field(default_factory=dict)
-    untouched: dict[str, str] = field(default_factory=dict)  # member -> original sha256
-
-
-def _pack_slot(rt, match) -> str:
-    if match is None:
-        return ""
-    owner = rt.slots[match.slot_id].owner
-    if owner == "core":
-        return CORE_PACK.get(match.slot_id, "")
-    plugin = rt.plugins.get(owner)
-    return plugin.pack_slot(match.slot_id) if plugin else ""
-
-
-def plan(rt, game: Path, edits: list[Edit], originals=None) -> tuple[list[PlanItem], list[str]]:
-    """originals: container -> {member: sha256} of the extraction, for the untouched check."""
-    items, warnings, groups = [], [], defaultdict(dict)
-    if loose := {e.member: e.file for e in edits if e.kind in ("loose", "added")}:
-        items.append(PlanItem("", "override", loose))
-    for edit in (e for e in edits if e.kind in ("member", "exported")):
-        groups[(edit.container, edit.plugin)][edit.member] = edit.file
-    for (container, owner), members in sorted(groups.items()):
-        if owner:  # exported by a plugin: its packer writes straight into the container
-            plugin, match = rt.plugins.get(owner), None
-            slot = plugin.pack_slot("exported") if plugin else ""
-        else:
-            match = identify(game / container, rt.slots.values())
-            slot = _pack_slot(rt, match)
-        binding = rt.bindings.get(slot)
-        if not slot or (match is not None and match.embedded):
-            warnings.append(f"{container}: no packer for this container (yet)")
-        elif binding is None or not binding.bound:
-            warnings.append(f"{container}: {slot} has no available backend (see `viwo slots`)")
-        else:
-            kept = {
-                m: h for m, h in (originals or {}).get(container, {}).items() if m not in members
-            }
-            items.append(PlanItem(container, slot, members, kept))
-    return items, warnings
+__all__ = ["MARKER", "PlanItem", "plan", "prepare_copy", "repack"]
 
 
 def source_game(workspace: Path) -> Path:
@@ -169,17 +126,13 @@ def _verify(rt, packed: Path, item: PlanItem, ctx, untouched: dict) -> list[str]
     call = lambda b: b.extract(packed, dest, ctx)  # noqa: E731
     binding = rt.bindings[match.slot_id]
     outcome, _ = run_with_failover(binding, rt.backends, call, into=dest, cancel=ctx.cancel)
-    expected = {m: sha256(src) for m, src in item.members.items()} | dict(untouched)
+    expected = {m: sha256(f) for m, f in item.members.items() if f is not None} | dict(untouched)
     back = {original: dest / altered for altered, original in ws.renamed(dest).items()}
-    bad = [  # a member Windows cannot name is found under its altered name (its record)
-        m
-        for m, digest in expected.items()
-        if not outcome.ok
-        or not back.get(m, dest / m).is_file()
-        or sha256(back.get(m, dest / m)) != digest
-    ]
+    at = lambda m: back.get(m, dest / m)  # noqa: E731  (a renamed member: its altered name)
+    bad = [m for m, digest in expected.items() if not at(m).is_file() or sha256(at(m)) != digest]
+    bad += [m for m, f in item.members.items() if f is None and at(m).is_file()]  # dropped
     shutil.rmtree(dest, ignore_errors=True)
-    return bad
+    return bad if outcome.ok else list(item.members) + list(untouched)
 
 
 def _override(item: PlanItem, target: Path) -> dict:
@@ -189,11 +142,13 @@ def _override(item: PlanItem, target: Path) -> dict:
         dest = ws.member_path(target, member)
         if dest is None:
             bad.append(member)
-            continue
-        dest.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(source, dest)
-        if sha256(dest) != sha256(source):
-            bad.append(member)
+        elif source is None:  # a replaced file (a stale .rpyc) leaves the copy
+            dest.unlink(missing_ok=True)
+            bad += [member] if dest.exists() else []
+        else:
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(source, dest)
+            bad += [member] if sha256(dest) != sha256(source) else []
     return {"container": "", "slot": "override", "members": len(item.members), "failed": bad}
 
 
@@ -254,25 +209,31 @@ def _apply(rt, item: PlanItem, target: Path, ctx) -> dict:
     }
 
 
-def repack(
-    rt, workspace: Path, target: Path | None, sink=None, cancel=None, apply: bool = True
-) -> dict:
-    """Plan (apply=False) or build a patched copy of the game with the workspace edits."""
+def repack(rt, workspace: Path, target: Path | None, sink=None, cancel=None, **how) -> dict:
+    """Plan (apply=False) or build a patched copy of the game with the workspace edits.
+    how: `apply` (default True) and `mode`: "mod" (default: what leaves the game's own files
+    untouched, where the engine has it) or "overwrite" (the container rewritten in the copy);
+    doc 18.3."""
+    apply, mode = how.pop("apply", True), how.pop("mode", "mod")
+    if how:
+        raise TypeError(f"repack() got unexpected options {sorted(how)}")
+    if mode not in MODES:
+        raise ViwoError("invalid_request", f"mode must be one of {', '.join(MODES)}: {mode}")
     game = source_game(workspace)
     if apply and target is not None:  # before the lock and the plan, whatever is planned
         target = guarded(game, target, "patched copy", rt.temp_root)
-    edits, skipped = edit_set(workspace)
-    items, warnings = plan(rt, game, edits, original_hashes(workspace))
-    warnings = [*warnings, *_reminders(rt, items)]
+    decoded: list = []
+    edits, skipped = edit_set(workspace, decoded)
+    back, one_way = ways_back(rt, workspace, decoded)
+    items, warnings = plan(rt, game, edits + back, original_hashes(workspace), mode)
     report = {
         "game": str(game),
         "target": str(target or ""),
-        "edits": len(edits),
-        "plan": [
-            {"container": i.container, "slot": i.slot, "members": sorted(i.members)} for i in items
-        ],
-        "skipped": skipped,
-        "warnings": warnings,
+        "mode": mode,
+        "edits": len(edits) + len({e.way.derived for e in back}),
+        "plan": describe(items),
+        "skipped": skipped + one_way,
+        "warnings": [*warnings, *_reminders(rt, items)],
         "context": record_context(rt),  # effective ini, bindings, tool versions (doc 12.3)
     }
     if not apply or not items:
@@ -295,8 +256,8 @@ def _build(rt, game: Path, target: Path, items: list[PlanItem], report: dict, co
         ctx = core_context(rt, "repack", target, work, sink, cancel)
         ctx.staging = work / "out"
         (work / "scratch").mkdir(parents=True, exist_ok=True)
-        report["results"] = []
-        for item in items:
+        report["results"] = encode_all(rt, items, work, ctx)  # failures: results of their own
+        for item in (i for i in items if i.members):
             if ctx.cancel.cancelled:
                 raise ViwoError("cancelled", "repack cancelled; the patched copy is incomplete")
             report["results"].append(_apply(rt, item, target, ctx))

@@ -87,9 +87,19 @@ Unarchiver   (unarchive)    extract(archive, dest, ctx) -> Outcome
 Exporter     (export)       export(ctx) -> Outcome                  into ctx.staging
 Carver       (carve)        carve(path, dest, ctx) -> Outcome       never decrypts
 Decoder      (decode)       decode(path, dest, ctx) -> Outcome      viewable copies
+                            the way back (doc 18.3), optional:
+                            encodes: bool; one_way: the reason given when it does not
+                            encode(edited, original, out, ctx) -> Outcome   `out` in the
+                              format of `original` (the file decode read) with the content
+                              of `edited` (a file decode wrote, then the user changed)
+                            refuses(original) -> reason | ""   a cheap look (the header): the
+                              plan names such a member as skipped (BC-compressed DDS)
+                            member_back(member) -> member   the same, or the one the engine
+                              reads instead (`.rpyc` -> `.rpy`), which then replaces it
 Prober       (probe)        probe(path, ctx) -> Outcome             facts in notes ("format=png")
 MediaEncoder (media.encode) the merger's ffmpeg builds; honours max_command_length
-Packer       (pack)         pack(container, members, ctx); output_for(container); verify(...)
+Packer       (pack)         pack(container, members, ctx); output_for(container); verify(...);
+                            override (a separate file), drops (None removes a member)
 Patcher      (patch)        byte writes, Keystone assembly, capstone disassembly (doc 18.8)
 Analyzer     (analysis)     analyze(target, ctx)                    doc 6
 Handoff      (handoff,      prepare(target, ctx) -> LaunchSpec | Outcome      8.3a

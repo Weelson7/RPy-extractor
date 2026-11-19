@@ -17,6 +17,10 @@ class RedscriptDecompile(Decoder):
     backend_id, owner, isolation = "redscript-decompile", "cyberpunk2077", "subprocess"
     license = "MIT"
     requires = (REDSCRIPT,)
+    one_way = (  # doc 18.3
+        "decompiled scripts go back as `.reds` files redscript compiles on start "
+        "(r6/scripts), not into final.redscripts: not wired yet"
+    )
 
     def decode(self, path: Path, dest: Path, ctx) -> Outcome:
         if (tool := ctx.os.tools.locate(REDSCRIPT)) is None:

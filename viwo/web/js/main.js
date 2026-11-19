@@ -17,6 +17,7 @@ import "./views/merger.js";
 import "./views/survey.js";
 import "./views/cleanup.js";
 import "./views/repack.js";
+import "./views/assets.js";
 import "./views/capture.js";
 import "./views/analysis.js";
 import "./views/settings.js";

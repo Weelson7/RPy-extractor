@@ -26,6 +26,7 @@ const PATHS = {
     ["HOOKS + NETWORK", "a hook loader with hot reload, own-traffic tooling", "", R]]],
   patching: ["PATCHING", "You change its content: always in a marked patched copy, the game folder stays read-only.", [
     ["PATCHED COPY", "your workspace edits repacked into a copy of the game, verified", "#repack", S],
+    ["ASSETS", "edited PNG, glTF and text tables encoded back into the game's formats, as a mod or by overwriting", "#assets", S],
     ["PATCH SETS", "byte, RVA and AOB patches, assembly through Keystone, export", "#patches", S],
     ["MODS", "pack a copy's changes, check them against a game update, apply several in order", "#patches", S],
     ["CHEAT ENGINE TABLE", "the game opened in Cheat Engine with a ViWo table", "#runtime", S]]],

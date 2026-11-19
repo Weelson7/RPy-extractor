@@ -81,6 +81,7 @@ The same tools open from RUNTIME, DEBUGGER AND MEMORY.
 | Command | What it does |
 |---------|--------------|
 | `viwo repack <ws> --plan`, `--out <dir>` | your edited workspace files repacked into a patched copy, verified by re-extraction |
+| `viwo repack <ws> --out <dir> [--mode mod\|overwrite]` (UI: ASSETS) | what ViWo decoded and you edited (PNG, glTF, text tables, scripts) encoded back into the game's own format and container, as a mod the game loads over its files (default) or by rewriting the container; what cannot go back is named with the reason |
 | `viwo patch <game> <set.patch.json> --plan`, `--out <dir>` | byte patches by offset, RVA or AOB pattern, assembly through Keystone, with a byte diff and an AOB export |
 | `viwo mod pack\|check\|apply <game> <mod.zip>...` | a patched copy's changes as a mod; check it against another game version; apply several in order |
 
@@ -120,7 +121,7 @@ Plain HTML and ES modules served by `viwo serve` on `127.0.0.1:8081`, with a per
   RUNBOOKS (named step sequences you can run, edit and record; `viwo runbook ID --run`) and
   SETTINGS.
 - **Rail:** one arm at a time. STATIC: SURVEY, EXTRACT, WORKSPACE, SORT, CLEANUP, MERGER,
-  ANALYSIS. DYNAMIC: CAPTURE, RUNTIME. PATCHING: PATCHED COPY, PATCHES + MODS.
+  ANALYSIS. DYNAMIC: CAPTURE, RUNTIME. PATCHING: PATCHED COPY, ASSETS, PATCHES + MODS.
 - **Activity console:** at the bottom; closed, it shows the last line.
 
 Two themes (`wormhole`, `plain`). Details: [docs/ui.md](docs/ui.md).

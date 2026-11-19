@@ -16,9 +16,25 @@ ANALYSIS_SLOT = SlotDefinition("analysis.python", "analysis", "renpy", "unrpyc-a
 
 
 class UnrpycCli(Decoder):
-    backend_id, owner, license, isolation = "unrpyc-cli", "renpy", "MIT", "subprocess"
+    """The way back (doc 18.3) is the edited `.rpy` itself: Ren'Py compiles a script whose
+    `.rpyc` is missing when the game starts. The plan removes the stale `.rpyc` from the copy
+    (from its archive when it was archived, the `.rpy` then goes loose under game/), so the
+    old compiled script can neither win nor load twice."""
 
+    backend_id, owner, license, isolation = "unrpyc-cli", "renpy", "MIT", "subprocess"
+    encodes = True
     requires = (UNRPYC,)
+
+    def encode(self, edited: Path, original: Path, out: Path, ctx) -> Outcome:
+        try:
+            edited.read_text(encoding="utf-8")  # Ren'Py reads scripts as UTF-8
+        except (OSError, UnicodeDecodeError) as exc:
+            return Outcome(OutcomeKind.FAILED, error=f"{edited.name}: not UTF-8 text ({exc})")
+        shutil.copyfile(edited, out)
+        return Outcome(OutcomeKind.OK, 1)
+
+    def member_back(self, member: str) -> str:
+        return member[:-1] if member.lower().endswith(".rpyc") else member
 
     def decode(self, path: Path, dest: Path, ctx) -> Outcome:
         """unrpyc writes <name>.rpy next to its input: work on a copy inside dest."""

@@ -126,19 +126,35 @@ def sheet(found: list[tuple[int, int, list]]):
     return image
 
 
+def _colors(path: Path) -> list:
+    """The game's palette collected next to the SLP's folder (ValueError when missing)."""
+    pal = path.parent.parent / PALETTE
+    if not pal.is_file():
+        raise ValueError("no palette: interfac.drs (BINA 50500)")
+    return palette(pal.read_text(encoding="ascii", errors="replace"))
+
+
 class SlpDecoder(Decoder):
     backend_id, owner, license = "slp-builtin", "genie", "MIT"
     parses_untrusted_in_process = True  # doc 8.4: untrusted bytes in the ViWo process
+    encodes = True  # an edited sheet back to the SLP (slp_write.py, doc 18.3)
 
     def dependencies(self):
         return (PILLOW,)
 
-    def decode(self, path: Path, dest: Path, ctx) -> Outcome:
-        pal = path.parent.parent / PALETTE
-        if not pal.is_file():
-            return Outcome(OutcomeKind.FAILED, error="no palette: interfac.drs (BINA 50500)")
+    def encode(self, edited: Path, original: Path, out: Path, ctx) -> Outcome:
+        from .slp_write import write_slp
+
         try:
-            colors = palette(pal.read_text(encoding="ascii", errors="replace"))
+            data = write_slp(edited.read_bytes(), original.read_bytes(), _colors(original))
+            out.write_bytes(data)
+        except (ValueError, struct.error, OSError) as exc:
+            return Outcome(OutcomeKind.FAILED, error=f"{edited.name}: {exc}")
+        return Outcome(OutcomeKind.OK, 1)
+
+    def decode(self, path: Path, dest: Path, ctx) -> Outcome:
+        try:
+            colors = _colors(path)
             found = frames(path.read_bytes(), colors)
             sheet(found).save(dest / f"{path.stem}.png")
         except (ValueError, IndexError, struct.error, OSError) as exc:

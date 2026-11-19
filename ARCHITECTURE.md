@@ -65,7 +65,9 @@ viwo/
     capture/     dynamic arm: policy (warnings, confirmation), RenderDoc capture and harvest,
                  runtime agents, dump, trace, hook, profile, audio loopback, attach (x64dbg on the
                  game's own process, Cheat Engine)
-    roundtrip.py, roundtrip_edits.py   edit set, plan, patched copy, pack, verify
+    roundtrip.py, roundtrip_edits.py   edit set, patched copy, pack, verify
+    roundtrip_plan.py, roundtrip_encode.py   plan (mod or overwrite), the way back of
+                 decoded files (Decoder.encode); encode_dds.py (PNG to uncompressed DDS)
     patchsets.py, patch_tools.py       T1 patch sets (offset, RVA, AOB, Keystone, capstone)
     mods.py                            T2 mod packages
     jobs.py, workspace.py, records.py, provenance.py, context.py, steps.py, media.py

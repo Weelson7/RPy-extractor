@@ -2,7 +2,7 @@
 
 Turning edits into something that runs. Every write goes into a **patched copy**: a full copy of
 the game folder marked by a `.viwo-patched/` folder; the game folder is only read. CLI arm
-`viwo patching`: `repack`, `patch`, `mod`. UI: PATCHED COPY, PATCHES + MODS.
+`viwo patching`: `repack`, `patch`, `mod`. UI: PATCHED COPY, ASSETS, PATCHES + MODS.
 
 ## 18.1 Round trip
 
@@ -20,26 +20,71 @@ game folder --extract--> workspace --user edits files--> edit set
   damaged line never breaks a capture or a repack.
 - **Edit set:** workspace files whose hash differs from their provenance hash (modified), plus
   files placed under `<workspace>/_added/<game-relative path>` (added, written as loose files).
-  Deletions are not part of an edit set.
+  An edited **decoded** file (provenance `decode:<backend>:<source>:<output>`: a PNG, WAV,
+  glTF, JSON or `.rpy` DECODE wrote) is part of it through its way back (18.3). Deletions are
+  not part of an edit set; a member an encoder replaces (a `.rpyc` by its `.rpy`) is removed
+  from the copy by the plan.
 - **Mod strategy:** **override** (loose files in the copy; Unreal `*_P.pak` patch paks; Cyberpunk 2077
   `archive/pc/mod/!viwo_<archive>.archive`) or
   **rebuild** (the container rewritten with its edited members: RPA, PCK, Unity files, zip,
-  RPG Maker MV).
+  RPG Maker MV). The run's **mode** picks between them where an engine has both (18.3).
 
 ## 18.3 Repack (`viwo/core/roundtrip.py`, job kind `repack`)
 
 | Step | What happens |
 |------|--------------|
 | WARN | a `tos_sensitive` plugin among the owners adds a reminder; nothing is refused (D22) |
-| RESOLVE | the edit set from workspace hashes vs the provenance map; an edit whose bytes no longer match the member's format is rejected (same-format rule, `roundtrip_edits.py`) |
-| PLAN | per container: override or the owning plugin's `pack_slot()`; shown before anything is written (`--plan`, the 09 view) |
+| RESOLVE | the edit set from workspace hashes vs the provenance map; an edit whose bytes no longer match the member's format is rejected (same-format rule, `roundtrip_edits.py`); each edited decoded file is traced to the member it was decoded from (`roundtrip_encode.py`, below) |
+| PLAN | per container: override or the owning plugin's `pack_slot()`, as `mod` or `overwrite` (below); per edited decoded file the member it becomes, its encoder and the container's packer; shown before anything is written (`--plan`, PATCHED COPY, ASSETS) (`roundtrip_plan.py`) |
 | COPY | the game-folder guard first (doc 3.1: the target is not the game, not inside it, does not hold it; also when it is a patched copy that is reused, whatever its marker); copy the game folder to the target; the target must be empty or already a patched copy; a file the OS refuses to read is left out and named |
+| ENCODE | each edited decoded file is written in its member's format by the decoder that read it (`Decoder.encode`, doc 8.3), into the job's work folder; a failure is a failed result of its own (the file, the encoder, the reason) and the member is not packed |
 | PACK | `pack.*` slots write inside the copy only |
-| VERIFY | re-extract each packed container through its `unarchive.*` slot: edited members carry the edited hash, untouched members their original hash. A packer with its own `verify` (Unity, RPG Maker MV: no unarchive route back) checks the edited members only and the report says "untouched members were not re-verified". An override packer (`override = True`: Unreal `_P.pak`, Cyberpunk `pack.archive`) writes a separate file holding the edits only; it is verified on the edits, the untouched members stay in the container it loads over |
+| VERIFY | re-extract each packed container through its `unarchive.*` slot: edited members carry the edited hash (for a decoded file: the encoded bytes), untouched members their original hash, a removed member is absent. A packer with its own `verify` (Unity, RPG Maker MV: no unarchive route back) checks the edited members only and the report says "untouched members were not re-verified". An override packer (`override = True`: Unreal `_P.pak`, Cyberpunk `pack.archive`) writes a separate file holding the edits only; it is verified on the edits, the untouched members stay in the container it loads over |
 | REPORT | `<copy>/.viwo-patched/report.json`: plan, edits, backends, verification, warnings; a changed game folder is a warning |
 
-CLI `viwo repack WORKSPACE --plan | --out DIR`; API `POST /api/repack` (`plan: true` answers the
-plan, otherwise a job). The game is the one recorded in the workspace's run records.
+CLI `viwo repack WORKSPACE --plan | --out DIR [--mode mod|overwrite]`; API `POST /api/repack`
+(`plan: true` answers the plan, otherwise a job; `mode`, default `mod`). The game is the one
+recorded in the workspace's run records. The report's `plan` lists per item `container`,
+`slot`, `members`, `drops` (members removed), `mode`, `why` and `ways` (`file`, `member`,
+`encoder`, `backend`, `replaces`); `skipped` names every edited file that cannot go back, with
+its reason.
+
+**Mod or overwrite** (`--mode`, default `mod`). `mod` prefers what leaves the game's own files
+untouched in the copy: an override packer (`Packer.override`), or loose files where the engine
+loads them over a container (`EnginePlugin.loose_root`). `overwrite` rewrites the container in
+the copy. Where an engine has only one form, the item says which one is used and why. Both
+write only into the marked patched copy.
+
+| Engine | `mod` | `overwrite` |
+|--------|-------|-------------|
+| Ren'Py | loose files under `game/`, which Ren'Py opens before its archives (unless the game sets `config.force_archives`) | the RPA rewritten |
+| Unreal, REDengine, Source, KiriKiri, Warscape, Bethesda | the override (`_P.pak`, `!viwo_*.archive`, `custom/` VPK, patch XP3, movie pack, loose `Data/`) | not offered: the override is used, and said |
+| Unity, Godot, RPG Maker, Genie, Doom, Electron, zip | not offered: the engine loads nothing over its container; the container is rewritten, and said | the container rewritten |
+| loose game files | - | replaced in the copy (a file the game ships loose has no container) |
+
+**The way back of a decoded file.** The provenance origin names the decoder's backend and the
+file it read (a batch decoder names its slot: the file is the one whose name starts the
+output's, `0000000000001234.xbm` for `0000000000001234.xbm.png`; a file SORT moved is found by
+its name). The member it becomes is `Decoder.member_back(member)`, in the source's container
+(or loose); the encoder is the backend that decoded it, else one bound in its slot that
+encodes. It is skipped, with the reason, when its decoder is one way (`Decoder.one_way`) or
+refuses that member (`Decoder.refuses`: a block-compressed DDS, an animated VTF), when
+the file it came from came out of a nested container or a wrapper, is gone, or was edited too
+(that edit is used), or when another edited file goes back into the same member. A member
+`member_back` renames replaces the original: the original is removed from the copy (loose) or
+from its archive (a packer with `drops`: `pack.rpa`), and the new file goes loose where the
+engine reads it (`loose_root`).
+
+| Decoder | Way back |
+|---------|----------|
+| `decode.vtf` | PNG to VTF: the original's header (version, flags, reflectivity, thumbnail, data-free resources) with the PNG's size; the image uncompressed, in the original's format when it is an 8-bit-per-channel one, else (DXT1/3/5) BGRA8888, the engine's native 32-bit layout; mipmaps rebuilt when it had them; the CRC resource dropped. An animated, cube or volume texture is refused by name |
+| `decode.slp` | PNG sheet to SLP through the game's palette (exact colour, else the nearest): colour lists, player colour lists (palette 16-23), shadows and skips per row, no fills (no run-length optimisation); each frame keeps its size, hotspot and properties. Outline pixels, drawn transparent, are not written back |
+| `decode.loc` | the edited JSON to the table: version, order and flags kept, removed keys left out, new keys at the end with the table's most common flag |
+| `decode.rpyc` | the edited `.rpy` itself, as `<name>.rpy` beside where the `.rpyc` was (an archived one: loose under `game/`); the stale `.rpyc` is removed from the copy or its RPA, so Ren'Py compiles the script on start and the old one neither wins nor loads twice |
+| `decode.cr2w` | WolvenKit's console: an edited PNG, DDS, TGA or glTF with `import --keep` beside a copy of the original resource, an edited JSON with `convert deserialize`; capped like the export |
+| `decode.image` | PNG to DDS when the original is uncompressed (8-bit channels at 24 or 32 bits in any byte order, 8-bit luminance, DX10 R8G8B8A8/B8G8R8A8): its header with the PNG's size, mipmaps rebuilt. A block-compressed original (BC1-BC7) needs an encoder ViWo does not ship; a cube map, volume or array texture holds several images: both skipped with that reason |
+| `decode.audio`, `decode.video`, `decode.bink2` | one way: Wwise, FMOD, CRI, XACT and Bink need their vendors' proprietary encoders |
+| `decode.redscripts` | one way: the scripts go back as `.reds` files redscript compiles on start, not wired yet |
 
 ## 18.4 Pack slots
 
@@ -77,7 +122,12 @@ Packer (family pack)
   pack(container, members: {member path: edited file}, ctx) -> Outcome    container inside the copy
   output_for(container) -> Path                                           the file it writes
   verify(output, members, ctx) -> [bad members] | None                    None = re-extract
+  override: bool       a separate file loaded over the container (the `mod` form)
+  drops: bool          a member mapped to None is removed from the container (pack.rpa)
 EnginePlugin.pack_slot(unarchive_slot) -> "pack.<...>" | ""
+EnginePlugin.loose_root(container) -> game-relative folder | None   loose files loaded over it
+Decoder.encodes, one_way, encode(edited, original, out, ctx), refuses(original),
+  member_back(member)   doc 8.3
 ```
 
 ## 18.6 Rules
@@ -91,7 +141,9 @@ EnginePlugin.pack_slot(unarchive_slot) -> "pack.<...>" | ""
 2. ViWo authors no integrity- or anti-tamper-defeating code (philosophy point 5). When a game
    verifies its data, the report says the copy may not load; working around it is the user's
    choice with third-party tools, under the disclaimer.
-3. Same format only; converters (edited PNG back to a Texture2D or `.ctex`) are open.
+3. Same format, or through the decoder's way back (18.3): an edited decoded file is encoded
+   into its member's own format first. Unity's exporter takes an edited PNG back into its
+   Texture2D itself (`pack.unity`); Godot's `.ctex` from a PNG is open.
 4. A repack is verified before it is reported as successful.
 
 ## 18.8 Binary patch sets (`viwo/core/patchsets.py`, `viwo/core/patch_tools.py`, rung T1)

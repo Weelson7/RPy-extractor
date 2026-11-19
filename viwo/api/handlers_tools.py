@@ -9,6 +9,7 @@ from viwo.core import sanitizer, surveys
 from viwo.core.pipeline.guard import guarded
 from viwo.core.preflight import install, preflight
 from viwo.core.roundtrip import repack
+from viwo.core.roundtrip_plan import MODES
 from viwo.core.sanitizer_rules import collect_rules
 from viwo.core.steps import tell
 from viwo.core.survey import survey
@@ -75,12 +76,17 @@ def sanitize_handler(op: str) -> Callable[[App, dict], dict]:
 
 
 def repack_workspace(app: App, d: dict) -> dict:
-    """Round trip of the active workspace: plan (plan=true) or build a patched copy (job)."""
-    folder = app.workspace
+    """Round trip of the active workspace: plan (plan=true) or build a patched copy (job).
+    `mode`: "mod" (default) or "overwrite" (doc 18.3)."""
+    folder, mode = app.workspace, str(d.get("mode") or "mod")
+    if mode not in MODES:
+        return failure(ViwoError("invalid_request", f"mode must be one of {', '.join(MODES)}"))
     if d.get("plan"):
-        return app.locked(
-            lambda: {"success": True, **repack(app.rt, folder, None, apply=False)}, folder, False
-        )
+
+        def plan() -> dict:
+            return {"success": True, **repack(app.rt, folder, None, apply=False, mode=mode)}
+
+        return app.locked(plan, folder, False)
     out = path_param(d, "out")  # absolute only (doc 4.1 rule 6): never the server's own folder
     if out is None:
         return failure(
@@ -88,7 +94,7 @@ def repack_workspace(app: App, d: dict) -> dict:
         )
 
     def run(sink, cancel) -> dict:
-        return {"success": True, **repack(app.rt, folder, out, sink, cancel)}
+        return {"success": True, **repack(app.rt, folder, out, sink, cancel, mode=mode)}
 
     return app.locked_job("repack", folder, run, writes=False)
 

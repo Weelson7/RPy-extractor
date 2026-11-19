@@ -94,7 +94,8 @@ def _repack(rt, args) -> Envelope:
     if not args.plan and args.out is None:
         raise ViwoError("invalid_request", "give --out <folder> (or --plan)")
     note = event_printer(args)
-    return Envelope.success(repack(rt, args.workspace, args.out, note, apply=not args.plan))
+    report = repack(rt, args.workspace, args.out, note, apply=not args.plan, mode=args.mode)
+    return Envelope.success(report)
 
 
 def _sanitize(rt, args) -> Envelope:

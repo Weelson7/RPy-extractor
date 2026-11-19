@@ -109,7 +109,8 @@ The presentation tools (`tools/presentation/`: `frames.py`, `deck.py`, `tech_pdf
   carrying a workspace marker. `viwo unpack --out` and `viwo diff --out` take no game either:
   unpack needs an empty or new folder (it never overwrites), diff writes its two files.
 - CONFORMANCE rows: sanitizer phases 2-3, the `supplement` slot policy, `[hooks]`,
-  `memory_image` targets, asset converters, Kaitai formats, the engines of doc 13.7, a
+  `memory_image` targets, the way back of Godot `.ctex`, TPAC, redscripts and
+  block-compressed DDS (doc 18.3), Kaitai formats, the engines of doc 13.7, a
   structured runbook editor, more workbooks.
 - `hook.overlay`: neither candidate fits the rules (doc 11.7).
 - Coverage: 98.2 % line / 95.0 % branch overall at 1.20.58; 84 of 200 files are under the

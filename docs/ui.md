@@ -63,7 +63,7 @@ To add a component: put it in `ui/components.js` (or a new `ui/<area>.js` re-exp
 
 Every view declares an `arm`: `static` (the game is not running: survey, extract, workspace, sort,
 cleanup, merger, analysis), `dynamic` (it runs: capture, runtime), `patching` (you change its
-content: patched copy, patches + mods) or `global`. The rail shows one arm at a time, opening on
+content: patched copy, assets, patches + mods) or `global`. The rail shows one arm at a time, opening on
 that arm's home (`#static`, `#dynamic`, `#patching`); the arm switch sits above it. The global
 views (SYSTEM, WORKBOOKS, RUNBOOKS, SETTINGS) sit in the strip of the top bar with the job chip,
 the shared GAME selector and the WORKSPACE; opening one keeps the arm you were in. JOBS has no
@@ -127,6 +127,20 @@ its decoder from the internet to show it."). A `.gltf` that keeps buffers or tex
 files cannot load from the preview route; a `.glb` holds everything. Without the viewer
 installed the stage says how to install it.
 
+## Assets (PATCHING)
+
+ASSETS (`views/assets.js`) is the way back for what ViWo decoded (doc 18.3). MOD OR OVERWRITE
+is the run's choice (`seg`, default MOD, `pref("assetsMode")`), with what each means; PLAN asks
+`POST /api/repack {plan: true, mode}` and lists the edited files of the active workspace by
+container: per decoded file the member it becomes, the encoder (slot and backend) and the
+member it replaces, then the files edited as they are and the members removed; each container
+carries its MOD or OVERWRITE badge, its packer and the reason (an engine with one form says
+which one is used and why). CANNOT GO BACK lists every edited file without a way back, with its
+reason. WRITE runs the same request with `out` (the patched-copy folder PATCHED COPY uses for
+the workspace, `pref("repackOut:<ws>")`) as a `repack` job and shows the verify result per
+container; it stays disabled, with the reason beside it, until a plan has something to write
+and a folder is chosen.
+
 ## Feedback
 
 - An error toast stays until it is dismissed (DISMISS) or the user changes view; an
@@ -146,6 +160,7 @@ installed the stage says how to install it.
   drives a headless browser through `tests/ui/smoke.mjs`, and asserts zero console errors on
   every view, no literal null text, the toast at the top right under the bar, the computed tab codes, the SYSTEM gap, the SETTINGS formats
   table width, the theme switch, detect percentages without zero padding, the visible "skipped"
-  rail stage after an extraction, workspace-wide type counts in SORT, and the cleanup scan as
-  a visible job. Skipped when no Chromium or Node is found; `VIWO_UI=0` disables it;
+  rail stage after an extraction, workspace-wide type counts in SORT, the cleanup scan as
+  a visible job, and ASSETS' mod/overwrite choice (MOD first) and a plan with WRITE held
+  back while nothing was edited. Skipped when no Chromium or Node is found; `VIWO_UI=0` disables it;
   `VIWO_UI_OUT=<folder>` keeps the screenshots.

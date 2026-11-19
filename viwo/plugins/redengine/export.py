@@ -54,9 +54,15 @@ def quiet_settings(folder: Path) -> None:
 class WolvenKitExport(Decoder):
     backend_id, owner, license, isolation = "wolvenkit-export", "redengine", "GPL-3.0", "subprocess"
     requires = (WOLVENKIT,)
+    encodes = True  # WolvenKit's import and deserialize (encode.py, doc 18.3)
 
     def decode(self, path: Path, dest: Path, ctx) -> Outcome:
         return self.decode_many([path], dest, ctx)
+
+    def encode(self, edited: Path, original: Path, out: Path, ctx) -> Outcome:
+        from .encode import wolvenkit_encode
+
+        return wolvenkit_encode(edited, original, out, ctx)
 
     def decode_many(self, paths: list[Path], dest: Path, ctx) -> Outcome:
         if (tool := ctx.os.tools.locate(WOLVENKIT)) is None:

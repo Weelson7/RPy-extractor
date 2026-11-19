@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable, Sequence
 
-from .types import DependencySpec, Outcome
+from .types import DependencySpec, Outcome, OutcomeKind
 
 if TYPE_CHECKING:
     from .os import OS
@@ -112,11 +112,31 @@ class Carver(Backend):
 
 
 class Decoder(Backend):
+    """The way back (doc 18.3) is optional: `encodes` says whether `encode` writes anything;
+    `one_way` is the reason given for each edited file when it does not."""
+
     families = frozenset({"decode"})
+    encodes = False
+    one_way = "this decoder has no way back yet"
 
     @abstractmethod
     def decode(self, path: Path, dest: Path, ctx: "ExtractionContext") -> Outcome:
         """Write viewable/playable versions of path (WAV, PNG, MP4) into the empty dest."""
+
+    def encode(self, edited: Path, original: Path, out: Path, ctx: "ExtractionContext") -> Outcome:
+        """Write `out`: the member `original` (the file decode read) carrying the content of
+        `edited` (a file decode wrote, then the user changed), in the member's own format."""
+        return Outcome(OutcomeKind.UNAVAILABLE, error=self.one_way)
+
+    def refuses(self, original: Path) -> str:
+        """Why this member cannot go back, from a cheap look at it (its header), "" when it
+        can: the plan names it as skipped instead of failing it at build time."""
+        return ""
+
+    def member_back(self, member: str) -> str:
+        """The member `encode` writes for `member`: the same one, unless the engine reads the
+        edited form itself (a Ren'Py `.rpy` beside its `.rpyc`), which then replaces it."""
+        return member
 
 
 class Prober(Backend):
@@ -134,6 +154,7 @@ class Packer(Backend):
 
     families = frozenset({"pack"})
     override = False  # True: a separate file loaded over the container, which keeps the rest
+    drops = False  # True: a member mapped to None is removed from the container (doc 18.3)
 
     def output_for(self, container: Path) -> Path:
         """The file this packer writes for a container (itself when rebuilt in place)."""

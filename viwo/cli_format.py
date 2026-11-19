@@ -133,9 +133,14 @@ def survey(data: dict) -> str:
 
 def repack(data: dict) -> str:
     lines = [f"Game    : {data['game']}", f"Edits   : {data['edits']} file(s)"]
+    lines += [f"Mode    : {data['mode']} (asked)"] if data.get("mode") else []
     for item in data["plan"]:
         where = item["container"] or "loose files"
         lines.append(f"Plan    : {where} -> {item['slot']} ({len(item['members'])} member(s))")
+        lines += [f"          {item['mode'].upper()}: {item['why']}"] if item.get("mode") else []
+        lines += [f"          - {d}: removed" for d in item.get("drops", [])]
+        for way in item.get("ways", []):
+            lines.append(f"          {way['file']} -> {way['member']} ({way['encoder']})")
     for r in data.get("results", []):
         state = "verified" if not r["failed"] else f"FAILED: {', '.join(r['failed'][:5])}"
         lines.append(f"Packed  : {r.get('output') or r['container'] or 'loose files'} {state}")

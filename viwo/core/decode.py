@@ -8,6 +8,7 @@ A file no backend could decode is counted per slot in one warning (never silent)
 """
 
 import shutil
+import struct
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -40,6 +41,11 @@ PILLOW = DependencySpec(
     "pillow", "Pillow", kind="python", import_name="PIL", hint="pip install pillow"
 )
 VGMSTREAM = DependencySpec.of("vgmstream")
+ONE_WAY_AUDIO = (  # doc 18.3: why these stay one way
+    "game audio (Wwise, FMOD, CRI, XACT, console formats) needs its vendor's encoder, which is "
+    "proprietary: ViWo ships none"
+)
+ONE_WAY_VIDEO = "Bink video needs RAD's encoder, which is proprietary: ViWo ships none"
 
 
 def _count(dest: Path) -> int:
@@ -70,6 +76,7 @@ class VgmstreamCli(_CliDecoder):
     .binka, many single streams) writes nothing that way and exits 0: decoded as one stream."""
 
     backend_id, license, spec = "vgmstream-cli", "ISC", VGMSTREAM
+    one_way = ONE_WAY_AUDIO
 
     def argv(self, path, dest):
         stem = path.stem.replace("?", "_")  # `?` starts a vgmstream wildcard
@@ -86,6 +93,7 @@ class VgmstreamCli(_CliDecoder):
 
 class FfmpegDecode(_CliDecoder):
     backend_id, license, spec, suffix = "ffmpeg-decode", "GPL-3.0-or-later", FFMPEG, ".wav"
+    one_way = ONE_WAY_AUDIO
 
     def argv(self, path, dest):
         out = dest / f"{path.name}{self.suffix}"
@@ -93,11 +101,33 @@ class FfmpegDecode(_CliDecoder):
 
 
 class FfmpegImage(FfmpegDecode):
-    backend_id, suffix = "ffmpeg-image", ".png"
+    """The way back writes an uncompressed DDS itself (encode_dds.py, doc 18.3)."""
+
+    backend_id, suffix, encodes = "ffmpeg-image", ".png", True
+
+    def refuses(self, original: Path) -> str:
+        from .encode_dds import layout
+
+        with open(original, "rb") as fh:
+            head = fh.read(148)
+        try:
+            layout(head)
+        except ValueError as exc:
+            return f"{original.name}: {exc}"
+        return ""
+
+    def encode(self, edited: Path, original: Path, out: Path, ctx) -> Outcome:
+        from .encode_dds import write_dds
+
+        try:
+            out.write_bytes(write_dds(edited.read_bytes(), original.read_bytes()))
+        except (ValueError, OSError, struct.error) as exc:
+            return Outcome(OutcomeKind.FAILED, error=f"{original.name}: {exc}")
+        return Outcome(OutcomeKind.OK, 1)
 
 
 class FfmpegVideo(FfmpegDecode):
-    backend_id, suffix = "ffmpeg-video", ".mp4"
+    backend_id, suffix, one_way = "ffmpeg-video", ".mp4", ONE_WAY_VIDEO
 
 
 class FfprobeProbe(Prober):
