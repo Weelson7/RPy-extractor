@@ -93,8 +93,8 @@ the manual suite.
 
 ## 17.5 Tooling, CI and coverage
 
-- Python 3.11 minimum; CI tests 3.11 and 3.13.
-- CI (`.github/workflows/ci.yml`): `ubuntu-latest` and `windows-latest` x Python 3.11/3.13 for L0-L4
+- Python 3.10 minimum (owner, 2026-11-19); CI tests 3.10 and 3.13.
+- CI (`.github/workflows/ci.yml`): `ubuntu-latest` and `windows-latest` x Python 3.10/3.13 for L0-L4
   and L6 under `coverage`, plus a real-tools job per OS (`viwo install --all`, then the suite with
   `VIWO_L5=1`). **Cost rule (owner):** CI runs only on a `vN.0.0` tag push or when the owner starts
   it by hand; no per-push run, no schedule. Everything runs locally before each commit

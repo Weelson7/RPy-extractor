@@ -1,12 +1,18 @@
-﻿## 1.27.4 (2026-11-19)
-- SORT: the held queue also keys on each folder's entry names, not only its mtime. On Windows a
-  file dropped or renamed within the same clock tick does not always move the folder's mtime, so
-  the queue could stay stale (a gone file still listed, a new one missing) until the next change.
 # Changelog
 
 Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature, `c` every
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
+
+## 1.27.5 (2026-11-19)
+- Python 3.10 is enough (owner): `requires-python >= 3.10`, ruff's target `py310`, the CI matrix
+  3.10 and 3.13, and the package locks built for 3.10 too (`tools/pin_python.py`). The one call
+  3.10 lacks (`hashlib.file_digest`, in the REDengine way back) reads in chunks instead.
+
+## 1.27.4 (2026-11-19)
+- SORT: the held queue also keys on each folder's entry names, not only its mtime. On Windows a
+  file dropped or renamed within the same clock tick does not always move the folder's mtime, so
+  the queue could stay stale (a gone file still listed, a new one missing) until the next change.
 
 ## 1.27.3 (2026-11-19)
 - The UI spacing check no longer flags the pinned action bar against content scrolling beneath

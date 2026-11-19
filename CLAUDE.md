@@ -1,7 +1,7 @@
 # ViWo (Vidya Wormhole): instructions for coding agents
 
 Local-first game reverse-engineering orchestrator over three arms (static, dynamic, patching).
-Python 3.11+, stdlib first, plain-ES-module web UI (no build step). Start with `ARCHITECTURE.md`,
+Python 3.10+ (owner: it must run on 3.10), stdlib first, plain-ES-module web UI (no build step). Start with `ARCHITECTURE.md`,
 then `docs/HANDOFF.md` (current state, how to work, open work), then `docs/contract/` (the
 normative design; `CONFORMANCE.md` says what is implemented, partial or open).
 

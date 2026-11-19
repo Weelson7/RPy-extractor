@@ -117,7 +117,7 @@ printed in text mode.
 
 ## 12.6 Packaging
 
-- Python 3.11+ (`requires-python`), `pyproject.toml` with the `viwo` console script; optional
+- Python 3.10+ (`requires-python`; owner, 2026-11-19: it must run on 3.10), `pyproject.toml` with the `viwo` console script; optional
   extras `unity`, `sevenzip`, `renpy`, `lz4`, `patch` (capstone), `runtime` (frida-tools,
   soundcard), `dev` (ruff). Without them the same packages install as hash-locked pins into
   `third_party/python` (doc 10).

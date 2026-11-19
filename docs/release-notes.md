@@ -10,7 +10,7 @@ copy, binary patch sets, mod packages). What changed in each version: `CHANGELOG
   your browser). No Python needed. Every tool installs itself into `third_party/` next to
   `viwo.exe` from its pinned release (HTTPS, size and sha256 checked); `viwo.exe slots` shows
   what is bound.
-- `viwo-<version>-py3-none-any.whl` and the sdist: `pip install` (Python 3.11+), then
+- `viwo-<version>-py3-none-any.whl` and the sdist: `pip install` (Python 3.10+), then
   `viwo install --all` once for the tools.
 
 **Philosophy** (README): a community tool, MIT, forkable, for everyone who wants to look inside

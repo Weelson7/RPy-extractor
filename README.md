@@ -87,7 +87,7 @@ The same tools open from RUNTIME, DEBUGGER AND MEMORY.
 
 ## Install
 
-Python 3.11 or newer, from the repository folder:
+Python 3.10 or newer, from the repository folder:
 
 ```bash
 pip install -e ".[unity,sevenzip,renpy,lz4]"

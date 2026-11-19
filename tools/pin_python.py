@@ -1,7 +1,7 @@
 """Hash locks for the pinned Python packages (tools.json "python" and "workers").
 
 Usage: python tools/pin_python.py [ID ...]
-For each pin, platform (windows, linux) and supported CPython (3.11 to 3.14), pip downloads the
+For each pin, platform (windows, linux) and supported CPython (3.10 to 3.14), pip downloads the
 pin's whole dependency closure as wheels; every file's sha256 goes into
 viwo/data/locks/<id>-<platform>-<python>.txt (`name==version --hash=sha256:...`). Installs use
 `pip install --require-hashes --no-deps -r <lock>`: a file that does not match is refused.
@@ -24,7 +24,7 @@ PLATFORMS = {
     "windows": ["--platform", "win_amd64"],
     "linux": ["--platform", "manylinux2014_x86_64", "--platform", "manylinux_2_28_x86_64"],
 }
-PYTHONS = ("3.11", "3.12", "3.13", "3.14")  # pyproject: requires-python >= 3.11
+PYTHONS = ("3.10", "3.11", "3.12", "3.13", "3.14")  # pyproject: requires-python >= 3.10
 WHEEL = re.compile(r"^(?P<name>[^-]+)-(?P<version>[^-]+)-")
 
 

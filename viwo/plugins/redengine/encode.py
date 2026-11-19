@@ -17,8 +17,11 @@ RAW = (".png", ".dds", ".tga", ".glb", ".gltf")
 
 
 def sha256_of(path: Path) -> str:
+    digest = hashlib.sha256()  # read in chunks: hashlib.file_digest is Python 3.11's
     with open(path, "rb") as fh:
-        return hashlib.file_digest(fh, "sha256").hexdigest()
+        for chunk in iter(lambda: fh.read(1 << 20), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
 
 
 def _run(edited: Path, original: Path, work: Path) -> Run:
