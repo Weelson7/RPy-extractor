@@ -4,6 +4,11 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.31.1 (2026-11-19)
+- Overwatch owmdl now converts on Linux too: the material's path (a DataTool Windows path) is
+  split on any OS, and the key/path pair is read in stream order (a refactor had reversed it,
+  which misaligned the parse on every platform). Confirmed on the WSL Linux suite.
+
 ## 1.31.0 (2026-11-19)
 - Five framework plugins for cold-patching desktop applications (doc 13.8), the same
   extract -> edit -> repack model the game engines use, first-party readers where the format is

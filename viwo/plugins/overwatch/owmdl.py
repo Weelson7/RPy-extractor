@@ -102,7 +102,9 @@ def textures(model: Path, look: str) -> dict[int, dict[int, Path]]:
     if src.take("<HHI")[2] != 1:
         return out
     for _ in range(src.take("<Q")[0]):
-        key, material = src.take("<Q")[0], model.parent / "Materials" / Path(src.text()).name
+        key = src.take("<Q")[0]  # read the key, then the path (order matters: the stream is linear)
+        name = src.text().replace("\\", "/")  # DataTool writes Windows paths; split on any OS
+        material = model.parent / "Materials" / Path(name).name
         if not material.is_file():
             continue
         inner = _In(material.read_bytes())
