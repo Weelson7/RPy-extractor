@@ -4,6 +4,11 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.23.1 (2026-11-19)
+- The SLP way back read back on real files: an icon sheet of Age of Empires II HD, marked,
+  re-encoded into `interfac.drs` and the game's loose copy of it, decodes again with the mark
+  in every frame (CONFORMANCE 18.3).
+
 ## 1.23.0 (2026-11-19)
 - Unreal: every model UnrealAssetScout exports (UEFormat `.uemodel`, the only model format the
   pinned tool writes: it has no glTF option) also comes out as a `.glb` beside it: LOD 0 (never
