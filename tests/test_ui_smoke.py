@@ -134,11 +134,11 @@ class UiSmokeTests(unittest.TestCase):
             codes = info.get("stepCodes")
             self.assertEqual(len(codes), len(set(codes)), f"{view} repeats a code: {codes}")
 
-    def test_merger_lists_a_file_alone_as_nothing_to_merge(self) -> None:
+    def test_merger_lists_a_file_alone_after_the_groups_and_it_can_be_ticked(self) -> None:
         m = self.report["checks"]["merger"]
-        self.assertEqual(m["groupsOfOne"], 0, m)  # a group of one is not a merge
-        self.assertGreaterEqual(m["singles"], 1, m)  # and it is listed, never hidden
-        self.assertIn("NOTHING TO MERGE", m["head"])
+        self.assertEqual(m["groupsOfOne"], 0, m)  # a file alone is not among the groups
+        self.assertGreaterEqual(m["singles"], 1, m)  # it is listed with its checkbox
+        self.assertIn("SINGLE FILES", m["head"])
         self.assertIn("SINGLE", m["count"])
 
     def test_analysis_bar_holds_analyze_with_its_reason(self) -> None:

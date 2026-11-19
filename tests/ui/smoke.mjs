@@ -144,12 +144,12 @@ await evaluate("location.hash = '#sort'");
 await waitFor("document.querySelectorAll('#view-sort .tfilter button').length > 0", 15000);
 report.checks.sortFilters = await evaluate("[...document.querySelectorAll('#view-sort .tfilter button')].map((b) => b.textContent.replace(/\\s+/g, ' ').trim())");
 
-// MERGER: a name with one file is listed as a file under NOTHING TO MERGE, never as a group
+// MERGER: a name with one file is listed under SINGLE FILES, after the groups, and can still be ticked
 step = "merger";
 await evaluate("location.hash = '#merger'");
 await waitFor("Boolean(document.querySelector('#view-merger .clist :is(.cand, .msingles)'))", 15000); // the extracted files, not the empty list of before
 report.checks.merger = await evaluate(`(() => { const l = document.querySelector('#view-merger .clist'), s = l.querySelector('.msingles');
-  return { groupsOfOne: [...l.querySelectorAll('.cand')].filter((c) => /\\b1 FILE\\b/.test(c.textContent)).length, singles: s ? s.querySelectorAll('.mrow').length : 0,
+  return { groupsOfOne: [...l.querySelectorAll(':scope > .cand')].filter((c) => !/\\d+ FILES/.test(c.textContent)).length, singles: s ? s.querySelectorAll('.cand input[type=checkbox]').length : 0,
     head: s ? s.querySelector('h4').textContent : '', count: document.querySelector('#view-merger .panel-h .tools').textContent }; })()`);
 await shot("merger-after-extract");
 

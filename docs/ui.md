@@ -150,8 +150,8 @@ The smoke test measures it on every view.
 ## Merger (STATIC)
 
 GROUPS lists the names that hold several numbered files (tick one, it becomes a video). A name
-with one file is not a merge: those files come after, as one NOTHING TO MERGE list with their
-count, each with its path and type. The server answers the groups of several files first and
+with one file comes after, in one SINGLE FILES list with the count, each with its path and type
+and as tickable as a group (a file alone goes on the timeline by itself or beside the groups). The server answers the groups of several files first and
 counts the rest (`singleCount`), so the first page holds the merges; the header says groups,
 single files and files.
 
@@ -193,6 +193,6 @@ PATCHED COPY plans and writes with the same choice and names it in its summary l
   rail stage after an extraction, workspace-wide type counts in SORT, the cleanup scan as
   a visible job, and ASSETS' mod/overwrite choice (MOD first) and a plan with WRITE held
   back while nothing was edited; on every view, buttons with their spacing and step codes shown
-  once; MERGER's single files under NOTHING TO MERGE; ANALYZE held back with its reason; and
+  once; MERGER's single files under SINGLE FILES, tickable; ANALYZE held back with its reason; and
   each runbook step readable with its JSON behind a closed toggle. Skipped when no Chromium or Node is found; `VIWO_UI=0` disables it;
   `VIWO_UI_OUT=<folder>` keeps the screenshots.

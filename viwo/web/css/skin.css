@@ -132,9 +132,6 @@ kbd { border: 1px solid var(--line); background: var(--bg-2); color: var(--text)
 .cand { border-bottom: 1px solid var(--line-soft); }
 .cand b { font-weight: 600; }
 .cand .mono { font-size: 11px; }
-.mrow { border-bottom: 1px solid var(--line-soft); }
-.mrow b { font-weight: 600; }
-.mrow .mono { font-size: 11px; }
 .path-sub { font-size: 13px; }
 .strip li { border: 1px solid currentColor; font: 700 10px var(--f-mono); }
 .strip li b { color: var(--text); font-weight: 600; }

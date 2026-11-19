@@ -70,17 +70,22 @@ function renderFilters() {
     h("div", { class: "row" }, search, btn("ALL", () => pickAll(true), "sm ghost"), btn("NONE", () => pickAll(false), "sm ghost")));
 }
 
-/** The groups of several files on this page (a group of one is not a merge: `singles()`). */
+/** The groups of several files on this page (a file alone is listed after them: `singles()`). */
 const visible = () => S.list.filter((c) => c.count > 1 && c.name.toLowerCase().includes(S.query));
 const lone = () => S.list.filter((c) => c.count === 1 && c.name.toLowerCase().includes(S.query));
 const span = (c) => (c.indexes.length ? `#${c.indexes[0]}–${c.indexes[c.indexes.length - 1]}` : "no index");
 
-/** Files alone under their name: one list with the count, each shown as the file it is. */
+/** One candidate, tickable: a group of several files, or a file alone under its name. */
+const row = (c) => h("label", { class: `cand ${S.sel.has(c.name) ? "on" : ""}` },
+  h("input", { type: "checkbox", checked: S.sel.has(c.name), onchange: (e) => toggle(c, e.target.checked), "aria-label": `${c.name}, ${c.count} file${c.count === 1 ? "" : "s"}` }),
+  h("b", {}, c.name), h("span", { class: "mono dim" }, c.count === 1 ? c.files[0]?.path || "" : span(c)),
+  c.conflicts.length ? h("span", { title: "Several files share one number: you pick their order" }, badge(`${c.conflicts.length} SAME-NUMBER`, "warn")) : null,
+  badge(c.count === 1 ? TAGS[c.files[0]?.type] || "1 FILE" : `${c.count} FILES`, "mute"));
+/** Files alone under their name: their own list after the groups, each as tickable as a group. */
 const singles = (ones) => h("div", { class: "msingles" },
-  h("h4", { class: "sub-h" }, `// NOTHING TO MERGE · ${fmtNum(ones.length)} SINGLE FILE${ones.length === 1 ? "" : "S"}`),
-  h("p", { class: "note first" }, "No other file shares these names: a group of one is not a merge, so they are listed as files, not as groups."),
-  h("ul", { class: "mlist" }, ones.map((c) => h("li", { class: "mrow" }, h("b", {}, c.name),
-    h("code", { class: "mono dim fpath", title: c.files[0]?.path || "" }, c.files[0]?.path || ""), badge(TAGS[c.files[0]?.type] || "FILE", "mute")))));
+  h("h4", { class: "sub-h" }, `// SINGLE FILES · ${fmtNum(ones.length)}`),
+  h("p", { class: "note first" }, "No other file shares these names. Tick one to put it on the timeline by itself, or beside the groups."),
+  ones.map(row));
 
 function renderList() {
   el.count.textContent = `${fmtNum(S.total - S.singles)} GROUPS · ${fmtNum(S.singles)} SINGLE · ${fmtNum(S.files)} FILES`;
@@ -90,11 +95,7 @@ function renderList() {
       : "This workspace has no images or videos yet. Extract a game, or use SWITCH (top right) to open another workspace.", S.files ? null : goBtn("#extract", "GO TO EXTRACT")));
     return;
   }
-  fill(el.list, rows.map((c) => h("label", { class: `cand ${S.sel.has(c.name) ? "on" : ""}` },
-    h("input", { type: "checkbox", checked: S.sel.has(c.name), onchange: (e) => toggle(c, e.target.checked), "aria-label": `${c.name}, ${c.count} files` }),
-    h("b", {}, c.name), h("span", { class: "mono dim" }, span(c)),
-    c.conflicts.length ? h("span", { title: "Several files share one number: you pick their order" }, badge(`${c.conflicts.length} SAME-NUMBER`, "warn")) : null,
-    badge(`${c.count} FILES`, "mute"))),
+  fill(el.list, rows.map(row),
   rows.length ? null : h("p", { class: "note first" }, "No group of several files on this page."),
   ones.length ? singles(ones) : null,
   S.total > LIMIT ? h("div", { class: "row pager" },
@@ -112,7 +113,7 @@ function toggle(c, on) {
 }
 
 function pickAll(on) {
-  visible().forEach((c) => { if (on !== S.sel.has(c.name)) toggle(c, on); });
+  [...visible(), ...lone()].forEach((c) => { if (on !== S.sel.has(c.name)) toggle(c, on); });
 }
 
 /** Rough timeline size for the action bar (part loops and whole-timeline repeats applied). */

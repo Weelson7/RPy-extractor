@@ -45,9 +45,6 @@ h2, h3, h4 { margin: 0; }
 .rb-json summary { cursor: pointer; }
 .rb-json pre { margin-top: 6px; }
 .msingles .sub-h { margin-top: 14px; }
-.mlist { margin: 0; padding: 0; list-style: none; }
-.mrow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto; align-items: center; gap: 10px; padding: 6px 8px; }
-.mrow b, .mrow code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rail { grid-area: rail; display: flex; flex-direction: column; padding: 18px 0 14px; overflow-y: auto; }
 .mods { list-style: none; margin: 0; padding: 0 12px; display: flex; flex-direction: column; gap: 4px; }
 .mods a { --c: 10px; --b: transparent; --f: transparent; display: flex; align-items: center; gap: 12px; padding: 8px 12px; }
