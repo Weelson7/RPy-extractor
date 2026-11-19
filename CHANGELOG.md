@@ -4,6 +4,10 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.22.6 (2026-11-19)
+- PATCHED COPY uses the mod-or-overwrite choice made in ASSETS and names it in its summary
+  line; it wrote with the default without saying so.
+
 ## 1.22.5 (2026-11-19)
 - The way back of a decoded file is seen in a running game: Doki Doki Literature Club shows
   a line edited in its decompiled `splash.rpy`, compiled by the game from ViWo's patched copy

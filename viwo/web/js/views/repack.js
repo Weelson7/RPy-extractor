@@ -7,6 +7,7 @@ import { planCard, issueList, howTo, noExtraction, noEdits, resultBody, failure,
 
 const S = { plan: null, err: null, running: false, ws: null, files: null };
 const el = {};
+const mode = () => pref("assetsMode") || "mod"; // the choice made in ASSETS holds here too
 
 function mount(root) {
   el.target = h("input", { class: "input mono grow", id: "repack-target", placeholder: "/path/to/empty-folder", spellcheck: "false",
@@ -69,7 +70,7 @@ async function show() {
 
 async function plan() {
   try {
-    S.plan = await withSkeleton(el.plan, "HASHING WORKSPACE AGAINST THE EXTRACTION RECORD…", () => api.repack({ plan: true }), 5);
+    S.plan = await withSkeleton(el.plan, "HASHING WORKSPACE AGAINST THE EXTRACTION RECORD…", () => api.repack({ plan: true, mode: mode() }), 5);
     S.err = null;
   } catch (err) {
     S.plan = null;
@@ -109,7 +110,7 @@ function bar() {
   if (!el.build) return;
   const p = S.plan;
   const out = el.target.value.trim().split(/[\\/]/).filter(Boolean).pop();
-  if (!S.running) el.sum.textContent = p ? `${String(p.game).split(/[\\/]/).pop()} · ${fmtNum(p.edits)} edit(s) · ${fmtNum(p.plan.length)} target(s) → ${out || "no target folder"} · original untouched`
+  if (!S.running) el.sum.textContent = p ? `${String(p.game).split(/[\\/]/).pop()} · ${fmtNum(p.edits)} edit(s) · ${fmtNum(p.plan.length)} target(s) · ${mode().toUpperCase()} (set in ASSETS) → ${out || "no target folder"} · original untouched`
     : "plan to see the edit set";
   el.why.textContent = blocker();
   el.build.disabled = Boolean(el.why.textContent);
@@ -129,7 +130,7 @@ async function build() {
   el.prog.log.append(logLine(`// PATCHED COPY :: ${S.plan.game} → ${out}`));
   el.progPanel.scrollIntoView({ block: "nearest" });
   try {
-    const res = await api.repack({ out });
+    const res = await api.repack({ out, mode: mode() });
     S.plan = res;
     render();
     if (!res.results) {

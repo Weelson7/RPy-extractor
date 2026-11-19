@@ -140,6 +140,8 @@ reason. WRITE runs the same request with `out` (the patched-copy folder PATCHED 
 the workspace, `pref("repackOut:<ws>")`) as a `repack` job and shows the verify result per
 container; it stays disabled, with the reason beside it, until a plan has something to write
 and a folder is chosen.
+PATCHED COPY plans and writes with the same choice and names it in its summary line
+(`MOD (set in ASSETS)`).
 
 ## Feedback
 
