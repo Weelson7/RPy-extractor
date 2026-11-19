@@ -109,11 +109,14 @@ The presentation tools (`tools/presentation/`: `frames.py`, `deck.py`, `tech_pdf
   carrying a workspace marker. `viwo unpack --out` and `viwo diff --out` take no game either:
   unpack needs an empty or new folder (it never overwrites), diff writes its two files.
 - CONFORMANCE rows: sanitizer phases 2-3, the `supplement` slot policy, `[hooks]`,
-  `memory_image` targets, the way back of TPAC, of BC2/BC6H/BC7 DDS and of
-  VRAM-compressed or Basis Godot textures (doc 18.3; the BC1-BC5, `.ctex` and redscripts
-  ways back are tests only: a real game pass for each is open, redscripts with the
-  compiler installed in the copy), Kaitai formats, the engines of doc 13.7, a
-  structured runbook editor, more workbooks.
+  `memory_image` targets, the way back of premultiplied DXT2/DXT4, signed BC4/BC5 and
+  typeless BC6H DDS and of ETC, ASTC, PVRTC or Basis Godot textures (no decoder for those
+  either) (doc 18.3; the BC1-BC7, `.ctex` and redscripts ways back are tests only: a real
+  game pass for each is open, redscripts with the compiler installed in the copy; `pack.tpac`
+  rewrote one real Bannerlord package by hand, unchanged and with a BC7 texture edited, but
+  no repack run has put one in a patched copy the game then started: it may check the item
+  checksum ViWo keeps but cannot compute), Kaitai formats, the
+  engines of doc 13.7, a structured runbook editor, more workbooks.
 - `hook.overlay`: neither candidate fits the rules (doc 11.7).
 - Coverage: 98.2 % line / 95.0 % branch overall at 1.20.58; 84 of 200 files are under the
   per-file target of 98 / 95 (`coverage run -m unittest discover -s tests -t .`, then

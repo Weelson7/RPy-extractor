@@ -3,31 +3,34 @@ kept (a DX10 one too) with the PNG's size, mipmaps rebuilt (box filter) when it 
 
 - Uncompressed: 8-bit channels at 24 or 32 bits per pixel in any byte order its masks give
   (BGRA8, RGBA8, BGRX8, BGR8...), 8-bit luminance, DX10 R8G8B8A8 or B8G8R8A8.
-- Block-compressed: BC1 (DXT1), BC3 (DXT5), BC4 (ATI1, BC4U) and BC5 (ATI2, BC5U), as FourCC
-  or DX10 (UNORM, sRGB, typeless), through ViWo's own encoder (encode_bc.py). ATI2 keeps the
-  channel order ffmpeg (ViWo's decoder) shows: its first block is the PNG's green.
-- Refused with the reason, so the plan names the texture: BC2 (DXT2/3), premultiplied DXT4,
-  signed BC4/BC5, BC6H and BC7 (no encoder for them), any other pixel format, and a cube map,
-  volume or array texture (more than one image)."""
+- Block-compressed: BC1 (DXT1), BC2 (DXT3), BC3 (DXT5), BC4 (ATI1, BC4U) and BC5 (ATI2,
+  BC5U), as FourCC or DX10 (UNORM, sRGB, typeless), and BC6H (unsigned UF16, signed SF16) and
+  BC7 (UNORM, sRGB, typeless) as DX10, through ViWo's own encoders (encode_bc.py,
+  encode_bptc.py). ATI2 keeps the channel order its decoder showed: ffmpeg shows its first
+  block as green, Pillow (the spare) as red.
+- Refused with the reason, so the plan names the texture: premultiplied DXT2 and DXT4, signed
+  BC4/BC5 (no encoder for them), typeless BC6H (signed or not is the shader's choice: no
+  decoder reads it either), any other pixel format, and a cube map, volume or array texture
+  (more than one image)."""
 
 import io
 import struct
 
-from . import encode_bc
+from viwo.backends.blocks import encode_bc
 
 FOURCC, RGB, LUMINANCE = 0x4, 0x40, 0x20000
 CUBE_OR_VOLUME = 0x200 | 0x200000
 DX10_RAW = {28: "RGBA", 29: "RGBA", 87: "BGRA", 91: "BGRA"}  # DXGI format -> byte order
 MIPMAPCOUNT, PITCH, LINEARSIZE = 0x20000, 0x8, 0x80000
-BLOCK_FOURCC = {b"DXT1": "BC1", b"DXT5": "BC3", b"ATI1": "BC4", b"BC4U": "BC4"}
+BLOCK_FOURCC = {b"DXT1": "BC1", b"DXT3": "BC2", b"DXT5": "BC3", b"ATI1": "BC4", b"BC4U": "BC4"}
 BLOCK_FOURCC |= {b"ATI2": "BC5", b"BC5U": "BC5"}
-BLOCK_DXGI = {70: "BC1", 71: "BC1", 72: "BC1", 76: "BC3", 77: "BC3", 78: "BC3"}
-BLOCK_DXGI |= {79: "BC4", 80: "BC4", 82: "BC5", 83: "BC5"}
-NOT_ENCODED = {b"DXT2": "premultiplied BC2", b"DXT3": "BC2", b"DXT4": "premultiplied BC3"}
+BLOCK_DXGI = {70: "BC1", 71: "BC1", 72: "BC1", 73: "BC2", 74: "BC2", 75: "BC2"}
+BLOCK_DXGI |= {76: "BC3", 77: "BC3", 78: "BC3", 79: "BC4", 80: "BC4", 82: "BC5", 83: "BC5"}
+BLOCK_DXGI |= {95: "BC6H", 96: "BC6HS", 97: "BC7", 98: "BC7", 99: "BC7"}
+NOT_ENCODED = {b"DXT2": "premultiplied BC2", b"DXT4": "premultiplied BC3"}
 NOT_ENCODED |= {b"BC4S": "signed BC4", b"BC5S": "signed BC5"}
-DXGI_NOT = {73: "BC2", 74: "BC2", 75: "BC2", 81: "signed BC4", 84: "signed BC5"}
-DXGI_NOT |= {94: "BC6H", 95: "BC6H", 96: "BC6H", 97: "BC7", 98: "BC7", 99: "BC7"}
-NO_ENCODER = "block-compressed in a form ViWo has no encoder for (it writes BC1, BC3, BC4, BC5)"
+DXGI_NOT = {81: "signed BC4", 84: "signed BC5", 94: "typeless BC6H: signed or not unknown"}
+NO_ENCODER = "block-compressed in a form ViWo has no encoder for (it writes BC1 to BC7)"
 
 
 def _dx10(dds: bytes) -> tuple[int, dict[str, int], int, str]:
@@ -94,8 +97,9 @@ def _blocks(image, block: str, swap: bool) -> bytes:
     return encode_bc.compress(rgba, image.width, image.height, block)
 
 
-def write_dds(png: bytes, original: bytes) -> bytes:
-    """The DDS for an edited PNG, shaped on `original` (see the module)."""
+def write_dds(png: bytes, original: bytes, ati2_green: bool = True) -> bytes:
+    """The DDS for an edited PNG, shaped on `original` (see the module). `ati2_green`: the
+    PNG came from a decoder that shows ATI2's first block as green (ffmpeg)."""
     from PIL import Image
 
     step, where, hsize, block = layout(original)
@@ -114,7 +118,7 @@ def write_dds(png: bytes, original: bytes) -> bytes:
         flags, pitch = (flags | PITCH) & ~LINEARSIZE, w * step
     struct.pack_into("<IIII", head, 8, flags, h, w, pitch)
     struct.pack_into("<I", head, 28, count)
-    swap = original[84:88] == b"ATI2"
+    swap = ati2_green and original[84:88] == b"ATI2"
     levels = []
     for n in range(count):
         level = image.resize((max(1, w >> n), max(1, h >> n)), Image.Resampling.BOX)

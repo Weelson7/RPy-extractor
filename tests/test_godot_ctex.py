@@ -3,9 +3,12 @@ textures written here: `.ctex` (Godot 4) and `.stex` (Godot 3), PNG and WebP mip
 without Godot's tag, and the uncompressed 8-bit formats. Decoded, each shows its largest image;
 an edited PNG written back keeps the original's header, form, tag and channels, gets the PNG's
 size and a full mip chain when it had mipmaps, and decodes to the edit exactly; decoding what was
-written and writing it again changes nothing. VRAM-compressed and Basis textures, a missing
-Pillow and a Pillow without WebP are refused with the reason; end to end, an edited PNG of a
-loose texture comes back as the texture in the patched copy."""
+written and writing it again changes nothing. VRAM-compressed textures (DXT1, DXT3, DXT5,
+RGTC_R, RGTC_RG, BPTC_RGBA, BPTC_RGBF/RGBFU, Godot 4's DXT5_RA_AS_RG) decode to what ViWo's
+block decoders (Pillow for BC6H) show, and an edit goes back in the same block format, every mip
+level, within the format's bound; BC6H says its clamp and its loss. ETC, ETC2, ASTC, PVRTC and
+Basis textures, a missing Pillow and a Pillow without WebP are refused with the reason; end to
+end, an edited PNG of a loose texture comes back as the texture in the patched copy."""
 
 from __future__ import annotations
 
@@ -21,11 +24,16 @@ from unittest import mock
 from PIL import Image
 
 from tests.helpers import runtime
+from tests.test_encode_bc import check, pillow, within_range
 from tests.test_encoders import png_of
 from tests.test_roundtrip_encode import decoded, workspace
+from viwo.backends.blocks.decode_bc import decompress
+from viwo.backends.blocks.encode_bc import size as size_of
+from viwo.backends.blocks.encode_bptc import CLAMPED, HDR
 from viwo.core.roundtrip import repack
 from viwo.plugins.godot.ctex import CtexDecoder, parse, to_png
 from viwo.plugins.godot.ctex_write import refusal, write_ctex
+from viwo.plugins.godot.vram import level
 
 MODES = {0: "L", 1: "LA", 2: "R", 3: "RG", 4: "RGB", 5: "RGBA"}
 
@@ -157,12 +165,22 @@ class CtexTests(unittest.TestCase):
         image = noise(rng, (4, 4), "RGBA")
         basis = bytearray(texture(rng, 4, "raw", image, 5))
         basis[36:40] = struct.pack("<I", 3)
-        vram4 = bytearray(texture(rng, 4, "raw", image, 5))
-        vram4[48:52] = struct.pack("<I", 17)
-        vram3 = bytearray(texture(rng, 3, "raw", image, 5))
-        vram3[16:20] = struct.pack("<I", 19)
-        for blob, why in ((basis, "Basis Universal"), (vram4, "format 17"), (vram3, "format 19")):
-            self.assertIn(why, refusal(bytes(blob[:64])))
+        cases = [(basis, "Basis Universal")]
+        for version, fmt, why in (
+            (4, 25, "format 25 \\(ETC\\): no ETC decoder"),
+            (4, 30, "ETC2"),
+            (4, 33, "ETC2"),
+            (4, 36, "ASTC"),
+            (3, 26, "PVRTC"),
+            (3, 29, "format 29 \\(ETC\\)"),
+            (3, 34, "ETC2"),  # Godot 3's 34 is ETC2_RGB8, Godot 4's DXT5_RA_AS_RG
+            (4, 8, "not 8-bit"),
+        ):
+            blob = bytearray(texture(rng, version, "raw", image, 5))
+            struct.pack_into("<I", blob, 48 if version == 4 else 16, fmt)
+            cases.append((blob, why))
+        for blob, why in cases:
+            self.assertRegex(refusal(bytes(blob[:64])), why)
             with self.assertRaisesRegex(ValueError, why):
                 write_ctex(png_of(image), bytes(blob))
         webp = texture(rng, 4, "webp", image, 5, b"WEBP")
@@ -187,6 +205,80 @@ class CtexTests(unittest.TestCase):
             (root / "e.png").write_bytes(b"not a png")
             failed = CtexDecoder().encode(root / "e.png", root / "t.ctex", root / "o.ctex", None)
             self.assertIn("e.png", failed.error)
+
+
+VRAM = {17: "BC1", 18: "BC2", 19: "BC3", 20: "BC4", 21: "BC5", 22: "BC7", 23: "BC6HS"}
+VRAM |= {24: "BC6H", 34: "BC3RA"}
+
+
+def vram_texture(rng, version: int, image: Image.Image, fmt: int) -> bytes:
+    """A VRAM-compressed texture of `image` in Godot format `fmt`, its blocks by ViWo's encoder."""
+    chain, (w, h), kind = levels(image, rng.random() < 0.5), image.size, VRAM[fmt]
+    body = b"".join(level(picture, kind) for picture in chain)
+    if version == 4:
+        head = b"GST2" + struct.pack("<IIIIi12x", 1, w, h, rng.getrandbits(32), -1)
+        return head + struct.pack("<IHHII", 0, w, h, len(chain) - 1, fmt) + body
+    bits = (1 << 23 if len(chain) > 1 else 0) | fmt | (rng.getrandbits(32) & ~0xBFFFFF)
+    return b"GDST" + struct.pack("<HHHHII", w, 0, h, 0, rng.getrandbits(32), bits) + body
+
+
+def seen(kind: str, data: bytes, size: tuple[int, int]) -> bytes:
+    """What the top level shows as RGBA: ViWo's decoders, Pillow for BC6H, Godot's swizzle."""
+    if kind.startswith("BC6"):
+        return pillow(kind, data[: size_of(kind, *size)], *size)
+    rgba = bytearray(decompress(data, *size, "BC3" if kind == "BC3RA" else kind))
+    if kind == "BC3RA":
+        n = len(rgba) // 4
+        rgba[1::4], rgba[2::4], rgba[3::4] = rgba[3::4], bytes(n), b"\xff" * n
+    return bytes(rgba)
+
+
+def as_ra(rgba: bytes) -> bytes:
+    """Red and green moved where DXT5_RA_AS_RG stores them: red and alpha."""
+    out = bytearray(len(rgba))
+    out[0::4], out[3::4] = rgba[0::4], rgba[1::4]
+    return bytes(out)
+
+
+class VramTests(unittest.TestCase):
+    def test_vram_textures_decode_and_go_back_in_their_block_format(self) -> None:
+        rng = random.Random(86)
+        for fmt, kind in list(VRAM.items()) * 3:
+            version = 4 if fmt == 34 else rng.choice((3, 4))
+            image = noise(rng, (rng.randint(1, 12), rng.randint(1, 12)), "RGBA")
+            original = vram_texture(rng, version, image, fmt)
+            tex = parse(original)
+            self.assertEqual((tex.kind, tex.block), ("vram", kind))
+            got = Image.open(io.BytesIO(to_png(original))).convert("RGBA").tobytes()
+            self.assertEqual(got, seen(kind, original[tex.head :], image.size), kind)
+            edit = noise(rng, (rng.randint(1, 14), rng.randint(1, 14)), "RGBA")
+            blob = write_ctex(png_of(edit), original)
+            after = parse(blob)
+            self.assertEqual((after.fmt, after.width, after.height), (fmt, *edit.size))
+            count = max(edit.size).bit_length() if tex.mips else 1
+            sizes = [(max(1, edit.width >> n), max(1, edit.height >> n)) for n in range(count)]
+            core = "BC3" if kind == "BC3RA" else kind
+            self.assertEqual(len(blob) - after.head, sum(size_of(core, *s) for s in sizes))
+            shown = seen(kind, blob[after.head :], edit.size)
+            want = edit.tobytes()
+            if kind == "BC3RA":  # Godot's convert_rg_to_ra_rgba8, both ways
+                shown, want = as_ra(shown), as_ra(want)
+            check(self, want, shown, core, edit.size, within_range)
+
+    def test_bc6h_says_its_clamp_and_its_loss(self) -> None:
+        rng = random.Random(87)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            for fmt, hdr in ((24, True), (23, True), (22, False)):
+                image = noise(rng, (8, 8), "RGBA")
+                (root / "t.ctex").write_bytes(vram_texture(rng, 4, image, fmt))
+                out = CtexDecoder().decode(root / "t.ctex", root, None)
+                self.assertEqual(out.notes, (CLAMPED,) if hdr else ())
+                back = CtexDecoder().encode(root / "t.png", root / "t.ctex", root / "o.ctex", None)
+                self.assertEqual(back.notes, (HDR,) if hdr else ())
+            cut = vram_texture(rng, 4, noise(rng, (8, 8), "RGBA"), 24)[:60]
+            with self.assertRaisesRegex(ValueError, "BC6H data cut short"):
+                to_png(cut)
 
 
 class RepackTests(unittest.TestCase):

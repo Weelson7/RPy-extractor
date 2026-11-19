@@ -15,7 +15,9 @@ ships sanitizer rules (5.1); no pinned QuickBMS script in the indexes (16.0b); c
 
 **Open:** the completeness contract per engine (16.0c); rung D4 (`hook.overlay`); sanitizer phases
 2-3; the `supplement` slot policy; `[hooks]`; `memory_image` targets;
-`keys.*` slots; the way back of Bannerlord TPAC, of BC2/BC6H/BC7 DDS and of VRAM-compressed Godot textures; Unreal asset export and the engines of 13.7;
+`keys.*` slots; the way back of premultiplied, signed and typeless block formats (DXT2/DXT4,
+signed BC4/BC5, typeless BC6H) and of ETC, ASTC, PVRTC and Basis Godot textures (no decoder
+either); Unreal asset export and the engines of 13.7;
 declarative (Kaitai) plugins; the indexes repository split.
 
 ## Done, per engine and arm (owner)
@@ -43,7 +45,7 @@ run: `tests` means the suite covers the engine there. A row closes when every ce
 | Electron | tests | tests | tests | open | tests |
 | Age of Empires (genie) | real | real | real | real | tests |
 | Total War (warscape) | real | real | real | open | tests |
-| Bannerlord (taleworlds) | real | open (no packer) | open | open | tests |
+| Bannerlord (taleworlds) | real | tests (one real package by hand) | tests (one real package by hand) | open | tests |
 | QuickBMS | tests | open | open | open | tests |
 | Overwatch (DataTool) | tests | - (read only) | - | - | Windows only |
 
@@ -60,7 +62,7 @@ What each `real` stands on (the passes' reports are in `viwo-data/`):
 | Doom | Freedoom: deep pass 1.16.1 | a repainted sprite, both WADs (first at 1.16.4) |
 | Genie | AoE II HD: games pass 1.20.34, 13 of 13 flags | a changed member of `interfac.drs` |
 | Warscape | Rome II: games pass 2026-11-04, 12 of 12 flags | a repainted image as the movie pack `data/viwo_data_rome2.pack` |
-| TaleWorlds | Bannerlord: games pass 2026-11-03, 11 of 11 flags (textures 188 of 190) | - |
+| TaleWorlds | Bannerlord: games pass 2026-11-03, 11 of 11 flags (textures 188 of 190) | not a repack run: a copy of one mod package (`ScarsExtra/AssetPackages/scar_nobl_g.tpac`, a BC7 and a DXT5 texture, raw and LZ4 segments) rewritten by `pack.tpac` with every member unchanged (byte for byte the same file) and with its BC7 texture repainted through PNG, `pillow-image` and the BC7 encoder (read back by the plugin's reader: the edit in place, the other texture unchanged, the mip-1 copy following the edit). The game was not run on it |
 
 **The game loads the change** (1.20.72, 2026-11-18; the patched copy started, its own
 window captured by `tools/game_shot.ps1`, screenshots in `sqc/proof/`): Ren'Py (Doki Doki
@@ -384,8 +386,9 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 18.3 way back of `decode.loc` (JSON to `.loc`) | implemented (tests only) | `plugins/warscape/loc.py`; `tests/test_encoders.py` |
 | 18.3 way back of `decode.rpyc` (the `.rpy`, the stale `.rpyc` removed) | implemented; real (1.22.4, Doki Doki Literature Club: the edited `.rpy` compiled by the game on start and shown, `sqc/proof/renpy-ddlc-script.jpg`) | `plugins/renpy/decompile.py`, `plugins/renpy/pack.py`; `tests/test_roundtrip_encode.py` |
 | 18.3 way back of `decode.cr2w` (WolvenKit `import --keep`, `convert deserialize`) | implemented (fake tool only: the real WolvenKit not run on it yet) | `plugins/redengine/encode.py`; `tests/test_wolvenkit_import.py` |
-| 18.3 way back of `decode.image` (PNG to uncompressed DDS, or BC1/BC3/BC4/BC5 through ViWo's own range-fit encoder; BC2, BC6H, BC7, signed BC4/BC5 skipped with the reason) | implemented (tests only; the encoder's blocks also checked once against the pinned ffmpeg's decoder by hand, not in the suite) | `core/encode_dds.py`, `core/encode_bc.py`; `tests/test_encoders.py`, `tests/test_encode_bc.py` |
-| 18.3 way back of `decode.ctex` (PNG to the Godot texture in its form: PNG or lossless WebP mipmaps, or uncompressed 8-bit; VRAM-compressed and Basis skipped with the reason) | implemented (tests only: no Godot game with PCK data here) | `plugins/godot/ctex.py`, `plugins/godot/ctex_write.py`; `tests/test_godot_ctex.py` |
+| 18.3 way back of `decode.image` (PNG to uncompressed DDS, or BC1 to BC5 through ViWo's own range-fit encoder, BC7 in mode 6 and BC6H in mode 11 through its own BPTC encoder; premultiplied DXT2/DXT4, signed BC4/BC5 and typeless BC6H skipped with the reason); `pillow-image` the slot's spare (BC6H and BC7, which the pinned ffmpeg does not read) | implemented (tests: every format decoded again by ViWo's decoders and by Pillow; BC1 to BC4 blocks also checked byte for byte against the pinned ffmpeg's decoder by hand, not in the suite; BC7 written into a real Bannerlord texture and decoded again, by hand) | `core/encode_dds.py`, `core/decode_dds.py`, `backends/blocks/`; `tests/test_encoders.py`, `tests/test_encode_bc.py`, `tests/test_decode_bc.py` |
+| 18.3 way back of `decode.ctex` (PNG to the Godot texture in its form: PNG or lossless WebP mipmaps, uncompressed 8-bit, or S3TC/RGTC/BPTC blocks decoded by ViWo's own block decoders; ETC, ETC2, ASTC, PVRTC and Basis skipped with the reason) | implemented (tests only: no Godot game with PCK data here) | `plugins/godot/ctex.py`, `plugins/godot/ctex_write.py`, `plugins/godot/vram.py`; `tests/test_godot_ctex.py` |
+| 18.4 `pack.tpac` (TaleWorlds TPAC rewritten member by member, every other byte kept; a texture's tail segment follows its edit; LZ4 HC 12 and xxHash64 as the game's packages) | implemented (tests, and one Bannerlord package rewritten unchanged, byte for byte, and with one BC7 texture edited, read back by the plugin's reader, by hand; the game itself was not run on it) | `plugins/taleworlds/pack.py`, `plugins/taleworlds/xxh64.py`; `tests/test_tpac_pack.py` |
 | 18.3 way back of `decode.redscripts` (the edited source as `r6/scripts/<path>.reds` beside `final.redscripts`; the plan says the copy needs the redscript compiler) | implemented (tests only: fake redscript, the compiler not run on it) | `plugins/redengine/games/cyberpunk2077/scripts.py`, `Decoder.adds`/`back_note`, `core/roundtrip_encode.py`; `tests/test_redscripts.py` |
 | 18.3 way back of `decode.audio`, `decode.video`, `decode.bink2` | not possible under the rules (proprietary encoders): said per file | `Decoder.one_way` |
 | 18.4 pack slots | implemented | `plugins/*`, `backends/packers.py` |

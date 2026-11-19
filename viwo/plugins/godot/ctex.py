@@ -1,17 +1,21 @@
 """decode.ctex (doc 16.0c): Godot's imported textures to PNG, in process: `.ctex` (Godot 4,
 `GST2`) and `.stex` (Godot 3, `GDST`). Read: the lossless and lossy forms (every mipmap its own
 PNG or WebP, behind Godot's 4-byte `PNG `/`WEBP` tag when it has one) and the uncompressed form
-in the 8-bit formats (L8, LA8, R8, RG8, RGB8, RGBA8). The largest mipmap is written. A
-VRAM-compressed (S3TC, BPTC, ETC, ASTC...) or Basis Universal texture is not decoded yet: said
-per file. The way back is ctex_write.py."""
+in the 8-bit formats (L8, LA8, R8, RG8, RGB8, RGBA8), and the VRAM-compressed S3TC, RGTC and
+BPTC formats (vram.py). The largest mipmap is written. ETC, ETC2, ASTC, PVRTC and Basis
+Universal textures are not decoded: said per file, by name. The way back is ctex_write.py."""
 
 import io
 import struct
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from viwo.backends.blocks.encode_bptc import CLAMPED, HDR
 from viwo.contracts.slots import Decoder, SlotDefinition
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
+
+from .vram import block_format, refusal
+from .vram import image as vram_image
 
 SLOT = SlotDefinition("decode.ctex", "decode", "godot", "ctex-builtin", suffixes=(".ctex", ".stex"))
 PILLOW = DependencySpec(
@@ -29,12 +33,17 @@ class Texture:
     version: int  # 3 (.stex) or 4 (.ctex)
     width: int
     height: int
-    kind: str  # "png", "webp" or "raw"
-    fmt: int = 5  # Godot image format of a raw texture
+    kind: str  # "png", "webp", "raw" or "vram" (block-compressed)
+    fmt: int = 5  # Godot image format of a raw or VRAM-compressed texture
     mips: bool = False
     head: int = 0  # bytes of header before the image data
     payloads: list = field(default_factory=list)  # (offset, size) of each PNG/WebP mipmap
     tag: bytes = b""  # Godot's tag before each payload
+
+    @property
+    def block(self) -> str:
+        """The block format of a VRAM-compressed texture (vram.py), else ""."""
+        return block_format(self.version, self.fmt) if self.kind == "vram" else ""
 
 
 def _payloads(blob: bytes, at: int, count: int, whole: bool) -> list[tuple[int, int]]:
@@ -99,9 +108,10 @@ def parse(blob: bytes, whole: bool = True) -> Texture:
         raise ValueError("texture size out of range")
     if tex.payloads:
         tex.kind, tex.tag = _sniff(blob, tex.payloads[0][0])
+    elif block_format(tex.version, tex.fmt):
+        tex.kind = "vram"
     elif tex.fmt not in RAW:
-        why = f"Godot image format {tex.fmt} (VRAM-compressed or not 8-bit)"
-        raise ValueError(f"{why}: not decoded yet")
+        raise ValueError(refusal(tex.version, tex.fmt))
     return tex
 
 
@@ -128,6 +138,8 @@ def to_png(blob: bytes) -> bytes:
     if tex.payloads:
         at, size = tex.payloads[0]
         image = Image.open(io.BytesIO(blob[at + len(tex.tag) : at + size]))
+    elif tex.kind == "vram":
+        image = vram_image(blob[tex.head :], tex.block, (tex.width, tex.height))
     else:
         image = raw_image(blob[tex.head :], tex.fmt, (tex.width, tex.height))
     out = io.BytesIO()
@@ -154,14 +166,21 @@ class CtexDecoder(Decoder):
         from .ctex_write import write_ctex
 
         try:
-            out.write_bytes(write_ctex(edited.read_bytes(), original.read_bytes()))
+            source = original.read_bytes()
+            out.write_bytes(write_ctex(edited.read_bytes(), source))
         except (ValueError, struct.error, OSError) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"{edited.name}: {exc}")
-        return Outcome(OutcomeKind.OK, 1)
+        return Outcome(OutcomeKind.OK, 1, notes=(HDR,) if _hdr(source) else ())
 
     def decode(self, path: Path, dest: Path, ctx) -> Outcome:
         try:
-            (dest / f"{path.stem}.png").write_bytes(to_png(path.read_bytes()))
+            blob = path.read_bytes()
+            (dest / f"{path.stem}.png").write_bytes(to_png(blob))
         except (ValueError, struct.error, OSError) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"{path.name}: {exc}")
-        return Outcome(OutcomeKind.OK, 1)
+        return Outcome(OutcomeKind.OK, 1, notes=(CLAMPED,) if _hdr(blob) else ())
+
+
+def _hdr(blob: bytes) -> bool:
+    """Whether a texture is BC6H (HDR colour, shown and written back in 8 bits)."""
+    return parse(blob, whole=False).block.startswith("BC6H")

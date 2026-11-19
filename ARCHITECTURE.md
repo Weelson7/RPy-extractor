@@ -41,7 +41,9 @@ viwo/
                    decode.nif)
   os/          LinuxOS, WindowsOS (_shared.py): processes with tree kill and tracked children,
                tool lookup, filename rules, pickers, homes, scan exclusions, process list, dumps
-  backends/    core unarchivers (zip, tar, 7-Zip, py7zr, unrar) and the zip packer
+  backends/    core unarchivers (zip, tar, 7-Zip, py7zr, unrar) and the zip packer; blocks/:
+               the block codecs core and plugins share (BC1-BC7 encoders, BC1-BC5 and BC7
+               decoders: the DDS way back, Godot's VRAM textures)
   plugins/     one folder per engine: generic, renpy, unity, godot, unreal, doom, rpgmaker,
                kirikiri, electron, source, bethesda, genie, warscape, redengine, taleworlds,
                quickbms, overwatch; game plugins under their engine in <engine>/games/
@@ -52,7 +54,8 @@ viwo/
     pipeline/    probe, detect, select, identify, unpack, export (+ wrapper re-detection),
                  carving, collect, failover, guard (game-folder checks), runner, ticker
     carve/       signature carver (format sizers) and compressed-stream scan
-    decode.py    DECODE: audio to WAV, DDS to PNG, Bink to MP4; media.probe backends
+    decode.py    DECODE: audio to WAV, DDS to PNG, Bink to MP4; media.probe backends;
+                 decode_dds.py: the DDS way back and the Pillow spare (BC6H, BC7)
     curation/    extension groups, sorting with undo, three trash areas
     merger/      media merger: candidates, timeline, ffmpeg builds
     sanitizer.py, sanitizer_rules.py   cleanup: plan, apply, undo
@@ -72,7 +75,8 @@ viwo/
                  game's own process, Cheat Engine)
     roundtrip.py, roundtrip_edits.py   edit set, patched copy, pack, verify
     roundtrip_plan.py, roundtrip_encode.py   plan (mod or overwrite), the way back of
-                 decoded files (Decoder.encode); encode_dds.py (PNG to uncompressed DDS)
+                 decoded files (Decoder.encode); encode_dds.py (PNG to DDS, uncompressed or
+                 through backends/blocks)
     patchsets.py, patch_tools.py       T1 patch sets (offset, RVA, AOB, Keystone, capstone)
     mods.py                            T2 mod packages
     jobs.py, workspace.py, records.py, provenance.py, context.py, steps.py, media.py

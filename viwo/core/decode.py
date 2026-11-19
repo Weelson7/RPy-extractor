@@ -1,6 +1,7 @@
 """DECODE (after COLLECT): game media into files anything can open (D21, rung 5).
 
-Wwise/FMOD/CRI/XACT/console audio -> WAV (vgmstream, ffmpeg spare), DDS -> PNG (ffmpeg),
+Wwise/FMOD/CRI/XACT/console audio -> WAV (vgmstream, ffmpeg spare), DDS -> PNG (ffmpeg; Pillow
+spare, BC6H and BC7: decode_dds.py),
 Bink -> MP4 (ffmpeg; Bink 2 through the game's own Bink DLL; opt-in: slow). Originals stay;
 outputs are collected next to them with provenance "decode:<backend>:<source>". Options:
 core.decode=off, core.decode_video=on.
@@ -8,7 +9,6 @@ A file no backend could decode is counted per slot in one warning (never silent)
 """
 
 import shutil
-import struct
 import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -18,6 +18,7 @@ from viwo.contracts.slots import Decoder, Prober, SlotDefinition
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 
 from .decode_bink import BINK_HELPER, BinkGame, bink_dll  # noqa: F401  (decode's names)
+from .decode_dds import PILLOW, DdsWayBack, PillowImage, bptc
 from .merger.ffmpeg import FFMPEG, FFPROBE
 from .pipeline.collect import Source, collect
 from .pipeline.failover import run_with_failover
@@ -32,13 +33,12 @@ SLOTS = (
     SlotDefinition(
         "decode.audio", "decode", "core", "vgmstream-cli", "ffmpeg-decode", suffixes=AUDIO
     ),
-    SlotDefinition("decode.image", "decode", "core", "ffmpeg-image", suffixes=(".dds",)),
+    SlotDefinition(
+        "decode.image", "decode", "core", "ffmpeg-image", "pillow-image", suffixes=(".dds",)
+    ),
     SlotDefinition("decode.video", "decode", "core", "ffmpeg-video", suffixes=(".bik",)),
     SlotDefinition("decode.bink2", "decode", "core", "bink-game", suffixes=(".bk2",)),
     SlotDefinition("media.probe", "probe", "core", "ffprobe-probe", "pillow-probe"),
-)
-PILLOW = DependencySpec(
-    "pillow", "Pillow", kind="python", import_name="PIL", hint="pip install pillow"
 )
 VGMSTREAM = DependencySpec.of("vgmstream")
 ONE_WAY_AUDIO = (  # doc 18.3: why these stay one way
@@ -100,31 +100,17 @@ class FfmpegDecode(_CliDecoder):
         return ["-y", "-loglevel", "error", "-i", str(path), str(out)]
 
 
-class FfmpegImage(FfmpegDecode):
-    """The way back writes the DDS itself, uncompressed or BC1/BC3/BC4/BC5 (encode_dds.py,
-    encode_bc.py, doc 18.3)."""
+class FfmpegImage(DdsWayBack, FfmpegDecode):
+    """The way back writes the DDS itself (decode_dds.py, doc 18.3). BC6H and BC7, which this
+    ffmpeg does not read, go to the spare without starting it."""
 
-    backend_id, suffix, encodes = "ffmpeg-image", ".png", True
+    backend_id, suffix = "ffmpeg-image", ".png"
 
-    def refuses(self, original: Path) -> str:
-        from .encode_dds import layout
-
-        with open(original, "rb") as fh:
-            head = fh.read(148)
-        try:
-            layout(head)
-        except ValueError as exc:
-            return f"{original.name}: {exc}"
-        return ""
-
-    def encode(self, edited: Path, original: Path, out: Path, ctx) -> Outcome:
-        from .encode_dds import write_dds
-
-        try:
-            out.write_bytes(write_dds(edited.read_bytes(), original.read_bytes()))
-        except (ValueError, OSError, struct.error) as exc:
-            return Outcome(OutcomeKind.FAILED, error=f"{original.name}: {exc}")
-        return Outcome(OutcomeKind.OK, 1)
+    def decode(self, path: Path, dest: Path, ctx) -> Outcome:
+        with open(path, "rb") as fh:
+            if kind := bptc(fh.read(132)):
+                return Outcome(OutcomeKind.FAILED, error=f"ffmpeg does not read {kind} DDS")
+        return super().decode(path, dest, ctx)
 
 
 class FfmpegVideo(FfmpegDecode):
@@ -171,8 +157,8 @@ class PillowProbe(Prober):
 
 def decoders() -> list:
     """Every core decode/probe backend (doc 8.4)."""
-    kinds = (VgmstreamCli, FfmpegDecode, FfmpegImage, FfmpegVideo, BinkGame, FfprobeProbe)
-    return [backend() for backend in (*kinds, PillowProbe)]
+    kinds = (VgmstreamCli, FfmpegDecode, FfmpegImage, PillowImage, FfmpegVideo, BinkGame)
+    return [backend() for backend in (*kinds, FfprobeProbe, PillowProbe)]
 
 
 def _wanted(run, options: dict) -> dict[str, str]:
@@ -207,6 +193,8 @@ def _decode_one(run, ctx, workspace: Path, rel: str, slot: str) -> tuple[Source 
     )
     if outcome.fallback:
         run.log(f"{rel}: {outcome.fallback}", "decode", "warn")
+    for note in outcome.notes if outcome.ok else ():  # what the decoded file does not show
+        run.log(f"{rel}: {note}", "decode", "warn")
     if outcome.ok:
         return Source(dest, True, f"decode:{used}:{rel}"), ""
     shutil.rmtree(dest, ignore_errors=True)

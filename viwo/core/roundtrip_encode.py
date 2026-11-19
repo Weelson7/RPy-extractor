@@ -184,5 +184,7 @@ def _encode_one(backend, edited: Path, way: Way, out: Path, ctx) -> str:
     except Exception as exc:  # noqa: BLE001 (an encoder's crash is this file's failure)
         return f"{type(exc).__name__}: {exc}"[:300]
     if outcome.ok and out.is_file():
+        for note in outcome.notes:  # what the encoded member does not keep (never silent)
+            ctx.log(f"{way.derived}: {note}", "warn", "repack")
         return ""
     return outcome.error or f"{way.backend} wrote nothing"

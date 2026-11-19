@@ -138,10 +138,10 @@ class DdsBackTests(unittest.TestCase):
             if fmt in ("BGRA", "RGBA"):  # Pillow reads the same file to the same pixels
                 self.assertEqual(Image.open(io.BytesIO(blob)).convert("RGBA").tobytes(), want)
 
-    def test_bc7_and_cube_maps_say_why_they_stay_one_way(self) -> None:
+    def test_typeless_bc6h_and_cube_maps_say_why_they_stay_one_way(self) -> None:
         png = png_of(noise(random.Random(42), (4, 4)))
-        for original, why in (  # BC1-BC5 go back: tests/test_encode_bc.py
-            (dds("DX10:98", (4, 4)), "BC7.*no encoder"),
+        for original, why in (  # BC1-BC7 go back: tests/test_encode_bc.py
+            (dds("DX10:94", (4, 4)), "typeless BC6H"),
             (dds("BGRA", (4, 4), caps2=0x200), "cube map"),
         ):
             with self.assertRaisesRegex(ValueError, why):

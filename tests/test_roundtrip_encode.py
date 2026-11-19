@@ -160,7 +160,7 @@ class SkippedTests(unittest.TestCase):
                     "rpy/gone.rpy": (b"x", decoded("rpyc/gone.rpyc", "gone.rpy", "unrpyc-cli")),
                     "rpyc/e.rpyc": (b"compiled", {**member, "member": "e.rpyc"}),
                     "rpy/e.rpy": (b"x", decoded("rpyc/e.rpyc", "e.rpy", "unrpyc-cli")),
-                    "dds/t.dds": (dds("DX10:98", (4, 4)), {**member, "member": "t.dds"}),
+                    "dds/t.dds": (dds("DX10:94", (4, 4)), {**member, "member": "t.dds"}),
                     "png/t.dds.png": (b"x", decoded("dds/t.dds", "t.dds.png", "ffmpeg-image")),
                     "vtf/m.vtf": (animated, {**member, "member": "m.vtf"}),
                     "png/m.png": (b"x", decoded("vtf/m.vtf", "m.png", "vtf-builtin")),
@@ -176,7 +176,7 @@ class SkippedTests(unittest.TestCase):
             self.assertIn("nested container", why["rpy/n.rpy"])
             self.assertIn("no longer in the workspace", why["rpy/gone.rpy"])
             self.assertIn("was edited too", why["rpy/e.rpy"])
-            self.assertIn("block-compressed", why["png/t.dds.png"])  # named at plan time
+            self.assertIn("typeless BC6H", why["png/t.dds.png"])  # named at plan time
             self.assertIn("only single images", why["png/m.png"])
             self.assertEqual([w for p in report["plan"] for w in p["ways"]], [])  # none goes
 

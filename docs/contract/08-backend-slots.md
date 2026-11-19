@@ -195,7 +195,9 @@ kept as `.uemodel`; `models = uemodel` writes no `.glb`).
 
 **Carve and decode:** `carve.signatures` (`signature-carver`); `decode.audio` (`vgmstream-cli`,
 spare `ffmpeg-decode`; Wwise, FMOD, CRI, XACT and console audio to WAV); `decode.image`
-(`ffmpeg-image`, DDS to PNG); `decode.video` (`ffmpeg-video`, Bink to MP4, opt-in); `decode.bink2` (`bink-game`: Bink 2 to MP4
+(`ffmpeg-image`, DDS to PNG; spare `pillow-image`, in process: what the pinned ffmpeg does not
+read, BC6H and BC7, which the main hands on without starting ffmpeg, and every DDS when ffmpeg is
+missing; BC6H clamped to 0..1 in 8 bits, said per file); `decode.video` (`ffmpeg-video`, Bink to MP4, opt-in); `decode.bink2` (`bink-game`: Bink 2 to MP4
 through the game's own `bink2w64.dll` in a helper process, frames piped into ffmpeg, opt-in with
 video); `decode.cr2w` (`wolvenkit-export`, redengine: WolvenKit's console, GPL-3.0 as its own
 process. A run takes up to 150 files, as many as are estimated to fit 2 GB: about 1.2 GB before
@@ -216,7 +218,9 @@ redscript's console, MIT, Windows build, decompiles `final.redscripts` into one 
 stored script); `decode.rpyc`
 (`unrpyc-cli`, renpy, option `decompile`); `decode.slp` (`slp-builtin`, genie);
 `decode.ctex` (`ctex-builtin`, godot, in process: `.ctex`/`.stex` textures whose mipmaps are PNG
-or WebP, or uncompressed 8-bit, to PNG; a VRAM-compressed or Basis texture is a counted failure);
+or WebP, uncompressed 8-bit, or VRAM-compressed S3TC, RGTC and BPTC, to PNG (BC1 to BC5 and
+BC7 through ViWo's own block decoders in `backends/blocks/`, BC6H through Pillow, clamped and
+said); an ETC, ETC2, ASTC, PVRTC or Basis texture is a counted failure, by name);
 `decode.vtf` (`vtf-builtin`, source: VTF 7.0-7.5 to PNG); `decode.mdl` (`mdl-builtin`, source,
 a batch backend: studio models, `.mdl` versions 44 to 49, into `.glb` through
 `contracts/gltf.py` (`plugins/source/studio.py` reads, `models.py` writes). The `.vvd` and the
@@ -290,7 +294,8 @@ read. Both calls say how many models they wrote, how many hold no mesh, how many
 
 **Pack (doc 18):** `pack.zip` (`zip-packer`), `pack.rpa` (`rpa-writer`), `pack.pck`
 (`godotpcktool-pack`), `pack.upak` (`repak-patch`, `_P.pak`), `pack.archive` (`wolvenkit-pack`, override archive in `archive/pc/mod`), `pack.unity` (`unitypy-pack`),
-`pack.rpgmaker` (`rpgmv-pack`). **Patch:** `patch.bytes` (`viwo-patcher`, owns the Keystone and
+`pack.rpgmaker` (`rpgmv-pack`), `pack.tpac` (`tpac-writer`, taleworlds, in process: a TPAC
+rewritten member by member, doc 18.4); the other writers ViWo owns are in doc 18.4. **Patch:** `patch.bytes` (`viwo-patcher`, owns the Keystone and
 capstone dependencies).
 
 **Analysis (doc 6):** `analysis.native`, `.dotnet`, `.il2cpp`, `.script`, `.python`,

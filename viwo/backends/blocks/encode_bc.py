@@ -1,6 +1,7 @@
-"""Block compression for the way back of decode.image (doc 18.3): BC1, BC3, BC4 and BC5 written
-from 8-bit RGBA pixels, first-party, pure Python, deterministic (the same pixels give the same
-bytes). Correctness over quality: each 4x4 block is fitted on its own range.
+"""Block compression for the way back of decode.image and decode.ctex (doc 18.3): BC1, BC2, BC3,
+BC4 and BC5 written from 8-bit RGBA pixels (BC6H and BC7: encode_bptc.py), first-party, pure
+Python, deterministic (the same pixels give the same bytes). Correctness over quality: each 4x4
+block is fitted on its own range.
 
 - Colour (BC1, the colour half of BC3): the endpoints are the corners of the block's colour
   box, along the diagonal its covariance points to (a block of two colours gets exactly those
@@ -10,6 +11,7 @@ bytes). Correctness over quality: each 4x4 block is fitted on its own range.
   others and under Pillow's expansion (no BC1 block can do better for every colour).
 - BC1 alpha: a pixel under 128 is transparent (the 3-colour mode, index 3); a block with none
   uses the 4-colour mode. A fully transparent block is transparent black.
+- BC2 alpha: each pixel's 4 bits, the nearest step of 17 (within 8); its colour half as BC3's.
 - Single channel (BC4, both halves of BC5, the alpha half of BC3): the block's minimum and
   maximum, eight levels between them; each value takes the nearest level, so 0 and 255 are
   exact and no value is further than (max - min) / 14, plus the decoder's rounding.
@@ -18,7 +20,9 @@ Blocks at the right and bottom edge repeat the last column and row."""
 import struct
 from operator import mul
 
-KINDS = {"BC1": 8, "BC3": 16, "BC4": 8, "BC5": 16}  # bytes per 4x4 block
+KINDS = {"BC1": 8, "BC2": 16, "BC3": 16, "BC4": 8, "BC5": 16}  # bytes per 4x4 block
+BPTC = {"BC6H": 16, "BC6HS": 16, "BC7": 16}  # encode_bptc.py: BC6H unsigned and signed, BC7
+KINDS |= BPTC
 
 
 def _expand(bits: int) -> list[int]:
@@ -71,14 +75,14 @@ def _flat(r: int, g: int, b: int) -> bytes:
     return struct.pack("<HHI", c0, c1, 0xAAAAAAAA)
 
 
-def _corners(chans: tuple) -> tuple[list, list]:
-    """The two corners of the colour box of the pixels that count (their R, G and B values),
-    on the diagonal the covariance with the widest channel points to."""
+def corners(chans: tuple) -> tuple[list, list]:
+    """The two corners of the colour box of the pixels that count (their values per channel:
+    R, G and B, or more), on the diagonal the covariance with the widest channel points to."""
     lo, hi = [min(c) for c in chans], [max(c) for c in chans]
-    main = max(range(3), key=lambda k: hi[k] - lo[k])
+    main = max(range(len(chans)), key=lambda k: hi[k] - lo[k])
     n, m = len(chans[0]), chans[main]
     total = sum(m)
-    for k in range(3):  # the sign of n * cov: below 0, this channel falls as the main rises
+    for k in range(len(chans)):  # the sign of n * cov: below 0, it falls as the main rises
         if k != main and n * sum(map(mul, m, chans[k])) < total * sum(chans[k]):
             lo[k], hi[k] = hi[k], lo[k]
     return hi, lo
@@ -98,7 +102,7 @@ def _color(r: bytes, g: bytes, b: bytes, alpha: bytes | None) -> bytes:
         chans = tuple([c[i] for i in range(16) if alpha[i] >= 128] for c in (r, g, b))
     elif r.count(r[0]) == 16 and g.count(g[0]) == 16 and b.count(b[0]) == 16:
         return _flat(r[0], g[0], b[0])
-    hi, lo = _corners(chans if clear else (r, g, b))
+    hi, lo = corners(chans if clear else (r, g, b))
     c0 = _rgb565(Q5[hi[0]], Q6[hi[1]], Q5[hi[2]])
     c1 = _rgb565(Q5[lo[0]], Q6[lo[1]], Q5[lo[2]])
     if (c0 > c1) if clear else (c0 < c1):  # 4 colours: c0 > c1; 3 and transparent: c0 <= c1
@@ -138,13 +142,22 @@ def _single_channel(v: bytes) -> bytes:
     return bytes((hi, lo)) + bits.to_bytes(6, "little")
 
 
+def _explicit(a: bytes) -> bytes:
+    """BC2's alpha half: each pixel's alpha in 4 bits, the nearest of the 16 steps of 17."""
+    bits = 0
+    for i in range(16):
+        bits |= ((a[i] + 8) // 17) << (4 * i)
+    return bits.to_bytes(8, "little")
+
+
 def _block(kind: str, px: bytes) -> bytes:
     """One block from 64 bytes of RGBA (16 pixels, row by row)."""
     r, g, b, a = px[0::4], px[1::4], px[2::4], px[3::4]
     if kind == "BC1":
         return _color(r, g, b, a if min(a) < 128 else None)
-    if kind == "BC3":
-        return _single_channel(a) + _color(r, g, b, None)
+    if kind in ("BC2", "BC3"):
+        alpha = _explicit(a) if kind == "BC2" else _single_channel(a)
+        return alpha + _color(r, g, b, None)
     if kind == "BC4":
         return _single_channel(r)
     return _single_channel(r) + _single_channel(g)
@@ -159,6 +172,12 @@ def compress(rgba: bytes, width: int, height: int, kind: str) -> bytes:
     """The blocks of one image (RGBA bytes, row by row), left to right, top to bottom."""
     if kind not in KINDS:
         raise ValueError(f"{kind} is not a block format ViWo writes")
+    if kind in BPTC:
+        from .encode_bptc import block as encode
+
+        one = lambda px: encode(kind, px)  # noqa: E731
+    else:
+        one = lambda px: _block(kind, px)  # noqa: E731
     w4 = (width + 3) // 4 * 4
     rows = []
     for y in range((height + 3) // 4 * 4):
@@ -168,5 +187,5 @@ def compress(rgba: bytes, width: int, height: int, kind: str) -> bytes:
     for y in range(0, len(rows), 4):
         band = rows[y : y + 4]
         for x in range(0, w4 * 4, 16):
-            out += _block(kind, b"".join(row[x : x + 16] for row in band))
+            out += one(b"".join(row[x : x + 16] for row in band))
     return bytes(out)

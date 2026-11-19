@@ -4,14 +4,17 @@ The original's header is kept (version, flags, mipmap limit, the image format fi
 PNG's size, and so is its form: a PNG texture gets PNG mipmaps, a WebP one lossless WebP (a lossy
 original too: the same data format, nothing more lost), each behind the original's tag (`PNG `,
 `WEBP` or none); an uncompressed one its 8-bit format (L8, LA8, R8, RG8, RGB8, RGBA8) as raw
-bytes. Mipmaps are rebuilt (box filter) down to 1x1 when it had them. A VRAM-compressed or Basis
-Universal texture is refused by name (no encoder), and so is a WebP one when this Pillow cannot
-write WebP; without Pillow nothing is written, and the reason says how to get it."""
+bytes; a VRAM-compressed one (S3TC, RGTC, BPTC) in its block format through ViWo's block
+encoders (vram.py). Mipmaps are rebuilt (box filter) down to 1x1 when it had them. An ETC,
+ETC2, ASTC, PVRTC or Basis Universal texture is refused by name (no decoder, no encoder), and
+so is a WebP one when this Pillow cannot write WebP; without Pillow nothing is written, and the
+reason says how to get it."""
 
 import io
 import struct
 
 from .ctex import PILLOW, RAW, parse
+from .vram import level as vram_level
 
 WEBP_LIMIT = 16383  # the largest side WebP holds
 
@@ -86,6 +89,8 @@ def write_ctex(png: bytes, original: bytes) -> bytes:
     levels = [image.resize(size, Image.Resampling.BOX) for size in sizes]
     if tex.kind == "raw":
         body = b"".join(_raw(level, tex.fmt) for level in levels)
+    elif tex.kind == "vram":
+        body = b"".join(vram_level(level, tex.block) for level in levels)
     else:
         mode = _mode(original, tex)
         body = b"".join(_payload(level, tex.kind, mode, tex.tag) for level in levels)

@@ -4,6 +4,52 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.26.0 (2026-11-19)
+- Ways back: BC2, BC6H and BC7 DDS. `decode.image` writes BC2 (DXT3: 4-bit alpha, the
+  nearest step of 17), BC7 (mode 6 only: one subset, RGBA endpoints of 7 bits plus a p-bit;
+  an endpoint whose alpha is 0 or 255 keeps it exactly) and BC6H unsigned and signed (mode 11
+  only: one region, 10-bit endpoints; each 8-bit value aimed at the middle of what Pillow shows
+  as it). Pure Python, deterministic; a 1024x1024 texture takes about 3 s in BC2 and 7 to 12 s
+  in BC7 or BC6H on a busy desktop. Every format is decoded again in the tests by ViWo's own
+  decoders, a BC6H mode 11 decoder written per the specification and Pillow, within the
+  format's bound. BC6H's loss (colour above 1.0, alpha) is said with each file the repack
+  writes: an encoder's notes are now warnings of the repack. Still refused by name:
+  premultiplied DXT2/DXT4, signed BC4/BC5, typeless BC6H.
+- `decode.image` has a spare, `pillow-image` (in process): the pinned ffmpeg 6.1 reads no BC6H
+  or BC7 DDS (it answers "Unsupported DXGI format"), so those were not decoded at all; the main
+  now hands them on without starting ffmpeg, and Pillow decodes them (and every DDS when ffmpeg
+  is missing). BC6H comes out clamped to 0..1 in 8 bits, said per file: a decoder's notes are
+  now warnings of DECODE.
+- The block codecs moved to `viwo/backends/blocks/` (the BC1-BC5 encoder from `core/`), where
+  core and the plugins can both import them, with first-party decoders: BC1 to BC5 (byte for
+  byte what the pinned ffmpeg shows, checked by hand on random blocks; BC5's blue is 0 where
+  ffmpeg rebuilds a normal's z) and BC7, every mode, partition and anchor (block for block what
+  Pillow shows, in the tests; a reserved block is transparent black as the specification says).
+- Godot: VRAM-compressed `.ctex`/`.stex` textures decode to PNG and go back. DXT1, DXT3, DXT5,
+  RGTC_R, RGTC_RG and BPTC_RGBA through ViWo's block decoders, BPTC_RGBF/RGBFU (BC6H) through
+  Pillow, Godot 4's DXT5_RA_AS_RG (normal maps) with Godot's own swizzle; written back in the
+  same block format, every mip level. ETC, ETC2, ASTC, PVRTC and Basis Universal stay refused
+  by name. Tests only (no Godot game with PCK data here). A 1024x1024 BC7 texture takes 5 to
+  9 s to decode in pure Python.
+- Bannerlord: `pack.tpac` writes edits back into a TPAC package, every other byte kept. A
+  segment entry's 12 unknown bytes were measured: the xxHash64 (seed 0) of its uncompressed
+  data, then 4 bytes kept as they are; LZ4 segments are LZ4 HC level 12, so unchanged data
+  compresses to the same bytes. An edited `<item>.<n>.bin` replaces its segment; an edited
+  `<item>.dds` the texture's largest segment at the same size, mips and format (anything else
+  is refused by name), and the segment holding the chain from mip 1 (Bannerlord keeps one per
+  texture) follows it. New data goes in place when it fits and no other entry shares it, else
+  at the end. An item's checksum is kept: what it hashes is unknown (not the metadata, not the
+  data, not xxHash64, FNV-1a or MurmurHash64A of either), and mod packages whose checksums are
+  all 0 load. Checked by hand, static, on a copy of one package (`ScarsExtra`'s
+  `scar_nobl_g.tpac`, 740,848 bytes, a BC7 and a DXT5 texture, raw and LZ4 segments): every
+  member given back unchanged gave the same file byte for byte; its BC7 texture repainted
+  through PNG, `pillow-image` and the BC7 encoder (2.6 s with its mips) read back through the
+  plugin's reader as written, the other texture unchanged, the mip-1 segment the new chain's
+  tail, the bytes changed only the two entries' fields, the mip-1 data in place and the full
+  chain appended (765,087 bytes). Bannerlord was not started on it.
+- Budgets: `viwo/backends` 600 -> 720, `viwo/plugins/godot` 560 -> 640, `viwo/plugins/taleworlds`
+  300 -> 460 (reasons in `loc_caps.ini`).
+
 ## 1.25.4 (2026-11-19)
 - The game loads the change on Age of Empires too: Age of Empires II HD shows its marked main
   menu background from ViWo's patched copy (`sqc/proof/genie-aoe2hd.jpg`).

@@ -1,11 +1,12 @@
 """TaleWorlds engine: `.tpac` asset packages (Mount & Blade II: Bannerlord is its game plugin).
 
-Header (36 bytes): magic TPAC, version (1 or 2), package GUID, item count, data offset,
-reserved. Items follow in a row: type GUID, asset GUID, [version], name (i32 length, UTF-8),
-metadata (u64 size), checksum, then the data segments (absolute offset, actual size, stored
-size, two GUIDs, 12 unknown bytes, a storage format byte: 0 raw, 1 LZ4 block) and dependencies
-(48 bytes each). Textures come out as `<name>.dds` (textures.py); every other item as
-`<name>.<segment index>.bin`. LZ4 needs the `lz4` package.
+Header (36 bytes): magic TPAC, version (1 or 2), package GUID, item count, the index size (the
+data starts after it), reserved. Items follow in a row: type GUID, asset GUID, [version], name
+(i32 length, UTF-8), metadata (u64 size), checksum, then the data segments (absolute offset,
+actual size, stored size, owner GUID, segment type GUID, the xxHash64 of the data, 4 unknown
+bytes, a storage format byte: 0 raw, 1 LZ4 block) and dependencies (48 bytes each). Textures
+come out as `<name>.dds` (textures.py); every other item as `<name>.<segment index>.bin`. LZ4
+needs the `lz4` package. The way back is pack.py (pack.tpac).
 """
 
 import struct
@@ -17,6 +18,8 @@ from viwo.contracts.slots import SlotDefinition, Unarchiver
 from viwo.contracts.types import DependencySpec, DetectionResult, Outcome, OutcomeKind
 from viwo.contracts.workspace import count_files
 
+from .pack import SLOT as PACK_SLOT
+from .pack import TpacWriter
 from .textures import CUBE_TAG, TEXTURE, dds, shape
 
 MAGIC = b"TPAC"
@@ -39,8 +42,8 @@ def _string(fh) -> str:
 
 
 def entries(fh):
-    """(name, [(offset, actual size, stored size, format)], type GUID, metadata) per item; the
-    metadata is read for textures only (the rest is skipped)."""
+    """(name, [(offset, actual size, stored size, format, where its entry starts)], type GUID,
+    metadata) per item; the metadata is read for textures only (the rest is skipped)."""
     head = fh.read(HEADER)
     if head[:4] != MAGIC:
         raise ValueError("not a TPAC package")
@@ -66,9 +69,10 @@ def entries(fh):
             raise ValueError("segment count out of range")
         found = []
         for _ in range(segments):
+            at = fh.tell()
             offset, actual, stored = struct.unpack("<QQQ", fh.read(24))
-            fh.seek(44, 1)  # owner GUID, type GUID, 12 unknown bytes
-            found.append((offset, actual, stored, fh.read(1)[0]))
+            fh.seek(44, 1)  # owner GUID, segment type GUID, xxHash64 of the data, 4 bytes
+            found.append((offset, actual, stored, fh.read(1)[0], at))
         (deps,) = struct.unpack("<i", fh.read(4))
         fh.seek(48 * max(deps, 0), 1)
         yield name, found, kind, blob
@@ -118,7 +122,7 @@ class TpacBuiltin(Unarchiver):
 
 
 def _segment(fh, segment, counts: dict) -> bytes | None:
-    offset, actual, stored, fmt = segment
+    offset, actual, stored, fmt = segment[:4]
     if actual > LIMIT or stored > LIMIT:
         raise ValueError("segment size out of range")
     fh.seek(offset)
@@ -160,7 +164,10 @@ class TaleworldsPlugin(EnginePlugin):
         return DetectionResult("taleworlds", 0.85 if found else 0.0, evidence, "taleworlds")
 
     def slot_definitions(self):
-        return (SLOT,)
+        return (SLOT, PACK_SLOT)
+
+    def pack_slot(self, unarchive_slot: str) -> str:
+        return "pack.tpac" if unarchive_slot == "unarchive.tpac" else ""
 
     def backends(self):
-        return (TpacBuiltin(),)
+        return (TpacBuiltin(), TpacWriter())
