@@ -10,12 +10,10 @@ top-level folder. Update a row in the commit that changes its state.
 The row counts per state are not kept here by hand (they went stale): the technical PDF counts
 them from the tables below (`tools/presentation/reference.py`, `conformance()`).
 
-**Partial**, by cause: no built-in plugin keeps an inventory (0.4, 2.2); no built-in plugin
-ships sanitizer rules (5.1); no pinned QuickBMS script in the indexes (16.0b); coverage per file (17.5).
+**Partial**, by cause: no pinned QuickBMS script in the indexes (16.0b); coverage per file (17.5).
 
 **Open:** the completeness contract per engine (16.0c); rung D4 (`hook.overlay`); sanitizer phases
-2-3; the `supplement` slot policy; `[hooks]`; `memory_image` targets;
-`keys.*` slots; the way back of premultiplied, signed and typeless block formats (DXT2/DXT4,
+2-3; `[hooks]`; the way back of premultiplied, signed and typeless block formats (DXT2/DXT4,
 signed BC4/BC5, typeless BC6H) and of ETC, ASTC, PVRTC and Basis Godot textures (no decoder
 either); Unreal asset export and the engines of 13.7;
 declarative (Kaitai) plugins; the indexes repository split.
@@ -118,7 +116,7 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 0.2 pinned tool, worker tool, handoff, runtime agent | implemented | `core/thirdparty.py`, `core/workers.py`, `contracts/analysis.py` `Handoff`, `contracts/runtime.py` |
 | 0.2 provenance, edit set, patched copy, patch set, mod | implemented | `core/provenance.py`, `core/roundtrip_edits.py`, `core/roundtrip.py`, `core/patchsets.py`, `core/mods.py` |
 | 0.4 result keys and meanings | implemented | `contracts/pipeline.py` `to_legacy_dict` |
-| 0.4 `inventoryItems`, `collectedFromInventory` | partial | computed from `inventory()`, which no built-in plugin implements, so both are 0 for built-ins |
+| 0.4 `inventoryItems`, `collectedFromInventory` | implemented | core counts a plugin's `inventory()` against COLLECT's provenance (`pipeline/checks.py` `recorded`, `verify_one`); Source's VPK directories (`plugins/source/__init__.py` `listed`); `tests/test_plugin_providers.py`. 0 for the plugins that keep none |
 
 ## 01 OS layer
 
@@ -143,7 +141,7 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 2.1 manifest fields, option kinds, `option_bool`, secrets masked | implemented | `contracts/plugin.py`; masking in `core/pipeline/runner.py` `_masked_options` |
 | 2.1 derived capabilities | implemented | `core/wiring/conformance.py` `capabilities_of` |
 | 2.2 hooks with defaults | implemented | `contracts/plugin.py` `EnginePlugin` |
-| 2.2 `inventory()` | partial | the hook exists; no built-in plugin implements it |
+| 2.2 `inventory()` | implemented | Source: every member its VPK directories list; the missing ones named in a verify warning (`pipeline/checks.py`) |
 | 2.2 exceptions recorded against the plugin | implemented | `core/pipeline/export.py`, `core/pipeline/failover.py` |
 | 2.3 shared probe, case-preserved paths, cache on size and mtime | implemented | `core/pipeline/probe.py` `FolderProbe` |
 | 2.4 detection result and scale | implemented | `contracts/types.py` `DetectionResult` |
@@ -161,7 +159,7 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 |------|-------|-----------------|
 | 3.1 stage order and events | implemented | `core/pipeline/runner.py` `_stages` |
 | 3.1 guard: one guard hands every writer its folder (not the game, not inside it, not holding it; no marker exempts a folder), before any lock, claim or copy | implemented | `core/pipeline/guard.py` `guarded`: extraction, capture, attach, analysis, dynamic runs, patched copies (repack, patch, mod, agents), sanitizer, the API's claims and locks; `tests/test_game_guard.py` drives every CLI command that takes a game and a folder |
-| 3.1 guard without a game path (dump, trace, hook, profile, record, sanitize) | partial | a patched copy and a folder of files that is no ViWo workspace are refused; a new folder inside a game, a folder above one and a game carrying a workspace marker cannot be told apart without the game's path |
+| 3.1 guard without a game path (dump, trace, hook, profile, record, sanitize, `unpack --out`, `diff --out`) | implemented | `pipeline/guard.py` `outside_games` (the remembered games of `viwo-data/games.json`, Steam libraries, Epic and GOG install marks, patched copies and their insides) then `_unowned`; `tests/test_game_guard.py`. A game ViWo was never given, from no store with marks, is still out of reach |
 | 3.1 wrapper re-detection | implemented | `core/pipeline/export.py` `rewrap`; `tests/test_formats.py::test_engine_inside_an_asar_is_redetected` |
 | 3.1 carve modes and claimed suffixes | implemented | `core/pipeline/carving.py` |
 | 3.1 COLLECT copy/move, dedupe by hash, unreadable files named (also one held while it is copied) | implemented | `core/pipeline/collect.py`; `tests/test_collect_holds.py` |
@@ -197,8 +195,8 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 5.1 phase 1 rules | implemented | `core/sanitizer_rules.py` |
 | 5.1 phase 2 (lossless conversions, `.sanitizer/cache/`, `replace`) | open | - |
 | 5.1 phase 3 (transcode presets, renumbering) | open | - |
-| 5.1 plugin rule providers | partial | `EnginePlugin.sanitizer_rules()` and `collect_rules` work (tested with a test plugin); no built-in plugin ships a rule |
-| 5.2 rule model, cost order, batch rule last | implemented | `core/sanitizer_rules.py` |
+| 5.1 plugin rule providers | implemented | the rule types in `contracts/sanitizer.py` (a plugin cannot import core), `collect_rules`; Ren'Py's `renpy.cache` (`plugins/renpy/__init__.py`); `tests/test_plugin_providers.py` |
+| 5.2 rule model, cost order, batch rule last | implemented | `contracts/sanitizer.py` (the types), `core/sanitizer_rules.py` |
 | 5.2 plan pages, stale plan refused, journal, undo, undoable cancel | implemented | `core/sanitizer.py` |
 | 5.3 routes and CLI | implemented | `api/handlers_tools.py`, `cli_extra.py` |
 
@@ -220,7 +218,7 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 6.2 `record.json` per run, output emptied before rerun | implemented | `core/analysis/__init__.py` `analyze` |
 | 6.3 static handoffs per kind (`handoff.*`; nothing runs the game) | implemented | `core/analysis/__init__.py` `handoffs_for`, `open_in`; `core/handoff.py` |
 | 6.4 Ghidra project beside the workspace, on-demand pin, first-run answers | implemented | `core/analysis/ghidra.py`, `data/tools.json` |
-| 6.5 `memory_image` targets | open | the kind exists; no proposer and no analyzer |
+| 6.5 `memory_image` targets | implemented | Windows minidumps proposed by `plugins/generic/__init__.py` `dump_targets`; `analysis.memory` = `ghidra-headless` (`core/analysis/ghidra.py`, Ghidra 12.2's Dump File Loader); `tests/test_analysis.py` with a fake analyzeHeadless. Run once by hand with the pinned Ghidra on a real full-memory minidump of `ping.exe` (14.6 MB, the OS layer's `dump_process`): 21,859 functions, all four files, 47 min. The Linux `.mem` layout has no reader |
 | 6.6 API | implemented | `api/handlers_analysis.py` |
 
 ## 07 Data-safety rules
@@ -238,7 +236,7 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 8.2 failover, outcome kinds, `needs_key` not retried | implemented | `core/pipeline/failover.py`, `contracts/types.py` |
 | 8.2 a fresh folder for every attempt (`into`, required), no spare after a cancel (`cancel`, required), in every stage | implemented | `core/pipeline/failover.py`; callers in `core/pipeline/`, `core/decode.py`, `core/analysis/`, `core/capture/`, `core/roundtrip.py`, `core/merger/`; `tests/test_failover_fresh.py` |
 | 8.2 `main_only` policy | implemented | `core/wiring/binder.py` `bind_slot`; `tests/test_slot_policy.py` |
-| 8.2 `supplement` policy | open | - |
+| 8.2 `supplement` policy | implemented | `pipeline/failover.py` `supplement`, `_merge`; `wiring/binder.py` `_policy` (folder-writing families only); carve and per-file decode say its notes; `tests/test_slot_policy.py` |
 | 8.2 binding, promotion, unbound, bad ini entries | implemented | `core/wiring/binder.py` |
 | 8.2 never silent: `Outcome.fallback` in every stage | implemented | `core/pipeline/failover.py`; stages in `core/pipeline/`, `core/analysis/`, `core/capture/` |
 | 8.3 interfaces | implemented | `contracts/slots.py`, `contracts/analysis.py`, `contracts/runtime.py`, `core/patch_tools.py` |
@@ -265,7 +263,7 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 9.3 boot sequence, exit codes 2/3/4 | implemented | `core/wiring/boot.py`, `cli.py`, `api/server.py` |
 | 9.4 validation, secrets refused, `viwo config check` | implemented | `core/wiring/ini.py`, `core/wiring/distros.py` |
 | 9.2 `[slot_policy]` (`failover`, `main_only`) | implemented | `core/wiring/ini.py` `_read_policies`; shown by `viwo slots` and `viwo info` |
-| 9.5 `[hooks]` lifecycle hooks | open | - |
+| 9.5 `[hooks]` lifecycle hooks | open | no design yet: the contract names no events, and the two clients share no lifecycle point (the API runs every action as a job, the CLI runs only `extract` and `replay` as one) |
 | 9.1 `--plugin <id>=on\|off`, `--slot <slot>=<main>[,<spare>]` for one run | implemented | `cli_boot.py`, `core/wiring/boot.py`; `tests/test_cli_overrides.py` |
 | 9.6 `/api/distro`, SETTINGS writes and reloads | implemented | `api/routes.py`, `core/wiring/settings.py`, `api/app.py` `reload` |
 
@@ -339,7 +337,7 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | Item | State | Where / missing |
 |------|-------|-----------------|
 | 14.2 #1, #2, #3, #5, #6, #7, #8, #9, #10 | implemented | docs 8, 3, 2, 11 |
-| 14.2 #4 keys as `secret` options plus a verified key finder | implemented | `plugins/unreal/keys.py`, `plugins/unreal/aes.py`; a `keys.*` slot family is open |
+| 14.2 #4 keys as `secret` options plus a verified key finder | implemented | `plugins/unreal/keys.py`, `plugins/unreal/aes.py`; the `keys.*` slot family: `contracts/slots.py` `KeyFinder`, `core/context.py` `candidate_keys` (`ctx.keys`), `keys.unreal` = `unreal-exe-keys`; `tests/test_unreal.py` |
 
 ## 15 LoC caps
 

@@ -13,6 +13,8 @@ from viwo.contracts.types import DetectionResult
 from .agent import Ue4ssAgent
 from .assets import SLOT as EXPORT_SLOT
 from .assets import UasExport
+from .keys import SLOT as KEYS_SLOT
+from .keys import ExecutableKeys
 from .pak import (
     PAK_MAGIC,
     UTOC_MAGIC,
@@ -99,11 +101,13 @@ class UnrealPlugin(EnginePlugin):
             *SLOTS,
             PACK_SLOT,
             EXPORT_SLOT,
+            KEYS_SLOT,
             SlotDefinition("runtime.unreal", "runtime", "unreal", "ue4ss-agent"),
         )
 
     def backends(self):
-        return (RepakCli(), RetocLegacy(), RetocUnpack(), RepakPatch(), Ue4ssAgent(), UasExport())
+        kinds = (RepakCli, RetocLegacy, RetocUnpack, RepakPatch, Ue4ssAgent, UasExport)
+        return (*(kind() for kind in kinds), ExecutableKeys())
 
     def export_slot(self) -> str:
         return "export.unreal"

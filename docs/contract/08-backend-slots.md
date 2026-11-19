@@ -18,7 +18,7 @@ ini's `[slots]` section (doc 9).
 SlotDefinition
   slot_id        "<family>.<name>", e.g. "unarchive.rpa"
   family         unarchive | export | carve | decode | probe | media.encode | pack | patch
-                 | analysis | handoff | attach | capture | runtime
+                 | analysis | handoff | attach | capture | runtime | keys
   owner          "core" or the plugin id that introduces it
   default_main, default_spare
   suffixes, magic, identify(path, head, tail) -> Match    how UNPACK and DECODE pick the slot
@@ -40,12 +40,21 @@ each the one tool for its job.
 
 ## 8.2 Failover and resolution
 
-Two policies, per slot (`[slot_policy]`, doc 9.2). `failover` (default): run main; if the
+Three policies, per slot (`[slot_policy]`, doc 9.2). `failover` (default): run main; if the
 outcome is retryable, run the spare on the same item. `main_only`: the spare is never bound,
 so it is neither promoted when the main is missing (the slot is then unbound and says why)
-nor run after the main failed. `supplement` (both run, the spare adding what the main left)
-is open. Outcome kinds (`OutcomeKind`): `ok`, `unavailable` (retry), `failed` (retry; a backend
-exception counts as failed), `needs_key` (never retried).
+nor run after the main failed. `supplement`: both run, the spare adding what the main left
+(`pipeline/failover.py` `supplement`). When the main succeeded (not promoted, not cancelled),
+its output folder is set aside, the spare runs into the same folder emptied, and every file
+the spare wrote under a relative path the main did not write joins the main's output (the
+main's bytes win; every name through `member_path`, no link followed); the added files'
+entries in the spare's names record and export map are merged into the main's. The outcome
+counts the added files and its notes say how many, or why the spare failed (the main's output
+stands); a spare that adds nothing says nothing. A main that fails falls over to the spare as
+under `failover`. Only the families that write a folder of files take it (`unarchive`,
+`export`, `carve`, `decode`); on another slot (a packer writing one container, a probe) it is a
+boot problem and `failover` is used. Outcome kinds (`OutcomeKind`): `ok`, `unavailable`
+(retry), `failed` (retry; a backend exception counts as failed), `needs_key` (never retried).
 
 **A fresh folder per attempt** (`run_with_failover(binding, backends, call, *, into, cancel)`,
 both keywords required). `into` is the folder the call writes: it is emptied before every
@@ -109,6 +118,8 @@ Handoff      (handoff,      prepare(target, ctx) -> LaunchSpec | Outcome      8.
               attach)       the same interface; `attach` runs on the live game (doc 11.2)
 capture      (capture)      RenderDoc capture and harvest           doc 11
 RuntimeAgent (runtime)      accepts, install, finished, outputs     doc 11.2
+KeyFinder    (keys)         candidates(game_root, ctx) -> [bytes]   doc 14.2 #4: in memory only;
+                            the plugin verifies each before use (D18); reached as ctx.keys(slot)
 ```
 
 ## 8.3a Interactive handoff: "continue in &lt;tool&gt;"
@@ -292,13 +303,16 @@ read. Both calls say how many models they wrote, how many hold no mesh, how many
 
 **Media:** `media.probe` (`ffprobe-probe`, spare `pillow-probe`), `media.encode` (`ffmpeg`).
 
+**Keys (doc 14.2 #4):** `keys.unreal` (`unreal-exe-keys`: the 32-byte keys inlined in the
+game's executables, candidates the unreal plugin verifies on an encrypted pak index).
+
 **Pack (doc 18):** `pack.zip` (`zip-packer`), `pack.rpa` (`rpa-writer`), `pack.pck`
 (`godotpcktool-pack`), `pack.upak` (`repak-patch`, `_P.pak`), `pack.archive` (`wolvenkit-pack`, override archive in `archive/pc/mod`), `pack.unity` (`unitypy-pack`),
 `pack.rpgmaker` (`rpgmv-pack`), `pack.tpac` (`tpac-writer`, taleworlds, in process: a TPAC
 rewritten member by member, doc 18.4); the other writers ViWo owns are in doc 18.4. **Patch:** `patch.bytes` (`viwo-patcher`, owns the Keystone and
 capstone dependencies).
 
-**Analysis (doc 6):** `analysis.native`, `.dotnet`, `.il2cpp`, `.script`, `.python`,
+**Analysis (doc 6):** `analysis.native`, `.memory`, `.dotnet`, `.il2cpp`, `.script`, `.python`,
 `.gdscript`, `.protector`, `.emulate`, `.symbolic`. **Handoff:** `handoff.native` (8.3a).
 
 **Dynamic (doc 11):** `capture.gpu` (`renderdoc`), `runtime.unreal` (`ue4ss-agent`),

@@ -84,17 +84,25 @@ def carve_all(run, claimed: frozenset[str], items: list[tuple[Path, str]]) -> Ca
         call = lambda b: b.carve(job[0], job[2], ctx)  # noqa: E731
         return run_with_failover(binding, rt.backends, call, into=job[2], cancel=run.cancel)
 
-    for (path, origin, dest), (outcome, used) in zip(jobs, each(one, jobs, run.cancel)):
+    for job, result in zip(jobs, each(one, jobs, run.cancel)):
         ticker.tick(note=f"{report.files:,} embedded file(s) found")
-        report.scanned += 1
-        if outcome.fallback:
-            run.log(f"{path.name}: {outcome.fallback}", "carve", "warn")
-        if not outcome.ok or not outcome.files:
-            shutil.rmtree(dest, ignore_errors=True)  # nothing of it is collected
-        if not outcome.ok:
-            report.failures.append(f"carve {origin}: {outcome.kind.value}: {outcome.error}")
-        elif outcome.files:
-            report.files += outcome.files
-            report.origins[dest] = f"carve:{origin}"
-            run.log(f"Carved {outcome.files} file(s) from {path.name} via {used}", "carve")
+        _tally(run, report, job, result)
     return report
+
+
+def _tally(run, report: CarveReport, job: tuple, result: tuple) -> None:
+    """One carved file's outcome into the report, said as it is."""
+    (path, origin, dest), (outcome, used) = job, result
+    report.scanned += 1
+    if outcome.fallback:
+        run.log(f"{path.name}: {outcome.fallback}", "carve", "warn")
+    for note in outcome.notes:  # what a supplementing spare added (doc 8.2): never silent
+        run.log(f"{path.name}: {note}", "carve")
+    if not outcome.ok or not outcome.files:
+        shutil.rmtree(dest, ignore_errors=True)  # nothing of it is collected
+    if not outcome.ok:
+        report.failures.append(f"carve {origin}: {outcome.kind.value}: {outcome.error}")
+    elif outcome.files:
+        report.files += outcome.files
+        report.origins[dest] = f"carve:{origin}"
+        run.log(f"Carved {outcome.files} file(s) from {path.name} via {used}", "carve")

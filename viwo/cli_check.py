@@ -8,7 +8,7 @@ from pathlib import Path
 
 from viwo.contracts.errors import Envelope, ViwoError
 
-from .cli_extra import context_factory
+from .cli_extra import context_factory, empty_out
 from .cli_extra import event_printer as printer
 
 
@@ -64,8 +64,7 @@ def unpack_forced(rt, archive: Path, out: Path, options: dict, sink, choice) -> 
     slot_id, backend_choice = choice
     if not archive.is_file():
         raise ViwoError("invalid_request", f"archive not found: {archive}")
-    if out.exists() and any(out.iterdir()):
-        raise ViwoError("refused", f"{out} is not empty")
+    empty_out(out)
     if not slot_id:  # --backend alone: the first bound slot that backend serves
         slot_id = next(
             (s for s, b in sorted(rt.bindings.items()) if backend_choice in (b.main, b.spare)), ""
@@ -137,10 +136,14 @@ def analyze_command(rt, args) -> Envelope:
 def diff_command(args) -> Envelope:
     """viwo diff OLD NEW: the A3 report beside the newer analysis unless --out says where."""
     from viwo.core.analysis import diff
+    from viwo.core.pipeline.guard import guarded, outside_games
 
+    out = args.out or args.new.parent.parent / "diff" / f"{args.old.name}--{args.new.name}"
+    # first, the game-folder guard (doc 3.1); a folder of an earlier diff's two files is its own
+    if out.is_dir() and all(p.name in ("diff.json", "diff.txt") for p in out.iterdir()):
+        outside_games(out, "output folder")
+    else:
+        guarded(None, out, "output folder")
     report = diff.diff(args.old, args.new)
-    out = diff.write(
-        report,
-        args.out or args.new.parent.parent / "diff" / f"{args.old.name}--{args.new.name}",
-    )
+    out = diff.write(report, out)
     return Envelope.success({"summary": report["summary"], "outputDir": str(out)})

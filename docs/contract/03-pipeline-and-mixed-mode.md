@@ -51,13 +51,23 @@ runtime agents (`roundtrip.prepare_copy`, also when it reuses a copy), the analy
 every dynamic run's `.runtime/` (`capture/runtime.py` `run` and `runtime_dir`) and the
 sanitizer's workspace. With the game known, the folder must not be the game folder, lie inside
 it or hold it (ViWo's temp folder may hold it). No marker switches it off: an install that a
-patched copy was copied over carries `.viwo-patched/` and is still the game. Without a game
-(dump, trace, hook, profile and record take a process id; sanitize takes a workspace) a
-folder that may be a game, as far as that can be told, is refused: a patched copy, and a
-folder holding files of its own that is no ViWo workspace. What cannot be told without the
-game's path is not caught there: a new or empty folder inside a game, a folder above one, a
-game folder that carries a ViWo workspace marker. The API runs the same guard before it claims
-a workspace or takes the lock of a patched copy. A refusal is `refused` (CLI exit 3) and names
+patched copy was copied over carries `.viwo-patched/` and is still the game. Every game the
+guard is given this way is **remembered** (`viwo-data/games.json`, beside the temp folder, the
+1000 most recent; a register that cannot be written is a warning in the log, never a failed
+run). Without a game (dump, trace, hook, profile and record take a process id; sanitize takes
+a workspace; `viwo unpack --out` and `viwo diff --out` take an output folder) the guard
+compares the folder with the games it knows without being told (`outside_games`), so a
+folder that is one, lies in one (a new or empty folder included) or holds one is refused
+whatever marker it carries: every remembered game; a Steam library (`steamapps` in the path,
+or held by the folder); an install whose root carries its store's marks (Epic's `.egstore/`,
+GOG's `goggame-*.info`), the folder itself or a parent; a patched copy, the folder itself or a
+parent. Then a folder holding files of its own that is no ViWo workspace is refused too (a
+game or the user's own files: ViWo cannot tell them apart). `diff --out` may hold its own two
+files from an earlier diff; `unpack --out` must be new or empty besides. What stays out of
+reach: a game ViWo was never given, from no store with marks, that is no patched copy. A
+remembered folder that is no game (a library root given as the game) is named in the refusal's
+hint with the register to remove it from. The API runs the same guard before it claims a
+workspace or takes the lock of a patched copy. A refusal is `refused` (CLI exit 3) and names
 the folder, why, and what to choose instead.
 
 ## 3.2 Request

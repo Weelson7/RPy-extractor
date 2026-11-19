@@ -7,7 +7,7 @@ from pathlib import Path
 
 from viwo.contracts.errors import ViwoError
 from viwo.contracts.plugin import ExtractionContext
-from viwo.contracts.types import CancelToken, DetectionResult
+from viwo.contracts.types import CancelToken, DetectionResult, Outcome, OutcomeKind
 
 from .pipeline.pool import budget, each
 
@@ -25,7 +25,7 @@ def require(rt, feature: str, what: str, more: str = "") -> None:
 def core_context(rt, job: str, root: Path, work: Path, sink=None, cancel=None):
     """`staging` = work/staging, `scratch` = work/scratch; callers that write elsewhere set
     `ctx.staging` after. `root` is the folder the work reads (a game, a workspace)."""
-    return ExtractionContext(
+    ctx = ExtractionContext(
         job,
         root,
         work / "staging",
@@ -39,6 +39,7 @@ def core_context(rt, job: str, root: Path, work: Path, sink=None, cancel=None):
         each=each,
         memory=budget(rt),
     )
+    return _with_keys(ctx, rt)
 
 
 def for_owner(ctx: ExtractionContext, rt, owner: str, options: dict, **fields):
@@ -50,4 +51,31 @@ def for_owner(ctx: ExtractionContext, rt, owner: str, options: dict, **fields):
         "options": {**rt.owner_options(owner), **options},
         "source": "core" if owner == "core" else f"plugin:{owner}",
     }
-    return replace(ctx, **{**view, **fields})
+    return _with_keys(replace(ctx, **{**view, **fields}), rt)
+
+
+def _with_keys(ctx: ExtractionContext, rt) -> ExtractionContext:
+    ctx.keys = lambda slot: candidate_keys(rt, slot, ctx)
+    return ctx
+
+
+def candidate_keys(rt, slot: str, ctx: ExtractionContext) -> list[bytes]:
+    """The candidates of a `keys.*` slot (doc 14.2 #4): the main's, the spare's when the main
+    finds none (or fails); [] for a slot that is not bound, which the plugin says. In memory
+    only: nothing of a key reaches a log, an outcome or the disk."""
+    from .pipeline.failover import run_with_failover
+
+    binding, found = rt.bindings.get(slot), []
+    if binding is None:
+        return []
+
+    def call(finder) -> Outcome:
+        found[:] = list(finder.candidates(ctx.game_root, ctx))
+        if not found:
+            return Outcome(OutcomeKind.FAILED, error="no candidate key")
+        return Outcome(OutcomeKind.OK, len(found))
+
+    outcome, _ = run_with_failover(binding, rt.backends, call, into=None, cancel=ctx.cancel)
+    if outcome.fallback:  # never silent; a count and a backend's name, never a key
+        ctx.log(f"{slot}: {outcome.fallback}", "warn", "unpack")
+    return found if outcome.ok else []

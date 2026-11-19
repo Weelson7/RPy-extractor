@@ -90,6 +90,7 @@ def capabilities_of(plugin: EnginePlugin) -> tuple[str, ...]:
     caps += ["export"] if plugin.export_slot() else []
     caps += ["pack"] if "pack" in families else []
     caps += ["decode"] if "decode" in families else []
+    caps += ["inventory"] if type(plugin).inventory is not EnginePlugin.inventory else []
     caps += ["sanitize"] if plugin.sanitizer_rules() else []
     return tuple(caps)
 

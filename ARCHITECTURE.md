@@ -27,7 +27,9 @@ viwo/
   contracts/   interfaces and value types (stdlib only); workspace.py (layout, member names
                and their record), paths.py (walking without following links)
     plugin.py      EnginePlugin, PluginManifest, ExtractionContext, GameProbe, CliCommand
-    slots.py       SlotDefinition, Backend, Unarchiver, Exporter, Carver, Decoder, Prober, Packer
+    slots.py       SlotDefinition, Backend, Unarchiver, Exporter, Carver, Decoder, Prober, Packer,
+                   KeyFinder (keys.*)
+    sanitizer.py   SanitizerRule, BatchRule, RuleContext: the rule types core and plugins share
     analysis.py    AnalysisTarget, Analyzer, Handoff, LaunchSpec
     runtime.py     RuntimeAgent
     pipeline.py    ExtractionRequest/Result, Stage, CONTRACT_VERSION
@@ -52,7 +54,8 @@ viwo/
     wiring/      ini parsing, plugin registry (scan, drop-ins, entry points), slot binder,
                  boot (Runtime), distros, conformance checks, settings writer
     pipeline/    probe, detect, select, identify, unpack, export (+ wrapper re-detection),
-                 carving, collect, failover, guard (game-folder checks), runner, ticker
+                 carving, collect, failover (and supplement), guard (game-folder checks, the
+                 games it remembers), runner, ticker
     carve/       signature carver (format sizers) and compressed-stream scan
     decode.py    DECODE: audio to WAV, DDS to PNG, Bink to MP4; media.probe backends;
                  decode_dds.py: the DDS way back and the Pillow spare (BC6H, BC7)

@@ -2,7 +2,8 @@
 
 Extracted assets come out messy: empty files, engine junk, wrong extensions, duplicates. The
 sanitizer finds them and applies only what the user accepts, with a journal for undo
-(`viwo/core/sanitizer.py`, `viwo/core/sanitizer_rules.py`). It is a tool over a workspace, never
+(`viwo/core/sanitizer.py`, `viwo/core/sanitizer_rules.py`; the rule types every rule
+subclasses, core's and the plugins', in `viwo/contracts/sanitizer.py`). It is a tool over a workspace, never
 a stage of an extraction. CLI `viwo sanitize`; UI CLEANUP, run as a job of kind `cleanup`.
 
 ## 5.1 Scope
@@ -19,7 +20,9 @@ Rules:
 1. Plan first (read-only), then apply only accepted findings; one undo token restores the batch.
 2. Lossy actions are never in a default recipe and never run automatically after extraction.
 3. Engine-specific rules come from plugins (`EnginePlugin.sanitizer_rules()`, ids
-   `<plugin id>.<name>`); no built-in plugin ships one today.
+   `<plugin id>.<name>`), subclasses of the rule types in `viwo/contracts/sanitizer.py`. Built
+   in: `renpy.cache` (junk, cost 1): a non-empty `.rpyb` file, the caches Ren'Py writes under
+   `game/cache/` and rebuilds when they are missing, goes to the trash.
 
 ## 5.2 Contract
 
@@ -45,7 +48,8 @@ report   { planId, applied, moved[], trashed, failed[], undoToken }
   `.trash/items/<rel>`; `core.health` findings are information and never applied.
 - A plan remembers each file's size; apply refuses a stale plan (`plan is stale`).
 - Plan, apply and undo write into the workspace (`.sanitizer/`, moves): a folder that may be a
-  game (a patched copy, or files without the ViWo workspace marker) is refused first (doc 3.1).
+  game (a game the guard knows, a patched copy, or files without the ViWo workspace marker) is
+  refused first (doc 3.1).
 - Each apply writes a journal under `.sanitizer/`; undo follows it in reverse and keeps what it
   could not restore. A cancel anywhere in apply leaves the batch undoable.
 - Rules reach media tools only through slots (`media.probe`), never directly.

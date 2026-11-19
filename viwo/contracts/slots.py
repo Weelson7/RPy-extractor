@@ -145,6 +145,19 @@ class Decoder(Backend):
         return member
 
 
+class KeyFinder(Backend):
+    """keys.* (doc 14.2 #4): candidate keys from the game's own local files, in memory only
+    (never logged, never written). The plugin that needs a key verifies every candidate before
+    it uses one (D18): a finder proposes, it never decides."""
+
+    families = frozenset({"keys"})
+    parses_untrusted_in_process = True
+
+    @abstractmethod
+    def candidates(self, game_root: Path, ctx: "ExtractionContext") -> list[bytes]:
+        """Distinct plausible keys, most likely first; [] when none."""
+
+
 class Prober(Backend):
     """media.probe (doc 8.3): what a media file is (format, duration, size), never rewritten."""
 
@@ -183,7 +196,7 @@ class SlotBinding:
     promoted: bool = False  # main was unavailable, spare acts as main
     source: str = "default"  # "default" | "ini" | "cli"
     reasons: tuple[str, ...] = ()
-    policy: str = "failover"  # "failover" | "main_only": the spare is never used (doc 8.2)
+    policy: str = "failover"  # | "main_only" (no spare) | "supplement" (both run; doc 8.2)
 
     @property
     def bound(self) -> bool:

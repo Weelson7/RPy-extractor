@@ -4,6 +4,7 @@ from pathlib import Path
 
 from viwo.contracts.analysis import AnalysisTarget
 from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest, PluginOption
+from viwo.contracts.sanitizer import RuleContext, SanitizerRule
 from viwo.contracts.slots import SlotDefinition
 from viwo.contracts.types import DetectionResult
 
@@ -25,6 +26,20 @@ RPA_SLOT = SlotDefinition(
 )
 
 PACK_SLOT = SlotDefinition("pack.rpa", "pack", "renpy", "rpa-writer")
+
+
+class RenPyCache(SanitizerRule):
+    """`.rpyb` files: the caches Ren'Py writes under game/cache/ (compiled bytecode, script
+    analysis, screens) and rebuilds when they are missing; no asset of the game (doc 5.1)."""
+
+    rule_id, owner, category, cost = "renpy.cache", "renpy", "junk", 1
+
+    def applies_to(self, path: Path) -> bool:
+        return path.suffix.lower() == ".rpyb"
+
+    def inspect(self, path: Path, ctx: RuleContext) -> list[dict]:
+        message = "Ren'Py cache (.rpyb): the engine rebuilds it"
+        return [ctx.finding(self.rule_id, path, message, "trash")]
 
 
 class RenPyPlugin(EnginePlugin):
@@ -55,6 +70,9 @@ class RenPyPlugin(EnginePlugin):
 
     def pack_slot(self, unarchive_slot: str) -> str:
         return "pack.rpa" if unarchive_slot == "unarchive.rpa" else ""
+
+    def sanitizer_rules(self):
+        return (RenPyCache(),)
 
     def loose_root(self, container: str) -> str | None:
         """Ren'Py opens a loose file under game/ before looking in its archives (unless the

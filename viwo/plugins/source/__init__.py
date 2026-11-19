@@ -46,6 +46,37 @@ def tree(blob: bytes):
     return entries, end
 
 
+def directory(fh):
+    """The directory tree of an open VPK (see `tree`): only the header and the tree are read."""
+    version, size = struct.unpack_from("<II", fh.read(12), 4)
+    fh.seek(0)
+    return tree(fh.read((12 if version == 1 else 28) + size))
+
+
+def listed(game_root: Path) -> list[str]:
+    """Every member the game's VPK directories list, named as COLLECT records it (doc 0.4):
+    `<the directory .vpk, game-relative>/<member>`. A numbered part (no magic) lists nothing;
+    neither does a directory that does not read (its unpack names why)."""
+    items: list[str] = []
+    for path in ws.files(game_root, "*.vpk"):
+        try:
+            with open(path, "rb") as fh:
+                if fh.read(4) != MAGIC:
+                    continue
+                fh.seek(0)
+                entries, _ = directory(fh)
+        except (OSError, ValueError, struct.error):
+            continue
+        rel = path.relative_to(game_root).as_posix()
+        items += [f"{rel}/{_plain(entry[0])}" for entry in entries]
+    return items
+
+
+def _plain(name: str) -> str:
+    """A member's name as COLLECT records it (`contracts.workspace.Names`: no empty parts)."""
+    return "/".join(p for p in name.replace("\\", "/").split("/") if p not in ("", "."))
+
+
 def identify_vpk(path: Path, head: bytes, tail: bytes) -> Match | None:
     return Match("unarchive.vpk", path) if head.startswith(MAGIC) else None
 
@@ -59,10 +90,7 @@ class VpkBuiltin(Unarchiver):
         skipped, names = {"its part file is missing": 0, "cut short": 0}, ws.Names(dest)
         try:
             with open(archive, "rb") as fh:
-                head = fh.read(28)
-                version, size = struct.unpack_from("<II", head, 4)
-                fh.seek(0)  # only the header and directory tree are read into memory
-                entries, base = tree(fh.read((12 if version == 1 else 28) + size))
+                entries, base = directory(fh)
                 for path, preload, index, offset, length in entries:
                     if ctx.cancel.cancelled:
                         break
@@ -139,3 +167,7 @@ class SourcePlugin(EnginePlugin):
 
     def claimed_suffixes(self):
         return (".vpk",)  # numbered parts; _dir.vpk files are identified as containers first
+
+    def inventory(self, ctx):
+        """Doc 2.2: what the VPK directories list is what should come out (`listed`)."""
+        return listed(ctx.game_root)

@@ -13,6 +13,7 @@ from viwo.contracts.slots import Backend, SlotBinding, SlotDefinition
 from viwo.os import select_os
 
 from .. import thirdparty
+from ..pipeline.guard import remember_in
 from .binder import bind_all
 from .ini import StartupConfig, load_ini
 from .registry import collect, core_sources, load_enabled
@@ -148,6 +149,7 @@ def boot(
     problems += [reason for binding in bindings.values() for reason in binding.reasons]
     root = temp_root or config.server.temp  # one answer for the CLI and the server
     root.mkdir(parents=True, exist_ok=True)
+    remember_in(root.parent / "games.json")  # the games the guard knows (doc 3.1)
     all_problems = config.problems + problems + clash + bind_problems
     disabled = {m.group(1): p for p in problems if (m := DISABLED.match(p))}
     return Runtime(config, layer, plugins, slots, backends, bindings, root, all_problems, disabled)

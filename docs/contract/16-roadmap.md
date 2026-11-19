@@ -79,10 +79,8 @@ The arm homes of the UI (`viwo/web/js/views/home.js`) show the same rungs as SHI
 | Item | Doc |
 |------|-----|
 | sanitizer phases 2-3 (lossless conversions, transcode presets) | 5.1 |
-| `[slot_policy]`, `[hooks]`, `--plugin`/`--slot` CLI overrides | 9.5 |
-| `memory_image` analysis targets | 6.5 |
+| `[hooks]` lifecycle hooks | 9.5 |
 | Unreal asset export (CUE4Parse wrapper), GameMaker and the engines of 13.7 | 13.7 |
-| `keys.*` as a slot family (keys stay plugin options) | 14.2 #4 |
 | coverage per file at 98 % line / 95 % branch (owner's target) | 17.5 |
 | the `vidya_wormhole_indexes` repository split and its first release | `docs/indexes.md` |
 | **managed vs unmanaged tools** distinction in the indexes and plugins: *managed* = ViWo pins (version/size/sha256) and installs into `third_party/`; *unmanaged* = user-supplied (a `[tools]` path), on PATH, or a third-party/community tool ViWo deliberately does not pin (including borderline tools, never first-party). ViWo uses an unmanaged tool but does not own its lifecycle; an index or plugin that references a tool says which it is (owner, 2026-11-05) | 10, `docs/indexes.md` |

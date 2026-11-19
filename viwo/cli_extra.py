@@ -63,12 +63,20 @@ def context_factory(rt, root: Path, work: Path, options: dict, sink):
     return lambda owner: for_owner(base, rt, owner, options.get(owner, {}))
 
 
+def empty_out(out: Path) -> None:
+    """`viwo unpack --out`: a new or empty folder the game-folder guard lets through (doc 3.1)."""
+    from viwo.core.pipeline.guard import guarded
+
+    guarded(None, out, "output folder")
+    if out.exists() and any(out.iterdir()):
+        raise ViwoError("refused", f"{out} is not empty")
+
+
 def unpack_one(rt, archive: Path, out: Path, options: dict, sink) -> dict:
     """Unpack one archive (and nested archives) into out/<origin>/ via its slot."""
     if not archive.is_file():
         raise ViwoError("invalid_request", f"archive not found: {archive}")
-    if out.exists() and any(out.iterdir()):
-        raise ViwoError("refused", f"{out} is not empty")
+    empty_out(out)
     rt.temp_root.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=rt.temp_root) as tmp:
         make = context_factory(rt, archive.parent, Path(tmp), options, sink)

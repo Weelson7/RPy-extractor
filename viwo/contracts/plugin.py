@@ -123,6 +123,9 @@ class ExtractionContext:
     memory: Any = (
         None  # the run's memory budget (doc 9.2): .share bytes, .hold(bytes) around a tool
     )
+    # keys(slot) -> candidate keys of a `keys.*` slot, main then spare (doc 14.2 #4), in memory
+    # only; set by core, None in a context core did not build (a plugin then uses its own finder)
+    keys: Callable[[str], list[bytes]] | None = None
 
     def log(self, message: str, level: str = "info", stage: str = "") -> None:
         if self.progress:

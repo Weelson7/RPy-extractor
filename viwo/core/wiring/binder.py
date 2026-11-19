@@ -84,7 +84,24 @@ def bind_all(
     problems = [f"[slots] unknown slot '{s}' ignored" for s in overrides if s not in slots]
     problems += [f"[slot_policy] unknown slot '{s}' ignored" for s in policies if s not in slots]
     bindings = {
-        sid: bind_slot(slot, backends, overrides.get(sid), os, policies.get(sid, "failover"))
+        sid: bind_slot(slot, backends, overrides.get(sid), os, _policy(slot, policies, problems))
         for sid, slot in slots.items()
     }
     return bindings, problems
+
+
+SUPPLEMENTED = ("unarchive", "export", "carve", "decode")  # they write a folder of files
+
+
+def _policy(slot: SlotDefinition, policies: dict[str, str], problems: list[str]) -> str:
+    """The slot's policy (doc 8.2). `supplement` merges two backends' folders of files: on a
+    slot of another family (a packer writing one container, a probe) it is a problem, and
+    `failover` is used."""
+    policy = policies.get(slot.slot_id, "failover")
+    if policy == "supplement" and slot.family not in SUPPLEMENTED:
+        families = ", ".join(SUPPLEMENTED)
+        problems.append(
+            f"[slot_policy] {slot.slot_id} = supplement: only for {families} slots; failover used"
+        )
+        return "failover"
+    return policy

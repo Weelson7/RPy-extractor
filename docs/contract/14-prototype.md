@@ -18,7 +18,7 @@ Numbered; code cites them as "doc 14.2 #n".
 | 1 | Unpacking is **identify, then extract**: a slot's identifier sees a file's head and tail and can report an embedded chunk the core carves out first | embedded Godot PCKs, data appended to executables |
 | 2 | No catalog stage: SELECT, `viwo survey` and the per-game indexes say what a folder holds (D12) | one less pass over large games |
 | 3 | **Wrapper re-detection:** after an outer wrapper (`.asar`, `package.nw`) is unpacked, detection runs once more on its content (`viwo/core/pipeline/export.py`) | TyranoScript, Construct, RPG Maker MV/MZ inside Electron/NW.js |
-| 4 | Keys are plugin options of kind `secret` (user first), with a key finder that reads only the game's own files and verifies every candidate (D18) | Unreal AES, Godot encryption |
+| 4 | Keys are plugin options of kind `secret` (user first), with a key finder that reads only the game's own files and verifies every candidate (D18). Finders are backends of the `keys.*` slot family (`KeyFinder.candidates(game_root, ctx)`, doc 8.3): the plugin asks `ctx.keys("<slot>")` for the main's candidates (the spare's when the main finds none), held in memory only, and verifies each before it uses one; a finder proposes, never decides. Built in: `keys.unreal` (`unreal-exe-keys`, the keys inlined in the executables) | Unreal AES, Godot encryption; another finder (a drop-in) takes the slot through `[slots]` |
 | 5 | Every backend declares its network use (`none`, `download`, `any`) | DataTool and BepInEx fetch; everything else is offline |
 | 6 | GPL/AGPL backends are always separate processes | licenses (doc 13.5) |
 | 7 | Untrusted input: game data is never unpickled freely in process; risky parsers declare it | Ren'Py pickles |

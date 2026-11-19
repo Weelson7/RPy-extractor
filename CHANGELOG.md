@@ -4,6 +4,33 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.27.0 (2026-11-19)
+- The game-folder guard without a game path (doc 3.1) knows games now. Every game ViWo is
+  given is remembered in `viwo-data/games.json`; `dump`, `trace`, `hook`, `profile`, `record`,
+  `sanitize`, `unpack --out` and `diff --out` refuse a folder that is such a game, lies in one
+  (a new folder included) or holds one, whatever marker it carries, and the same for Steam
+  libraries, Epic and GOG installs (their own marks) and patched copies. `unpack --out` and
+  `diff --out` go through the guard too (a diff may rewrite its own two files). A dump or
+  analysis folder inside a ViWo workspace is never remembered as a game.
+- `[slot_policy] <slot> = supplement` (doc 8.2): after the main succeeds the spare runs too,
+  and every file it wrote that the main did not joins the main's output (names record and
+  export map entries follow); the added count, or why the spare failed, is said. Unarchive,
+  export, carve and decode slots only; elsewhere it is a boot problem and failover is used.
+- Completeness counts: Source keeps an inventory (every member its VPK directories list).
+  Core counts `inventoryItems` / `collectedFromInventory` against what COLLECT recorded, by
+  member, for the extensions the run selected, and names the members that did not come out
+  in a verify warning.
+- Sanitizer rules a plugin can ship: the rule types moved to `viwo/contracts/sanitizer.py`
+  (a plugin could not reach them in core). Ren'Py ships `renpy.cache`: the `.rpyb` caches the
+  engine rebuilds go to the trash in the safe recipe.
+- `memory_image` targets (doc 6.5): the generic plugin proposes the Windows minidumps a folder
+  holds (what `viwo dump` writes), and `analysis.memory` runs Ghidra headless on them through
+  Ghidra's own dump loader (checked once on a real 14.6 MB minidump of `ping.exe`: 21,859
+  functions in 47 min).
+- `keys.*` slots (doc 14.2 #4): key finders are backends (`KeyFinder`); a plugin asks
+  `ctx.keys(slot)` and verifies each candidate before use. `keys.unreal` = `unreal-exe-keys`.
+- `[hooks]` stays open: no design yet.
+
 ## 1.26.0 (2026-11-19)
 - Ways back: BC2, BC6H and BC7 DDS. `decode.image` writes BC2 (DXT3: 4-bit alpha, the
   nearest step of 17), BC7 (mode 6 only: one subset, RGBA endpoints of 7 bits plus a p-bit;

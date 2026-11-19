@@ -44,6 +44,7 @@ def output_dir(workspace: Path, backend_id: str, key: str) -> Path:
 
 SLOTS = (
     SlotDefinition("analysis.native", "analysis", "core", "ghidra-headless"),
+    SlotDefinition("analysis.memory", "analysis", "core", "ghidra-headless"),  # minidumps
     SlotDefinition("handoff.native", "handoff", "core", "ghidra-gui"),
     SlotDefinition("analysis.dotnet", "analysis", "core", "ilspycmd"),
     SlotDefinition("analysis.il2cpp", "analysis", "core", "cpp2il"),
@@ -126,8 +127,10 @@ def _label(backend) -> str:
 
 
 def extras_for(rt, kind: str) -> list[dict]:
-    """The other bound analyzers that take this kind (doc 16.2b A3: identify before decompile)."""
+    """The other bound analyzers that take this kind (doc 16.2b A3: identify before decompile);
+    the kind's own analyzer bound to another slot (Ghidra: native and memory) is no other."""
     own = slot_for(kind)
+    mine = rt.bindings[own].main if own in rt.bindings else ""
     return [
         {
             "slot": slot,
@@ -135,7 +138,10 @@ def extras_for(rt, kind: str) -> list[dict]:
             "label": _label(rt.backends[rt.bindings[slot].main]),
         }
         for slot in sorted(rt.bindings)
-        if slot.startswith("analysis.") and slot != own and _accepts(rt, slot, kind)
+        if slot.startswith("analysis.")
+        and slot != own
+        and _accepts(rt, slot, kind)
+        and rt.bindings[slot].main != mine
     ]
 
 

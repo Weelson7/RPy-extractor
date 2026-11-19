@@ -75,8 +75,10 @@ unarchive.7z   = sevenzip-cli, py7zr
 export.unity   = unitypy, assetstudiomod-cli
 
 [slot_policy]
-; <slot_id> = failover | main_only    failover (default): the spare runs when the main cannot;
-decode.audio   = main_only          ; main_only: the spare is never bound, promoted or run
+; <slot_id> = failover | main_only | supplement   failover (default): the spare runs when the
+decode.audio   = main_only          ; main cannot; main_only: the spare is never bound, promoted
+unarchive.7z   = supplement         ; or run; supplement: both run, the spare adds what the main
+                                    ; left (unarchive, export, carve and decode slots; doc 8.2)
 
 [tools]
 ; <dependency id> = path to the executable (relative to the ini); wins over third_party/
@@ -125,7 +127,8 @@ The web UI's landing screen runs the same preflight as a job (kind `preflight`).
 
 ## 9.5 Not implemented
 
-`[hooks]` lifecycle hooks and the `supplement` slot policy are open (CONFORMANCE).
+`[hooks]` lifecycle hooks are open (CONFORMANCE): a `[hooks]` section is an unknown section,
+said at boot and ignored.
 
 ## 9.6 Relationship to the UI
 

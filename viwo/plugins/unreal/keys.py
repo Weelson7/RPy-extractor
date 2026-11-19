@@ -9,6 +9,7 @@ import struct
 from pathlib import Path
 
 from viwo.contracts import workspace as ws
+from viwo.contracts.slots import KeyFinder, SlotDefinition
 
 # 8 x "mov dword ptr [reg+disp], imm32" with displacements 4 apart: an inlined 32-byte key.
 MOVS = (  # (pattern, instruction length, displacement offset, displacement format)
@@ -62,6 +63,18 @@ def candidates(game_root: Path) -> list[bytes]:
     return _CACHE[state]
 
 
+class ExecutableKeys(KeyFinder):
+    """keys.unreal main (doc 14.2 #4): the keys inlined in the game's own executables."""
+
+    backend_id, owner, license = "unreal-exe-keys", "unreal", "MIT"
+
+    def candidates(self, game_root: Path, ctx) -> list[bytes]:
+        return candidates(game_root)
+
+
+SLOT = SlotDefinition("keys.unreal", "keys", "unreal", "unreal-exe-keys")
+
+
 def _is_binary(path: Path) -> bool:
     name, size = path.name.lower(), path.stat().st_size
     if not 4096 <= size <= 2 << 30:
@@ -101,10 +114,9 @@ def resolve_key(archive: Path, ctx) -> tuple[str, str]:
     if not ctx.options.get("find_key", True) or probe is None:
         return "", "encrypted: give the AES key (option aes_key)"
     info = pak_info(probe)
-    for key in candidates(ctx.game_root):
-        if info and key_opens(probe, info, key):
-            ctx.log(
-                f"AES key found in the game's executable, verified on {probe.name}", stage="unpack"
-            )
+    finder = getattr(ctx, "keys", None)  # the keys.unreal slot; its own finder outside core
+    for key in finder(SLOT.slot_id) if finder else candidates(ctx.game_root):
+        if info and key_opens(probe, info, key):  # D18: verified before it is used
+            ctx.log(f"AES key found in the game's files, verified on {probe.name}", stage="unpack")
             return key.hex(), ""
     return "", "encrypted: no key in the game's executables opens the index; give aes_key"

@@ -19,6 +19,15 @@ def lua_targets(probe: GameProbe) -> list[AnalysisTarget]:
     return [AnalysisTarget("lua-bytecode", "script_vm", tuple(chunks[:500]), "generic", label)]
 
 
+def dump_targets(probe: GameProbe) -> list[AnalysisTarget]:
+    """Windows minidumps (`MDMP`; what `viwo dump` writes) as memory_image targets (doc 6.1)."""
+    dumps = [p for p in probe.with_suffix(".dmp")[:50] if probe.head(p, 4) == b"MDMP"]
+    return [
+        AnalysisTarget(target_key(p), "memory_image", (p,), "generic", f"memory dump {p.name}")
+        for p in dumps
+    ]
+
+
 class GenericPlugin(EnginePlugin):
     manifest = MANIFEST
 
@@ -28,8 +37,9 @@ class GenericPlugin(EnginePlugin):
         )
 
     def analysis_targets(self, probe: GameProbe):
-        """Executables up to two folders down (doc 6.1, generic row), and Lua bytecode."""
-        out = lua_targets(probe)
+        """Executables up to two folders down (doc 6.1, generic row), Lua bytecode, and the
+        memory dumps of a folder `viwo dump` wrote."""
+        out = lua_targets(probe) + dump_targets(probe)
         for path in probe.with_suffix(".exe", ".x86_64", ".x86", ".elf")[:50]:
             rel = path.relative_to(probe.root)
             if len(rel.parts) <= 3 and "crashhandler" not in path.name.lower():

@@ -21,7 +21,7 @@ from ..scan_exclusions import excluded
 from ..steps import tell
 from ..workspace import precheck, resolve_target, workspace_lock, write_atomic
 from .carving import carve_all
-from .checks import _verify, verified
+from .checks import _verify, recorded, verified
 from .collect import collect
 from .export import export_one, rewrap
 from .filters import prune, widened
@@ -161,7 +161,7 @@ def _stages(run: Run, workspace: Path) -> ExtractionResult:
     # ViWo never writes there; a running game (saves, logs) or an antivirus may
     if changed := change_warning(before, snapshot(run.game), "extraction"):
         warnings.append(changed)
-    runs = verified(run, runs, collected.collected)
+    runs = verified(run, runs, collected.collected, recorded(collected.provenance))
     warnings += [w[8:] for r in runs for w in r.warnings if w.startswith("verify: ")]
     result = ExtractionResult(
         True,

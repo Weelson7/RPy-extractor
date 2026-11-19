@@ -34,7 +34,7 @@ project, name = Path(args[0]), args[1]
 binary = Path(args[args.index("-import") + 1])
 out = Path(args[args.index("-postScript") + 2])
 assert args[args.index("-postScript") + 1] == "ViwoExport.java"
-assert binary.read_bytes().startswith(b"MZ"), "the analyzer must get the copied binary"
+assert binary.read_bytes().startswith((b"MZ", b"MDMP")), "the analyzer must get the copy"
 project.mkdir(parents=True, exist_ok=True)
 (project / f"{{name}}.gpr").write_text("project")
 out.mkdir(parents=True, exist_ok=True)
@@ -249,6 +249,34 @@ class AnalyzeTests(_AnalysisFixture):
                 break
             time.sleep(0.1)
         self.assertFalse(tracked.alive())
+
+    def test_a_memory_dump_is_a_target_ghidra_takes(self) -> None:
+        """Doc 6.1, 6.5: the minidumps `viwo dump` writes are memory_image targets of the
+        generic plugin, analysed by Ghidra headless (analysis.memory); a dump folder inside a
+        ViWo workspace is ViWo's own output, never remembered as a game (doc 3.1)."""
+        from viwo.core.pipeline import guard
+
+        holder = self.root / "ws-dump"
+        dumps = _folder(holder / ".runtime" / "dump" / "1234-20261119-120000")
+        (holder / ".viwo-workspace").write_text("")
+        (dumps / "1234.dmp").write_bytes(b"MDMP\x93\xa7" + b"\0" * 64)
+        (dumps / "other.dmp").write_bytes(b"not a minidump")
+        found = {t.key: t for t in targets_for(self.rt, dumps)}
+        self.assertEqual(found["1234-dmp"].kind, "memory_image")
+        self.assertNotIn("other-dmp", found)
+        self.assertEqual(slot_for("memory_image"), "analysis.memory")
+        self.assertEqual(extras_for(self.rt, "memory_image"), [])
+        report = analyze(self.rt, AnalysisRequest(dumps, self.ws, "1234-dmp"))
+        self.assertEqual(
+            (report["backend"], report["target"]["kind"]), ("ghidra-headless", "memory_image")
+        )
+        self.assertTrue(
+            (self.ws / ".analysis" / "ghidra-headless" / "1234-dmp" / "record.json").is_file()
+        )
+        self.assertNotIn(dumps.resolve(), guard.known_games())
+        with self.assertRaises(ViwoError) as err:  # the workspace holding the dump: refused
+            analyze(self.rt, AnalysisRequest(dumps, holder, "1234-dmp"))
+        self.assertEqual(err.exception.code, "refused")
 
     def test_managed_and_script_analyzers(self) -> None:
         runs = (

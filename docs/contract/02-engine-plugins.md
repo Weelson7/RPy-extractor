@@ -60,6 +60,15 @@ Rules:
 - Hooks write only into `ctx.staging` and `ctx.scratch`; tools run through `ctx.os`; no `print`.
 - Expected failures are return values (an `Outcome` with a kind, `VerifyReport.warnings`). An
   exception is a bug; core catches it and records it against the plugin (`plugins[].error`).
+- **Inventory items** name what COLLECT records (doc 0.4): `<container>/<member>` for a
+  container's member (the container game-relative, the member as the container names it), the
+  game-relative path for a loose file. When a plugin keeps one, core counts it in VERIFY
+  (`pipeline/checks.py`): `expected` is the items of the extensions the run selected, `found`
+  the ones COLLECT recorded, and every item that did not come out is one verify warning (how
+  many, the first five by name). `VerifyReport.expected`/`found` count only for a plugin
+  without an inventory. Source keeps one: every member its VPK directories list.
+- Sanitizer rules subclass `SanitizerRule` or `BatchRule` of `viwo/contracts/sanitizer.py`
+  (doc 5.2), so a plugin reaches them without importing core.
 
 ## 2.3 Services core provides
 
@@ -76,6 +85,8 @@ ExtractionContext           per request and per plugin
   request_id, game_root, staging, scratch, os, detection, selected_exts, options,
   progress, cancel, source, probe, workspace (the run's workspace: what other arms left there),
   games (the run's game plugins of this engine, 2.10)
+  keys(slot) -> [bytes]     the candidates of a keys.* slot (doc 14.2 #4), in memory only; None
+                            in a context core did not build
   log(message, level, stage);  tool_output(stage, every, mask) -> on_line relay (masks a secret)
 ```
 
@@ -132,15 +143,15 @@ Detection markers live in each plugin's `detect()`; slot defaults in doc 8.4.
 | Plugin | Formats and work | Options |
 |--------|------------------|---------|
 | generic | loose files and plain archives; proposes executables (two folders down) and Lua bytecode for analysis | - |
-| renpy | `unarchive.rpa` (safe reader, unrpa spare), `decode.rpyc`, `analysis.python`, `pack.rpa`; source root `game/` | `decompile` (bool) |
+| renpy | `unarchive.rpa` (safe reader, unrpa spare), `decode.rpyc`, `analysis.python`, `pack.rpa`; source root `game/`; sanitizer rule `renpy.cache` (the `.rpyb` caches Ren'Py rebuilds, to the trash) | `decompile` (bool) |
 | unity | `export.unity` (UnityPy, AssetStudioModCLI spare), `unarchive.unitypackage`, `pack.unity`, `runtime.unity` (BepInEx); IL2CPP and managed targets | `include_cache`, `meshes`, `objects` (bool; `objects`: videos, fonts, shaders and every other object as JSON) |
 | godot | `unarchive.pck` (embedded PCK carving), `export.godot`, `pack.pck`, `analysis.gdscript`, `decode.ctex` (imported `.ctex`/`.stex` textures to PNG and back) | `encryption_key` (secret), `recover` (bool) |
-| unreal | `unarchive.upak` (repak, QuickBMS spare), `unarchive.utoc` (retoc), `pack.upak` (`_P.pak`), `runtime.unreal` (UE4SS), `export.unreal` (UnrealAssetScout: textures, models, animations, sounds, JSON; mappings from the agent); AES per D18 | `aes_key` (secret), `find_key` (bool), `usmap` (path), `engine` (string) |
+| unreal | `unarchive.upak` (repak, QuickBMS spare), `unarchive.utoc` (retoc), `pack.upak` (`_P.pak`), `runtime.unreal` (UE4SS), `export.unreal` (UnrealAssetScout: textures, models, animations, sounds, JSON; mappings from the agent); AES per D18, its finder the `keys.unreal` slot | `aes_key` (secret), `find_key` (bool), `usmap` (path), `engine` (string) |
 | doom | `unarchive.wad` (PNG, WAV, MIDI, maps), `pack.wad` (edits converted back through the palette) | `raw_lumps` (bool) |
 | rpgmaker | `unarchive.rgssad`, `export.rpgmaker` (MV/MZ decryption), `pack.rpgmaker`, `pack.rgssad` | - |
 | kirikiri | `unarchive.xp3` (unencrypted entries; per-title ciphers reported), `pack.xp3` (the next patch archive) | - |
 | electron | `unarchive.asar` (`package.nw` is a zip), `pack.asar`; wrapper re-detection (doc 3.1) | - |
-| source | `unarchive.vpk` (v1/v2, multi-part, absent parts skipped), `pack.vpk` (override VPK in `custom/`), `decode.vtf` (VTF textures to PNG) | - |
+| source | `unarchive.vpk` (v1/v2, multi-part, absent parts skipped), `pack.vpk` (override VPK in `custom/`), `decode.vtf` (VTF textures to PNG); inventory: every member the VPK directories list | - |
 | bethesda | `unarchive.bsa`, `unarchive.ba2` (textures rebuilt as DDS), `pack.bsa`/`pack.ba2` (loose files in `Data/`) | - |
 | genie | `unarchive.drs`, `decode.slp` (SLP sprites to PNG with the game palette), `pack.drs` | - |
 | warscape | `unarchive.pack` (Total War PFH4/PFH5), `pack.pack` (a movie pack in `data/`), `decode.loc` (localisation to JSON), `export.warscape` (DB tables to JSON with the game's RPFM schema) | - |

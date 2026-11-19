@@ -87,10 +87,12 @@ def _gui_argv(headless: Path, java: Path, gpr: Path) -> list[str] | None:
 
 
 class GhidraHeadless(Analyzer):
-    """One import + auto-analysis + export per target; the project stays for the handoff."""
+    """One import + auto-analysis + export per target; the project stays for the handoff. A
+    memory_image (a Windows minidump) is imported through Ghidra's own dump loader
+    (`ghidra.file.formats.dump.DumpFileLoader`), its modules mapped where the process had them."""
 
     backend_id, license, isolation = "ghidra-headless", "Apache-2.0", "subprocess"
-    kinds = ("native_binary",)
+    kinds = ("native_binary", "memory_image")
     self_check_args = ()  # analyzeHeadless with no arguments prints its usage
 
     requires = (GHIDRA, JDK)

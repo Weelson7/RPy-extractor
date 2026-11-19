@@ -131,4 +131,6 @@ The `/api/extract` result keeps the v1 key names; their meaning is fixed here.
 | `plugins[].inventoryCount` | the plugin's inventory size (or what it found) |
 
 A completeness claim holds only when a plugin's inventory counts the same kind of item as
-COLLECT does; a plugin with an empty inventory makes none.
+COLLECT does; a plugin with an empty inventory makes none. Core counts an inventory against
+what COLLECT recorded, item by item (doc 2.2: the items' names, the missing ones said); Source
+keeps one, the members of its VPK directories.

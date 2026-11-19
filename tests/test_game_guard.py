@@ -8,13 +8,17 @@ copied over the install carries `.viwo-patched/`, a stray `.viwo-workspace` may 
 2. `guard.guarded(None, folder)` (a run on a process id: no game to compare with) refuses a
    patched copy and a folder of files that is no ViWo workspace; an empty folder, a missing
    one and a ViWo workspace pass.
-3. Every CLI command that takes a game and a folder it writes (workspace, --out, --copy), run
+3. Without a game path the guard still knows the games ViWo was given (each `guarded(game,
+   ...)` remembers its game) and store installs by their marks: `guarded(None, folder)` and
+   `outside_games(folder)` refuse exactly the folders that are such a game, lie in one (new
+   ones included) or hold one, whatever marker the folder carries.
+4. Every CLI command that takes a game and a folder it writes (workspace, --out, --copy), run
    with that folder = the game, a folder inside it (new or existing) or the folder holding it,
    exits `refused` (3), says why, and leaves the game's tree byte-identical, its folders too.
-4. The commands that take no game (dump, trace, hook, profile, record, sanitize), run on the
-   game folder itself, exit `refused` and leave it identical, whatever the patched marker.
-   What they cannot tell (a new folder inside a game, a folder above one, a game carrying a
-   ViWo workspace marker) is not asserted: there is no game path to compare with.
+5. The commands that take no game (dump, trace, hook, profile, record, sanitize, unpack --out,
+   diff --out), run on the game folder itself, exit `refused` and leave it identical, whatever
+   the patched marker; once ViWo was given the game, also on a new folder inside it, on the
+   folder above it and on the game carrying a ViWo workspace marker.
 """
 
 from __future__ import annotations
@@ -33,7 +37,8 @@ from viwo import cli
 from viwo.cli import EXIT
 from viwo.contracts import ViwoError
 from viwo.contracts import workspace as ws
-from viwo.core.pipeline.guard import PATCHED, guarded
+from viwo.core.pipeline import guard
+from viwo.core.pipeline.guard import PATCHED, guarded, outside_games
 
 INI = "[startup]\nfeatures = extraction, capture, analysis\n[plugins]\ngeneric = on\n"
 
@@ -102,6 +107,7 @@ def _with_game(game: Path, given: dict[str, Path], ok: Path) -> dict[str, list[s
 
 def _without_game(given: dict[str, Path]) -> dict[str, list[str]]:
     pid = ["--pid", "4242", "--workspace", "{P}"]
+    analyses = [str(given["ws"] / ".analysis" / "a" / k) for k in ("old", "new")]
     return {
         "dump": ["dump", *pid],
         "trace": ["trace", *pid],
@@ -110,6 +116,8 @@ def _without_game(given: dict[str, Path]) -> dict[str, list[str]]:
         "record": ["record", "--workspace", "{P}"],
         "sanitize": ["sanitize", "{P}"],
         "sanitize --apply": ["sanitize", "{P}", "--apply"],
+        "unpack --out": ["unpack", str(given["mod"]), "--out", "{P}"],
+        "diff --out": ["diff", *analyses, "--out", "{P}"],
     }
 
 
@@ -162,9 +170,73 @@ class GuardPropertyTests(unittest.TestCase):
                         with self.assertRaises(ViwoError) as err:
                             guarded(None, folder)
                         self.assertEqual(err.exception.code, "refused")
-                        self.assertIn("empty folder or a ViWo workspace", err.exception.hint)
+                        hint = "empty folder or a ViWo workspace" if not patched else "outside"
+                        self.assertIn(hint, err.exception.hint)
                     else:
                         self.assertEqual(guarded(None, folder), folder)
+
+    def test_without_a_game_the_games_it_knows_are_refused(self) -> None:
+        rng = random.Random(59)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            register = mock.patch.object(guard, "REGISTER", [root / "games.json"])
+            register.start()
+            self.addCleanup(register.stop)
+            known = []
+            for i in range(6):  # games ViWo was given: each run with a game remembers it
+                game = root / f"lib{i % 2}" / f"G{i}" / rng.choice(["", "inner"])
+                game.mkdir(parents=True, exist_ok=True)
+                guarded(game, root / "elsewhere" / f"w{i}")
+                known.append(game.resolve())
+            installs = [root / "steamapps" / "common" / "S", root / "gog", root / "epic"]
+            for at, mark in zip(installs, ("", "goggame-1207.info", ".egstore")):
+                at.mkdir(parents=True)
+                if mark:
+                    (at / mark).mkdir()
+            (root / "copy" / PATCHED).mkdir(parents=True)
+            places = [*known, *installs, root / "copy", root / "lib0", root / "free"]
+            for i in range(60):
+                base = rng.choice(places)
+                down = Path(*(f"n{rng.randrange(2)}" for _ in range(rng.randint(0, 2))))
+                folder = base / down
+                if rng.random() < 0.3 and folder.parent.is_dir():
+                    folder.mkdir(exist_ok=True)
+                    (folder / ws.MARKER).write_text("")  # a marker changes nothing
+                f = folder.resolve()
+                bad = any(g == f or g in f.parents or f in g.parents for g in known)
+                bad = bad or base in (*installs, root / "copy")  # an install or a patched copy
+                files = any(not ws.is_reserved(p.name) for p in _entries(folder))
+                strange = files and not ws.has_marker(folder)  # may be a game: _unowned
+                with self.subTest(folder=folder):
+                    for check, refused in (
+                        (lambda: outside_games(folder), bad),
+                        (lambda: guarded(None, folder), bad or strange),
+                    ):
+                        if not refused:
+                            self.assertEqual(check(), folder)
+                            continue
+                        with self.assertRaises(ViwoError) as err:
+                            check()
+                        self.assertEqual(err.exception.code, "refused")
+                        self.assertTrue(err.exception.hint)
+
+    def test_a_register_that_cannot_be_written_is_said(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            blocked = Path(tmp) / "games.json"
+            blocked.mkdir()  # a folder where the register goes: it cannot be written
+            with (
+                mock.patch.object(guard, "REGISTER", [blocked]),
+                self.assertLogs("viwo.guard", "WARNING") as said,
+            ):
+                guarded(Path(tmp) / "g", Path(tmp) / "w")
+            self.assertIn("could not be remembered", said.output[0])
+            (Path(tmp) / "bad.json").write_text("{not json")
+            with mock.patch.object(guard, "REGISTER", [Path(tmp) / "bad.json"]):
+                self.assertEqual(guard.known_games(), [])
+
+
+def _entries(folder: Path) -> list[Path]:
+    return list(folder.iterdir()) if folder.is_dir() else []
 
 
 class CommandMatrixTests(unittest.TestCase):
@@ -214,6 +286,21 @@ class CommandMatrixTests(unittest.TestCase):
             game = _game(root, rng, marks)
             for name, argv in _without_game(_inputs(root, game)).items():
                 self._refused(name, argv, game, game.parent)
+
+    def test_once_given_the_game_commands_without_one_refuse_around_it(self) -> None:
+        rng = random.Random(61)
+        root = self.root / "known"
+        game = _game(root, rng, {"workspace"})  # a game carrying a ViWo workspace marker
+        given = _inputs(root, game)
+        guarded(game, root / "fine")  # what any run with the game does: it is remembered
+        (game.parent / ws.MARKER).write_text("")  # the folder above, marked as a workspace
+        inner = game / "data" / "ws"  # a ViWo workspace inside the game
+        inner.mkdir(parents=True)
+        (inner / ws.MARKER).write_text("")
+        for name, argv in _without_game(given).items():
+            new = [] if name.startswith("sanitize") else [game / "new" / "out"]  # must exist
+            for folder in (game, inner, *new, game.parent):
+                self._refused(name, argv, folder, game.parent)
 
 
 if __name__ == "__main__":

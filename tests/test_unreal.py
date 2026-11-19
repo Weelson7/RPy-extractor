@@ -272,6 +272,54 @@ class KeyPropertyTests(unittest.TestCase):
             ctx.options = {"aes_key": "0x12"}
             self.assertIn("32 bytes", resolve_key(utoc, ctx)[1])
 
+    def test_the_keys_slot_proposes_and_only_a_verified_key_is_used(self) -> None:
+        """Doc 14.2 #4: keys come through `keys.unreal` (main, then the spare when the main
+        finds none); whatever a finder proposes, only a key that opens the index is used, and
+        no key is ever in a log line."""
+        import random
+        from dataclasses import replace
+
+        from viwo.contracts.slots import KeyFinder
+        from viwo.core.context import core_context
+        from viwo.plugins.unreal.keys import ENCRYPTED, UTOC_FLAGS, resolve_key
+
+        class Fixed(KeyFinder):
+            backend_id, owner = "fixed-keys", "test"
+
+            def __init__(self, keys):
+                self.keys = keys
+
+            def candidates(self, game_root, ctx):
+                return list(self.keys)
+
+        rng = random.Random(83)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / "g.utoc").write_bytes(bytes(UTOC_FLAGS) + bytes([ENCRYPTED]) + bytes(20))
+            make_pak(root / "g.pak", KEY)
+            key_exe(root / "Game.exe", KEY)
+            (root / "rt").mkdir()
+            rt = runtime(root / "rt")
+            for _ in range(12):
+                wrong = [rng.randbytes(32) for _ in range(rng.randint(0, 3))]
+                right = rng.random() < 0.5
+                main = Fixed(wrong + ([KEY] if right else []))
+                rt.backends["fixed-keys"] = main
+                binding = rt.bindings["keys.unreal"]
+                rt.bindings["keys.unreal"] = replace(binding, main="fixed-keys", spare=binding.main)
+                said = []
+                ctx = core_context(rt, "j", root, root / "work", said.append)
+                key, problem = resolve_key(root / "g.utoc", ctx)
+                expected = right or not main.keys  # the spare (the executable) only when none
+                self.assertEqual(key, KEY.hex() if expected else "", (len(wrong), right))
+                self.assertEqual(bool(problem), not expected)
+                text = " ".join(e.message for e in said)
+                self.assertNotIn(KEY.hex(), text)
+                self.assertFalse(any(k.hex() in text for k in wrong))
+                if not main.keys:
+                    self.assertIn("fixed-keys failed: no candidate key", text)
+                rt.bindings["keys.unreal"] = binding
+
 
 class UnrealPipelineTests(unittest.TestCase):
     def setUp(self) -> None:

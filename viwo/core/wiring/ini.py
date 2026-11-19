@@ -8,7 +8,7 @@ from viwo import CONTRACT_VERSION
 from viwo.contracts.errors import ViwoError
 
 KNOWN_SECTIONS = {"startup", "plugins", "slots", "slot_policy", "tools", "server"}
-POLICIES = ("failover", "main_only")  # doc 8.2
+POLICIES = ("failover", "main_only", "supplement")  # doc 8.2
 FORM_KEYS = ("os", "profile", "features", "auto_install", "strict_preflight", "av_exclusions")
 STARTUP_KEYS = {*FORM_KEYS, "base", "contract", "memory_limit"}
 SERVER_KEYS = {"host", "port", "workspace", "merged", "logs", "temp"}
@@ -111,7 +111,7 @@ def _read_policies(cfg: configparser.ConfigParser, out: StartupConfig) -> None:
         if (policy := value.strip().lower()) in POLICIES:
             out.policies[slot.lower()] = policy
         else:
-            known = " or ".join(POLICIES)
+            known = ", ".join(POLICIES)
             out.problems.append(f"[slot_policy] {slot} = {value}: {known}; failover used")
 
 

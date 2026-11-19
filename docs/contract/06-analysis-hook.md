@@ -36,7 +36,7 @@ kind (`viwo analyze --slot analysis.protector`, one button per extra in ANALYSIS
 
 | Plugin | Targets |
 |--------|---------|
-| generic | executables up to two folders down (`native_binary`); Lua bytecode chunks (`\x1bLua`, `script_vm`) |
+| generic | executables up to two folders down (`native_binary`); Lua bytecode chunks (`\x1bLua`, `script_vm`); Windows minidumps (`MDMP`, what `viwo dump` writes: `memory_image`) |
 | unity | `GameAssembly.dll` + `global-metadata.dat` + the player exe (`il2cpp`, with the player's layout for Cpp2IL: `<Game>_Data/il2cpp_data/Metadata/`); `Assembly-CSharp.dll` (`dotnet_assembly`) |
 | unreal | `*-Shipping.exe` with any `.usmap` (`native_binary`) |
 | godot | every `.gdc` (`gdscript_bytecode`), engine version from the executable |
@@ -53,6 +53,7 @@ Every backend declares `license` (GPL/AGPL => `isolation = "subprocess"`), `netw
 | Slot | Owner | Backend (tool) | Output |
 |------|-------|----------------|--------|
 | `analysis.native` | core | `ghidra-headless` (Ghidra 12.2 on Temurin JDK 25) | `functions.csv` (address, name, size, mnemonic fingerprint), `decompiled.c`, `strings.txt`, `symbols.tsv`; Ghidra's FID signatures run inside the analysis |
+| `analysis.memory` | core | `ghidra-headless` (the same backend; Ghidra imports a minidump through its own dump loader, `ghidra.file.formats.dump.DumpFileLoader`, the process's modules where it had them) | the same four files |
 | `analysis.dotnet` | core | `ilspycmd` (ilspycmd 11.2 on the pinned .NET) | a C# project |
 | `analysis.il2cpp` | core | `cpp2il` (Cpp2IL 2022.1 pre-release 21, Windows) | stub assemblies (`dummydll`) |
 | `analysis.script` | core | `unluac` (on the pinned JDK) | Lua source |
@@ -110,8 +111,14 @@ game: x64dbg and Cheat Engine work on the game itself and are the dynamic arm's 
 - Output goes only to `<workspace>/.analysis/<backend id>/<target key>/`, emptied before a rerun,
   never into the extension groups.
 - The input is a copy: the game folder and the original binary are never written.
-- `memory_image` targets are files the user supplies; no plugin proposes one and no analyzer
-  accepts the kind yet.
+- `memory_image` targets are the Windows minidumps of a folder given as the game, the folder
+  `viwo dump` wrote (`<workspace>/.runtime/dump/<pid>-<stamp>/`) or any other: the generic
+  plugin proposes every `.dmp` that starts with `MDMP`, and `analysis.memory` (Ghidra) takes
+  them. Like every analysis, the workspace may not hold the folder given as the game: analyse a
+  dump into another workspace. A dump folder inside a ViWo workspace is never remembered as a
+  game (doc 3.1). The Linux dump (`<pid>.mem`, every readable mapping back to back, and
+  `regions.json`) is no target: no pinned tool reads that layout. The extras of a kind are the
+  other analyzers: the kind's own backend bound to another slot (Ghidra) is not one.
 - The UI states once that the user is responsible for having the right to analyse the binaries
   (information, never a refusal).
 

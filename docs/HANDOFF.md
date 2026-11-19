@@ -104,12 +104,14 @@ The presentation tools (`tools/presentation/`: `frames.py`, `deck.py`, `tech_pdf
   QuickBMS on a real archive, Overwatch (the independent operator's).
 
 **Open in the code**
-- The game-folder guard without a game path (doc 3.1): `dump`, `trace`, `hook`, `profile`,
-  `record` and `sanitize` cannot tell a new folder inside a game, a folder above one, or a game
-  carrying a workspace marker. `viwo unpack --out` and `viwo diff --out` take no game either:
-  unpack needs an empty or new folder (it never overwrites), diff writes its two files.
-- CONFORMANCE rows: sanitizer phases 2-3, the `supplement` slot policy, `[hooks]`,
-  `memory_image` targets, the way back of premultiplied DXT2/DXT4, signed BC4/BC5 and
+- The game-folder guard without a game path (doc 3.1) knows the games ViWo was given, Steam
+  libraries, Epic and GOG installs and patched copies; a game ViWo was never given, from no
+  store with marks, is still out of its reach.
+- `memory_image` targets (doc 6.5): a full-memory minidump takes Ghidra long (a 14.6 MB dump
+  of `ping.exe`: 47 min, 21,859 functions decompiled); a game's dump is far larger. Not yet
+  run on a game's dump; the Linux `.mem` layout has no reader.
+- CONFORMANCE rows: sanitizer phases 2-3, `[hooks]` (no design yet: which events, and the
+  CLI runs only `extract` and `replay` as jobs), the way back of premultiplied DXT2/DXT4, signed BC4/BC5 and
   typeless BC6H DDS and of ETC, ASTC, PVRTC or Basis Godot textures (no decoder for those
   either) (doc 18.3; the BC1-BC7, `.ctex` and redscripts ways back are tests only: a real
   game pass for each is open, redscripts with the compiler installed in the copy; `pack.tpac`
