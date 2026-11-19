@@ -56,11 +56,13 @@ Ghidra / x64dbg / Cheat Engine") that ViWo opens pre-loaded as a tracked child p
 | `viwo diff <old> <new>` | function-by-function diff of two Ghidra analyses (update-resilient offsets) |
 
 Engines: Ren'Py, Unity, Godot, Unreal (pak and IoStore, AES keys from you or the game's own
-files, verified), Doom, RPG Maker, KiriKiri, Electron/NW.js, Source, Bethesda, Age of Empires,
-Total War, Cyberpunk 2077, Bannerlord, Overwatch (DataTool), QuickBMS scripts for any other
-format, plus zip, tar, 7z, rar. Anything unrecognized goes through a signature carver and
-zlib/gzip/zstd/LZ4 stream inflation; game audio, DDS, Bink, SLP and `.rpyc` are decoded into
-files anything can open.
+files, verified; `.locres` localization to JSON and back), Doom, RPG Maker, KiriKiri,
+Electron/NW.js, Source, Bethesda, Age of Empires, Total War, Cyberpunk 2077, Bannerlord, LÖVE
+(`.love` or fused executables), XNA/FNA/MonoGame (`.xnb` textures and sounds), Adventure Game
+Studio (CLIB packfiles), Defold (bundled archives), Overwatch (DataTool), QuickBMS scripts for
+any other format, plus zip, tar, 7z, rar. Anything unrecognized goes through a signature carver
+and zlib/gzip/zstd/LZ4 stream inflation; game audio, DDS, Bink, SLP, XNB and `.rpyc` are decoded
+into files anything can open.
 
 **Dynamic: the game is running.** Opt-in feature `capture`, warnings and one confirmation.
 

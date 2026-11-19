@@ -146,10 +146,14 @@ Detection markers live in each plugin's `detect()`; slot defaults in doc 8.4.
 | renpy | `unarchive.rpa` (safe reader, unrpa spare), `decode.rpyc`, `analysis.python`, `pack.rpa`; source root `game/`; sanitizer rule `renpy.cache` (the `.rpyb` caches Ren'Py rebuilds, to the trash) | `decompile` (bool) |
 | unity | `export.unity` (UnityPy, AssetStudioModCLI spare), `unarchive.unitypackage`, `pack.unity`, `runtime.unity` (BepInEx); IL2CPP and managed targets | `include_cache`, `meshes`, `objects` (bool; `objects`: videos, fonts, shaders and every other object as JSON) |
 | godot | `unarchive.pck` (embedded PCK carving), `export.godot`, `pack.pck`, `analysis.gdscript`, `decode.ctex` (imported `.ctex`/`.stex` textures to PNG and back) | `encryption_key` (secret), `recover` (bool) |
-| unreal | `unarchive.upak` (repak, QuickBMS spare), `unarchive.utoc` (retoc), `pack.upak` (`_P.pak`), `runtime.unreal` (UE4SS), `export.unreal` (UnrealAssetScout: textures, models, animations, sounds, JSON; mappings from the agent); AES per D18, its finder the `keys.unreal` slot | `aes_key` (secret), `find_key` (bool), `usmap` (path), `engine` (string) |
+| unreal | `unarchive.upak` (repak, QuickBMS spare), `unarchive.utoc` (retoc), `pack.upak` (`_P.pak`), `runtime.unreal` (UE4SS), `export.unreal` (UnrealAssetScout: textures, models, animations, sounds, JSON; mappings from the agent), `decode.locres` (localization tables to JSON and back, versions 0-3); AES per D18, its finder the `keys.unreal` slot | `aes_key` (secret), `find_key` (bool), `usmap` (path), `engine` (string) |
 | doom | `unarchive.wad` (PNG, WAV, MIDI, maps), `pack.wad` (edits converted back through the palette) | `raw_lumps` (bool) |
 | rpgmaker | `unarchive.rgssad`, `export.rpgmaker` (MV/MZ decryption), `pack.rpgmaker`, `pack.rgssad` | - |
 | kirikiri | `unarchive.xp3` (unencrypted entries; per-title ciphers reported), `pack.xp3` (the next patch archive) | - |
+| love2d | `unarchive.love` (the game's zip: `.love`, or appended to the executable with `love.dll` beside it), `pack.love` (the zip rebuilt, behind the executable's bytes when fused) | - |
+| xna | XNA, FNA and MonoGame: `decode.xnb` (Texture2D to PNG, SoundEffect to WAV, and back; uncompressed and LZ4 files; LZX, XNA 3.x files and other content refused by name); the `.xnb` files themselves are loose | - |
+| ags | `unarchive.clib` (CLIB packfiles, versions 6 to 30, alone or behind the executable, with their other parts), `pack.clib` (rebuilt in its own version) | - |
+| defold | `unarchive.arci` (`game.arci` + `game.arcd`, named by `game.dmanifest`; LZ4 through the `lz4` package; encrypted resources refused by name), `pack.arci` (data and index rewritten, hashes and manifest kept) | - |
 | electron | `unarchive.asar` (`package.nw` is a zip), `pack.asar`; wrapper re-detection (doc 3.1) | - |
 | source | `unarchive.vpk` (v1/v2, multi-part, absent parts skipped), `pack.vpk` (override VPK in `custom/`), `decode.vtf` (VTF textures to PNG); inventory: every member the VPK directories list | - |
 | bethesda | `unarchive.bsa`, `unarchive.ba2` (textures rebuilt as DDS), `pack.bsa`/`pack.ba2` (loose files in `Data/`) | - |

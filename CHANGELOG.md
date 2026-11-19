@@ -4,6 +4,31 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.29.0 (2026-11-19)
+- Five engines of doc 13.7 get first-party readers, each with its way back (no tool installed):
+  - Unreal localization: `decode.locres` turns `.locres` tables (versions 0 legacy, 1 compact,
+    2 CRC32 keys, 3 CityHash64 keys) into `{namespace: {key: text}}` JSON and writes an edit
+    back in the table's own version, every hash and each string's storage kept: an unchanged
+    table comes back byte for byte. Another version, and a new key in a version 3 table (its
+    CityHash64 is not computed), are refused by name.
+  - LÖVE (`love2d`): the game's zip, alone (`.love`) or fused onto the executable (recognised
+    by its zip end record and `love.dll` beside it), unpacks; `pack.love` rebuilds it, behind
+    the executable's unchanged bytes when fused. LÖVE loads nothing loose from the game folder,
+    so there is no mod form; the plan says so.
+  - XNA/FNA/MonoGame (`xna`): `decode.xnb` turns Texture2D (Color, Bgr565, Bgra5551,
+    Bgra4444, Alpha8, DXT1/3/5) into PNG and SoundEffect into WAV, uncompressed and LZ4 files,
+    and writes an edited PNG or WAV back into the XNB in its format, mips rebuilt. LZX files,
+    XNA 3.x files, other content types and surface formats are refused by name.
+  - Adventure Game Studio (`ags`): CLIB packfiles in every version the engine reads (6, 10,
+    11, 15, 20, 21, 30), alone or behind the game's executable, with the assets of their other
+    parts; `pack.clib` rebuilds a library in its own version, offsets and sizes patched in
+    place (an unchanged library comes back byte for byte).
+  - Defold (`defold`): `game.arci`/`game.arcd` (index versions 4, 5, 6) unpack under the URLs
+    `game.dmanifest` names, LZ4 resources through the `lz4` package, encrypted ones named;
+    `pack.arci` rewrites data and index, every hash and the manifest kept.
+- Checked on real data from the engines' own releases (AGS 3.6.3 templates, a Defold example
+  bundle, LÖVE 11.5's `love.exe`, MonoGame's test XNB files), not on a game install.
+
 ## 1.28.0 (2026-11-19)
 - Sanitizer phase 2 (doc 5.1): `phase2-convert` writes an open-format copy of each workspace
   file a bound lossless `decode.*` slot reads (the decoders an extraction runs, failover

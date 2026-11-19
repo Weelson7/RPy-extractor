@@ -36,6 +36,9 @@ Open: declarative formats (Kaitai `.ksy`) as a second plugin form.
 | Cyberpunk 2077 | RDAR members are Kraken-compressed and named by hash | inflated through the game's own Oodle DLL; names from WolvenKit's path list (`cp77-hashes`) |
 | Bannerlord | TPAC textures carry format and shape in their metadata | rebuilt as DDS |
 | Age of Empires | SLP sprites use the game palette | `decode.slp` writes PNG sheets |
+| LÖVE | the game is a zip, alone (`.love`) or appended to `love.exe`; PhysFS works out what lies before it | Python's zipfile reads both; the rebuild keeps the executable's bytes |
+| AGS | CLIB packfiles, at a file's start or behind the executable (tail signature); versions 6 to 30, 20 and 21 obfuscated by the engine's public text key and generator | read and rewritten in their own version, offsets and sizes patched in place |
+| Defold | the archive is found by content hash through the manifest; sizes come from the index | the rebuild keeps every hash and the manifest |
 
 ## 13.4 Code RE and runtime tools
 
@@ -77,6 +80,9 @@ Open: declarative formats (Kaitai `.ksy`) as a second plugin form.
 
 ## 13.7 Engines not covered (open)
 
-GameMaker (UndertaleModTool CLI, GPL-3.0), TyranoScript and Love2D beyond the wrapper and zip
-paths, Wolf RPG, XNA/FNA, AGS, Defold; Unreal asset export (a CUE4Parse wrapper); Unreal
-localization (`.locres`).
+GameMaker (UndertaleModTool CLI, GPL-3.0), TyranoScript beyond the wrapper and zip paths, Wolf
+RPG; Unreal asset export (a CUE4Parse wrapper). Covered by first-party readers (doc 2.7):
+Unreal localization (`decode.locres`), LÖVE (`love2d`), XNA/FNA/MonoGame (`xna`), AGS (`ags`),
+Defold (`defold`). Within them still open: LZX-compressed XNB files (XNA's
+XMemCompress) and XNB content other than Texture2D and SoundEffect, Defold's encrypted Lua
+resources, new keys in a version 3 `.locres` table (their CityHash64 is not computed).

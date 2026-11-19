@@ -19,8 +19,9 @@ Expected:
   `viwo slots`, `viwo install --all`, then the philosophy paragraph ("A community tool for
   everyone who wants to look inside a game..."). Exit code 0.
 - Step 4 prints a JSON envelope with `"ok": true`, `data.os` = `windows` or `linux`,
-  `data.plugins` listing 17 ids (bethesda, doom, electron, generic, genie, godot, kirikiri,
-  overwatch, quickbms, redengine, renpy, rpgmaker, source, taleworlds, unity, unreal, warscape).
+  `data.plugins` listing the 21 engine ids (ags, bethesda, defold, doom, electron, generic, genie,
+  godot, kirikiri, love2d, overwatch, quickbms, redengine, renpy, rpgmaker, source, taleworlds,
+  unity, unreal, warscape, xna).
 
 Cleanup: none.
 

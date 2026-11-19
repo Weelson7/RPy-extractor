@@ -75,7 +75,8 @@ flaky. `python tools/run_tests.py` runs the whole suite the same way.
 
 Builders in `tests/helpers.py` (`make_zip`, `make_tar`, `make_rar`, `make_game`, `runtime(root,
 ini_body)`) and in each plugin's test file (`make_rpa`, `make_pck`/`embed`, `make_pak`/`key_exe`,
-`make_wad`, RGSSAD, MV encryption, XP3, asar, VPK, BSA/BA2, DRS, PFH, RDAR, TPAC, SLP). Unity uses
+`make_wad`, RGSSAD, MV encryption, XP3, asar, VPK, BSA/BA2, DRS, PFH, RDAR, TPAC, SLP, `.locres`,
+LÖVE zips and fused executables, XNB, CLIB in every version, Defold bundles). Unity uses
 a stateful fake UnityPy and a fake AssetStudio. Fixture data is generated into a temporary
 folder; no binary fixture is committed. `sqc/fixtures/build_fixtures.py` builds the fixtures of
 the manual suite.

@@ -48,7 +48,7 @@ viwo/
                decoders: the DDS way back, Godot's VRAM textures)
   plugins/     one folder per engine: generic, renpy, unity, godot, unreal, doom, rpgmaker,
                kirikiri, electron, source, bethesda, genie, warscape, redengine, taleworlds,
-               quickbms, overwatch; game plugins under their engine in <engine>/games/
+               love2d, xna, ags, defold, quickbms, overwatch; game plugins under their engine in <engine>/games/
                (redengine/games/cyberpunk2077, taleworlds/games/bannerlord; doc 2.10)
   core/
     wiring/      ini parsing, plugin registry (scan, drop-ins, entry points), slot binder,

@@ -169,6 +169,9 @@ slot's identifier; doc 2.5):
 | `unarchive.wad` | doom | `wad-builtin` | - | |
 | `unarchive.rgssad` | rpgmaker | `rgssad-builtin` | - | `.rgssad`, `.rgss2a`, `.rgss3a` |
 | `unarchive.xp3` | kirikiri | `xp3-builtin` | - | |
+| `unarchive.love` | love2d | `love-zip` | - | `.love` with a zip head; an `.exe` whose tail is a zip end record, `love.dll` beside it |
+| `unarchive.clib` | ags | `clib-builtin` | - | `CLIB\x1a` head; an executable with the CLIB tail signature |
+| `unarchive.arci` | defold | `arci-builtin` | - | `.arci`, with its `.arcd` and `.dmanifest`; LZ4 through the `lz4` pin |
 | `unarchive.asar` | electron | `asar-builtin` | - | |
 | `unarchive.vpk` | source | `vpk-builtin` | - | identifier for `_dir.vpk` sets |
 | `unarchive.bsa`, `unarchive.ba2` | bethesda | `bsa-builtin`, `ba2-builtin` | - | LZ4 through the `lz4` pin |
@@ -192,7 +195,15 @@ named by hash are counted. The option `meshes = off` drops both; the spare write
 (`gdre-recover`, opt-in option `recover`), `export.rpgmaker` (`rpgmv-builtin`),
 `export.overwatch` (`datatool`, declares `network = "download"`), `export.warscape` (`db-builtin`: every `db/` member of every pack to JSON with the
 game's RPFM schema `rpfm-schema-<game>`; a table the schema lacks or misreads is counted and
-named), `decode.loc` (`loc-builtin`, Total War localisation to JSON), `export.unreal` (`uas-export`:
+named), `decode.loc` (`loc-builtin`, Total War localisation to JSON), `decode.locres`
+(`locres-builtin`, unreal, in process: Unreal localization tables, versions 0 (legacy), 1
+(compact), 2 (CRC32 keys) and 3 (CityHash64 keys), to `{namespace: {key: text}}` JSON; another
+version is refused by name), `decode.xnb` (`xnb-builtin`, xna, in process: XNB format version 5,
+uncompressed or LZ4 (MonoGame's raw block, through the `lz4` package); a Texture2D in Color,
+Bgr565, Bgra5551, Bgra4444, Alpha8 or DXT1/3/5 (ViWo's block decoders) to PNG, its largest
+level, as stored (XNA premultiplies alpha by default); a SoundEffect to WAV with its own format
+chunk (PCM, float, ADPCM as stored); LZX files, XNA 3.x files, other content types and other
+surface formats are counted failures, by name), `export.unreal` (`uas-export`:
 UnrealAssetScout as its own process, every mode over every Paks folder with the engine version
 read from the game's binaries, the AES key per D18 and the `.usmap` the RUNTIME agent wrote into
 the workspace; packages that need mappings are counted and the way to get them named. The tool

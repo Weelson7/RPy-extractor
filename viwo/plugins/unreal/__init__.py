@@ -2,7 +2,8 @@
 
 Members come out as .uasset/.uexp/.ubulk; `export.unreal` (UnrealAssetScout) decodes them into
 PNG textures, models (UEFormat, and glTF through uemodel.py), animations, sounds and JSON, with
-the mappings the RUNTIME agent writes.
+the mappings the RUNTIME agent writes; `decode.locres` (locres.py) turns localization tables into
+JSON and back.
 """
 
 from viwo.contracts.analysis import AnalysisTarget
@@ -15,6 +16,8 @@ from .assets import SLOT as EXPORT_SLOT
 from .assets import UasExport
 from .keys import SLOT as KEYS_SLOT
 from .keys import ExecutableKeys
+from .locres import SLOT as LOCRES_SLOT
+from .locres import LocresBuiltin
 from .pak import (
     PAK_MAGIC,
     UTOC_MAGIC,
@@ -102,12 +105,13 @@ class UnrealPlugin(EnginePlugin):
             PACK_SLOT,
             EXPORT_SLOT,
             KEYS_SLOT,
+            LOCRES_SLOT,
             SlotDefinition("runtime.unreal", "runtime", "unreal", "ue4ss-agent"),
         )
 
     def backends(self):
         kinds = (RepakCli, RetocLegacy, RetocUnpack, RepakPatch, Ue4ssAgent, UasExport)
-        return (*(kind() for kind in kinds), ExecutableKeys())
+        return (*(kind() for kind in kinds), ExecutableKeys(), LocresBuiltin())
 
     def export_slot(self) -> str:
         return "export.unreal"

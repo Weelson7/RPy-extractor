@@ -120,7 +120,14 @@ The presentation tools (`tools/presentation/`: `frames.py`, `deck.py`, `tech_pdf
   rewrote one real Bannerlord package by hand, unchanged and with a BC7 texture edited, but
   no repack run has put one in a patched copy the game then started: it may check the item
   checksum ViWo keeps but cannot compute), Kaitai formats, the
-  engines of doc 13.7, a structured runbook editor, more workbooks.
+  engines doc 13.7 still lists (GameMaker, TyranoScript, Wolf RPG), a structured runbook
+  editor, more workbooks.
+- LÖVE, XNA/FNA, AGS, Defold and Unreal `.locres` (first-party readers and their ways back):
+  checked on real data from the engines' own releases (CLIB 30 templates, a Defold index-6
+  example bundle, the official `love.exe` fused with a test zip, MonoGame's test XNB files),
+  never on a game install, and no game has run with a change. Unverified on real data: LZ4
+  XNB, CLIB 6 to 21, Defold index 4 and 5, any `.locres`. Open in them: LZX XNB, XNB content
+  other than Texture2D/SoundEffect, Defold's encrypted Lua, new keys in version 3 `.locres`.
 - `hook.overlay`: neither candidate fits the rules (doc 11.7).
 - Coverage: 98.2 % line / 95.0 % branch overall at 1.20.58; 84 of 200 files are under the
   per-file target of 98 / 95 (`coverage run -m unittest discover -s tests -t .`, then

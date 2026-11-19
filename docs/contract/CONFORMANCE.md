@@ -15,7 +15,8 @@ them from the tables below (`tools/presentation/reference.py`, `conformance()`).
 **Open:** the completeness contract per engine (16.0c); rung D4 (`hook.overlay`); the way back
 of premultiplied, signed and typeless block formats (DXT2/DXT4, signed BC4/BC5, typeless BC6H)
 and of ETC, ASTC, PVRTC and Basis Godot textures (no decoder either); Unreal asset export and
-the engines of 13.7; declarative (Kaitai) plugins; the indexes repository split.
+the engines 13.7 still lists (GameMaker, TyranoScript, Wolf RPG), LZX-compressed XNB, Defold's
+encrypted resources; declarative (Kaitai) plugins; the indexes repository split.
 
 ## Done, per engine and arm (owner)
 
@@ -43,6 +44,10 @@ run: `tests` means the suite covers the engine there. A row closes when every ce
 | Age of Empires (genie) | real | real | real | real | tests |
 | Total War (warscape) | real | real | real | open | tests |
 | Bannerlord (taleworlds) | real | tests (one real package by hand) | tests (one real package by hand) | open | tests |
+| LÖVE (love2d) | tests (real data, below) | tests (real data) | tests (real data) | open | tests |
+| XNA/FNA/MonoGame (xna) | tests (real data) | tests (real data) | tests (real data) | open | tests |
+| AGS | tests (real data) | tests (real data) | tests (real data) | open | tests |
+| Defold | tests (real data) | tests (real data) | tests (real data) | open | tests |
 | QuickBMS | tests | open | open | open | tests |
 | Overwatch (DataTool) | tests | - (read only) | - | - | Windows only |
 
@@ -77,7 +82,9 @@ in Chocolate Doom 3.1.0: the title picture repainted in the rewritten `freedoom2
 having compiled the script itself (`sqc/proof/renpy-ddlc-script.jpg`). Open on the other
 engines.
 
-Not at hand: a Godot game that ships its data, a Bethesda game, an RPG Maker game with a
+**Real data, no game install** (NEXT, 2026-11-19; downloaded from the engines' official releases and sites, never run, deleted after): AGS, the five templates of the 3.6.3.17 release (CLIB version 30, 11 to 137 assets): every asset out, each rebuilt unchanged byte for byte, an edited asset read back with the others unchanged; Defold, the bundle of an official example (`defold.com/examples`, index version 6, 13 resources, 6 LZ4, 2 encrypted and named): every unencrypted resource out under its URL, the bundle rebuilt unchanged byte for byte, an edited resource read back; LÖVE, the official `love.exe` 11.5 fused with a test zip: recognised (`love.exe` alone is not), unpacked, rebuilt with an edit behind the executable's unchanged bytes; XNA, sixteen of MonoGame's own test XNB files (Color, Bgra4444, DXT1, DXT5 textures, PCM 8/16-bit, float and MS-ADPCM sounds, all uncompressed): each decoded, written back unchanged byte for byte (DXT re-encoded within 3 per channel), a SpriteFont and a TextureCube refused by name. Not verified on real data: LZ4 XNB, CLIB versions 6 to 21, Defold index versions 4 and 5, any `.locres`; no game of these engines ran with a change.
+
+Not at hand: a game of LÖVE, XNA/FNA, AGS, Defold or with an Unreal `.locres` table, a Godot game that ships its data, a Bethesda game, an RPG Maker game with a
 packed archive (the MV test game keeps its files loose), a real QuickBMS archive. Unity
 MonoBehaviour fields come out for the scripts whose rebuilt layout fits; the others are
 listed without fields and counted (1.20.41). Linux tools: WolvenKit, repak, retoc, GDRE,
@@ -148,7 +155,7 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 2.4 detection result and scale | implemented | `contracts/types.py` `DetectionResult` |
 | 2.5 recursive unpack, depth 10, slot lookup (fallback identifiers last), cancel, member safety, altered names recorded | implemented | `core/pipeline/unpack.py`, `core/pipeline/identify.py`, `contracts/workspace.py` (`Names`, `files`); `tests/test_skips_said.py`, `tests/test_review_fixes.py` |
 | 2.6 dependency spec, per-OS executables, ViWo's own described once | implemented | `contracts/types.py` `DependencySpec`, `DependencySpec.of`; `data/dependencies.json`; `tests/test_dependencies_data.py` |
-| 2.7 seventeen built-in plugins | implemented | `plugins/*/` |
+| 2.7 twenty-one built-in plugins (and two game plugins) | implemented | `plugins/*/` |
 | 2.8 built-in scan, drop-ins, entry points, opt-in, override | implemented | `core/wiring/registry.py`, `tests/test_registry.py` |
 | 2.9 conformance checks and sandbox | implemented | `core/wiring/conformance.py`, `tests/test_conformance_kit.py` |
 | 2.10 game plugins: discovery under their engine, selection with it (never loaded without it), what they supply through the run context | implemented | `core/wiring/registry.py` `_without_orphans`, `core/pipeline/select.py` `with_games`, `contracts/plugin.py`; `plugins/redengine/games/cyberpunk2077`, `plugins/taleworlds/games/bannerlord`; `tests/test_game_plugins.py` |
@@ -332,7 +339,8 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 13.2 declarative formats (Kaitai) | open | - |
 | 13.3 per-engine consequences | implemented | `plugins/*` |
 | 13.5 GPL tools as processes | implemented | `tests/test_l0_static.py` |
-| 13.7 GameMaker, Unreal export, locres and the other listed engines | open | - |
+| 13.7 GameMaker, TyranoScript, Wolf RPG, Unreal export (CUE4Parse) | open | - |
+| 13.7 covered: Unreal `.locres`, LÖVE, XNA/FNA, AGS, Defold (first-party readers, their ways back) | implemented (tests; real data, no game install: see the engine matrix) | `plugins/unreal/locres.py`, `plugins/love2d`, `plugins/xna`, `plugins/ags`, `plugins/defold`; `tests/test_locres.py`, `tests/test_love2d.py`, `tests/test_xna.py`, `tests/test_ags.py`, `tests/test_defold.py` |
 
 ## 14 Scope
 
@@ -384,6 +392,8 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 18.3 way back of `decode.vtf` (PNG to uncompressed VTF) | implemented (tests only) | `plugins/source/vtf_write.py`; `tests/test_encoders.py` |
 | 18.3 way back of `decode.slp` (PNG sheet to SLP, simplest valid encoding) | implemented; read back real (1.22.5, Age of Empires II HD: a marked icon sheet re-encoded into `interfac.drs` and its loose copy, decoded again: the mark is in every frame, in the palette's nearest colours; what was painted outside a frame is not kept; not started in the game) | `plugins/genie/slp_write.py`; `tests/test_encoders.py`, `tests/test_roundtrip_encode.py` (end to end through the DRS) |
 | 18.3 way back of `decode.loc` (JSON to `.loc`) | implemented (tests only) | `plugins/warscape/loc.py`; `tests/test_encoders.py` |
+| 18.3 way back of `decode.locres` (JSON to the table in its version, hashes and storage kept, byte for byte unchanged; a new key in version 3 refused) | implemented (tests only) | `plugins/unreal/locres.py`; `tests/test_locres.py` |
+| 18.3 way back of `decode.xnb` (PNG to Texture2D, WAV to SoundEffect, compressed as it was) | implemented (tests; real MonoGame test files written back unchanged byte for byte) | `plugins/xna/content.py`, `plugins/xna/xnb.py`; `tests/test_xna.py` |
 | 18.3 way back of `decode.rpyc` (the `.rpy`, the stale `.rpyc` removed) | implemented; real (1.22.4, Doki Doki Literature Club: the edited `.rpy` compiled by the game on start and shown, `sqc/proof/renpy-ddlc-script.jpg`) | `plugins/renpy/decompile.py`, `plugins/renpy/pack.py`; `tests/test_roundtrip_encode.py` |
 | 18.3 way back of `decode.cr2w` (WolvenKit `import --keep`, `convert deserialize`) | implemented (fake tool only: the real WolvenKit not run on it yet) | `plugins/redengine/encode.py`; `tests/test_wolvenkit_import.py` |
 | 18.3 way back of `decode.image` (PNG to uncompressed DDS, or BC1 to BC5 through ViWo's own range-fit encoder, BC7 in mode 6 and BC6H in mode 11 through its own BPTC encoder; premultiplied DXT2/DXT4, signed BC4/BC5 and typeless BC6H skipped with the reason); `pillow-image` the slot's spare (BC6H and BC7, which the pinned ffmpeg does not read) | implemented (tests: every format decoded again by ViWo's decoders and by Pillow; BC1 to BC4 blocks also checked byte for byte against the pinned ffmpeg's decoder by hand, not in the suite; BC7 written into a real Bannerlord texture and decoded again, by hand) | `core/encode_dds.py`, `core/decode_dds.py`, `backends/blocks/`; `tests/test_encoders.py`, `tests/test_encode_bc.py`, `tests/test_decode_bc.py` |
@@ -392,6 +402,7 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 18.3 way back of `decode.redscripts` (the edited source as `r6/scripts/<path>.reds` beside `final.redscripts`; the plan says the copy needs the redscript compiler) | implemented (tests only: fake redscript, the compiler not run on it) | `plugins/redengine/games/cyberpunk2077/scripts.py`, `Decoder.adds`/`back_note`, `core/roundtrip_encode.py`; `tests/test_redscripts.py` |
 | 18.3 way back of `decode.audio`, `decode.video`, `decode.bink2` | not possible under the rules (proprietary encoders): said per file | `Decoder.one_way` |
 | 18.4 pack slots | implemented | `plugins/*`, `backends/packers.py` |
+| 18.4 `pack.love`, `pack.clib`, `pack.arci` (LÖVE's zip behind its executable, AGS libraries in their own version, Defold's bundle with its hashes and manifest kept) | implemented (tests; real data: see the engine matrix) | `plugins/love2d`, `plugins/ags/pack.py`, `plugins/defold`; `tests/test_love2d.py`, `tests/test_ags.py`, `tests/test_defold.py` |
 | 18.6 target rules (the guard first, also for a reused copy), no anti-tamper code | implemented | `core/roundtrip.py` `prepare_copy`, `core/pipeline/guard.py` `guarded` |
 | 18.8 offset, RVA, AOB (overlapping matches counted), Keystone, capstone, bounded writes, overlapping patches refused, verify, export | implemented | `core/patchsets.py`, `core/patch_tools.py`; `tests/test_patchsets.py` |
 | 18.8 API | implemented | `POST /api/patch` and job kind `patch` |

@@ -12,7 +12,7 @@ covers which files and flags dense unknown blobs (likely encrypted or compressed
 
 | Rung | What it does | State |
 |------|--------------|-------|
-| 1. Engine plugins | native decoding with real names: Ren'Py, Unity, Godot, Unreal, Doom, RPG Maker, KiriKiri, Electron/NW.js, Source, Bethesda, Age of Empires, Total War, Cyberpunk 2077, Bannerlord, Overwatch | shipped; GameMaker and the engines of doc 13.7 open |
+| 1. Engine plugins | native decoding with real names: Ren'Py, Unity, Godot, Unreal, Doom, RPG Maker, KiriKiri, Electron/NW.js, Source, Bethesda, Age of Empires, Total War, Cyberpunk 2077, Bannerlord, Overwatch, LÖVE, XNA/FNA/MonoGame, AGS, Defold | shipped; GameMaker and the engines doc 13.7 still lists open |
 | 2. Container unpackers | zip, tar, 7z, rar and every plugin container, recursive to depth 10 | shipped |
 | 3. Signature carver | complete standard files inside unknown blobs (PNG, JPEG, GIF, WAV/WEM, Ogg, MIDI, MP4, Bink, FSB5, BNK, DDS, glTF, zip, 7z) | shipped |
 | 4. Compressed-stream scan | zlib and gzip streams inflated (bounded) and carved; zstd and LZ4 when `zstandard` / `lz4` import | shipped |
@@ -40,7 +40,7 @@ libraries (Oodle, Bink), as for Kraken today; a pinned community tool run as a s
 |--------|-------------------------------|--------------------|
 | REDengine 4 (Cyberpunk 2077) | RDAR members with names, each the game's own file; Wwise audio to WAV (vgmstream); Bink 2 video to MP4 through the game's `bink2w64.dll`; CR2W through WolvenKit (`decode.cr2w`): textures to PNG, meshes, morph targets and animations to glTF, every resource to JSON; the game scripts (`r6/cache/final.redscripts`) decompiled to redscript source (`decode.redscripts`); edits packed into an override archive (`pack.archive`); the installed mods' conflicts in every run (members they replace, members a later mod loses) | mesh materials (need an uncooked depot); TweakDB to JSON; Ghidra names from `cyberpunk2077_addresses.json`; runtime agent (Cyber Engine Tweaks) |
 | Unity | textures, audio, text, meshes (OBJ, and glTF with every channel, the skin, the bone tree and the main texture), IL2CPP and managed code; video clips in their own format, fonts, shaders; every other object (scenes, prefabs, materials, animations, components, MonoBehaviour data) to JSON, one file per serialized file; MonoBehaviour layouts from the game's managed assemblies (Mono) or, on IL2CPP builds, from Cpp2IL's stand-in assemblies (270 of 745 on a Schedule I file, against 6) | the IL2CPP MonoBehaviours the layout generator cannot build (generic and nested types); animations and blend shapes to glTF |
-| Unreal | pak and IoStore members (legacy `.uasset`/`.uexp`, IoStore converted with `global.utoc`); `export.unreal` (UnrealAssetScout): textures to PNG, models and animations (UEFormat), sounds (Bink Audio and Wwise to WAV through vgmstream), every package as JSON; engine version from the game's binaries; mappings from the RUNTIME agent (UE4SS) or given | models and animations to glTF (UEFormat today); Linux build of the exporter |
+| Unreal | pak and IoStore members (legacy `.uasset`/`.uexp`, IoStore converted with `global.utoc`); localization tables (`.locres`, versions 0-3) to JSON and back (`decode.locres`); `export.unreal` (UnrealAssetScout): textures to PNG, models and animations (UEFormat), sounds (Bink Audio and Wwise to WAV through vgmstream), every package as JSON; engine version from the game's binaries; mappings from the RUNTIME agent (UE4SS) or given | models and animations to glTF (UEFormat today); Linux build of the exporter |
 | Godot | PCK members, resources (GDRE), GDScript; `.ctex`/`.stex` textures with PNG or WebP mipmaps, uncompressed 8-bit, or VRAM-compressed S3TC, RGTC and BPTC, to PNG without GDRE (`decode.ctex`, tests only) | ETC, ETC2, ASTC, PVRTC and Basis Universal `.ctex` to PNG |
 | Ren'Py | RPA members, `.rpyc` to `.rpy` | - |
 | RPG Maker | RGSSAD, MV/MZ decrypted assets, data JSON | XP/VX/VX Ace `.rxdata`/`.rvdata2` (Ruby Marshal) to JSON |
@@ -51,7 +51,11 @@ libraries (Oodle, Bink), as for Kraken today; a pinned community tool run as a s
 | Total War (warscape) | PFH4/PFH5 members; `.loc` localisation to JSON (`decode.loc`); DB tables to JSON with the game's RPFM schema (`export.warscape`, 14 games) | RigidModel to glTF; DB tables with binary fields (`models_*`); the game's schema installed by itself on first use |
 | Bannerlord (taleworlds) | TPAC members, textures to DDS, edits written back into the package (`pack.tpac`); FMOD sound banks to WAV (vgmstream) | meshes and skeletons to glTF |
 | Doom, Electron, Overwatch (DataTool) | everything their formats hold | - |
-| GameMaker, the engines of doc 13.7 | loose files and carving only | engine plugins |
+| LÖVE | the game's zip, alone or fused onto the executable (Lua sources, assets as files) | LuaJIT bytecode, when a game ships it, through the analysis arm only |
+| XNA/FNA/MonoGame | the loose `.xnb` files; Texture2D to PNG, SoundEffect to WAV (`decode.xnb`), uncompressed and LZ4 | LZX-compressed XNB; SpriteFont, TextureCube, Effect, Model and the game's own content types; XNA 3.x files |
+| AGS | every asset of the CLIB packfiles (versions 6 to 30, behind the executable too, every part) | rooms (`.crm`), sprites (`acsprset.spr`), the game data (`game28.dta`), WFN fonts to standard forms |
+| Defold | every unencrypted resource of the bundle under its URL | encrypted Lua resources; compiled resources (protobuf `*c` files) to JSON |
+| GameMaker, the engines doc 13.7 still lists | loose files and carving only | engine plugins |
 
 ## 16.2b Orchestrator rungs
 
@@ -78,7 +82,7 @@ The arm homes of the UI (`viwo/web/js/views/home.js`) show the same rungs as SHI
 
 | Item | Doc |
 |------|-----|
-| Unreal asset export (CUE4Parse wrapper), GameMaker and the engines of 13.7 | 13.7 |
+| Unreal asset export (CUE4Parse wrapper), GameMaker and the engines 13.7 still lists | 13.7 |
 | coverage per file at 98 % line / 95 % branch (owner's target) | 17.5 |
 | the `vidya_wormhole_indexes` repository split and its first release | `docs/indexes.md` |
 | **managed vs unmanaged tools** distinction in the indexes and plugins: *managed* = ViWo pins (version/size/sha256) and installs into `third_party/`; *unmanaged* = user-supplied (a `[tools]` path), on PATH, or a third-party/community tool ViWo deliberately does not pin (including borderline tools, never first-party). ViWo uses an unmanaged tool but does not own its lifecycle; an index or plugin that references a tool says which it is (owner, 2026-11-05) | 10, `docs/indexes.md` |
