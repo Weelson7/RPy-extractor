@@ -4,9 +4,10 @@
 # dismiss a start-up dialog or skip a movie); several separated by | ("{ESC}|{ESC}"), each
 # followed by -KeyWait seconds. The window is looked up again for up to 30 s after them.
 # -Screen: copy the window's area from the screen instead of printing the window (a game drawing
-# full screen through DirectX prints black).
+# full screen through DirectX prints black). -Arguments: the game's command line (a Doom engine
+# given the patched WAD).
 param([string]$Exe, [string]$Out, [int]$Wait = 20, [string]$WorkDir = "", [string[]]$Keys = @(),
-      [int]$KeyWait = 5, [switch]$Screen)
+      [int]$KeyWait = 5, [switch]$Screen, [string]$Arguments = "")
 Add-Type -AssemblyName System.Drawing
 Add-Type @"
 using System; using System.Runtime.InteropServices;
@@ -22,7 +23,9 @@ public class ViwoShot {
 [ViwoShot]::SetProcessDPIAware() | Out-Null  # real pixels: a scaled display cut the window short
 $dir = Split-Path -Parent $Exe
 if (-not $WorkDir) { $WorkDir = $dir }
-$game = Start-Process -FilePath $Exe -WorkingDirectory $WorkDir -PassThru
+$start = @{ FilePath = $Exe; WorkingDirectory = $WorkDir; PassThru = $true }
+if ($Arguments) { $start.ArgumentList = $Arguments }
+$game = Start-Process @start
 # the window is looked up afresh each time: a game may swap its window while it starts
 function Find-GameWindow {
     Get-Process | Where-Object { $_.Path -like "$dir\*" -and $_.MainWindowHandle -ne 0 } |

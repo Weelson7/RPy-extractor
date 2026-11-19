@@ -4,6 +4,11 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.27.2 (2026-11-19)
+- The game loads the change on Doom too: Freedoom 2, run by Chocolate Doom 3.1.0, shows its
+  repainted title picture from ViWo's rewritten `freedoom2.wad` (`sqc/proof/doom-freedoom.jpg`).
+- `tools/game_shot.ps1 -Arguments`: the game's command line.
+
 ## 1.27.1 (2026-11-19)
 - `tools/game_shot.ps1`: several keys separated by `|` (PowerShell's `-File` passes one string),
   the window looked for again for 30 s after the keys (a game swapping windows), and `-Screen`
