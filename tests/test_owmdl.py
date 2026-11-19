@@ -40,12 +40,12 @@ def write_looks(folder: Path) -> None:
     (folder / "ModelLooks" / "look.owmat").write_bytes(look)
 
 
-def write_model(folder: Path, rng: random.Random) -> dict:
+def write_model(folder: Path, rng: random.Random, bones: int = 0) -> dict:
     write_looks(folder)
     floats = lambda n: [rng.uniform(-9, 9) for _ in range(n)]  # noqa: E731
     bones = [
         (f"bone_{i:04X}", rng.randint(-1, i - 1), floats(3), [1.0, 1.0, 1.0], floats(3))
-        for i in range(rng.randint(1, 6))
+        for i in range(bones or rng.randint(1, 6))
     ]
     count, triangles, links = rng.randint(3, 30), rng.randint(1, 12), rng.choice((0, 1, 4, 6))
     mesh = {"pos": floats(3 * count), "nor": floats(3 * count), "tan": floats(4 * count)}
@@ -166,6 +166,13 @@ class OwmdlTests(unittest.TestCase):
             self.assertTrue(any("only version 2" in why for why in lost))
             glbs = sorted(p.name for p in model.parent.glob("*.glb"))
             self.assertEqual(glbs, ["Tracer - Overwatch - Posh - model.glb"])  # nothing half-made
+            for name, bones in (("0000000002B1.00C", owmdl.MAIN + 60), ("00000000AAAA.00C", 12)):
+                write_model(skin / "Models" / name, rng, bones)  # the character and a prop
+            owmdl.convert_all(root)
+            named = sorted(p.name for p in skin.rglob("*.glb") if "(main)" in p.name)
+            self.assertEqual(named, ["Tracer - Overwatch - Posh - (main) model.glb"])
+            body = skin / "Models" / "0000000002B1.00C" / named[0]
+            self.assertTrue(body.is_file())  # the largest skeleton of the skin, and only it
 
 
 if __name__ == "__main__":

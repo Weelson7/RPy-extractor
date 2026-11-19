@@ -185,24 +185,53 @@ def convert(model: Path, out: Path) -> tuple[str, ...]:
     return (f"{bare} of {len(materials)} material(s) without a colour texture",) if bare else ()
 
 
-def label(model: Path, root: Path) -> str:
+MAIN = 100  # bones from which the biggest skeleton of a skin is its character
+
+
+def label(model: Path, root: Path, main: bool = False) -> str:
     """A name that says where the model sits (hero, event, skin), since every skin reuses the
     same model ids: `<root>/<mode>/Heroes/Tracer/Skin/Overwatch/Posh/Models/..` gives
-    "Tracer - Overwatch - Posh - <id>"."""
+    "Tracer - Overwatch - Posh - <id>". A skin comes with dozens of props and effect shapes:
+    its character is marked "(main)", which also lists it first."""
     parts = model.relative_to(root).parts
     above = parts[1 : parts.index("Models")] if "Models" in parts else parts[1:-2]
-    return " - ".join([*(p for p in above if p not in ("Heroes", "Skin")), model.stem])
+    stem = f"(main) {model.stem}" if main else model.stem
+    return " - ".join([*(p for p in above if p not in ("Heroes", "Skin")), stem])
+
+
+def _bones(model: Path) -> tuple[int, int]:
+    """(bones, meshes) from the model's header; (0, 0) when it cannot be read."""
+    try:
+        with model.open("rb") as handle:
+            src = _In(handle.read(4096))
+        src.take("<HH"), src.text(), src.text()
+        return src.take("<IHII")[1:3]
+    except (OSError, struct.error, IndexError):
+        return 0, 0
+
+
+def mains(models: list[Path]) -> set[Path]:
+    """Per skin (the folder holding `Models`), the model with the largest skeleton, when it is
+    a character's (MAIN bones or more)."""
+    skins: dict[Path, list[Path]] = {}
+    for model in models:
+        skins.setdefault(model.parent.parent, []).append(model)
+    best = (max(group, key=_bones) for group in skins.values())
+    return {model for model in best if _bones(model)[0] >= MAIN}
 
 
 def convert_all(root: Path, each=map) -> tuple[int, list[str]]:
     """A .glb beside every .owmdl under root: (how many, what failed and why)."""
 
+    models = sorted(root.rglob("*.owmdl"))
+    main = mains(models)
+
     def one(model: Path) -> str:
         try:
-            convert(model, model.with_name(label(model, root) + ".glb"))
+            convert(model, model.with_name(label(model, root, model in main) + ".glb"))
         except (OSError, ValueError, struct.error, IndexError) as exc:
             return f"{model.name}: {exc}"
         return ""
 
-    said = list(each(one, sorted(root.rglob("*.owmdl"))))
+    said = list(each(one, models))
     return said.count(""), [s for s in said if s]

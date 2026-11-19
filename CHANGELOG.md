@@ -4,6 +4,11 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.21.1 (2026-11-19)
+- Overwatch: the character of each skin is named `... - (main) <id>.glb` and so listed first;
+  a skin's dozens of props and effect shapes had the same kind of name, and nothing said
+  which file was the hero.
+
 ## 1.21.0 (2026-11-18)
 - Unity: every Mesh also comes out as a lossless `.glb` beside UnityPy's `.obj`: positions,
   normals, tangents, every UV set, vertex colours as data, each sub-mesh as a primitive (32-bit
