@@ -1,7 +1,10 @@
 """pack.xp3 (doc 18): edited members of a KiriKiri archive written as the next patch archive the
 engine loads after its own (`patch.xp3`, then `patch2.xp3`, ...: a later archive wins), beside
-the game's archives. Unencrypted, zlib-compressed segments and index; read back after
-writing."""
+the game's archives. The engine searches a patch archive at its root only (KAG's
+`addAutoPath("patch.xp3>")`), so every member goes in by its file name, whatever folder it had;
+a file the game's scripts name with its folder (`image/logo.png`) is read from the game's own
+archive and is not changed by a patch, which the outcome says. Unencrypted, zlib-compressed
+segments and index; read back after writing."""
 
 import struct
 import zlib
@@ -13,6 +16,11 @@ from viwo.contracts.slots import Packer, SlotDefinition
 from viwo.contracts.types import Outcome, OutcomeKind
 
 SLOT = SlotDefinition("pack.xp3", "pack", "kirikiri", "xp3-writer")
+ROOT = "the engine searches a patch at its root; a file the game names with its folder stays"
+
+
+def _flat(member: str) -> str:
+    return member.replace("\\", "/").rsplit("/", 1)[-1]
 
 
 def _chunk(tag: bytes, body: bytes) -> bytes:
@@ -56,15 +64,22 @@ class Xp3Writer(Packer):
         target = self.output_for(container)
         try:  # edits of another archive already in ViWo's patch stay in it
             kept = _members(target) if target.exists() else {}
-            write_xp3(kept | {m: p.read_bytes() for m, p in members.items()}, target)
+            flat = {_flat(m): p.read_bytes() for m, p in sorted(members.items())}
+            write_xp3(kept | flat, target)
             (target.parent / f".{target.name}.viwo").write_text("written by ViWo", encoding="utf-8")
         except (OSError, ValueError, zlib.error) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"patch archive not written: {exc}"[:300])
-        return Outcome(OutcomeKind.OK, len(members), notes=(f"edits in {target.name}",))
+        notes = [f"edits in {target.name}, each by its file name: {ROOT}"]
+        twice = sorted(m for m in members if sum(_flat(m) == _flat(o) for o in members) > 1)
+        if twice:
+            notes.append(f"one file name, several folders, the last one is in: {', '.join(twice)}")
+        return Outcome(OutcomeKind.OK, len(members), notes=tuple(notes))
 
     def verify(self, output: Path, members: dict[str, Path], ctx) -> list[str]:
         found = _members(output)
-        return sorted(m for m, p in members.items() if found.get(m) != p.read_bytes())
+        last = {_flat(m): m for m in sorted(members)}  # of one file name, the one that is in
+        wrong = (m for m, p in members.items() if found.get(_flat(m)) != p.read_bytes())
+        return sorted(m for m in wrong if last[_flat(m)] == m)
 
 
 def _members(archive: Path) -> dict[str, bytes]:

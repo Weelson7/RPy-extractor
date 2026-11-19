@@ -2,8 +2,9 @@
 random edits: ASAR, RGSSAD (v1 and v3) and DRS are rebuilt and read back with every edit in and
 every other member unchanged; the VPK override, the XP3 patch archive, the Bethesda loose files and
 the Warscape movie pack hold exactly the edits, read back byte for byte, written where the
-engine loads them over its own archives; two XP3 archives' edits share one patch; a PFH5 pack is
-refused by name; a damaged archive is a named failure."""
+engine loads them over its own archives; two XP3 archives' edits share one patch, each member by
+its file name at the patch's root (where the engine searches), one name from two folders said; a
+PFH5 pack is refused by name; a damaged archive is a named failure."""
 
 from __future__ import annotations
 
@@ -144,6 +145,16 @@ class OverrideTests(unittest.TestCase):
             Xp3Writer().pack(root / "voice.xp3", {"voice/b.ogg": second}, CTX)
             both = {"bg/a.png": first, "voice/b.ogg": second}
             self.assertEqual(Xp3Writer().verify(root / "patch.xp3", both, CTX), [])
+            from viwo.plugins.kirikiri.pack import _members
+
+            # the engine searches a patch at its root: every member is in by its file name
+            self.assertEqual(sorted(_members(root / "patch.xp3")), ["a.png", "b.ogg"])
+            same = {"bg/t.png": first, "fg/t.png": second, r"se\u.ogg": first}
+            said = Xp3Writer().pack(root / "data.xp3", same, CTX)
+            self.assertIn("bg/t.png, fg/t.png", said.notes[1])  # one name twice is said
+            self.assertEqual(Xp3Writer().verify(root / "patch.xp3", same, CTX), [])
+            found = _members(root / "patch.xp3")
+            self.assertEqual((found["t.png"], found["u.ogg"]), (b"two", b"one"))
             (root / "patch2.xp3").write_bytes(b"the game's own patch")  # never overwritten
             (root / "w.pack").write_bytes(pfh({"a": b"x"}, b"PFH5"))
             refused = MoviePack().pack(root / "w.pack", {"a": first}, CTX)

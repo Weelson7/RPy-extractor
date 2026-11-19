@@ -4,6 +4,13 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.22.1 (2026-11-19)
+- KiriKiri: the patch archive holds each edited member by its file name. The engine searches
+  `patch.xp3` at its root only, so members written with their folder were never found and the
+  game kept showing its own files. One file name edited in two folders is said; a file the
+  game's scripts name with its folder (`image/logo.png`) is read from the game's own archive
+  and no patch changes it, which the outcome says.
+
 ## 1.22.0 (2026-11-19)
 - Everything decoded goes back (doc 18.3): an edited decoded file (a PNG, glTF, JSON
   table or `.rpy` that DECODE wrote) is encoded into the format of the member it came from by
