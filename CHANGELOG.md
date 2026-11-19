@@ -4,6 +4,11 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.31.3 (2026-11-19)
+- Chromium `.pak` is identified by its DataPack header (version 4 or 5), not the `.pak` extension
+  alone — `.pak` is also Unreal's and Quake's, so a non-Chromium `.pak` is no longer mis-claimed
+  as a container (SURVEY counted it twice; fixes `test_survey`).
+
 ## 1.31.1 (2026-11-19)
 - Overwatch owmdl now converts on Linux too: the material's path (a DataTool Windows path) is
   split on any OS, and the key/path pair is read in stream order (a refactor had reversed it,

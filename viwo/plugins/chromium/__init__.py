@@ -10,7 +10,7 @@ from pathlib import Path
 
 from viwo.contracts import workspace as ws
 from viwo.contracts.plugin import EnginePlugin, GameProbe, PluginManifest
-from viwo.contracts.slots import SlotDefinition, Unarchiver
+from viwo.contracts.slots import Match, SlotDefinition, Unarchiver
 from viwo.contracts.types import DetectionResult, Outcome, OutcomeKind
 
 MANIFEST = PluginManifest(
@@ -81,7 +81,17 @@ class PakBuiltin(Unarchiver):
         return Outcome(OutcomeKind.OK, written, notes=(note,) + shared + names.save())
 
 
-SLOT = SlotDefinition("unarchive.pak", "unarchive", "chromium", "pak-builtin", suffixes=(".pak",))
+def identify_pak(path: Path, head: bytes, tail: bytes) -> Match | None:
+    """A `.pak` whose header is a DataPack (version 4 or 5). `.pak` is used by other engines
+    too (Unreal, Quake), so claim it by the header, not the extension alone."""
+    if path.suffix.lower() == ".pak" and _is_pak(head):
+        return Match("unarchive.pak", path)
+    return None
+
+
+SLOT = SlotDefinition(
+    "unarchive.pak", "unarchive", "chromium", "pak-builtin", identify=identify_pak
+)
 
 
 class ChromiumPlugin(EnginePlugin):
