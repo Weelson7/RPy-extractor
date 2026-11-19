@@ -52,6 +52,7 @@ const nullText = (view) => evaluate(`(() => { const w = document.createTreeWalke
 const tight = (view) => evaluate(`(() => { const sel = (q) => [...document.querySelectorAll(q)].filter((n) => n.getClientRects().length);
   const bs = sel('#view-${view} .btn'), near = sel('#view-${view} :is(.btn, .input, textarea, p, .panel)'), out = [];
   for (const b of bs) { const rb = b.getBoundingClientRect(); for (const o of near) { if (o === b || o.contains(b) || b.contains(o)) continue;
+    if (Boolean(b.closest('.actionbar')) !== Boolean(o.closest('.actionbar'))) continue; // the pinned bar floats over the content
     const ro = o.getBoundingClientRect(), side = Math.min(rb.bottom, ro.bottom) - Math.max(rb.top, ro.top), cols = Math.min(rb.right, ro.right) - Math.max(rb.left, ro.left);
     const gx = ro.left - rb.right, gy = Math.max(rb.top - ro.bottom, ro.top - rb.bottom);
     if ((o.matches('.btn') && side > rb.height / 2 && gx > -2 && gx < 4) || (cols > 0 && side <= 0 && gy > -2 && gy < 6)) out.push([b.textContent.trim(), o.className, Math.round(Math.min(gx, gy))]); } }
