@@ -41,7 +41,7 @@ run: `tests` means the suite covers the engine there. A row closes when every ce
 | Bethesda | tests | tests | tests | open | tests |
 | Doom | real | real | real | open | tests |
 | Electron | tests | tests | tests | open | tests |
-| Age of Empires (genie) | real | real | real | open | tests |
+| Age of Empires (genie) | real | real | real | real | tests |
 | Total War (warscape) | real | real | real | open | tests |
 | Bannerlord (taleworlds) | real | open (no packer) | open | open | tests |
 | QuickBMS | tests | open | open | open | tests |
@@ -70,7 +70,9 @@ game: the title image as a loose override), KiriKiri (1.22.1, 2026-11-19, a test
 title background from `patch.xp3`; an image its scripts name with its folder, its logo, is
 out of a patch's reach, doc 18.4), Unreal (1.22.1, a UE5 test game: the project title in
 `DefaultGame.ini` from ViWo's `_P.pak`; the mark is the window's title, which the tool prints,
-the game running full screen behind it). A decoded file's way back (18.3) is shown too: on Ren'Py at
+the game running full screen behind it), Age of Empires (1.25.3, Age of Empires II HD: the main
+menu background as a loose file of the copy, which also held the rewritten `interfac.drs`; the
+game started through a Steam Workshop dialog, dismissed by `-Keys`). A decoded file's way back (18.3) is shown too: on Ren'Py at
 1.22.4, a line edited in the decompiled `splash.rpy` is on the game's first screen, the game
 having compiled the script itself (`sqc/proof/renpy-ddlc-script.jpg`). Open on the other
 engines.

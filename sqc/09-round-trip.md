@@ -96,11 +96,12 @@ Steps, per engine (a free title of `games.md`, from a worktree at a committed ve
 1. `viwo extract <game> --workspace W`; paint a clear mark on an image the game shows on its
    first screen (the title or menu background), in `W`.
 2. `viwo repack W --out P`; read `Result: ... (verified)`.
-3. `powershell -File tools\game_shot.ps1 -Exe P\<game exe> -Out shot.png -Wait 15`.
+3. `powershell -File tools\game_shot.ps1 -Exe P\<game exe> -Out shot.png -Wait 15`; a dialog in
+   front of the menu is dismissed with `-Keys "{ENTER}"` (SendKeys syntax, one wait per key).
 
 Expected: the patched copy starts and `shot.png` (the game's own window) shows the mark; the
 game folder is unchanged. Recorded: `sqc/proof/renpy-ddlc.jpg`, `sqc/proof/unity-baldi.jpg`,
-`sqc/proof/rpgmaker-mv.jpg`, `sqc/proof/kirikiri-ubu.jpg`, `sqc/proof/unreal-voids-cave.jpg` (Unreal: no image goes back
+`sqc/proof/rpgmaker-mv.jpg`, `sqc/proof/kirikiri-ubu.jpg`, `sqc/proof/genie-aoe2hd.jpg`, `sqc/proof/unreal-voids-cave.jpg` (Unreal: no image goes back
 yet, so the mark is `ProjectDisplayedTitle` in `DefaultGame.ini`, read in the window title
 `game_shot.ps1` prints). On KiriKiri pick an image the
 scripts name without its folder (`storage="sky0"`): one named with its folder is read from

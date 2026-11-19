@@ -4,6 +4,13 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.25.4 (2026-11-19)
+- The game loads the change on Age of Empires too: Age of Empires II HD shows its marked main
+  menu background from ViWo's patched copy (`sqc/proof/genie-aoe2hd.jpg`).
+- `tools/game_shot.ps1`: `-Keys` sends keystrokes before the capture (a dialog in front of the
+  menu), and the game's window is looked up again after waiting (a game that swaps its window
+  while starting left the capture with no window).
+
 ## 1.25.3 (2026-11-19)
 - MERGER: single files can be ticked again. 1.25.1 moved them into a list that could only be
   read, which took the merger away from a workspace of single files; they keep their own
