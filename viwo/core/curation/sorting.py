@@ -52,13 +52,17 @@ _QUEUES: dict[Path, tuple[tuple, list[Path]]] = {}  # workspace -> (its folders 
 
 
 def _stamps(folders: list[str]) -> tuple:
-    """When each folder last gained, lost or renamed an entry (-1: gone)."""
+    """What each folder holds now: its mtime and the names in it (-1, (): gone). The names are
+    kept too because Windows does not always move a folder's mtime when one entry is dropped or
+    renamed within the same clock tick, which would leave the queue stale."""
     out = []
     for folder in folders:
         try:
-            out.append((folder, os.stat(folder).st_mtime_ns))
+            with os.scandir(folder) as entries:
+                names = tuple(sorted(e.name for e in entries))
+            out.append((folder, os.stat(folder).st_mtime_ns, names))
         except OSError:
-            out.append((folder, -1))
+            out.append((folder, -1, ()))
     return tuple(out)
 
 
@@ -81,7 +85,7 @@ def asset_files(workspace: Path) -> list[Path]:
     for as long as none of the workspace's folders has changed (a file appearing, going or
     renamed changes its folder). Each caller gets a list of its own."""
     held = _QUEUES.get(workspace)
-    if held and held[0] == _stamps([folder for folder, _ in held[0]]):
+    if held and held[0] == _stamps([stamp[0] for stamp in held[0]]):
         return list(held[1])
     folders, files = _walk(workspace)
     queue = sorted(files, key=lambda p: (RANK.get(media_type(p.suffix.lower()), 4), p))

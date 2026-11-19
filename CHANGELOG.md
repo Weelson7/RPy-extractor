@@ -1,3 +1,7 @@
+﻿## 1.27.4 (2026-11-19)
+- SORT: the held queue also keys on each folder's entry names, not only its mtime. On Windows a
+  file dropped or renamed within the same clock tick does not always move the folder's mtime, so
+  the queue could stay stale (a gone file still listed, a new one missing) until the next change.
 # Changelog
 
 Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature, `c` every
@@ -490,7 +494,7 @@ or a maintainer. Newest first.
 ## 1.20.43 (2026-11-10)
 - UI review, first fixes: error toasts stay until dismissed; the closed log dock shows the
   last line; the top bar fits narrow windows (labels dropped up to 1500 px); buttons say what
-  they are doing (CONVERTING…, SCANNING…); the workspace dialog answers an empty or unchanged
+  they are doing (CONVERTINGâ€¦, SCANNINGâ€¦); the workspace dialog answers an empty or unchanged
   folder in words; job durations read as times.
 
 ## 1.20.42 (2026-11-10)
@@ -1179,17 +1183,17 @@ Audit of the 1.7-1.15 work (an independent review, every finding verified and fi
   video in 90 s. Open: MonoBehaviour fields on IL2CPP builds.
 
 ## 1.12.0 (2026-11-04)
-- UI numbering is computed, never written (owner): `S0`… STATIC, `D0`… DYNAMIC, `P0`…
+- UI numbering is computed, never written (owner): `S0`â€¦ STATIC, `D0`â€¦ DYNAMIC, `P0`â€¦
   PATCHING (each arm's home is 0), `00`, `01`, `02` for SYSTEM, JOBS, SETTINGS, from the arm and
   the place in it, so plugin views renumber everything by themselves. Panels are lettered A, B,
-  C… in reading order over the visible ones. Home steps and NEXT buttons show the code of the
+  Câ€¦ in reading order over the visible ones. Home steps and NEXT buttons show the code of the
   tab they open; every message names a tab by its title only.
 - UX pass from frames captured at the owner's window and zoom, and on a real extraction (DDLC):
   - the top bar no longer drops chips: OS and PLUGINS moved to SYSTEM, the game and workspace
     paths shorten first; FORMATS opens SYSTEM at its formats list (`#system@formats`, kept in
     place while the tables load);
   - toasts sit at the top right, no longer over the action bar's button;
-  - ANALYSIS and CAPTURE named "–" as the active workspace although one was open;
+  - ANALYSIS and CAPTURE named "â€“" as the active workspace although one was open;
   - an off feature (ANALYSIS, RUNTIME CAPTURE) says so with a TURN ON button that writes it to
     startup.ini at once; a notice's text no longer runs into its title;
   - a two-column view with nothing on the right yet uses the whole width; field labels have
