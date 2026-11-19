@@ -168,6 +168,7 @@ slot's identifier; doc 2.5):
 | `unarchive.utoc` | unreal | `retoc-legacy` | `retoc-unpack` | IoStore `.utoc`/`.ucas` |
 | `unarchive.wad` | doom | `wad-builtin` | - | |
 | `unarchive.rgssad` | rpgmaker | `rgssad-builtin` | - | `.rgssad`, `.rgss2a`, `.rgss3a` |
+| `unarchive.wolf` | wolfrpg | `wolf-builtin` | - | `DX` head; `.wolf` (DXArchive v6); a key verified against the header |
 | `unarchive.xp3` | kirikiri | `xp3-builtin` | - | |
 | `unarchive.love` | love2d | `love-zip` | - | `.love` with a zip head; an `.exe` whose tail is a zip end record, `love.dll` beside it |
 | `unarchive.clib` | ags | `clib-builtin` | - | `CLIB\x1a` head; an executable with the CLIB tail signature |
@@ -204,10 +205,10 @@ named), `decode.loc` (`loc-builtin`, Total War localisation to JSON), `decode.lo
 (`locres-builtin`, unreal, in process: Unreal localization tables, versions 0 (legacy), 1
 (compact), 2 (CRC32 keys) and 3 (CityHash64 keys), to `{namespace: {key: text}}` JSON; another
 version is refused by name), `decode.xnb` (`xnb-builtin`, xna, in process: XNB format version 5,
-uncompressed or LZ4 (MonoGame's raw block, through the `lz4` package); a Texture2D in Color,
+uncompressed or LZ4 (MonoGame's raw block, through the `lz4` package); LZX (XNA's XMemCompress, the first-party `lzx.py`); a Texture2D in Color,
 Bgr565, Bgra5551, Bgra4444, Alpha8 or DXT1/3/5 (ViWo's block decoders) to PNG, its largest
 level, as stored (XNA premultiplies alpha by default); a SoundEffect to WAV with its own format
-chunk (PCM, float, ADPCM as stored); LZX files, XNA 3.x files, other content types and other
+chunk (PCM, float, ADPCM as stored); XNA 3.x files, other content types and other
 surface formats are counted failures, by name), `export.unreal` (`uas-export`:
 UnrealAssetScout as its own process, every mode over every Paks folder with the engine version
 read from the game's binaries, the AES key per D18 and the `.usmap` the RUNTIME agent wrote into
@@ -322,7 +323,10 @@ read. Both calls say how many models they wrote, how many hold no mesh, how many
 (the first reason) and how many materials stayed untextured). Desktop-app frameworks (doc 13.8):
 `decode.qm` (`qm-builtin`, qt, in process: Qt compiled translations to JSON, one way),
 `decode.pyc` (`pyc-builtin`, pyfrozen, in process: a `.pyc`'s bytecode disassembled when its
-magic matches the running interpreter, else written out with the version named).
+magic matches the running interpreter, else written out with the version named). Declarative
+(doc 13.2a): `decode.kaitai_<id>` (`kaitai-<id>`, kaitai, in process: one slot per bundled
+`.ksy`, a format parsed to a JSON tree by ViWo's own interpreter; one way; runs only when the
+plugin is selected).
 
 **Media:** `media.probe` (`ffprobe-probe`, spare `pillow-probe`), `media.encode` (`ffmpeg`).
 
@@ -331,7 +335,8 @@ game's executables, candidates the unreal plugin verifies on an encrypted pak in
 
 **Pack (doc 18):** `pack.zip` (`zip-packer`), `pack.rpa` (`rpa-writer`), `pack.pck`
 (`godotpcktool-pack`), `pack.upak` (`repak-patch`, `_P.pak`), `pack.archive` (`wolvenkit-pack`, override archive in `archive/pc/mod`), `pack.unity` (`unitypy-pack`),
-`pack.rpgmaker` (`rpgmv-pack`), `pack.tpac` (`tpac-writer`, taleworlds, in process: a TPAC
+`pack.rpgmaker` (`rpgmv-pack`), `pack.wolf` (`wolf-writer`, wolfrpg, in process: a DXArchive
+version 6 rebuilt with the edits, stored raw), `pack.tpac` (`tpac-writer`, taleworlds, in process: a TPAC
 rewritten member by member, doc 18.4); desktop-app frameworks (doc 13.8): `pack.rcc`
 (`rcc-writer`, qt), `pack.pak` (`pak-writer`, chromium), `pack.pyi` (`pyi-writer`, pyfrozen),
 `pack.resources` (`resources-writer`, dotnet, same-size in place), `pack.jar` (`jar-packer`,

@@ -20,8 +20,29 @@ maintained tool already has, and writes its own reader where none is safe or ava
 | plugin discovery through entry points | unblob | `viwo.plugins` entry points (doc 2.8) |
 | plan, accept, apply, undo over a library | Tdarr | the sanitizer (doc 5) |
 | community scripts per format | QuickBMS | `unarchive.bms`, scripts from the per-game indexes |
+| declarative formats | Kaitai Struct `.ksy` | `kaitai` plugin: `.ksy` parsed to a JSON tree (13.2a) |
 
-Open: declarative formats (Kaitai `.ksy`) as a second plugin form.
+### 13.2a Declarative plugins (Kaitai `.ksy`): a second plugin form
+
+A format may be described rather than coded. ViWo reads a Kaitai Struct `.ksy` definition
+(bundled in a plugin under `defs/`) with its own first-party interpreter and surfaces each as a
+`decode.kaitai_<id>` slot that parses a matching file into a structured JSON tree
+(`viwo/plugins/kaitai/ksy.py`). The GPL `kaitai-struct-compiler` is never used, and the YAML is
+read by a tiny stdlib subset reader, never PyYAML.
+
+- **Subset interpreted:** `meta` (`id`, `endian` le/be, `file-extension`); `seq` fields with an
+  `id` and one of `type` (`u1`-`u8`/`s1`-`s8`, an optional `le`/`be` suffix, or a user type in
+  `types`), `size` (an int or an expression over the sibling fields already read), or `contents`
+  (magic bytes to check); `repeat: expr` with `repeat-expr`, and `repeat: eos`; `enum` (an
+  integer mapped through `enums`); `types` (named sub-structures). Anything outside the subset
+  raises, so a definition ViWo cannot interpret fails by name rather than parsing wrongly.
+- **Read only:** a parse tree has no general way back, so every Kaitai decoder is one way
+  (`Decoder.one_way`).
+- **Not an engine:** the `kaitai` plugin detects nothing (confidence 0); its decoders run only
+  when it is selected for a run (`--plugin kaitai`), so no ordinary extraction is surprised by
+  them. The bundled proof is `defs/wav.ksy` (WAV/RIFF), which exercises the whole subset.
+- **Form:** an ordinary plugin (doc 2) whose slots and backends are built from the `.ksy` files
+  it ships; a drop-in adds its own `defs/` the same way.
 
 ## 13.3 Per-engine facts that shape the plugins
 
@@ -80,12 +101,14 @@ Open: declarative formats (Kaitai `.ksy`) as a second plugin form.
 
 ## 13.7 Engines not covered (open)
 
-GameMaker (UndertaleModTool CLI, GPL-3.0), TyranoScript beyond the wrapper and zip paths, Wolf
-RPG; Unreal asset export (a CUE4Parse wrapper). Covered by first-party readers (doc 2.7):
-Unreal localization (`decode.locres`), LÖVE (`love2d`), XNA/FNA/MonoGame (`xna`), AGS (`ags`),
-Defold (`defold`). Within them still open: LZX-compressed XNB files (XNA's
-XMemCompress) and XNB content other than Texture2D and SoundEffect, Defold's encrypted Lua
-resources, new keys in a version 3 `.locres` table (their CityHash64 is not computed).
+GameMaker (UndertaleModTool CLI, GPL-3.0), TyranoScript beyond the wrapper and zip paths;
+Unreal asset export (a CUE4Parse wrapper). Covered by first-party readers (doc 2.7):
+Unreal localization (`decode.locres`), LÖVE (`love2d`), XNA/FNA/MonoGame (`xna`, LZX read
+through the first-party `lzx.py`), AGS (`ags`), Defold (`defold`), Wolf RPG (`wolfrpg`, DXArchive
+version 6). Within them still open: XNB content other than Texture2D and SoundEffect, Wolf RPG's
+DXA-compressed members (ViWo's DXA decoder is unverified against DxLib) and its archive versions
+other than 6, Defold's encrypted Lua resources, new keys in a version 3 `.locres` table (their
+CityHash64 is not computed).
 
 ## 13.8 Desktop-application frameworks (cold patching)
 

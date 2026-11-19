@@ -38,8 +38,9 @@ DXGI = {"BC6H": 95, "BC6HS": 96, "BC7": 98}
 ALIAS = {"ATI1": "BC4", "ATI2": "BC5", "DXT3": "BC2"}
 RGBA = (0, 1, 2, 3)
 CHANNELS = {"BC1": (0, 1, 2), "BC2": RGBA, "BC3": RGBA, "BC4": (0,), "BC5": (0, 1), "BC7": RGBA}
-CHANNELS |= {"BC6H": (0, 1, 2), "BC6HS": (0, 1, 2)}
+CHANNELS |= {"BC6H": (0, 1, 2), "BC6HS": (0, 1, 2), "BC4S": (0,), "BC5S": (0, 1)}
 STEP = {"BC1": 5, "BC2": 5, "BC3": 5, "BC7": 1, "BC6H": 2, "BC6HS": 4}  # endpoint step, 8 bits
+PLAIN = ("BC1", "BC2", "BC3", "BC4", "BC5", "BC6H", "BC6HS", "BC7")  # neither signed nor premult
 
 
 def _bc6h(block: bytes, signed: bool) -> list[tuple]:
@@ -61,8 +62,23 @@ def _bc6h(block: bytes, signed: bool) -> list[tuple]:
     return out
 
 
+def unsign(data: bytes, base: str) -> bytes:
+    """A signed BC4S/BC5S image as the unsigned block it is, each block's endpoints XORed back."""
+    step, out = (8 if base == "BC4" else 16), bytearray(data)
+    for b in range(0, len(data), step):
+        out[b] ^= 0x80
+        out[b + 1] ^= 0x80
+        if base == "BC5":
+            out[b + 8] ^= 0x80
+            out[b + 9] ^= 0x80
+    return bytes(out)
+
+
 def reference(data: bytes, w: int, h: int, kind: str) -> bytes:
     """RGBA of `w` x `h` decoded from blocks (BC4: grey; BC5: blue 0; BC6H: opaque)."""
+    if kind in ("BC4S", "BC5S"):  # signed: display = stored + 128, the unsigned block offset
+        base = kind[:-1]
+        return decompress(unsign(data, base), w, h, base)
     if not kind.startswith("BC6"):
         return decompress(data, w, h, kind)
     out, at = bytearray(w * h * 4), 0
@@ -136,7 +152,7 @@ class BlockTests(unittest.TestCase):
             px = bytearray(rng.randbytes(w * h * 4))
             if rng.random() < 0.5:  # cut-out alpha, else any
                 px[3::4] = bytes(rng.choice((0, 255)) for _ in range(w * h))
-            for kind in encode_bc.KINDS:
+            for kind in PLAIN:  # the straight formats; premultiplied and signed have their own
                 data = compress(bytes(px), w, h, kind)
                 self.assertEqual(len(data), size(kind, w, h))
                 self.assertEqual(compress(bytes(px), w, h, kind), data)  # deterministic
@@ -218,6 +234,7 @@ class DdsBlockTests(unittest.TestCase):
         cases += [("BC1", 71), ("BC1", 72), ("BC2", 74), ("BC2", 75), ("BC3", 77), ("BC4", 80)]
         cases += [("BC5", 83), ("BC5", 82), ("BC6H", 95), ("BC6HS", 96)]
         cases += [("BC7", 97), ("BC7", 98), ("BC7", 99)]
+        cases += [("BC4S", None), ("BC5S", None), ("BC4S", 81), ("BC5S", 84)]  # SNORM
         for name, dxgi in cases * 2:
             kind = ALIAS.get(name, name)
             mips = rng.choice([1, 3, 6])
@@ -251,17 +268,34 @@ class DdsBlockTests(unittest.TestCase):
     def test_what_has_no_encoder_says_why(self) -> None:
         png = png_of(Image.new("RGBA", (4, 4)))
         for original, why in (
-            (dds("DXT2", 4, 4), "DXT2 \\(premultiplied BC2\\) is block-compressed in a form"),
-            (dds("DXT4", 4, 4), "premultiplied"),
-            (dds("BC5S", 4, 4), "signed BC5"),
             (dds("BC6H", 4, 4, dxgi=94), "typeless BC6H"),
-            (dds("BC4", 4, 4, dxgi=81), "signed BC4"),
             (dds("BC4", 4, 4, dxgi=2), "DXGI format 2 is not a pixel format"),
             (dds("RXGB", 4, 4), "not a pixel format ViWo writes back"),
             (dds("BC1", 4, 4)[:112] + struct.pack("<I", 0x200) + dds("BC1", 4, 4)[116:], "cube"),
         ):
             with self.assertRaisesRegex(ValueError, why):
                 write_dds(png, original)
+
+    def test_premultiplied_colour_is_multiplied_by_alpha(self) -> None:
+        rng = random.Random(78)
+        for _ in range(40):
+            px = bytes(rng.randbytes(64))
+            a = px[3::4]
+            premul = bytearray(px)
+            for c in range(3):
+                premul[c::4] = bytes((px[4 * i + c] * a[i] + 127) // 255 for i in range(16))
+            for kind, base in (("DXT2", "BC2"), ("DXT4", "BC3")):
+                got = reference(compress(px, 4, 4, kind), 4, 4, base)
+                check(self, bytes(premul), got, base, (4, 4), within_range)
+
+    def test_signed_bc4_bc5_are_the_unsigned_block_offset_by_128(self) -> None:
+        rng = random.Random(79)
+        for _ in range(40):
+            px = bytes(rng.randbytes(64))
+            for kind, base, n in (("BC4S", "BC4", 1), ("BC5S", "BC5", 2)):
+                signed, unsigned = compress(px, 4, 4, kind), compress(px, 4, 4, base)
+                self.assertEqual(unsign(signed, base), unsigned)  # signed = unsigned, offset
+                check(self, px, reference(signed, 4, 4, kind), base, (4, 4), within_range)
 
 
 class DdsBackendTests(unittest.TestCase):
@@ -288,6 +322,14 @@ class DdsBackendTests(unittest.TestCase):
                 back = PillowImage().encode(root / "e.png", root / "t.dds", root / "o.dds", None)
                 self.assertEqual(back.notes, (HDR,) if kind != "BC7" else ())
                 self.assertEqual(layout((root / "o.dds").read_bytes())[3], kind)
+            edit8 = Image.frombytes("RGBA", (8, 4), rng.randbytes(128))
+            (root / "p.png").write_bytes(png_of(edit8))
+            for fourcc in ("DXT2", "DXT4"):
+                (root / "t.dds").write_bytes(dds(fourcc, 8, 4))
+                back = PillowImage().encode(root / "p.png", root / "t.dds", root / "o.dds", None)
+                self.assertTrue(back.ok, back.error)
+                self.assertIn("premultiplied", " ".join(back.notes).lower())
+                self.assertEqual(layout((root / "o.dds").read_bytes())[3], fourcc)
             (root / "bad.dds").write_bytes(b"DDS " + bytes(10))
             self.assertIn("bad.dds", PillowImage().decode(root / "bad.dds", root, None).error)
             (root / "t.dds").write_bytes(dds("BC6H", 4, 4, dxgi=94))

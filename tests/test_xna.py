@@ -172,6 +172,31 @@ class XnbTests(unittest.TestCase):
                 self.assertEqual(len(got[3]), max(size).bit_length() if mips else 1)
                 self.assertEqual(parsed.body[got[4] :], tail)  # what follows is kept
 
+    def test_an_lzx_texture_decodes_and_comes_back_uncompressed(self) -> None:
+        from tests.test_lzx import encode as lzx_encode
+        from tests.test_lzx import wrap as lzx_wrap
+
+        rng = random.Random(81)
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            level = rng.randbytes(64)
+            plain = xnb([TEX], 1, tex_content(0, 4, 4, [level]), False)[10:]  # the body, plain
+            frames = lzx_wrap(lzx_encode([("lit", b) for b in plain]))
+            blob = b"XNBw\x05\x80" + struct.pack("<II", 14 + len(frames), len(plain)) + frames
+            path = root / "t.xnb"
+            path.write_bytes(blob)
+            self.assertEqual(run(path, root / "o").kind, OutcomeKind.OK)
+            self.assertEqual(Image.open(root / "o" / "t.png").convert("RGBA").tobytes(), level)
+            edit = rng.randbytes(64)
+            (root / "e.png").write_bytes(png_of(edit, (4, 4)))
+            out = XnbDecoder().encode(root / "e.png", path, root / "back.xnb", None)
+            self.assertEqual(out.kind, OutcomeKind.OK)
+            self.assertIn("LZX", out.notes[0])
+            back = (root / "back.xnb").read_bytes()
+            self.assertEqual(back[5] & 0x80, 0)  # the LZX flag cleared: written uncompressed
+            self.assertEqual(run(root / "back.xnb", root / "b").kind, OutcomeKind.OK)
+            self.assertEqual(Image.open(root / "b" / "back.png").convert("RGBA").tobytes(), edit)
+
     def test_sounds_become_wav_and_come_back_with_their_loop(self) -> None:
         rng = random.Random(72)
         with tempfile.TemporaryDirectory() as tmp:
@@ -210,7 +235,6 @@ class XnbTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
             cases = {
-                "lzx": (b"XNBw\x05\x81" + struct.pack("<I", 14) + bytes(4), "LZX"),
                 "old": (b"XNBw\x04\x00" + struct.pack("<I", 12) + bytes(2), "version 4"),
                 "font": (xnb([FONT], 1, b"\0" * 8, False), "SpriteFontReader"),
                 "single": (xnb([TEX], 1, tex_content(13, 1, 1, [bytes(4)]), False), "Single"),

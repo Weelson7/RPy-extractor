@@ -21,6 +21,7 @@ import struct
 from operator import mul
 
 KINDS = {"BC1": 8, "BC2": 16, "BC3": 16, "BC4": 8, "BC5": 16}  # bytes per 4x4 block
+KINDS |= {"BC4S": 8, "BC5S": 16, "DXT2": 16, "DXT4": 16}  # signed BC4/BC5, premultiplied BC2/BC3
 BPTC = {"BC6H": 16, "BC6HS": 16, "BC7": 16}  # encode_bptc.py: BC6H unsigned and signed, BC7
 KINDS |= BPTC
 
@@ -130,16 +131,26 @@ def _codes(rgb: tuple, p0: tuple, p1: tuple, four: bool) -> list[int]:
     return [1 if 4 * t < dd else 2 if 4 * t < 3 * dd else 0 for t in ts]  # p1, the half, p0
 
 
-def _single_channel(v: bytes) -> bytes:
-    """One BC4 block (8 levels from the maximum to the minimum)."""
+def _single_channel(v: bytes, signed: bool = False) -> bytes:
+    """One BC4 block (8 levels from the maximum to the minimum). `signed` (SNORM BC4S/BC5S): the
+    same block with each endpoint byte offset by 128, which a decoder reads back as s + 128 (the
+    interpolation cancels the offset), so a signed block is the unsigned one with its two endpoint
+    bytes XORed by 0x80."""
     hi, lo = max(v), min(v)
     if hi == lo:
-        return bytes((hi, lo)) + bytes(6)
-    span, half, bits = hi - lo, (hi - lo) // 2, 0
-    for i in range(16):
-        step = ((hi - v[i]) * 7 + half) // span  # 0 = hi ... 7 = lo
-        bits |= (0 if step == 0 else 1 if step == 7 else step + 1) << (3 * i)
-    return bytes((hi, lo)) + bits.to_bytes(6, "little")
+        block = bytes((hi, lo)) + bytes(6)
+    else:
+        span, half, bits = hi - lo, (hi - lo) // 2, 0
+        for i in range(16):
+            step = ((hi - v[i]) * 7 + half) // span  # 0 = hi ... 7 = lo
+            bits |= (0 if step == 0 else 1 if step == 7 else step + 1) << (3 * i)
+        block = bytes((hi, lo)) + bits.to_bytes(6, "little")
+    return bytes((block[0] ^ 0x80, block[1] ^ 0x80)) + block[2:] if signed else block
+
+
+def _premul(c: bytes, a: bytes) -> bytes:
+    """A colour channel premultiplied by alpha (DXT2/DXT4): round(c * a / 255) per pixel."""
+    return bytes((v * al + 127) // 255 for v, al in zip(c, a))
 
 
 def _explicit(a: bytes) -> bytes:
@@ -155,12 +166,16 @@ def _block(kind: str, px: bytes) -> bytes:
     r, g, b, a = px[0::4], px[1::4], px[2::4], px[3::4]
     if kind == "BC1":
         return _color(r, g, b, a if min(a) < 128 else None)
+    if kind in ("DXT2", "DXT4"):  # premultiplied: colour times alpha, the alpha half unchanged
+        r, g, b = _premul(r, a), _premul(g, a), _premul(b, a)
+        kind = "BC2" if kind == "DXT2" else "BC3"
     if kind in ("BC2", "BC3"):
         alpha = _explicit(a) if kind == "BC2" else _single_channel(a)
         return alpha + _color(r, g, b, None)
-    if kind == "BC4":
-        return _single_channel(r)
-    return _single_channel(r) + _single_channel(g)
+    signed = kind in ("BC4S", "BC5S")
+    if kind in ("BC4", "BC4S"):
+        return _single_channel(r, signed)
+    return _single_channel(r, signed) + _single_channel(g, signed)
 
 
 def size(kind: str, width: int, height: int) -> int:

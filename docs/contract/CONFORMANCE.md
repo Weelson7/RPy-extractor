@@ -17,10 +17,10 @@ three tiers — VirtualBox, QEMU out-of-guest over its gdbstub+QMP, DRAKVUF/LibV
 bridge and the `viwo isolate` / `/api/runtime/isolation` session are built and unit-tested on
 fakes and in-process loopback stubs, but no VM, QEMU or VMI host has run here); the completeness
 contract per engine (16.0c); rung D4 (`hook.overlay`); the way back
-of premultiplied, signed and typeless block formats (DXT2/DXT4, signed BC4/BC5, typeless BC6H)
-and of ETC, ASTC, PVRTC and Basis Godot textures (no decoder either); Unreal asset export and
-the engines 13.7 still lists (GameMaker, TyranoScript, Wolf RPG), LZX-compressed XNB, Defold's
-encrypted resources; declarative (Kaitai) plugins; the indexes repository split. Among the
+of typeless BC6H (no decoder reads it) and of ETC, ASTC, PVRTC and Basis Godot textures (no
+decoder either); Unreal asset export and the engines 13.7 still lists (GameMaker, TyranoScript);
+XNB content other than Texture2D and SoundEffect, Wolf RPG's DXA-compressed members and its
+versions other than 6, Defold's encrypted resources; the indexes repository split. Among the
 desktop-app frameworks (13.8): the Qt embedded-resource carve recovers textual resources by
 content, not the resource tree's names from a stripped binary; a .NET resource whose edited size
 changed is refused (the metadata offsets and PE layout are not rewritten); PyInstaller PYZ-interior
@@ -56,6 +56,8 @@ run: `tests` means the suite covers the engine there. A row closes when every ce
 | XNA/FNA/MonoGame (xna) | tests (real data) | tests (real data) | tests (real data) | open | tests |
 | AGS | tests (real data) | tests (real data) | tests (real data) | open | tests |
 | Defold | tests (real data) | tests (real data) | tests (real data) | open | tests |
+| Wolf RPG (wolfrpg) | tests (DXArchive v6, no real game) | tests | tests | open | tests |
+| Kaitai (declarative form) | tests (`.ksy` to a JSON tree; a form, not an engine) | - (read only) | - | - | tests |
 | QuickBMS | tests | open | open | open | tests |
 | Overwatch (DataTool) | tests | - (read only) | - | - | Windows only |
 | Qt desktop apps (qt) | real (FDM: 258 QML + 365 SVG carved from `fdm.exe`) | tests (synthetic `.rcc`) | tests | - (not a game) | tests |
@@ -266,6 +268,8 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 8.3a first-run answers off screen | implemented | `core/capture/handoffs.py`, `core/analysis/ghidra.py`, `core/capture/renderdoc.py` |
 | 8.4 slot table | implemented | `backends/__init__.py`, `core/*` `SLOTS`, plugin `slot_definitions` (`viwo slots`) |
 | 8.4 desktop-app slots (doc 13.8): `unarchive.rcc`/`pack.rcc`, `decode.qm` (qt); `unarchive.pak`/`pack.pak` (chromium); `unarchive.pyi`/`pack.pyi`, `decode.pyc` (pyfrozen); `unarchive.dotnet`/`pack.resources` (dotnet); `unarchive.jar`/`pack.jar` (java) | implemented | `plugins/qt`, `plugins/chromium`, `plugins/pyfrozen`, `plugins/dotnet`, `plugins/java` |
+| 8.4 `unarchive.wolf` / `pack.wolf` (wolfrpg): Wolf RPG / DXArchive version 6 extracted and rebuilt; DXA-compressed members and a wrong key refused by name | implemented (tests only; no real Wolf RPG game: the format is from its public description) | `plugins/wolfrpg/wolf.py`, `plugins/wolfrpg/wolf_pack.py`; `tests/test_wolfrpg.py` |
+| 8.4 `decode.kaitai_<id>` (kaitai, doc 13.2a): a `.ksy` parsed to a JSON tree, one slot per bundled definition, one way | implemented (tests only) | `plugins/kaitai/ksy.py`, `plugins/kaitai/__init__.py`; `tests/test_kaitai.py` |
 | 8.5 stage use | implemented | as listed |
 | 8.5 `export.unity` meshes as `.glb` (all channels, sub-meshes, skin and bone tree, main texture; Unity's left-handed space mirrored) through the shared glTF writer | implemented | `plugins/unity/meshes.py`, `contracts/gltf.py` (also `plugins/overwatch/owmdl.py`); `tests/test_unity_glb.py`, `tests/test_owmdl.py`. Blend shapes, more than four weights a vertex and animations stay open (16.0c) |
 | 8.5 `export.unreal` models as `.glb` beside UnrealAssetScout's UEFormat (LOD 0, all channels, sections, skeleton and weights; Y and Z swapped), option `models` | implemented (tests only) | `plugins/unreal/uemodel.py`; `tests/test_uemodel.py`, `tests/test_unreal_assets.py`. Not yet run on a real `.uemodel`: both free UE5 test games need mappings (`.usmap`) for every package, which only the RUNTIME agent dumps from the running game. Morph targets, sockets, collision and textures stay open |
@@ -356,11 +360,11 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | Item | State | Where / missing |
 |------|-------|-----------------|
 | 13.2 identify/extract, carving, entry points, plan/apply | implemented | docs 8, 2, 5 |
-| 13.2 declarative formats (Kaitai) | open | - |
+| 13.2a declarative formats (Kaitai `.ksy`): a second plugin form, a first-party interpreter (no GPL compiler) surfaced as decode slots, one way | implemented (tests only) | `plugins/kaitai/ksy.py`, `plugins/kaitai/__init__.py`, `plugins/kaitai/defs/wav.ksy`; `tests/test_kaitai.py` |
 | 13.3 per-engine consequences | implemented | `plugins/*` |
 | 13.5 GPL tools as processes | implemented | `tests/test_l0_static.py` |
-| 13.7 GameMaker, TyranoScript, Wolf RPG, Unreal export (CUE4Parse) | open | - |
-| 13.7 covered: Unreal `.locres`, LÖVE, XNA/FNA, AGS, Defold (first-party readers, their ways back) | implemented (tests; real data, no game install: see the engine matrix) | `plugins/unreal/locres.py`, `plugins/love2d`, `plugins/xna`, `plugins/ags`, `plugins/defold`; `tests/test_locres.py`, `tests/test_love2d.py`, `tests/test_xna.py`, `tests/test_ags.py`, `tests/test_defold.py` |
+| 13.7 GameMaker, TyranoScript, Unreal export (CUE4Parse) | open | - |
+| 13.7 covered: Unreal `.locres`, LÖVE, XNA/FNA (LZX too), AGS, Defold, Wolf RPG (first-party readers, their ways back) | implemented (tests; real data for some, no game install: see the engine matrix; Wolf RPG not verified against a real game) | `plugins/unreal/locres.py`, `plugins/love2d`, `plugins/xna` (`lzx.py`), `plugins/ags`, `plugins/defold`, `plugins/wolfrpg`; `tests/test_locres.py`, `tests/test_love2d.py`, `tests/test_xna.py`, `tests/test_lzx.py`, `tests/test_ags.py`, `tests/test_defold.py`, `tests/test_wolfrpg.py` |
 | 13.8 desktop-app frameworks (cold patching): Qt (rcc/QML/.qm), Chromium `.pak`, frozen Python (PyInstaller/py2exe/cx_Freeze), .NET managed resources, Java jar | implemented (tests; Qt proven on Free Download Manager, pyfrozen on a real PyInstaller exe, dotnet on real framework DLLs: see the engine matrix) | `plugins/qt`, `plugins/chromium`, `plugins/pyfrozen`, `plugins/dotnet`, `plugins/java`; `tests/test_qt.py`, `tests/test_chromium.py`, `tests/test_pyfrozen.py`, `tests/test_dotnet.py`, `tests/test_java.py` |
 
 ## 14 Scope
@@ -415,10 +419,10 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 18.3 way back of `decode.slp` (PNG sheet to SLP, simplest valid encoding) | implemented; read back real (1.22.5, Age of Empires II HD: a marked icon sheet re-encoded into `interfac.drs` and its loose copy, decoded again: the mark is in every frame, in the palette's nearest colours; what was painted outside a frame is not kept; not started in the game) | `plugins/genie/slp_write.py`; `tests/test_encoders.py`, `tests/test_roundtrip_encode.py` (end to end through the DRS) |
 | 18.3 way back of `decode.loc` (JSON to `.loc`) | implemented (tests only) | `plugins/warscape/loc.py`; `tests/test_encoders.py` |
 | 18.3 way back of `decode.locres` (JSON to the table in its version, hashes and storage kept, byte for byte unchanged; a new key in version 3 refused) | implemented (tests only) | `plugins/unreal/locres.py`; `tests/test_locres.py` |
-| 18.3 way back of `decode.xnb` (PNG to Texture2D, WAV to SoundEffect, compressed as it was) | implemented (tests; real MonoGame test files written back unchanged byte for byte) | `plugins/xna/content.py`, `plugins/xna/xnb.py`; `tests/test_xna.py` |
+| 18.3 way back of `decode.xnb` (PNG to Texture2D, WAV to SoundEffect, LZ4 again as it was, LZX rewritten uncompressed; LZX read through the first-party `lzx.py`) | implemented (tests; real MonoGame test files written back unchanged byte for byte; LZX decode proven against streams a first-party encoder writes bit by bit, not a real LZX XNB) | `plugins/xna/content.py`, `plugins/xna/xnb.py`, `plugins/xna/lzx.py`; `tests/test_xna.py`, `tests/test_lzx.py` |
 | 18.3 way back of `decode.rpyc` (the `.rpy`, the stale `.rpyc` removed) | implemented; real (1.22.4, Doki Doki Literature Club: the edited `.rpy` compiled by the game on start and shown, `sqc/proof/renpy-ddlc-script.jpg`) | `plugins/renpy/decompile.py`, `plugins/renpy/pack.py`; `tests/test_roundtrip_encode.py` |
 | 18.3 way back of `decode.cr2w` (WolvenKit `import --keep`, `convert deserialize`) | implemented (fake tool only: the real WolvenKit not run on it yet) | `plugins/redengine/encode.py`; `tests/test_wolvenkit_import.py` |
-| 18.3 way back of `decode.image` (PNG to uncompressed DDS, or BC1 to BC5 through ViWo's own range-fit encoder, BC7 in mode 6 and BC6H in mode 11 through its own BPTC encoder; premultiplied DXT2/DXT4, signed BC4/BC5 and typeless BC6H skipped with the reason); `pillow-image` the slot's spare (BC6H and BC7, which the pinned ffmpeg does not read) | implemented (tests: every format decoded again by ViWo's decoders and by Pillow; BC1 to BC4 blocks also checked byte for byte against the pinned ffmpeg's decoder by hand, not in the suite; BC7 written into a real Bannerlord texture and decoded again, by hand) | `core/encode_dds.py`, `core/decode_dds.py`, `backends/blocks/`; `tests/test_encoders.py`, `tests/test_encode_bc.py`, `tests/test_decode_bc.py` |
+| 18.3 way back of `decode.image` (PNG to uncompressed DDS, or BC1 to BC5, signed BC4/BC5 (SNORM) and premultiplied DXT2/DXT4 through ViWo's own range-fit encoder, BC7 in mode 6 and BC6H in mode 11 through its own BPTC encoder; typeless BC6H and ETC/ASTC/PVRTC/Basis skipped by name, no decoder); `pillow-image` the slot's spare (BC6H and BC7, which the pinned ffmpeg does not read) | implemented (tests: every format decoded again by ViWo's decoders and by Pillow; DXT2/DXT4 premultiply verified, signed BC4/BC5 shown to be the unsigned block offset by 128 (the ffmpeg/Pillow signed convention is assumed, not verified on a real signed file); BC7 written into a real Bannerlord texture and decoded again, by hand) | `core/encode_dds.py`, `core/decode_dds.py`, `backends/blocks/`; `tests/test_encoders.py`, `tests/test_encode_bc.py`, `tests/test_decode_bc.py` |
 | 18.3 way back of `decode.ctex` (PNG to the Godot texture in its form: PNG or lossless WebP mipmaps, uncompressed 8-bit, or S3TC/RGTC/BPTC blocks decoded by ViWo's own block decoders; ETC, ETC2, ASTC, PVRTC and Basis skipped with the reason) | implemented (tests only: no Godot game with PCK data here) | `plugins/godot/ctex.py`, `plugins/godot/ctex_write.py`, `plugins/godot/vram.py`; `tests/test_godot_ctex.py` |
 | 18.4 `pack.tpac` (TaleWorlds TPAC rewritten member by member, every other byte kept; a texture's tail segment follows its edit; LZ4 HC 12 and xxHash64 as the game's packages) | implemented (tests, and one Bannerlord package rewritten unchanged, byte for byte, and with one BC7 texture edited, read back by the plugin's reader, by hand; the game itself was not run on it) | `plugins/taleworlds/pack.py`, `plugins/taleworlds/xxh64.py`; `tests/test_tpac_pack.py` |
 | 18.3 way back of `decode.redscripts` (the edited source as `r6/scripts/<path>.reds` beside `final.redscripts`; the plan says the copy needs the redscript compiler) | implemented (tests only: fake redscript, the compiler not run on it) | `plugins/redengine/games/cyberpunk2077/scripts.py`, `Decoder.adds`/`back_note`, `core/roundtrip_encode.py`; `tests/test_redscripts.py` |

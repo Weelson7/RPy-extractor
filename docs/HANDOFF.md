@@ -146,21 +146,24 @@ left, by cause:
 - Sanitizer phases 2-3 (doc 5.1) are tests only, on a stand-in ffmpeg: the transcode presets
   (libopus, libx264 of the pinned ffmpeg 6.1.1) and a real decoder through `core.convert` on a
   real workspace are to be run once; `[hooks]` (doc 9.5) ran on Windows only (`cmd /d /s /c`).
-- CONFORMANCE rows: the way back of premultiplied DXT2/DXT4, signed BC4/BC5 and
-  typeless BC6H DDS and of ETC, ASTC, PVRTC or Basis Godot textures (no decoder for those
-  either) (doc 18.3; the BC1-BC7, `.ctex` and redscripts ways back are tests only: a real
-  game pass for each is open, redscripts with the compiler installed in the copy; `pack.tpac`
-  rewrote one real Bannerlord package by hand, unchanged and with a BC7 texture edited, but
-  no repack run has put one in a patched copy the game then started: it may check the item
-  checksum ViWo keeps but cannot compute), Kaitai formats, the
-  engines doc 13.7 still lists (GameMaker, TyranoScript, Wolf RPG), a structured runbook
-  editor, more workbooks.
-- LÖVE, XNA/FNA, AGS, Defold and Unreal `.locres` (first-party readers and their ways back):
-  checked on real data from the engines' own releases (CLIB 30 templates, a Defold index-6
-  example bundle, the official `love.exe` fused with a test zip, MonoGame's test XNB files),
-  never on a game install, and no game has run with a change. Unverified on real data: LZ4
-  XNB, CLIB 6 to 21, Defold index 4 and 5, any `.locres`. Open in them: LZX XNB, XNB content
-  other than Texture2D/SoundEffect, Defold's encrypted Lua, new keys in version 3 `.locres`.
+- CONFORMANCE rows: the way back of typeless BC6H DDS (no decoder) and of ETC, ASTC, PVRTC or
+  Basis Godot textures (no decoder for those either) (doc 18.3; premultiplied DXT2/DXT4 and
+  signed BC4/BC5 now encode, at 1.32; the BC1-BC7, `.ctex` and redscripts ways back are tests
+  only: a real game pass for each is open, redscripts with the compiler installed in the copy;
+  `pack.tpac` rewrote one real Bannerlord package by hand, unchanged and with a BC7 texture
+  edited, but no repack run has put one in a patched copy the game then started: it may check
+  the item checksum ViWo keeps but cannot compute), the engines doc 13.7 still lists (GameMaker,
+  TyranoScript), a structured runbook editor, more workbooks.
+- LÖVE, XNA/FNA, AGS, Defold, Unreal `.locres` and Wolf RPG (first-party readers and their
+  ways back): checked on real data from the engines' own releases (CLIB 30 templates, a Defold
+  index-6 example bundle, the official `love.exe` fused with a test zip, MonoGame's test XNB
+  files), never on a game install, and no game has run with a change. Wolf RPG (DXArchive v6,
+  at 1.32) and XNB LZX (XNA's XMemCompress, first-party `lzx.py`, at 1.32) are proven only on
+  fixtures the tests write byte by byte, never on a real file. Unverified on real data: LZ4
+  XNB, CLIB 6 to 21, Defold index 4 and 5, any `.locres`, any Wolf RPG archive, any LZX XNB.
+  Open in them: XNB content other than Texture2D/SoundEffect, Wolf RPG's DXA-compressed members
+  (ViWo's DXA decoder is unverified) and versions other than 6, Defold's encrypted Lua, new
+  keys in version 3 `.locres`.
 - `hook.overlay`: neither candidate fits the rules (doc 11.7).
 - Coverage: 98.2 % line / 95.0 % branch overall at 1.20.58; 84 of 200 files are under the
   per-file target of 98 / 95 (`coverage run -m unittest discover -s tests -t .`, then

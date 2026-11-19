@@ -4,6 +4,30 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.33.0 (2026-11-19)
+- Four OPEN conformance items closed, each first-party, no tool installed:
+  - **Texture ways back** (`backends/blocks/`, `core/encode_dds.py`): premultiplied **DXT2/DXT4**
+    (encoded like DXT3/DXT5 with the colour multiplied by the alpha, said with the file) and
+    signed **BC4/BC5** (SNORM: the unsigned block with its endpoints offset by 128) now have an
+    encoder. Typeless BC6H (no decoder reads it) and ETC/ASTC/PVRTC/Basis stay refused by name.
+  - **LZX-compressed XNB** (`plugins/xna/lzx.py`): a first-party, pure-Python LZX decompressor
+    for XNA's XMemCompress (`0x80` XNB), documented from the public LZX/cabinet description, the
+    GPL code never used; LZX `.xnb` now decode. An edited LZX file is rewritten uncompressed
+    (ViWo has no LZX compressor; said). An Intel-E8 stream is refused by name.
+  - **Wolf RPG** (`plugins/wolfrpg/`): a new built-in engine plugin reads `Data.wolf` / `*.wolf`
+    (DxLib's DXArchive version 6) and rebuilds it with the edits (`pack.wolf`); a user key is
+    verified against the header before use. DXA-compressed members, a wrong key and versions
+    other than 6 are refused by name. Implemented from the public format description; not
+    verified against a real Wolf RPG game (none at hand).
+  - **Kaitai declarative plugins** (`plugins/kaitai/`, doc 13.2a): a second plugin form. A
+    bundled Kaitai `.ksy` definition is read by a first-party interpreter (a tiny YAML subset
+    reader plus the seq/types/repeat/sized/endian/enum subset, never the GPL compiler) and
+    surfaced as a `decode.kaitai_<id>` slot that parses a format into a JSON tree (one way). The
+    proof is `defs/wav.ksy` (WAV/RIFF). The plugin detects nothing and runs only when selected.
+  - Docs: contract 02, 08, 13.2a, 13.7, 18.3/18.4; CONFORMANCE Summary, engine matrix and rows;
+    `loc_caps.ini` budgets (`wolfrpg`, `kaitai`, raised `xna`); regenerated distros;
+    `tests/test_encode_bc.py`, `test_lzx.py`, `test_xna.py`, `test_wolfrpg.py`, `test_kaitai.py`.
+
 ## 1.32.1 (2026-11-19)
 - The Qt, frozen-Python and .NET readers no longer crash on a malformed file: a short or fuzzed
   header raised `struct.error` out of their extract path instead of a named failure. They now

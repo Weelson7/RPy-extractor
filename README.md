@@ -58,9 +58,11 @@ Ghidra / x64dbg / Cheat Engine") that ViWo opens pre-loaded as a tracked child p
 Engines: Ren'Py, Unity, Godot, Unreal (pak and IoStore, AES keys from you or the game's own
 files, verified; `.locres` localization to JSON and back), Doom, RPG Maker, KiriKiri,
 Electron/NW.js, Source, Bethesda, Age of Empires, Total War, Cyberpunk 2077, Bannerlord, LÖVE
-(`.love` or fused executables), XNA/FNA/MonoGame (`.xnb` textures and sounds), Adventure Game
-Studio (CLIB packfiles), Defold (bundled archives), Overwatch (DataTool), QuickBMS scripts for
-any other format, plus zip, tar, 7z, rar. Desktop applications too (cold patching): Qt (`.rcc`
+(`.love` or fused executables), XNA/FNA/MonoGame (`.xnb` textures and sounds, uncompressed, LZ4
+and LZX), Adventure Game Studio (CLIB packfiles), Defold (bundled archives), Wolf RPG
+(`Data.wolf` / DXArchive), Overwatch (DataTool), QuickBMS scripts for
+any other format, plus zip, tar, 7z, rar. A format can also be described rather than coded: a
+bundled Kaitai `.ksy` definition is read by a first-party interpreter and parsed to a tree. Desktop applications too (cold patching): Qt (`.rcc`
 resources, QML compiled into the exe, `.qm` translations; proven on Free Download Manager),
 Chromium `.pak` (Chrome, Edge, Brave, Steam, VS Code...), frozen Python (PyInstaller, py2exe,
 cx_Freeze), .NET (managed resources, C# via ILSpy) and Java (`.jar`/`.war`/`.ear`). Anything

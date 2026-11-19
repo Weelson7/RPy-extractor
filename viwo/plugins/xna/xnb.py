@@ -2,9 +2,10 @@
 it): `XNB`, the target platform, format version 5, flags (0x01 HiDef, 0x80 LZX, 0x40 LZ4), the
 file's size; when compressed, the size of the data; then the data: the type readers (7-bit
 length-prefixed names and a version each), the shared resource count, and the primary object (a
-7-bit reader index, then its content). Uncompressed and LZ4 (MonoGame's raw LZ4 block) are read
-and written; LZX (XNA's XMemCompress) and the format versions of XNA 3.x and older are refused by
-name."""
+7-bit reader index, then its content). Uncompressed, LZ4 (MonoGame's raw LZ4 block) and LZX
+(XNA's XMemCompress, `lzx.py`, first-party) are read; an edited file is written uncompressed when
+the original was LZX (ViWo has no LZX compressor) and as LZ4 when it was LZ4. The format versions
+of XNA 3.x and older are refused by name."""
 
 import struct
 from dataclasses import dataclass
@@ -28,8 +29,6 @@ def refusal(head: bytes, lz4) -> str:
         return "not an XNB file"
     if head[4] != VERSION:
         return f"XNB format version {head[4]} (XNA 3.1 or older): not read"
-    if head[5] & LZX:
-        return "LZX-compressed XNB (XNA's XMemCompress): ViWo has no LZX decoder"
     if head[5] & LZ4 and lz4 is None:
         return "LZ4-compressed XNB: needs the 'lz4' Python package"
     return ""
@@ -60,9 +59,13 @@ def _readers(body: bytes) -> tuple[list[str], int]:
 
 
 def _body(data: bytes, lz4) -> bytes:
-    if not data[5] & LZ4:
+    if not data[5] & (LZ4 | LZX):
         return data[10:]
     (size,) = struct.unpack_from("<I", data, 10)
+    if data[5] & LZX:
+        from .lzx import decompress
+
+        return decompress(data, size)  # XNA's XMemCompress, first-party
     try:  # bounded by the declared size
         body = lz4.block.decompress(data[14:], uncompressed_size=max(size, 1))
     except lz4.block.LZ4BlockError as exc:
@@ -94,10 +97,13 @@ def read_xnb(data: bytes, lz4) -> Xnb:
 
 
 def write_xnb(xnb: Xnb, content: bytes, end: int, lz4) -> bytes:
-    """The file with the primary object's content (body[start:end]) replaced, compressed as the
-    original was."""
-    body = xnb.body[: xnb.start] + content + xnb.body[end:]
-    if xnb.head[2] & LZ4:
+    """The file with the primary object's content (body[start:end]) replaced; LZ4 again as the
+    original was, LZX rewritten uncompressed (ViWo has no LZX compressor: the flag is cleared)."""
+    body, flags = xnb.body[: xnb.start] + content + xnb.body[end:], xnb.head[2]
+    if flags & LZ4:
         packed = lz4.block.compress(body, mode="high_compression", store_size=False)
         body = struct.pack("<I", len(body)) + packed
-    return MAGIC + xnb.head + struct.pack("<I", 10 + len(body)) + body
+    elif flags & LZX:
+        flags &= ~LZX
+    head = xnb.head[:2] + bytes([flags])
+    return MAGIC + head + struct.pack("<I", 10 + len(body)) + body

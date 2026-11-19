@@ -1,7 +1,8 @@
 """XNA, FNA and MonoGame: the game's compiled content is loose `.xnb` files (xnb.py), copied as
 they are; `decode.xnb` turns a Texture2D into PNG and a SoundEffect into WAV (content.py) and
-writes an edited one back into the XNB, compressed as it was. Other content types, LZX
-compression and XNA 3.x files are refused by name."""
+writes an edited one back into the XNB. Uncompressed, LZ4 and LZX (XNA's XMemCompress) files are
+read; an edited LZX file is rewritten uncompressed (ViWo has no LZX compressor), an LZ4 one as
+LZ4. Other content types and XNA 3.x files are refused by name."""
 
 import struct
 from pathlib import Path
@@ -11,7 +12,7 @@ from viwo.contracts.slots import Decoder, SlotDefinition
 from viwo.contracts.types import DependencySpec, DetectionResult, Outcome, OutcomeKind
 
 from .content import sound_back, sound_wav, texture, texture_back, texture_png
-from .xnb import READERS, read_xnb, refusal, write_xnb
+from .xnb import LZX, READERS, read_xnb, refusal, write_xnb
 
 MANIFEST = PluginManifest(
     "xna",
@@ -96,7 +97,8 @@ class XnbDecoder(Decoder):
             return Outcome(OutcomeKind.UNAVAILABLE, error=f"{edited.name}: {PILLOW.hint}")
         except (OSError, ValueError, IndexError, struct.error) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"{edited.name}: {exc}")
-        return Outcome(OutcomeKind.OK, 1)
+        lzx = "LZX XNB rewritten uncompressed: ViWo has no LZX compressor"
+        return Outcome(OutcomeKind.OK, 1, notes=(lzx,) if xnb.head[2] & LZX else ())
 
 
 class XnaPlugin(EnginePlugin):

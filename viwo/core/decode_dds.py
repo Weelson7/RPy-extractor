@@ -45,14 +45,18 @@ class DdsWayBack(Decoder):
         return ""
 
     def encode(self, edited: Path, original: Path, out: Path, ctx) -> Outcome:
-        from .encode_dds import write_dds
+        from .encode_dds import PREMULT, write_dds
 
         try:
             source = original.read_bytes()
             out.write_bytes(write_dds(edited.read_bytes(), source, self.ati2_green))
         except (ValueError, OSError, struct.error) as exc:
             return Outcome(OutcomeKind.FAILED, error=f"{original.name}: {exc}")
-        return Outcome(OutcomeKind.OK, 1, notes=(HDR,) if bptc(source) == "BC6H" else ())
+        if bptc(source) == "BC6H":
+            notes = (HDR,)
+        else:
+            notes = (PREMULT,) if source[84:88] in (b"DXT2", b"DXT4") else ()
+        return Outcome(OutcomeKind.OK, 1, notes=notes)
 
 
 class PillowImage(DdsWayBack):

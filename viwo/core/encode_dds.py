@@ -3,15 +3,16 @@ kept (a DX10 one too) with the PNG's size, mipmaps rebuilt (box filter) when it 
 
 - Uncompressed: 8-bit channels at 24 or 32 bits per pixel in any byte order its masks give
   (BGRA8, RGBA8, BGRX8, BGR8...), 8-bit luminance, DX10 R8G8B8A8 or B8G8R8A8.
-- Block-compressed: BC1 (DXT1), BC2 (DXT3), BC3 (DXT5), BC4 (ATI1, BC4U) and BC5 (ATI2,
-  BC5U), as FourCC or DX10 (UNORM, sRGB, typeless), and BC6H (unsigned UF16, signed SF16) and
-  BC7 (UNORM, sRGB, typeless) as DX10, through ViWo's own encoders (encode_bc.py,
-  encode_bptc.py). ATI2 keeps the channel order its decoder showed: ffmpeg shows its first
-  block as green, Pillow (the spare) as red.
-- Refused with the reason, so the plan names the texture: premultiplied DXT2 and DXT4, signed
-  BC4/BC5 (no encoder for them), typeless BC6H (signed or not is the shader's choice: no
-  decoder reads it either), any other pixel format, and a cube map, volume or array texture
-  (more than one image)."""
+- Block-compressed: BC1 (DXT1), BC2 (DXT3), BC3 (DXT5), BC4 (ATI1, BC4U), BC5 (ATI2, BC5U),
+  signed BC4 (BC4S, SNORM) and BC5 (BC5S), and premultiplied DXT2 (BC2) and DXT4 (BC3), as
+  FourCC or DX10 (UNORM, SNORM, sRGB, typeless), and BC6H (unsigned UF16, signed SF16) and BC7
+  (UNORM, sRGB, typeless) as DX10, through ViWo's own encoders (encode_bc.py, encode_bptc.py).
+  DXT2/DXT4 multiply the colour by the alpha (said with the file); signed BC4/BC5 are the
+  unsigned block with the endpoints offset (display = stored + 128). ATI2 keeps the channel
+  order its decoder showed: ffmpeg shows its first block as green, Pillow (the spare) as red.
+- Refused with the reason, so the plan names the texture: typeless BC6H (signed or not is the
+  shader's choice: no decoder reads it either), any other pixel format, and a cube map, volume
+  or array texture (more than one image)."""
 
 import io
 import struct
@@ -23,13 +24,14 @@ CUBE_OR_VOLUME = 0x200 | 0x200000
 DX10_RAW = {28: "RGBA", 29: "RGBA", 87: "BGRA", 91: "BGRA"}  # DXGI format -> byte order
 MIPMAPCOUNT, PITCH, LINEARSIZE = 0x20000, 0x8, 0x80000
 BLOCK_FOURCC = {b"DXT1": "BC1", b"DXT3": "BC2", b"DXT5": "BC3", b"ATI1": "BC4", b"BC4U": "BC4"}
-BLOCK_FOURCC |= {b"ATI2": "BC5", b"BC5U": "BC5"}
+BLOCK_FOURCC |= {b"ATI2": "BC5", b"BC5U": "BC5", b"BC4S": "BC4S", b"BC5S": "BC5S"}
+BLOCK_FOURCC |= {b"DXT2": "DXT2", b"DXT4": "DXT4"}  # premultiplied BC2 / BC3
 BLOCK_DXGI = {70: "BC1", 71: "BC1", 72: "BC1", 73: "BC2", 74: "BC2", 75: "BC2"}
 BLOCK_DXGI |= {76: "BC3", 77: "BC3", 78: "BC3", 79: "BC4", 80: "BC4", 82: "BC5", 83: "BC5"}
+BLOCK_DXGI |= {81: "BC4S", 84: "BC5S"}  # SNORM
 BLOCK_DXGI |= {95: "BC6H", 96: "BC6HS", 97: "BC7", 98: "BC7", 99: "BC7"}
-NOT_ENCODED = {b"DXT2": "premultiplied BC2", b"DXT4": "premultiplied BC3"}
-NOT_ENCODED |= {b"BC4S": "signed BC4", b"BC5S": "signed BC5"}
-DXGI_NOT = {81: "signed BC4", 84: "signed BC5", 94: "typeless BC6H: signed or not unknown"}
+DXGI_NOT = {94: "typeless BC6H: signed or not unknown"}
+PREMULT = "DXT2/DXT4 stores colour premultiplied by alpha: ViWo multiplied the colour by it"
 NO_ENCODER = "block-compressed in a form ViWo has no encoder for (it writes BC1 to BC7)"
 
 
@@ -63,8 +65,6 @@ def layout(dds: bytes) -> tuple[int, dict[str, int], int, str]:
         if fourcc in BLOCK_FOURCC:
             return 0, {}, 128, BLOCK_FOURCC[fourcc]
         name = fourcc.decode("latin-1")
-        if fourcc in NOT_ENCODED:
-            raise ValueError(f"{name} ({NOT_ENCODED[fourcc]}) is {NO_ENCODER}")
         raise ValueError(f"FourCC {name!r} is not a pixel format ViWo writes back")
     names = "L" if pf_flags & LUMINANCE else "RGBA"
     if not pf_flags & (RGB | LUMINANCE) or bits not in ((8,) if names == "L" else (24, 32)):
