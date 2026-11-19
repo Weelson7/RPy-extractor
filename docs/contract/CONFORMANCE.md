@@ -36,7 +36,7 @@ run: `tests` means the suite covers the engine there. A row closes when every ce
 | Godot | tests | tests | tests | open | tests |
 | Ren'Py | real | real | real | real | tests |
 | RPG Maker | real (MV, loose files) | real (MV: loose override) | real | real | tests |
-| KiriKiri | tests | real | real | open | tests |
+| KiriKiri | real | real | real | real | tests |
 | Source | real | real | real | open | tests |
 | Bethesda | tests | tests | tests | open | tests |
 | Doom | real | real | real | open | tests |
@@ -66,9 +66,9 @@ What each `real` stands on (the passes' reports are in `viwo-data/`):
 window captured by `tools/game_shot.ps1`, screenshots in `sqc/proof/`): Ren'Py (Doki Doki
 Literature Club: the menu background repacked into `images.rpa`), Unity (Baldi's Basics
 Classic Remastered: a texture repacked into `sharedassets0.assets`), RPG Maker MV (a test
-game: the title image as a loose override). Tried and not shown on KiriKiri (a test game: the
-marked logo did not appear from `patch.xp3`; whether the game ignores the patch archive or
-draws its title from other files is not known yet). Open on the other engines.
+game: the title image as a loose override), KiriKiri (1.22.1, 2026-11-19, a test game: the
+title background from `patch.xp3`; an image its scripts name with its folder, its logo, is
+out of a patch's reach, doc 18.4). Open on the other engines.
 
 Not at hand: a Godot game that ships its data, a Bethesda game, an RPG Maker game with a
 packed archive (the MV test game keeps its files loose), a real QuickBMS archive. Unity

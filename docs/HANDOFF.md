@@ -91,7 +91,7 @@ The presentation tools (`tools/presentation/`: `frames.py`, `deck.py`, `tech_pdf
 - The `v2.0.0` tag: it starts the paid CI and the release.
 
 **Needs a person at the machine**
-- The game loading a change is proven on Ren'Py, Unity and RPG Maker MV (SQC-RT-LOAD,
+- The game loading a change is proven on Ren'Py, Unity, RPG Maker MV and KiriKiri (SQC-RT-LOAD,
   `tools\game_shot.ps1`, `sqc/proof/`); the other engines are open.
 - `viwo attach` (x64dbg live patch, Cheat Engine) and `viwo hook` on a running game
   (SQC-DYN-01, -02, -07).

@@ -4,6 +4,10 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.22.2 (2026-11-19)
+- The game loads the change on KiriKiri too: a test game shows its marked title background
+  from ViWo's `patch.xp3` (`sqc/proof/kirikiri-ubu.jpg`).
+
 ## 1.22.1 (2026-11-19)
 - KiriKiri: the patch archive holds each edited member by its file name. The engine searches
   `patch.xp3` at its root only, so members written with their folder were never found and the
