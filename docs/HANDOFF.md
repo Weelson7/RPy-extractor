@@ -97,11 +97,25 @@ The presentation tools (`tools/presentation/`: `frames.py`, `deck.py`, `tech_pdf
   (SQC-DYN-01, -02, -07).
 - The SQC checks that need eyes and a browser (`sqc/`, results marked NOT RUN).
 
-**Needs an environment or a game that is not here**
-- Linux: the suite passed at 1.20.13; the memory ceiling, the child cap and `memory_room`
-  have a Linux side that never ran. No Linux environment is at hand.
 - Godot (the test games carry no PCK data), Bethesda, RPG Maker with a packed archive,
   QuickBMS on a real archive, Overwatch (the independent operator's).
+
+**Linux (WSL Ubuntu-22.04, Python 3.10.12, ran at 1.30.x)**
+The suite runs: `Ran 826 tests in 148 modules; FAILED: test_hook, test_owmdl, test_thirdparty`,
+with Pillow + UnityPy installed (without them ~26 modules fail for want of those deps). What is
+left, by cause:
+- `test_owmdl`: a cross-platform bug in `plugins/overwatch/owmdl.py`. DataTool writes Windows
+  paths; the material name is read with `Path(src.text()).name`, which does not split on `\` off
+  Windows, so the material never resolves. Splitting it (`.replace("\\", "/")`) gets further but
+  then hits a second parse mismatch not yet pinned down — left whole, not half-fixed.
+- `test_hook`, `test_thirdparty` (`test_python_pins...`): no Linux-3.10 package locks. 3.10 was
+  added to `tools/pin_python.py` at 1.27.5 but the locks were never generated; run
+  `python tools/pin_python.py` to write them (a long download job).
+- `test_thirdparty` (`...ships_in_the_wheel`): the dev venv needs the `wheel` package
+  (`bdist_wheel`); not a ViWo bug. Also: `Pillow` is a real runtime dependency reached only
+  transitively through UnityPy (`.[unity]`) — it should be declared, or image decoding fails on a
+  minimal install.
+- The memory ceiling, the child cap and `memory_room` have a Linux side still only unit-tested.
 
 **Open in the code**
 - Patcher / isolation (doc 11.8, rung T4): the contract (`viwo/contracts/patcher.py`), the
