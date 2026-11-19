@@ -1,18 +1,23 @@
-﻿## 1.30.1 (2026-11-19)
-- HANDOFF records the first Linux suite run (WSL Ubuntu 22.04, Python 3.10.12): 826 tests, three
-  modules left — a cross-platform owmdl path parse, the missing Linux-3.10 package locks, and a
-  dev-venv needing `wheel` (and `Pillow` reached only via UnityPy, which should be declared).
 # Changelog
 
 Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature, `c` every
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.30.2 (2026-11-19)
+- CHANGELOG: repaired em-dashes mangled into mojibake and an entry that landed above the title,
+  both from editing the file through PowerShell's default (non-UTF-8) encoding.
+
+## 1.30.1 (2026-11-19)
+- HANDOFF records the first Linux suite run (WSL Ubuntu 22.04, Python 3.10.12): 826 tests, three
+  modules left — a cross-platform owmdl path parse, the missing Linux-3.10 package locks, and a
+  dev-venv needing `wheel` (and `Pillow` reached only via UnityPy, which should be declared).
+
 ## 1.30.0 (2026-11-19)
 - Patcher / isolation foundation (doc 11.8, rung T4): a thin `PatcherBackend` contract
   (`viwo/contracts/patcher.py`) for cold and live patching that holds against self-checksums,
   anti-debug and fragile state, and meets TPM-gated local logic with a virtual TPM. One live
-  edit is atomic â€” suspend, write, read back to verify, resume (`core/isolation/atomic_write`) â€”
+  edit is atomic — suspend, write, read back to verify, resume (`core/isolation/atomic_write`) —
   and when it cannot land the backend says which `Wall` it hit (server-side, VM-detected,
   remote-attestation, integrity-check, not-ready), never silently.
   - Scylla dump-to-patch (`attach.dump` / `scylla-gui`): "Continue in Scylla" attaches to the
@@ -23,7 +28,7 @@ or a maintainer. Newest first.
     virtual TPM 2.0, boot the target, take and restore snapshots for patch retries, pause/resume
     it and dump its memory core to a patchable file; the in-guest debugger does the byte-level
     read/write. Unit-tested with a fake `VBoxManage`; no real VM has run. VirtualBox is located,
-    not installed (a hypervisor needs a kernel driver and elevation â€” the minimal-prompts rule).
+    not installed (a hypervisor needs a kernel driver and elevation — the minimal-prompts rule).
   - Tiers 2 (QEMU, out-of-guest gdbstub, WHPX/TCG) and 3 (DRAKVUF/LibVMI, a bare-metal Linux host)
     are declared backends that announce their requirement and refuse through `wall()`.
   - Open: a CLI/API surface to drive a session, and real in-VM proof.
@@ -571,7 +576,7 @@ or a maintainer. Newest first.
 ## 1.20.43 (2026-11-10)
 - UI review, first fixes: error toasts stay until dismissed; the closed log dock shows the
   last line; the top bar fits narrow windows (labels dropped up to 1500 px); buttons say what
-  they are doing (CONVERTINGâ€¦, SCANNINGâ€¦); the workspace dialog answers an empty or unchanged
+  they are doing (CONVERTING…, SCANNING…); the workspace dialog answers an empty or unchanged
   folder in words; job durations read as times.
 
 ## 1.20.42 (2026-11-10)
@@ -1260,17 +1265,17 @@ Audit of the 1.7-1.15 work (an independent review, every finding verified and fi
   video in 90 s. Open: MonoBehaviour fields on IL2CPP builds.
 
 ## 1.12.0 (2026-11-04)
-- UI numbering is computed, never written (owner): `S0`â€¦ STATIC, `D0`â€¦ DYNAMIC, `P0`â€¦
+- UI numbering is computed, never written (owner): `S0`… STATIC, `D0`… DYNAMIC, `P0`…
   PATCHING (each arm's home is 0), `00`, `01`, `02` for SYSTEM, JOBS, SETTINGS, from the arm and
   the place in it, so plugin views renumber everything by themselves. Panels are lettered A, B,
-  Câ€¦ in reading order over the visible ones. Home steps and NEXT buttons show the code of the
+  C… in reading order over the visible ones. Home steps and NEXT buttons show the code of the
   tab they open; every message names a tab by its title only.
 - UX pass from frames captured at the owner's window and zoom, and on a real extraction (DDLC):
   - the top bar no longer drops chips: OS and PLUGINS moved to SYSTEM, the game and workspace
     paths shorten first; FORMATS opens SYSTEM at its formats list (`#system@formats`, kept in
     place while the tables load);
   - toasts sit at the top right, no longer over the action bar's button;
-  - ANALYSIS and CAPTURE named "â€“" as the active workspace although one was open;
+  - ANALYSIS and CAPTURE named "–" as the active workspace although one was open;
   - an off feature (ANALYSIS, RUNTIME CAPTURE) says so with a TURN ON button that writes it to
     startup.ini at once; a notice's text no longer runs into its title;
   - a two-column view with nothing on the right yet uses the whole width; field labels have
