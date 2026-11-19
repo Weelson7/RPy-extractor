@@ -37,7 +37,17 @@ h2, h3, h4 { margin: 0; }
 .arms .seg { display: flex; }
 .arms .seg button { flex: 1 1 0; min-width: 0; padding: 6px 2px; }
 .path-steps { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
-.path-steps li { display: grid; grid-template-columns: 2.5em 9em minmax(0, 1fr) auto; align-items: center; gap: 12px; }
+.path-steps > li { display: grid; grid-template-columns: 2.5em 9em minmax(0, 1fr) auto; align-items: center; gap: 12px; }
+.path-sub { display: flex; flex-direction: column; gap: 4px; margin: 0; padding: 0; list-style: none; }
+.path-sub li { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.path-steps .facts { margin-top: 4px; }
+.path-steps .facts dd { word-break: normal; overflow-wrap: anywhere; }
+.rb-json summary { cursor: pointer; }
+.rb-json pre { margin-top: 6px; }
+.msingles .sub-h { margin-top: 14px; }
+.mlist { margin: 0; padding: 0; list-style: none; }
+.mrow { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr) auto; align-items: center; gap: 10px; padding: 6px 8px; }
+.mrow b, .mrow code { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .rail { grid-area: rail; display: flex; flex-direction: column; padding: 18px 0 14px; overflow-y: auto; }
 .mods { list-style: none; margin: 0; padding: 0 12px; display: flex; flex-direction: column; gap: 4px; }
 .mods a { --c: 10px; --b: transparent; --f: transparent; display: flex; align-items: center; gap: 12px; padding: 8px 12px; }
@@ -69,6 +79,11 @@ main { grid-area: main; min-width: 0; overflow: auto; padding: 22px 28px 28px; s
 /* a label inside a row or a compact component carries no margin of its own */
 .row .lbl, .field.inline .lbl, .stat .lbl, .kv .lbl, .review .lbl, .nfield .lbl, .jp-head .lbl, .skel .lbl, .recipe .lbl { margin: 0; }
 .row + .lbl, .input + .lbl, textarea + .lbl { margin-top: 16px; } /* a label starts a new field, not the end of the last */
+/* a row of buttons stands clear of the note, field, table or row above it, in every panel body,
+   notice and plain block in one (flex and grid containers with their own gap are left alone) */
+:where(.panel-b, .alert, .panel-b > div:not([class])) > :where(p, .row, .input, textarea, .tbl, .field, .kv, dl, div:not([class]), [hidden]) + .row:has(> .btn) { margin-top: 14px; }
+.row + .path-steps { margin-top: 16px; }
+.view > .row + :is(.grid2, .tool-grid, .jobs-grid, .panel) { margin-top: 18px; } /* a field row above the panels */
 /* ---------- controls ---------- */
 .btn { --c: 8px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 34px; padding: 0 16px; white-space: nowrap; cursor: pointer; }
 .btn.sm { --c: 6px; height: 26px; padding: 0 10px; }
@@ -420,8 +435,8 @@ main { padding: 18px 20px 24px; }
 .brand .word, .brand .sub, .rail-foot { display: none; }
 .arms { padding: 0 6px 10px; }
 .arms .seg { flex-direction: column; }
-.path-steps li { grid-template-columns: 2.5em minmax(0, 1fr) auto; }
-.path-steps li > :nth-child(3) { grid-column: 2 / -1; }
+.path-steps > li { grid-template-columns: 2.5em minmax(0, 1fr) auto; }
+.path-steps > li > :nth-child(3) { grid-column: 2 / -1; }
 .mods { padding: 0 8px; }
 .mods a { justify-content: center; padding: 11px 0; }
 .mods a span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

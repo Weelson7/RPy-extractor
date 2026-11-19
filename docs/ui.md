@@ -17,7 +17,7 @@ DevTools protocol, driven by `tests/ui/smoke.mjs`).
 | `ui.js` | the same surface, re-exported (views import `../ui.js`) |
 | `registry.js` | views and panels as contributions (below); `ARMS`, `armViews(arm)` |
 | `game.js` | the shared game selector: `currentGame`, `setGame`, `pickGame`, `gameField`, `followGame` |
-| `views/home.js` | the three arm homes: each arm's end-to-end path, every step SHIPPED or ROADMAP |
+| `views/home.js` | the three arm homes: each arm's end-to-end path, every step SHIPPED or ROADMAP; the steps one tab runs share its row (the tab's title, one line per step), so a code is shown once per home and names one view |
 | `theme.js` | `THEMES`, `setTheme`, `currentTheme` |
 | `progress.js` | `jobProgress(kind)`: the live job block (rail, counters, ticker, log) per job kind |
 | `views/*.js` | one module per view; each registers itself |
@@ -74,7 +74,11 @@ the HOW TO buttons in ANALYSIS, RUNTIME and CAPTURE open it on one tool (`pref("
 `howToBtn(tool)`), a runbook step on one workbook (`workbookBtn(id)`). RUNBOOKS (doc 19.2) runs
 one step per request (`/api/runbooks/step`), waits for DONE, CONTINUE on a step you do, keeps
 each runbook's input values (`pref("rb.<id>.<name>")`; a secret input's value stays in the page
-only) and edits a runbook as JSON. Its RECORD A WORKFLOW panel (`recording.js`, doc 19.3)
+only) and edits a runbook as JSON. Each step is a readable row (`runbook-step.js`): an action
+says what it runs (the job and the tab that runs it), its target (the game, folder or target
+key) and its options as key/value, each `{name}` with the run's value beside it (a secret
+input's shows as `<secret>`, an empty one as "not set yet"); the step as the file holds it is
+behind its JSON toggle. Its RECORD A WORKFLOW panel (`recording.js`, doc 19.3)
 drives the server's recorder; while it records, the status strip shows a REC chip with the
 steps caught so far, whatever view is open; a replayed step that answers otherwise than
 recorded pauses as DIFFERS: YOUR CALL with what changed. The game selector is one browser
@@ -127,6 +131,30 @@ its decoder from the internet to show it."). A `.gltf` that keeps buffers or tex
 files cannot load from the preview route; a `.glb` holds everything. Without the viewer
 installed the stage says how to install it.
 
+## Action bars and button rows
+
+A view that runs one thing ends with an action bar (`.actionbar`): a summary line, the reason
+the primary action cannot run yet (`.ab-why`, empty when it can) and the primary button,
+disabled until it can (ASSETS' WRITE, PATCHED COPY, CLEANUP, MERGER's BUILD VIDEOS).
+ANALYSIS: TARGETS lists the binaries with a pick per row (`pref("anTarget")`; the first with an
+analyzer when the remembered one is not listed); ANALYZE in the bar runs the picked target and
+says why it waits (enter the game folder, list the targets, analysis is off, pick a target, no
+analyzer for it yet); CANCEL joins it while a run goes. A target's extra slots (EMULATE,
+SOLVE...) and CONTINUE IN GHIDRA stay on its row; VERSION DIFF keeps its COMPARE.
+
+Spacing between buttons is `base.css`'s, never a view's: buttons in a `.row` keep its gap, and a
+row of buttons right after a note, a field, a table or another row inside a panel body, a
+notice or a plain block stands 14 px clear of it (a flex or grid container keeps its own gap).
+The smoke test measures it on every view.
+
+## Merger (STATIC)
+
+GROUPS lists the names that hold several numbered files (tick one, it becomes a video). A name
+with one file is not a merge: those files come after, as one NOTHING TO MERGE list with their
+count, each with its path and type. The server answers the groups of several files first and
+counts the rest (`singleCount`), so the first page holds the merges; the header says groups,
+single files and files.
+
 ## Assets (PATCHING)
 
 ASSETS (`views/assets.js`) is the way back for what ViWo decoded (doc 18.3). MOD OR OVERWRITE
@@ -164,5 +192,7 @@ PATCHED COPY plans and writes with the same choice and names it in its summary l
   table width, the theme switch, detect percentages without zero padding, the visible "skipped"
   rail stage after an extraction, workspace-wide type counts in SORT, the cleanup scan as
   a visible job, and ASSETS' mod/overwrite choice (MOD first) and a plan with WRITE held
-  back while nothing was edited. Skipped when no Chromium or Node is found; `VIWO_UI=0` disables it;
+  back while nothing was edited; on every view, buttons with their spacing and step codes shown
+  once; MERGER's single files under NOTHING TO MERGE; ANALYZE held back with its reason; and
+  each runbook step readable with its JSON behind a closed toggle. Skipped when no Chromium or Node is found; `VIWO_UI=0` disables it;
   `VIWO_UI_OUT=<folder>` keeps the screenshots.

@@ -119,9 +119,6 @@ The presentation tools (`tools/presentation/`: `frames.py`, `deck.py`, `tech_pdf
   per-file target of 98 / 95 (`coverage run -m unittest discover -s tests -t .`, then
   `combine` and `json`). The furthest are `os/linux.py`, `contracts/paths.py` (links need
   rights Windows does not give) and the packers' error paths.
-- UI review findings left: the ANALYSIS action bar over VERSION DIFF, button spacing in
-  RUNTIME, PATCHES and RUNBOOKS, single-file groups in MERGER, repeated codes on the arm
-  homes, raw JSON in RUNBOOKS steps.
 - Completeness (doc 16.0c): everything out of every game, decoded, on all three arms. Notes
   kept for it: Unity IL2CPP MonoBehaviour fields come out for the scripts whose rebuilt
   layout fits (the rest are listed without fields); Unreal models are UEFormat (glTF needs

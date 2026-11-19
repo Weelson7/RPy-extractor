@@ -8,7 +8,7 @@ import { jobProgress, withSkeleton } from "../progress.js";
 import { registerView, code } from "../registry.js";
 import { howToBtn } from "./workbooks.js";
 
-const S = { targets: null, enabled: false, running: false, ws: "", key: "" };
+const S = { targets: null, enabled: false, running: false, ws: "", key: "", pick: pref("anTarget") || "" };
 const el = {};
 const KIND = { native_binary: "NATIVE", dotnet_assembly: ".NET", il2cpp: "IL2CPP", python_bytecode: "PYTHON", gdscript_bytecode: "GDSCRIPT", script_vm: "SCRIPT VM", memory_image: "MEMORY" };
 
@@ -25,6 +25,7 @@ function mount(root) {
   el.sum = h("div", { class: "ab-sum mono" });
   el.why = h("span", { class: "ab-why" });
   el.cancel = btn("CANCEL", () => el.prog.cancel(), "ghost", { hidden: true });
+  el.go = btn("ANALYZE", () => !blocker() && run(picked()), "primary lg");
   followGame(el.game, () => { if (!S.running) { S.targets = null; S.listedFor = ""; renderTargets(); bar(); } });
   S.ws = bus.ws?.path || ""; // before the note is built: the workspace may be known already
   root.append(
@@ -44,7 +45,8 @@ function mount(root) {
           h("label", { class: "lbl", for: "an-opts" }, "ONE KEY=VALUE PER LINE: START, ARGS, DUMP, MAX_INSNS; FIND, AVOID FOR SOLVE"),
           el.opts, h("p", { class: "note" }, "Unicorn runs one isolated routine of the binary; angr solves the inputs that reach FIND. Both run as their own process."))),
       h("div", { class: "col" }, el.progPanel, el.result)),
-    h("div", { class: "actionbar" }, el.sum, el.why, el.cancel));
+    h("div", { class: "actionbar" }, el.sum, el.why, el.cancel, el.go));
+  el.game.addEventListener("input", bar);
   bus.addEventListener("wspath", (e) => { S.ws = e.detail.path || ""; el.wsNote.textContent = S.ws || "—"; bar(); });
   renderTargets();
   bar();
@@ -59,6 +61,7 @@ async function list() {
     const res = await withSkeleton(el.targets, "READING THE GAME FOLDER…", () => api.analysisTargets(path), 3);
     S.targets = res.targets || [];
     S.enabled = Boolean(res.enabled);
+    if (!picked()?.analyzer) S.pick = S.targets.find((t) => t.analyzer)?.key || S.targets[0]?.key || "";
   } catch (err) { S.targets = null; fill(el.targets, errorBox(err, "LISTING FAILED", err.code === "not_found" ? "Check the game folder path." : "")); bar(); return; }
   renderTargets();
   bar();
@@ -89,19 +92,38 @@ function renderTargets() {
   else fill(el.targets);
   if (!S.targets.length) return el.targets.append(h("p", { class: "dim" }, "No target proposed for this folder."));
   const rows = S.targets.map((t) => ({
-    label: h("span", { class: "mono" }, t.label), kind: badge(KIND[t.kind] || t.kind, ""), owner: t.owner,
+    label: h("label", { class: "row" }, h("input", { type: "radio", name: "an-target", value: t.key, checked: t.key === S.pick, disabled: S.running,
+      onchange: () => { S.pick = t.key; pref("anTarget", t.key); bar(); } }), h("span", { class: "mono" }, t.label)),
+    kind: badge(KIND[t.kind] || t.kind, ""), owner: t.owner,
     state: t.analyzer ? badge(t.analyzer, "ok") : badge("NO ANALYZER YET", "mute"),
     act: h("div", { class: "row" },
-      btn("ANALYZE", () => run(t), "sm primary", { disabled: !t.analyzer || !S.enabled || S.running }),
       ...(t.extras || []).map((x) => btn(x.label.toUpperCase(), () => run(t, x.slot), "sm", { disabled: !S.enabled || S.running })),
       ...(t.handoffs || []).map((hd) => btn(hd.label.toUpperCase(), () => open(t, hd), "sm ghost", { disabled: !S.enabled }))),
   }));
-  el.targets.append(table([{ key: "label", label: "TARGET" }, { key: "kind", label: "KIND" }, { key: "owner", label: "PLUGIN" }, { key: "state", label: "ANALYZER" }, { key: "act", label: "" }], rows, { caption: "Analysis targets" }));
+  el.targets.append(table([{ key: "label", label: "TARGET (ANALYZE RUNS THE PICKED ONE)" }, { key: "kind", label: "KIND" }, { key: "owner", label: "PLUGIN" }, { key: "state", label: "ANALYZER" }, { key: "act", label: "" }], rows, { caption: "Analysis targets" }));
+}
+
+const picked = () => S.targets?.find((t) => t.key === S.pick) || null;
+
+/** Why ANALYZE cannot run yet ("" when it can): said beside the button, as in every view. */
+function blocker() {
+  const t = picked();
+  if (S.running) return "analysing…";
+  if (!el.game.value.trim()) return "enter the game folder";
+  if (!S.targets || S.listedFor !== el.game.value.trim()) return "list the targets";
+  if (!S.enabled) return "analysis is off (SETTINGS)";
+  if (!S.targets.length) return "no target in this folder";
+  if (!t) return "pick a target";
+  return t.analyzer ? "" : `no analyzer for ${t.label} yet`;
 }
 
 function bar() {
-  el.sum.textContent = S.running ? `analysing ${S.key}…` : `${S.targets ? S.targets.length : 0} target(s) → ${S.ws ? S.ws.split(/[\\/]/).pop() : "workspace"}`;
-  el.why.textContent = S.running ? "" : (S.targets && !S.enabled ? "analysis is off (SETTINGS)" : "");
+  const t = picked();
+  el.sum.textContent = S.running ? `analysing ${S.key}…`
+    : `${S.targets ? S.targets.length : 0} target(s) · ${t ? `${t.label} (${t.analyzer || "no analyzer"})` : "none picked"} → ${S.ws ? S.ws.split(/[\\/]/).pop() : "workspace"}`;
+  el.why.textContent = blocker();
+  el.go.disabled = Boolean(el.why.textContent);
+  el.go.textContent = S.running ? "ANALYSING…" : "ANALYZE";
   el.cancel.hidden = !S.running;
 }
 

@@ -1,5 +1,6 @@
 // The three arm homes: each opens on its end-to-end path, every step with a link to the view
-// that runs it (planned steps marked); with no game picked yet, a START HERE first.
+// that runs it (planned steps marked; the steps of one view share its row, so a code is shown
+// once); with no game picked yet, a START HERE first.
 import { h, fill, btn, panel, badge, viewHead, goBtn, bus } from "../ui.js";
 import { registerView, code, view } from "../registry.js";
 import { currentGame, pickGame } from "../game.js";
@@ -32,13 +33,32 @@ const PATHS = {
     ["CHEAT ENGINE TABLE", "the game opened in Cheat Engine with a ViWo table", "#runtime", S]]],
 };
 
-/** A step names the tab that runs it (its live code); one in another arm says where it opens. */
-function step(arm, [name, what, hash, state]) {
+/** The steps that one tab runs share a row, so each code is shown once on a home and names one
+ * view; a planned step without a tab keeps its own row. */
+function byTab(steps) {
+  const rows = [];
+  for (const s of steps) {
+    const same = s[2] && rows.find((r) => r.hash === s[2]);
+    if (same) same.steps.push(s);
+    else rows.push({ hash: s[2], steps: [s] });
+  }
+  return rows;
+}
+
+/** One sub-line of a shared row: the step's name, what it does, PLANNED when it is. */
+const sub = ([name, what, , state]) => h("li", {}, h("b", {}, name), h("span", { class: "dim" }, what), state === S ? null : badge("PLANNED", "mute"));
+
+/** A row names the tab that runs it (its live code); one in another arm says where it opens. */
+function step(arm, { hash, steps }) {
   const target = hash ? view(hash.slice(1)) : null;
   const elsewhere = target && target.arm !== arm ? ` (opens in ${target.arm.toUpperCase()})` : "";
-  return h("li", { "data-state": state === S ? "done" : "wait" },
-    h("b", { class: "mono" }, hash ? code(hash.slice(1)) : "—"), h("b", {}, name), h("span", { class: "dim" }, what + elsewhere),
-    h("div", { class: "row" }, state === S ? null : badge("PLANNED", "mute"), hash ? goBtn(hash, "OPEN", "sm ghost") : null));
+  const shipped = steps.some((s) => s[3] === S);
+  const [[name, what]] = steps;
+  return h("li", { "data-state": shipped ? "done" : "wait" },
+    h("b", { class: "mono" }, hash ? code(hash.slice(1)) : "—"), h("b", {}, steps.length > 1 ? target.title : name),
+    steps.length > 1 ? h("div", {}, h("ul", { class: "path-sub" }, steps.map(sub)), elsewhere ? h("span", { class: "dim" }, elsewhere.trim()) : null)
+      : h("span", { class: "dim" }, what + elsewhere),
+    h("div", { class: "row" }, shipped ? null : badge("PLANNED", "mute"), hash ? goBtn(hash, "OPEN", "sm ghost") : null));
 }
 
 /** No game yet: the first thing to do, before the path. */
@@ -51,7 +71,7 @@ for (const [arm, [title, sub, steps]] of Object.entries(PATHS)) {
   const show = () => fill(host, start());
   const mount = (root) => {
     root.append(viewHead(code(arm), title, sub), host,
-      panel(`${code(arm)}.A`, "END-TO-END PATH", null, h("ol", { class: "path-steps" }, steps.map((x) => step(arm, x)))));
+      panel(`${code(arm)}.A`, "END-TO-END PATH", null, h("ol", { class: "path-steps" }, byTab(steps).map((x) => step(arm, x)))));
     show();
     bus.addEventListener("game", show);
   };

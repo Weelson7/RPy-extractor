@@ -156,8 +156,16 @@ class CurationRouteTests(unittest.TestCase):
                 app, {"workingDir": "ws", "allowedExts": ["png"]}
             )
             self.assertEqual(listed["code"], "not_found")  # a relative dir is refused, not swapped
+            (ws / "png").mkdir(exist_ok=True)
+            for name in ("01_zzwalk.png", "02_zzwalk.png", "aazz.png"):
+                (ws / "png" / name).write_bytes(b"png")
             listed = POST["/api/media-merger/list"](app, {"allowedExts": ["png"]})
             self.assertEqual(listed["workingDir"], str(ws))  # none given: the workspace
+            counts = [c["count"] for c in listed["candidates"]]
+            self.assertEqual(len(counts), listed["totalCount"])  # one page
+            self.assertTrue(1 in counts and max(counts) > 1, counts)
+            self.assertEqual(counts, sorted(counts, key=lambda n: n == 1))  # the merges first
+            self.assertEqual(listed["singleCount"], counts.count(1))
             state = GET["/api/media-merger/state"](app, {})
             self.assertEqual(state["workingDir"], str(ws))
 

@@ -4,6 +4,23 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.25.1 (2026-11-19)
+- UI review findings closed. ANALYSIS has the action bar of the other views: pick a target in
+  TARGETS, ANALYZE in the bar runs it, disabled with the reason beside it (list the targets,
+  analysis is off, no analyzer yet); the extra slots and CONTINUE IN GHIDRA stay on their row.
+- Button spacing, in CSS once: a row of buttons right under a note, a field, a table or
+  another row now stands 14 px clear of it (RUNTIME, PATCHES, RUNBOOKS, ANALYSIS and the
+  notices with TURN ON had none), and a field row above a view's panels no longer touches them.
+- MERGER: a name with one file is no longer shown as a group; those files are one NOTHING TO
+  MERGE list with their count, each with its path and type. `/api/media-merger/list` answers
+  the groups of several files first and counts the rest (`singleCount`); the GROUPS header
+  says both.
+- Arm homes: the steps one tab runs share its row (RUNTIME lists AGENTS, RECORD, DUMP + TRACE,
+  DEBUGGER + MEMORY and CPU PROFILE under one D-code), so each code shows once per home.
+- RUNBOOKS: each action step reads as what it runs (the job and its tab), its target and its
+  options as key/value, with the run's value beside each `{name}`; the step's JSON is behind a
+  JSON toggle.
+
 ## 1.25.0 (2026-11-19)
 - Total War: `decode.rigid_model_v2` turns rigid models (versions 6 and 7; 5, 8 and others
   refused by name) into `.glb`: LOD 0, each mesh group a primitive with positions (from the

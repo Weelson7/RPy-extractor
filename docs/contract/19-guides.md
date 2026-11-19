@@ -109,13 +109,15 @@ does not have is said; a `--from` outside its steps is refused). API: `GET /api/
 `{runbooks: [{id, title, summary, inputs, steps, source}], problems, kinds}`; `POST
 /api/runbooks/step {id, step, values}` runs one action step (step counted from 0) -> the job's
 answer plus `step`. UI: RUNBOOKS in the global strip: the list; a runbook's inputs (the game
-from the top bar, the active workspace), its steps with their state, RUN, RUN FROM HERE, DONE,
-CONTINUE, STOP, each step's job linked to JOBS; EDIT shows the runbook as JSON to change and
-save (a shipped one is saved as the user's copy), DELETE removes the user's copy.
+from the top bar, the active workspace), its steps with their state (an action step as what it
+runs, its target and its options as key/value, the step's JSON behind a toggle), RUN, RUN
+FROM HERE, DONE, CONTINUE, STOP, each step's job linked to JOBS; EDIT shows the runbook as
+JSON to change and save (a shipped one is saved as the user's copy), DELETE removes the user's
+copy.
 
 Code: `viwo/core/guides.py` (the files of 19.1 and 19.2), `viwo/core/runbooks.py`,
 `viwo/data/runbooks/`, `viwo/api/handlers_runbooks.py`, `viwo/cli_guides.py`,
-`viwo/web/js/views/runbooks.js`.
+`viwo/web/js/views/runbooks.js`, `viwo/web/js/views/runbook-step.js`.
 
 ## 19.3 Workflows
 

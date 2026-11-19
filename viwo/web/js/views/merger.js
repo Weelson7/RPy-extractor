@@ -6,7 +6,7 @@ import { withSkeleton } from "../progress.js";
 
 const LIMIT = 300;
 const PATTERNS = { "number-to-name": "01_NAME", "name-to-number": "NAME_01" };
-const S = { st: null, pattern: "number-to-name", exts: new Set(), query: "", list: [], extList: [], total: 0, files: 0, offset: 0, sel: new Map() };
+const S = { st: null, pattern: "number-to-name", exts: new Set(), query: "", list: [], extList: [], total: 0, files: 0, singles: 0, offset: 0, sel: new Map() };
 const el = {};
 
 function mount(root) {
@@ -45,7 +45,8 @@ async function load() {
 
 async function list() {
   const res = await api.mergerList({ namingPattern: S.pattern, allowedExts: S.exts.size ? [...S.exts] : null, offset: S.offset, limit: LIMIT, includeFiles: true });
-  Object.assign(S, { list: res.candidates || [], extList: res.extensions || [], total: res.totalCount || 0, files: res.fileCount || 0 });
+  Object.assign(S, { list: res.candidates || [], extList: res.extensions || [], total: res.totalCount || 0, files: res.fileCount || 0,
+    singles: res.singleCount ?? (res.candidates || []).filter((c) => c.count === 1).length });
   for (const c of S.list) if (S.sel.has(c.name)) S.sel.get(c.name).cand = c;
   renderFilters();
   renderList();
@@ -69,13 +70,22 @@ function renderFilters() {
     h("div", { class: "row" }, search, btn("ALL", () => pickAll(true), "sm ghost"), btn("NONE", () => pickAll(false), "sm ghost")));
 }
 
-const visible = () => S.list.filter((c) => c.name.toLowerCase().includes(S.query));
+/** The groups of several files on this page (a group of one is not a merge: `singles()`). */
+const visible = () => S.list.filter((c) => c.count > 1 && c.name.toLowerCase().includes(S.query));
+const lone = () => S.list.filter((c) => c.count === 1 && c.name.toLowerCase().includes(S.query));
 const span = (c) => (c.indexes.length ? `#${c.indexes[0]}–${c.indexes[c.indexes.length - 1]}` : "no index");
 
+/** Files alone under their name: one list with the count, each shown as the file it is. */
+const singles = (ones) => h("div", { class: "msingles" },
+  h("h4", { class: "sub-h" }, `// NOTHING TO MERGE · ${fmtNum(ones.length)} SINGLE FILE${ones.length === 1 ? "" : "S"}`),
+  h("p", { class: "note first" }, "No other file shares these names: a group of one is not a merge, so they are listed as files, not as groups."),
+  h("ul", { class: "mlist" }, ones.map((c) => h("li", { class: "mrow" }, h("b", {}, c.name),
+    h("code", { class: "mono dim fpath", title: c.files[0]?.path || "" }, c.files[0]?.path || ""), badge(TAGS[c.files[0]?.type] || "FILE", "mute")))));
+
 function renderList() {
-  el.count.textContent = `${fmtNum(S.total)} GROUPS · ${fmtNum(S.files)} FILES`;
-  const rows = visible();
-  if (!rows.length) {
+  el.count.textContent = `${fmtNum(S.total - S.singles)} GROUPS · ${fmtNum(S.singles)} SINGLE · ${fmtNum(S.files)} FILES`;
+  const rows = visible(), ones = lone();
+  if (!rows.length && !ones.length) {
     fill(el.list, empty(S.files ? "NO MATCH" : "NOTHING TO MERGE", S.files ? "No candidate matches these filters."
       : "This workspace has no images or videos yet. Extract a game, or use SWITCH (top right) to open another workspace.", S.files ? null : goBtn("#extract", "GO TO EXTRACT")));
     return;
@@ -84,7 +94,9 @@ function renderList() {
     h("input", { type: "checkbox", checked: S.sel.has(c.name), onchange: (e) => toggle(c, e.target.checked), "aria-label": `${c.name}, ${c.count} files` }),
     h("b", {}, c.name), h("span", { class: "mono dim" }, span(c)),
     c.conflicts.length ? h("span", { title: "Several files share one number: you pick their order" }, badge(`${c.conflicts.length} SAME-NUMBER`, "warn")) : null,
-    badge(`${c.count} FILE${c.count === 1 ? "" : "S"}`, "mute"))),
+    badge(`${c.count} FILES`, "mute"))),
+  rows.length ? null : h("p", { class: "note first" }, "No group of several files on this page."),
+  ones.length ? singles(ones) : null,
   S.total > LIMIT ? h("div", { class: "row pager" },
     btn("‹ PREV", () => { S.offset -= LIMIT; reload(); }, "sm ghost", { disabled: S.offset === 0 }),
     h("span", { class: "mono" }, `${S.offset + 1}–${Math.min(S.total, S.offset + LIMIT)} / ${S.total}`),

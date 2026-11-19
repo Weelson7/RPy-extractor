@@ -130,6 +130,30 @@ class UiSmokeTests(unittest.TestCase):
             self.assertTrue(info.get("visible"), f"{view}: {info}")
             self.assertFalse(info.get("overflow"), f"{view} overflows horizontally")
             self.assertEqual(info.get("nullText"), [], f"{view} renders a literal null/undefined")
+            self.assertEqual(info.get("tight"), [], f"{view}: buttons without their spacing")
+            codes = info.get("stepCodes")
+            self.assertEqual(len(codes), len(set(codes)), f"{view} repeats a code: {codes}")
+
+    def test_merger_lists_a_file_alone_as_nothing_to_merge(self) -> None:
+        m = self.report["checks"]["merger"]
+        self.assertEqual(m["groupsOfOne"], 0, m)  # a group of one is not a merge
+        self.assertGreaterEqual(m["singles"], 1, m)  # and it is listed, never hidden
+        self.assertIn("NOTHING TO MERGE", m["head"])
+        self.assertIn("SINGLE", m["count"])
+
+    def test_analysis_bar_holds_analyze_with_its_reason(self) -> None:
+        bar = self.report["checks"]["analysisBar"]
+        self.assertIsNotNone(bar)
+        self.assertEqual(bar["label"], "ANALYZE")
+        self.assertTrue(bar["disabled"] and bar["why"], bar)  # nothing listed: it says why
+
+    def test_runbook_steps_are_readable_with_their_json_behind_a_toggle(self) -> None:
+        steps = self.report["checks"]["runbookSteps"]
+        self.assertTrue(steps)
+        for s in steps:
+            self.assertTrue(s["json"] and not s["open"], s)
+            self.assertFalse(s["raw"], s)  # no JSON outside the toggle
+        self.assertTrue(any(s["facts"] for s in steps), steps)  # an action shows its options
 
     def test_three_arms_and_the_global_strip(self) -> None:
         a = self.report["checks"]["arms"]

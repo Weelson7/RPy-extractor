@@ -7,6 +7,7 @@ import { registerView, code } from "../registry.js";
 import { gameField, setGame } from "../game.js";
 import { workbookBtn } from "./workbooks.js";
 import { recordingPanel, refreshRecording } from "./recording.js";
+import { stepDetail } from "./runbook-step.js";
 
 const S = { books: [], problems: [], sel: "", state: {}, result: {}, running: false, stop: false, resume: null, editing: false };
 const el = {};
@@ -28,6 +29,9 @@ function mount(root) {
       panel(`${code("runbooks")}.A`, "RUNBOOKS", el.count, el.list),
       panel(`${code("runbooks")}.B`, "RUNBOOK", null, el.book)));
   bus.addEventListener("wspath", () => S.sel && !S.editing && renderBook());
+  const again = () => current() && !S.editing && el.steps && fillSteps(current());
+  el.game.addEventListener("input", again);
+  bus.addEventListener("game", again);
 }
 
 async function show() {
@@ -66,7 +70,7 @@ function inputRow(b, i) {
   const id = `rb-in-${i.name}`, key = `${b.id}.${i.name}`;
   const field = i.secret
     ? h("input", { class: "input mono grow", id, type: "password", autocomplete: "off", value: secrets[key] || "", oninput: (e) => { secrets[key] = e.target.value; } })
-    : h("input", { class: "input mono grow", id, value: pref(`rb.${key}`) ?? i.default, spellcheck: "false", oninput: (e) => pref(`rb.${key}`, e.target.value) });
+    : h("input", { class: "input mono grow", id, value: pref(`rb.${key}`) ?? i.default, spellcheck: "false", oninput: (e) => { pref(`rb.${key}`, e.target.value); fillSteps(b); } });
   return [h("label", { class: "lbl", for: id }, i.label.toUpperCase()), h("div", { class: "row" }, field)];
 }
 
@@ -84,8 +88,12 @@ function renderBook() {
     h("p", { class: "note" }, "Runs in the active workspace: ", h("code", { class: "mono" }, bus.ws?.path || "—"), "."),
     h("div", { class: "row" }, btn("RUN", () => run(0), "primary", { disabled: S.running }),
       S.running ? btn("STOP", stop, "danger") : null),
-    h("ol", { class: "path-steps" }, b.steps.map((s, i) => stepRow(b, s, i))));
+    (el.steps = h("ol", { class: "path-steps" })));
+  fillSteps(b);
 }
+
+/** The step rows alone: an input typed in shows at once in the steps that use it. */
+const fillSteps = (b) => fill(el.steps, b.steps.map((s, i) => stepRow(b, s, i)));
 
 function stepRow(b, s, i) {
   const [label, kind] = STATE[S.state[i]] || ["", ""];
@@ -93,7 +101,7 @@ function stepRow(b, s, i) {
   return h("li", { "data-state": S.state[i] === "done" ? "done" : "wait" },
     h("b", { class: "mono" }, String(i + 1)), h("b", {}, s.title),
     h("div", { class: "col" },
-      s.do ? h("span", { class: "mono dim small" }, `${s.do} ${JSON.stringify(s.with)}`) : h("span", {}, s.text),
+      stepDetail(s, { ...values(b), workspace: bus.ws?.path || "" }, new Set(b.inputs.filter((x) => x.secret).map((x) => x.name))),
       s.workbook ? h("div", { class: "row" }, workbookBtn(s.workbook)) : null,
       jobLink(res instanceof Error ? res.payload?.jobId : res?.jobId),
       res?.differs?.length ? h("ul", { class: "list" }, res.differs.map((d) => h("li", { class: "mono small warn-text" }, `differs from the recording: ${d}`))) : null,

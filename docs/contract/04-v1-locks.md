@@ -33,6 +33,10 @@ goes to the log); invalid JSON is 400.
 
 Patch sets and mods are also job kinds of `POST /api/jobs` (`patch`, `mod`).
 
+`POST /api/media-merger/list` answers the candidates with several files first, then those with
+one (each order by name), the page (`offset`, `limit`), `totalCount` and `singleCount` (the
+candidates of one file, which the UI lists as files, not as groups).
+
 `POST /api/detect {gamePath}` answers every plugin's detection (`detections`), the auto pick
 (`auto`) and the selection per mode (`modes.auto`, `modes.single`, `modes.mixed.{detected, all,
 selected}`). `GET /api/plugins` lists id, name, version, engineType, builtin, tosSensitive,

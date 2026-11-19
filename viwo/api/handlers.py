@@ -203,6 +203,7 @@ def merger_list(app: App, d: dict) -> dict:
     )
     entries = media.list_entries(folder, allowed or None)
     groups = media.candidates(entries, pattern, include_files=bool(d.get("includeFiles")))
+    groups.sort(key=lambda g: g["count"] == 1)  # stable: the merges first, then the groups of one
     offset, limit = (
         max(0, int(d.get("offset", 0) or 0)),
         max(1, min(300, int(d.get("limit", 120) or 120))),
@@ -217,6 +218,7 @@ def merger_list(app: App, d: dict) -> dict:
         "offset": offset,
         "limit": limit,
         "totalCount": len(groups),
+        "singleCount": sum(1 for g in groups if g["count"] == 1),
         "truncated": offset + limit < len(groups),
         "supportedMediaExts": sorted(media.TIMELINE),
     }
