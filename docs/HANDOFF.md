@@ -1,6 +1,6 @@
 # Handoff
 
-State at **v1.20.65**, branch `makeover` (`main` is at v1.20.27 and takes `makeover` after a
+State at **v1.23** (2026-11-19), branch `makeover` (`main` is at v1.20.27 and takes `makeover` after a
 `--full` commit). What changed is in [CHANGELOG.md](../CHANGELOG.md), the design in
 [docs/contract/](contract/README.md), what is implemented in
 [CONFORMANCE.md](contract/CONFORMANCE.md). This page says how to work and what is open.
