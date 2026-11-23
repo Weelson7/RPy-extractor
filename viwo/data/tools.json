@@ -515,6 +515,43 @@
     ]
    }
   },
+  "uber-apk-signer": {
+   "version": "1.3.0",
+   "license": "Apache-2.0",
+   "_note": "one jar for every platform (apksigner + a bundled zipalign), run on the pinned JDK; signs a rebuilt APK (pack.apk) with the user's keystore or its debug key; checksum verified against the release's checksum-sha256.txt",
+   "windows": {
+    "url": "https://github.com/patrickfav/uber-apk-signer/releases/download/v1.3.0/uber-apk-signer-1.3.0.jar",
+    "sha256": "e1299fd6fcf4da527dd53735b56127e8ea922a321128123b9c32d619bba1d835",
+    "size": 3208194,
+    "kind": "raw",
+    "save_as": "uber-apk-signer.jar",
+    "find": "uber-apk-signer.jar",
+    "argv": [
+     "{java}",
+     "-jar",
+     "{path}"
+    ],
+    "needs": [
+     "jdk"
+    ]
+   },
+   "linux": {
+    "url": "https://github.com/patrickfav/uber-apk-signer/releases/download/v1.3.0/uber-apk-signer-1.3.0.jar",
+    "sha256": "e1299fd6fcf4da527dd53735b56127e8ea922a321128123b9c32d619bba1d835",
+    "size": 3208194,
+    "kind": "raw",
+    "save_as": "uber-apk-signer.jar",
+    "find": "uber-apk-signer.jar",
+    "argv": [
+     "{java}",
+     "-jar",
+     "{path}"
+    ],
+    "needs": [
+     "jdk"
+    ]
+   }
+  },
   "die": {
    "version": "3.21",
    "license": "MIT",

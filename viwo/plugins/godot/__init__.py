@@ -60,6 +60,8 @@ PCK_SLOT = SlotDefinition(
     identify=identify_pck,
 )
 EXECUTABLES = (".exe", ".x86_64", ".x86_32", ".arm64", ".arm32")
+# a project, or an exported one unpacked (an Android APK keeps it loose under assets/)
+PROJECT = ("project.godot", ".import", "project.binary", "libgodot_android.so")
 NO_DATA = "Godot executable (PE pck section) without PCK data"
 NO_PCK_HINT = (
     "no PCK data: the executable carries an empty pck section and no .pck sits next to it; "
@@ -81,13 +83,13 @@ class GodotPlugin(EnginePlugin):
 
     def detect(self, probe: GameProbe) -> DetectionResult:
         evidence = []
-        if any(probe.head(p, 4) == MAGIC for p in probe.with_suffix(".pck")[:20]):
-            evidence.append("PCK archive (GDPC)")
+        if any(probe.head(p, 4) == MAGIC for p in probe.with_suffix(".pck", ".obb")[:20]):
+            evidence.append("PCK archive (GDPC)")  # an Android expansion file can be one
         exes = probe.with_suffix(*EXECUTABLES)[:20]
         if any(embedded_chunk(p, probe.tail(p, 64)) for p in exes):
             evidence.append("PCK embedded in the executable")
         strong = bool(evidence)
-        project = probe.has_name("project.godot", ".import") or probe.find(".godot", limit=1)
+        project = probe.has_name(*PROJECT) or probe.find(".godot", limit=1)
         if project:
             evidence.append("Godot project files")
         if not evidence and any(godot_executable(probe.head(p, 4096)) for p in exes):

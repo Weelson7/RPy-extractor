@@ -60,6 +60,7 @@ read by a tiny stdlib subset reader, never PyYAML.
 | LÖVE | the game is a zip, alone (`.love`) or appended to `love.exe`; PhysFS works out what lies before it | Python's zipfile reads both; the rebuild keeps the executable's bytes |
 | AGS | CLIB packfiles, at a file's start or behind the executable (tail signature); versions 6 to 30, 20 and 21 obfuscated by the engine's public text key and generator | read and rewritten in their own version, offsets and sizes patched in place |
 | Defold | the archive is found by content hash through the manifest; sizes come from the index | the rebuild keeps every hash and the manifest |
+| Android (any engine) | an APK is a zip signed over its bytes, stored members aligned for mapping; Unity, Unreal and Godot keep their data inside it or in an OBB | `android` unpacks it as a wrapper (engines re-detected inside), rebuilds it zipaligned and re-signs it (13.9) |
 
 ## 13.4 Code RE and runtime tools
 
@@ -134,3 +135,36 @@ is enforced in native code (the setting key `MaxConnectionsPerServerLimit`), so 
 binary patch on the copy, not a resource change. Open: the Qt embedded carve recovers textual
 resources by content, not the resource tree's names (a stripped binary keeps none); rebuilding a
 `.pak`/`.rcc`/CArchive in place assumes the edited data fits the container's layout.
+
+## 13.9 Android packages (static arm only)
+
+Owner, 2026-11-23: "We can add APK support but not mobile runtime for viwo." The `android`
+plugin reads and rebuilds the packages; nothing in ViWo talks to a device, an emulator or adb,
+and the dynamic arm has no Android side.
+
+| Form | Read | Way back |
+|------|------|----------|
+| `.apk` (a zip with a binary `AndroidManifest.xml` at its root; found by that content, any name) | every member, through the safe-name path | `pack.apk`: the zip rebuilt in the patched copy, each untouched member's compressed bytes copied, order and methods kept, stored members aligned (4 bytes; 4096 for `.so` when the original page-aligned them), the old v1 signature files and the v2/v3 signing block left out; then signed (below) |
+| `.xapk`, `.apks`, `.apkm` (zips of APKs and OBBs) | their APKs and OBBs, which the unpack loop opens in turn; encrypted members are `needs_key` (never broken) | `pack.apks` rebuilds the bundle with its edited members; edits inside an inner APK have no way back yet (doc 18.3: nested containers) |
+| `.obb` (an expansion file) | a zip; a Godot `.pck` OBB goes to `unarchive.pck`; anything else is carved | `pack.obb`, as `pack.apk` without signing |
+| binary XML (`AndroidManifest.xml`, `res/**/*.xml`) | `decode.axml`: text XML, attribute values in one spelling per type (`@0x7f010000`, `?0x...`, `16.0dip`, `50.0%`, `#aarrggbb`, `true`, decimal, `0x...`, the shortest float that reads back) | an unchanged text gives the original bytes; an edited one is rebuilt as aapt2 lays it out, each attribute's resource id and value type taken from the original (a namespaced attribute the original never had is refused: its id lives in the framework); node comments are not kept; a file whose names or characters XML cannot carry goes back only unchanged |
+| `resources.arsc` | `decode.arsc`: JSON per package and type chunk (dense, sparse, 16-bit offsets, compact entries), configurations as qualifiers plus the raw record, simple values and bags; type specs, style spans, library/overlayable/staged-alias chunks are kept but not shown (said) | values only, in place: a new string appended to the global pool with every original byte kept; a change to the structure (keys, ids, configs, entries added or removed) is refused naming where |
+
+**Signing.** A rebuilt APK must be signed to install. `pack.apk` runs the pinned
+`uber-apk-signer` (Apache-2.0, one jar on the pinned JDK, its own process: zipalign, then
+apksigner v1/v2/v3, then its verify) with the keystore of `[options.android]` (`keystore`,
+`key_alias`, `keystore_password`, `key_password`: from the user, never logged or written; a
+failure's message is masked) or, without one, the tool's debug key, and says that an APK signed
+by another key installs only after the original app is uninstalled. No tool: the APK is written
+aligned and unsigned, and that is said.
+
+**Engines inside.** The APK, the OBB and a bundle's APK are wrappers (doc 3.1): detection reruns
+inside them. Unity is found by `libunity.so`, `libil2cpp.so` and its data (`assets/bin/Data`),
+Godot by `project.binary`, `libgodot_android.so`, the `.import`/`.godot` folders or a GDPC
+`.pck`/`.obb`, Unreal by the `.pak` files its OBB carries (its `libUE4.so` is not used: it would
+claim the APK before the OBB that holds the paks). One export per engine per run.
+
+**Not done.** `classes.dex` is extracted, not decompiled (no dex decompiler is pinned); no
+Android IL2CPP analysis target (the IL2CPP target expects a Windows player); no real APK has been
+through it (fixtures written byte by byte, and one real signing run with the pinned signer on a
+rebuilt fixture).

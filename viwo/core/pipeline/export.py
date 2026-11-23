@@ -56,15 +56,23 @@ def _said(outcome, slot_id: str, used: str) -> list[str]:
     return lines
 
 
-WRAPPERS = {".asar", ".nw"}  # outer wrappers (Electron / NW.js): detection runs once more inside
+# outer wrappers: Electron / NW.js, and Android packages (an APK, its expansion files, the
+# bundles of APKs): detection runs once more inside
+WRAPPERS = {".asar", ".nw", ".apk", ".obb", ".xapk", ".apks", ".apkm"}
+
+
+def _wrapper(origin: str) -> bool:
+    """A wrapper at the game's top, or one inside wrappers only (a bundle's APK)."""
+    return all(Path(p).suffix.lower() in WRAPPERS for p in origin.split(":", 1)[-1].split("!"))
 
 
 def rewrap(run, chosen: tuple[str, ...], unpacked) -> list[PluginRun]:
     """Doc 3.1: after an outer wrapper is unpacked, detect once inside it and export the
-    strongest engine found there that was not already selected (one pass, never nested)."""
+    strongest engine found there that was not already selected (one pass per wrapper; the
+    detection inside never looks further down)."""
     rt, out, taken = run.rt, [], set(chosen)
     for dest, origin in list(unpacked.origins.items()):
-        if "!" in origin or Path(origin.split(":", 1)[-1]).suffix.lower() not in WRAPPERS:
+        if not _wrapper(origin):
             continue
         inner = detect_all(rt, FolderProbe(dest))
         best = max(

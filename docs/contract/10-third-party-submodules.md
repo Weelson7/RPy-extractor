@@ -63,7 +63,7 @@ or when a feature that needs them is turned on (doc 6.4).
 | media | `ffmpeg`, `ffprobe`, `vgmstream` |
 | analysis | `ghidra` (on demand) and `jdk`, `ilspycmd`, `cpp2il` (Windows), `unluac`, `die`; workers `unicorn`, `angr` (on demand) |
 | dynamic | `renderdoccmd` and `rdpython` (qrenderdoc as the harvest Python), `ue4ss` (Windows), `bepinex` (Windows), `x64dbg` (Windows), `cheatengine` (Windows, Scoop's unpacked build), `mitmproxy` (its portable build), `scylla` (Windows, NtQuery/Scylla 0.9.8, GPL-3.0, the dump-to-patch handoff; the `.rar` release unpacked with 7-Zip), Python `frida-tools`, `soundcard` |
-| patching | `keystone` (Windows, `kstool` as a separate process), Python `capstone` |
+| patching | `keystone` (Windows, `kstool` as a separate process), Python `capstone`, `uber-apk-signer` (Apache-2.0, one jar on the pinned `jdk`: aligns and re-signs a rebuilt APK, doc 13.9) |
 
 Versions, licenses and checksums are in `tools.json`; `THIRD_PARTY_NOTICES.md` is generated from
 it (`python tools/notices.py`; a test keeps it current).

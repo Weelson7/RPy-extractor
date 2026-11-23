@@ -17,7 +17,7 @@ from viwo.core.context import core_context
 
 PLUGINS = (
     "generic renpy unity godot unreal doom rpgmaker kirikiri electron source bethesda genie "
-    "warscape redengine taleworlds"
+    "warscape redengine taleworlds android"
 ).split()
 
 
@@ -62,6 +62,7 @@ class HostileInputTests(unittest.TestCase):
 
 def _samples(root: Path) -> dict:
     """backend id -> (slot, suffix, a valid archive) from the format tests' builders."""
+    from tests.android_build import STORED, apk_members, zip_of
     from tests.helpers import make_tar, make_zip
     from tests.test_containers import drs, pack, tpac
     from tests.test_doom import make_wad
@@ -87,6 +88,7 @@ def _samples(root: Path) -> dict:
         "xp3-builtin": ("unarchive.xp3", ".xp3", xp3([("bg/a.png", b"a" * 40, False)] * 2)),
         "py-zipfile": ("unarchive.zip", ".zip", make_zip(root / "s.zip", files).read_bytes()),
         "py-tarfile": ("unarchive.tar", ".tar.gz", make_tar(root / "s.tar.gz", files).read_bytes()),
+        "apk-zip": ("unarchive.apk", ".apk", zip_of(apk_members(), STORED)),
     }
 
 

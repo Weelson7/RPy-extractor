@@ -174,6 +174,19 @@ left, by cause:
   (ViWo's DXA decoder is unverified) and versions other than 6, a Defold bundle whose only
   encrypted resources are uncompressed (the key cannot be self-verified), GameMaker's full
   re-chunk (only same-size edits go back), new keys in version 3 `.locres`.
+- Android packages (doc 13.9, static arm only by the owner's scope: no device, emulator or
+  adb): the `android` plugin is **tests only** — APK, bundle, OBB, binary XML and
+  `resources.arsc` fixtures written byte by byte from the AOSP format description, never a real
+  APK from a store or a build tool. Proven beyond the tests: one rebuilt fixture APK signed by the
+  pinned `uber-apk-signer` 1.3.0 on the pinned JDK and verified by it (v1/v2/v3, zipalign); while
+  signing, apksigner read the re-encoded binary manifest. Unverified: a real APK's manifest and
+  `resources.arsc` (obfuscated names, non-standard chunks, very large tables), an `.apkm` (zip encryption is
+  `needs_key`; an encryption of its own would come out as opaque members, not recognised), a real
+  Unity/Unreal/Godot APK through the wrapper re-detection, the user-keystore path with a real
+  keystore, installing a rebuilt APK on a device (not ViWo's job). Open: `classes.dex` is
+  extracted, not decompiled (no dex decompiler pinned); edits inside a bundle's APK have no way
+  back (nested container, doc 18.3); an engine exported from an APK is not exported again from
+  its OBB (one export per engine per run, doc 3.1); no Android IL2CPP analysis target.
 - `hook.overlay`: neither candidate fits the rules (doc 11.7).
 - Coverage: 98.2 % line / 95.0 % branch overall at 1.20.58 (`coverage run -m unittest discover
   -s tests -t .`, then `combine` and `json`). Many files are still under the per-file target of

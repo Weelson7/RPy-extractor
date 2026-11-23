@@ -4,6 +4,30 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.40.0 (2026-11-23)
+- **Android packages, static arm only** (owner, 2026-11-23: "We can add APK support but not
+  mobile runtime for viwo"; doc 13.9). New `android` plugin: `unarchive.apk` (a zip whose root
+  holds a binary `AndroidManifest.xml`, identified by content, whatever its name),
+  `unarchive.apks` (`.xapk`/`.apks`/`.apkm` bundles to their APKs and OBBs, which the unpack loop
+  opens in turn; zip-encrypted members are `needs_key`), `unarchive.obb` (a zip OBB; a Godot
+  `.pck` OBB stays with `unarchive.pck`). `decode.axml` turns binary XML into text XML and back
+  (aapt2's layout, resource ids and value types from the original, unchanged byte for byte, a new
+  namespaced attribute refused by name); `decode.arsc` turns `resources.arsc` into JSON (dense,
+  sparse, 16-bit-offset chunks, compact entries, bags, configurations as qualifiers plus the raw
+  record) and writes edited values back in place, new strings appended to the global pool with
+  every original byte kept. `pack.apk`/`.apks`/`.obb` rebuild the zip with ViWo's own writer:
+  every untouched member's compressed bytes and the order kept, stored members zipaligned (4, or
+  4096 for `.so` when the original page-aligned them), an APK's old signature dropped and the APK
+  signed again by the newly pinned **uber-apk-signer 1.3.0** (Apache-2.0, on the pinned JDK) with
+  the `[options.android]` keystore or the debug key (said: the original app must be uninstalled
+  first), or left unsigned and said. First-party, stdlib only; no device, emulator or adb.
+- **Engines inside APKs**: the wrapper re-detection (doc 3.1) now also opens `.apk`, `.obb`,
+  bundles and a bundle's APK; Unity is recognised by `libunity.so`/`libil2cpp.so`, Godot by
+  `project.binary`, `libgodot_android.so` and a GDPC `.obb`.
+- Tests: `tests/test_android.py`, `tests/test_android_formats.py` (fixtures written byte by byte
+  in `tests/android_build.py`), the fuzz suite covers the new readers. Proven beyond the tests:
+  one rebuilt fixture APK signed and verified (v1/v2/v3, zipalign) by the real pinned signer. No
+  real APK has been through it yet.
 ## 1.39.0 (2026-11-23)
 - **Content search** (doc 6.7; `core/search.py`, `core/search_query.py`): "find the thing I want
   to change". A string (UTF-8, UTF-16LE, UTF-16BE; `-i` for any case, in any script), a number

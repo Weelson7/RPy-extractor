@@ -62,7 +62,9 @@ Electron/NW.js, Source, Bethesda, Age of Empires, Total War, Cyberpunk 2077, Ban
 (`.love` or fused executables), XNA/FNA/MonoGame (`.xnb` textures and sounds, uncompressed, LZ4
 and LZX), Adventure Game Studio (CLIB packfiles), Defold (bundled archives, encrypted resources
 decrypted when a key verifies), Wolf RPG (`Data.wolf` / DXArchive), GameMaker Studio (the `FORM`
-data file: textures, audio and strings), TyranoScript (loose HTML5/JS), Overwatch (DataTool), QuickBMS scripts for
+data file: textures, audio and strings), TyranoScript (loose HTML5/JS), Android packages (APK,
+OBB, XAPK/APKS/APKM: binary XML and `resources.arsc` decoded and back, rebuilt zipaligned and
+re-signed; static only, no device), Overwatch (DataTool), QuickBMS scripts for
 any other format, plus zip, tar, 7z, rar. A format can also be described rather than coded: a
 bundled Kaitai `.ksy` definition is read by a first-party interpreter and parsed to a tree. Desktop applications too (cold patching): Qt (`.rcc`
 resources, QML compiled into the exe, `.qm` translations; proven on Free Download Manager),

@@ -62,7 +62,9 @@ STRONG = (
     "maindata",
     "globalgamemanagers.assets",
     "unity default resources",
+    "libunity.so",  # the Android player (an APK's lib/<abi>/)
 )
+IL2CPP = ("libil2cpp.so",)  # Android's IL2CPP code; its metadata is under assets/bin/Data
 
 
 def il2cpp_layout(exe: Path) -> tuple[str, str, str]:
@@ -79,7 +81,8 @@ class UnityPlugin(EnginePlugin):
         evidence = []
         if probe.has_name(*STRONG):
             evidence.append("Unity player/data marker files")
-        if probe.find("il2cpp_data", limit=1) or probe.find("assembly-csharp.dll", limit=1):
+        code = probe.find("il2cpp_data", limit=1) or probe.find("assembly-csharp.dll", limit=1)
+        if code or probe.has_name(*IL2CPP):
             evidence.append("Unity managed/IL2CPP code")
         data_dir = bool(probe.find("*_data", limit=1))
         if data_dir:

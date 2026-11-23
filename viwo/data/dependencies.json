@@ -261,6 +261,11 @@
   ],
   "hint": "`viwo install uas` (MIT, Windows build)"
  },
+ "uber-apk-signer": {
+  "label": "uber-apk-signer (APK zipalign + signing)",
+  "env_var": "VIWO_UBER_APK_SIGNER",
+  "hint": "install uber-apk-signer (Apache-2.0): `viwo install uber-apk-signer` (it runs on the pinned JDK)"
+ },
  "ue4ss": {
   "label": "UE4SS (Unreal runtime agent)",
   "env_var": "VIWO_UE4SS",

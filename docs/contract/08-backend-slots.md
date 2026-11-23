@@ -187,6 +187,9 @@ slot's identifier; doc 2.5):
 | `unarchive.pyi` | pyfrozen | `pyi-builtin` | - | identifier: the PyInstaller MEI cookie scanned near an exe's end |
 | `unarchive.dotnet` | dotnet | `dotnet-resources` | - | identifier: a PE with a CLI header (managed assembly) |
 | `unarchive.jar` | java | `jar-builtin` | - | `.jar`, `.war`, `.ear` |
+| `unarchive.apk` | android | `apk-zip` | - | identifier: a zip whose root `AndroidManifest.xml` is binary XML (any name) |
+| `unarchive.apks` | android | `apks-zip` | - | identifier: a zip of `.apk` members that is a `.xapk`/`.apks`/`.apkm` or holds `manifest.json`, `info.json` or `toc.pb`; encrypted members: `needs_key` |
+| `unarchive.obb` | android | `obb-zip` | - | identifier: an `.obb` with a zip head (a GDPC one is `unarchive.pck`'s) |
 
 **Export:** `export.unity` (`unitypy`, spare `assetstudiomod-cli`, D7; `unitypy` writes every
 Mesh twice: UnityPy's own Wavefront `.obj`, and a lossless `.glb` through
@@ -324,7 +327,12 @@ read. Both calls say how many models they wrote, how many hold no mesh, how many
 (the first reason) and how many materials stayed untextured). Desktop-app frameworks (doc 13.8):
 `decode.qm` (`qm-builtin`, qt, in process: Qt compiled translations to JSON, one way),
 `decode.pyc` (`pyc-builtin`, pyfrozen, in process: a `.pyc`'s bytecode disassembled when its
-magic matches the running interpreter, else written out with the version named). Declarative
+magic matches the running interpreter, else written out with the version named). Android
+(doc 13.9): `decode.axml` (`axml-builtin`, android, in process: binary XML to text XML,
+`<name>.text.xml`; a `.xml` that is not binary XML is left as it is, plain text silently, other
+bytes with a note; back through `axml_write.py`, doc 18.3), `decode.arsc` (`arsc-builtin`,
+android, in process: `resources.arsc` to `resources.arsc.json`, what is not shown named; values
+back in place). Declarative
 (doc 13.2a): `decode.kaitai_<id>` (`kaitai-<id>`, kaitai, in process: one slot per bundled
 `.ksy`, a format parsed to a JSON tree by ViWo's own interpreter; one way; runs only when the
 plugin is selected).
@@ -343,7 +351,9 @@ edited member written back in place when its size is unchanged, a size change re
 desktop-app frameworks (doc 13.8): `pack.rcc`
 (`rcc-writer`, qt), `pack.pak` (`pak-writer`, chromium), `pack.pyi` (`pyi-writer`, pyfrozen),
 `pack.resources` (`resources-writer`, dotnet, same-size in place), `pack.jar` (`jar-packer`,
-java); the other writers ViWo owns are in doc 18.4. **Patch:** `patch.bytes` (`viwo-patcher`, owns the Keystone and
+java); Android (doc 13.9): `pack.apk` (`apk-pack`, then the pinned `uber-apk-signer` as its own
+process when installed), `pack.apks` (`apks-pack`), `pack.obb` (`obb-pack`), all in process,
+member-faithful and zipaligned; the other writers ViWo owns are in doc 18.4. **Patch:** `patch.bytes` (`viwo-patcher`, owns the Keystone and
 capstone dependencies).
 
 **Analysis (doc 6):** `analysis.native`, `.memory`, `.dotnet`, `.il2cpp`, `.script`, `.python`,
