@@ -74,8 +74,9 @@ class FakeGdbStub:
             conn.recv(2)
             conn.sendall(b"+")
             reply = self._handle(body.decode("latin-1"))
-            if reply is not None:
-                self._send(conn, reply)
+            for packet in reply if isinstance(reply, list) else [reply]:
+                if packet is not None:
+                    self._send(conn, packet)
 
     def _handle(self, cmd: str):
         if cmd in ("c", "D"):
@@ -140,6 +141,11 @@ class FakeQmp:
             return {"return": {"running": self.running}}
         if msg["execute"] == "human-monitor-command":
             line = args["command-line"]
+            if line == "info registers":
+                return {
+                    "return": "RAX=0 CR0=80000011 CR2=0 CR3=0000000000001000 CR4=00000020\r\n"
+                    "EFER=0000000000000500\r\n"
+                }
             blocked = "Error: State blocked due to missing dirty memory tracking support"
             return {"return": blocked if "whpx" in line else "Error: no" if "bad" in line else ""}
         if msg["execute"] == "dump-guest-memory":
@@ -186,6 +192,11 @@ class QemuSessionTests(unittest.TestCase):
         self.assertEqual((calls[0], calls[-1]), ("stop", "cont"))  # stopped over QMP, then run
         self.assertNotIn("cont", calls[:-1])  # never running between the write and the readback
         self.assertTrue(self.qmp_stub.running)
+        session.close()
+
+    def test_vcpu_paging_comes_from_the_monitors_registers(self) -> None:
+        session = self._session()
+        self.assertEqual(session.cpu_paging(), {"dtb": 0x1000, "mode": "x64"})
         session.close()
 
     def test_a_read_leaves_a_paused_guest_paused(self) -> None:

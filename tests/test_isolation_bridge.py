@@ -1,14 +1,11 @@
-"""The cold+live bridge (doc 11.8), Tier 3 (DRAKVUF/LibVMI) command construction, and the
-isolation CLI/API surface. The bridge turns one located patch (the same file offset the cold
-writer uses) into a live virtual-address write under the atomic suspend/write/verify/resume. VMI
-reports not-ready off a bare-metal Linux VMI host and builds its CLI commands from located tools.
-No VM or VMI host runs here."""
+"""The cold+live bridge (doc 11.8) and the isolation CLI/API surface. The bridge turns one
+located patch (the same file offset the cold writer uses) into a live virtual-address write under
+the atomic suspend/write/verify/resume, all or nothing and journalled. T3 is test_isolation_vmi.
+No VM runs here."""
 
 from __future__ import annotations
 
-import stat
 import struct
-import sys
 import tempfile
 import unittest
 from pathlib import Path
@@ -18,12 +15,10 @@ from tests.helpers import runtime
 from viwo.contracts.errors import ViwoError
 from viwo.contracts.patcher import PatcherBackend, PatchSession, PatchTarget, Wall, WallReport
 from viwo.contracts.types import Outcome, OutcomeKind
-from viwo.core.context import core_context
 from viwo.core.isolation import atomic_write, live
 from viwo.core.isolation import session as sessions
 from viwo.core.isolation.live import apply_live, located_va, write_located
 from viwo.core.isolation.session import IsolateRequest
-from viwo.core.isolation.vmi import VMI_READ, VmiPatcher, VmiSession, control_of
 
 
 def make_pe(path: Path) -> None:
@@ -201,68 +196,6 @@ class BridgeTests(unittest.TestCase):
         wall = atomic_write(session, 0x40, b"\xeb", settle=0.01)
         self.assertEqual(wall.wall, Wall.INTEGRITY_CHECK)
         self.assertIn("put its bytes back", wall.detail)
-
-
-class VmiTests(unittest.TestCase):
-    def setUp(self) -> None:
-        self._tmp = tempfile.TemporaryDirectory()
-        self.root = Path(self._tmp.name)
-
-    def tearDown(self) -> None:
-        self._tmp.cleanup()
-
-    def _rt(self, tools: dict[str, Path]):
-        body = "[plugins]\ngeneric = on\n[tools]\n" + "".join(
-            f"{k} = {v}\n" for k, v in tools.items()
-        )
-        (self.root / "rt").mkdir(parents=True, exist_ok=True)
-        return runtime(self.root / "rt", body)
-
-    def _fake(
-        self,
-        name: str,
-        body: str = "#!{python}\nimport sys\nopen(sys.argv[-1],'wb').write(b'MEM')\n",
-    ) -> Path:
-        folder = self.root / "vmi"
-        folder.mkdir(parents=True, exist_ok=True)
-        script = folder / f"{name}.py"
-        script.write_text(body.format(python=sys.executable))
-        script.chmod(script.stat().st_mode | stat.S_IEXEC)
-        if sys.platform == "win32":
-            wrapper = folder / f"{name}.cmd"
-            wrapper.write_text(f'@"{sys.executable}" "{script}" %*\r\n')
-            return wrapper
-        return script
-
-    def test_not_ready_off_a_bare_metal_linux_vmi_host(self) -> None:
-        rt = self._rt({})
-        report = VmiPatcher().ready(rt.os)
-        self.assertTrue(report.blocked)
-        self.assertEqual(report.wall, Wall.NOT_READY)
-        if sys.platform == "win32":
-            self.assertIn("Windows", report.detail)  # the requirement rides in the wall's detail
-        target = PatchTarget(exe=self.root / "G.exe", workspace=self.root / "ws")
-        ctx = core_context(rt, "isolate", self.root, self.root / "work")
-        self.assertEqual(rt.backends["libvmi"].start(target, ctx).kind, OutcomeKind.UNAVAILABLE)
-
-    def test_control_prefers_virsh_then_falls_back_to_xl(self) -> None:
-        virsh = self._fake("virsh")
-        both = self._rt({"virsh": virsh, "xl": self._fake("xl")})
-        self.assertEqual(control_of(both.os)[1], ("suspend", "resume"))  # virsh wins
-        xl_only = self._rt({"xl": self._fake("xl")})
-        self.assertEqual(control_of(xl_only.os)[1], ("pause", "unpause"))
-        self.assertIsNone(control_of(self._rt({}).os))
-
-    def test_write_is_a_not_ready_wall_and_dump_runs_the_read_tool(self) -> None:
-        rt = self._rt(
-            {"vmi-dump-memory": self._fake("vmi-dump-memory"), "virsh": self._fake("virsh")}
-        )
-        read_argv = rt.os.tools.locate(VMI_READ).argv_prefix
-        session = VmiSession(rt.os, "guest", read_argv, control_of(rt.os))
-        self.assertEqual(session.write_mem(0x1000, b"\x90").wall, Wall.NOT_READY)
-        out = self.root / "core.raw"
-        self.assertTrue(session.dump(out).ok)
-        self.assertEqual(out.read_bytes(), b"MEM")  # vmi-dump-memory wrote the physical image
 
 
 class IsolateCliApiTests(unittest.TestCase):

@@ -1,5 +1,9 @@
 {
  "_comment": "Every tool, package or runtime ViWo's backends need (doc 2.6): what DependencySpec.of(id) reads. Pins (versions, downloads, checksums) are in tools.json.",
+ "volatility3": {
+  "label": "Volatility 3 guest memory analysis (worker)",
+  "hint": "`viwo install volatility3` (Volatility Software License, own process): finds programs inside an isolation guest"
+ },
  "angr": {
   "label": "angr symbolic execution (worker)",
   "hint": "`viwo install angr` (BSD-2, own process)"
@@ -366,5 +370,11 @@
    "qemu-system-x86_64"
   ],
   "hint": "install QEMU (GPL-2, run as a separate process; no driver, no elevation): `viwo install qemu`, or set VIWO_QEMU to your own"
+ },
+ "pycdlib": {
+  "label": "pycdlib",
+  "kind": "python",
+  "import_name": "pycdlib",
+  "hint": "`viwo install pycdlib` (LGPL-2.1): a folder shared with a QEMU guest as a read-only CD"
  }
 }

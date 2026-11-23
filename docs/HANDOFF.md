@@ -19,7 +19,7 @@ State at **v1.23** (2026-11-19), branch `makeover` (`main` is at v1.20.27 and ta
 ## How to work
 
 ```powershell
-py -3.13 -m venv .venv; .venv\Scripts\Activate.ps1
+py -3.10 -m venv .venv; .venv\Scripts\Activate.ps1
 pip install -e ".[unity,sevenzip,renpy,lz4,dev]"
 python tools/version.py commit -m "..." [--feature|--major] [--full] [--push]
 ```
@@ -86,8 +86,8 @@ The presentation tools (`tools/presentation/`: `frames.py`, `deck.py`, `tech_pdf
 - Rename the repository to `ViWo` in GitHub's settings; then update `origin`,
   `viwo/core/diag.py` `REPO`, `tests/test_diag.py`, `indexes/README.md` and the URLs in
   `pyproject.toml` and the README.
-- Create the `vidya_wormhole_indexes` repository; the history of `indexes/` is ready on the
-  local branch `indexes-main`. Then its first release, and QuickBMS scripts pinned by checksum.
+- Create the `vidya_wormhole_indexes` repository; the history of `indexes/` is split off
+  with `git subtree split -P indexes -b indexes-main` (`docs/indexes.md`). Then its first release, and QuickBMS scripts pinned by checksum.
 - The `v2.0.0` tag: it starts the paid CI and the release.
 
 **Needs a person at the machine**
@@ -104,29 +104,28 @@ The presentation tools (`tools/presentation/`: `frames.py`, `deck.py`, `tech_pdf
 The suite runs: `Ran 826 tests in 148 modules; FAILED: test_hook, test_owmdl, test_thirdparty` (`test_owmdl` was fixed at 1.31.1 and Pillow declared at 1.35; not rerun since),
 with Pillow + UnityPy installed (without them ~26 modules fail for want of those deps). What is
 left, by cause:
-- `test_hook`, `test_thirdparty` (`test_python_pins...`): no Linux-3.10 package locks. 3.10 was
-  added to `tools/pin_python.py` at 1.27.5 but the locks were never generated; run
-  `python tools/pin_python.py` to write them (a long download job).
+- `test_hook`, `test_thirdparty` (`test_python_pins...`): the 3.10 locks were written at 1.37 for
+  Windows and Linux (the dev venv is 3.10 since), all but two pins whose versions publish no 3.10
+  wheels: `soundcard` (its numpy 2.5.4 needs 3.11+) and `angr` 9.2.223. Not rerun on Linux since.
 - `test_thirdparty` (`...ships_in_the_wheel`): the dev venv needs the `wheel` package
   (`bdist_wheel`); not a ViWo bug.
 - The memory ceiling, the child cap and `memory_room` have a Linux side still only unit-tested.
 
 **Open in the code**
-- Patcher / isolation (doc 11.8, rung T4): the contract, VirtualBox T1 (`vbox.py`), QEMU T2
-  (`qemu.py`, `qemu_session.py`, `gdb.py`, `qmp.py`), DRAKVUF/LibVMI T3 (`vmi.py`), Scylla
-  dump-to-patch, the cold+live bridge with its journal and undo (`live.py`) and the session
-  lifecycle (`session.py`: `start` leaves a guest running, every action rejoins it; `viwo
-  isolate`, `/api/runtime/isolation`, RUNTIME). QEMU is pinned (`viwo install qemu`, 1.2 GB
-  unpacked, no elevation) and the tier runs on the real thing: `VIWO_L5=1 python -m unittest
-  tests.test_isolation_real` (a boot-sector guest; TCG and WHPX). Found on the way: WHPX cannot
-  save a snapshot (TCG is used when one is asked for), `-cpu max`/`host` do not boot under WHPX,
-  QMP serves one client at a time (`busy`). **Open:** no guest operating system has been booted
-  (a person brings a disk image), so no real program has been patched in a guest; ViWo does not
-  find a program inside a guest OS (the user gives the address, `--base`, from a debugger in the
-  guest); QEMU on Windows has no virtual TPM (no swtpm in the pinned build) and no way to hand
-  the game's files to the guest but the image itself; VirtualBox (its gdb stub would lift T1's
-  `write_mem` wall) and a VMI host have not run here. WSL2 offers `/dev/kvm`, so QEMU/KVM there
-  is untried but promising (acceleration and snapshots together).
+- Patcher / isolation (doc 11.8, rung T4): all three tiers and programs inside a guest are
+  built. VirtualBox T1 (`vbox.py`, `vbox_session.py`: a copy of the image, the VM's gdb stub and
+  its console for physical memory, live snapshots, UEFI + vTPM 2.0, shared folder) and QEMU T2
+  (`qemu.py`, `qemu_media.py`, `qemu_session.py`, `share.py`: overlay, installer .iso, UEFI,
+  shared folder as a read-only CD, physical-memory mode) run for real
+  (`VIWO_L5=1 python -m unittest tests.test_isolation_real tests.test_isolation_real_vbox
+  tests.test_isolation_real_media`: boot-sector and long-mode guests). `locate` (`guest.py`,
+  Volatility 3 worker with the `viwo_guest` plugin), the process view (`paging.py`), per-module
+  bases and `dump --program` are proven on fakes and on a real dump of a guest with no OS.
+  **Open:** a real guest OS (a Windows evaluation image is the next step: a VM cannot boot the
+  running host's own Windows), then a real program located and patched in it; T3 LibVMI
+  (`vmi.py`, `data/workers/libvmi_io.py`) on a bare-metal Linux Xen/KVMi host (a bootable stick,
+  ask the owner first; the KVMi init-data constant is from LibVMI's header and unverified). No
+  QEMU virtual TPM on Windows (no swtpm); ViWo does not use WSL (owner).
 - Desktop-app frameworks (doc 13.8): the Qt embedded-resource carve recovers textual resources
   by content, not the resource tree's names (a stripped binary keeps none) — reconstructing the
   `qt_resource_struct`/`qt_resource_name` tables from a binary would give real paths. A .NET

@@ -132,11 +132,12 @@ class ArchiveBackendTests(unittest.TestCase):
             from viwo.backends import archives
 
             make_tar(root / "t.tar", {"a/b.txt": b"b"})
+            had = hasattr(tarfile, "data_filter")  # Windows 3.10 (<= 3.10.11) never has it
             with mock.patch.dict(archives.tarfile.__dict__):
-                del archives.tarfile.data_filter  # a Python without the data filter
+                archives.tarfile.__dict__.pop("data_filter", None)  # a Python without it
                 tar = archives.TarBackend().extract(root / "t.tar", root / "to", None)
             self.assertEqual(tar.files, 1)
-            self.assertTrue(hasattr(tarfile, "data_filter"))
+            self.assertEqual(hasattr(tarfile, "data_filter"), had)
             (root / "broken.zip").write_bytes(b"PK not really")
             self.assertEqual(
                 ZipBackend().extract(root / "broken.zip", root / "bz", None).kind,

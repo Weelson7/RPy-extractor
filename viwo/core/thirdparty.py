@@ -217,9 +217,21 @@ def lock_file(dep_id: str) -> Path:
     return MANIFEST.parent / "locks" / f"{dep_id}-{PLATFORM}-{python}.txt"
 
 
+def pythons(dep_id: str) -> list[str]:
+    """The CPython versions a pin installs on (tools.json "pythons"); [] means every one."""
+    return list(manifest().get("pythons", {}).get(dep_id, []))
+
+
 def pip_install(dep_id: str, target: Path, runner) -> None:
     """Every file of the pin's closure, each checked against its sha256 (tools/pin_python.py);
     a pin without a lock for this platform and Python is not installed unpinned."""
+    here, runs_on = f"{sys.version_info.major}.{sys.version_info.minor}", pythons(dep_id)
+    if runs_on and here not in runs_on:
+        raise ViwoError(
+            "unavailable",
+            f"{dep_id}'s pin has no build for Python {here}",
+            hint=f"it installs on Python {', '.join(runs_on)}",
+        )
     lock = lock_file(dep_id)
     if not lock.is_file():
         raise ViwoError(
@@ -237,6 +249,7 @@ def pip_install(dep_id: str, target: Path, runner) -> None:
 
 
 PINS = ".viwo-pins.json"  # dep id -> the pin installed (a bump or a broken install reinstalls)
+PYTHON = f"{sys.version_info.major}.{sys.version_info.minor}"  # "_python": the one it was for
 
 
 def installed_pins(home: Path) -> dict[str, str]:
@@ -247,14 +260,16 @@ def python_stale(dep_id: str, home: Path) -> bool:
     """A Python pin ViWo installed at another version than tools.json pins now (a pin bump):
     the startup check installs it again, over what is there (--upgrade). A package found
     elsewhere (a venv, the system) is the user's and is left alone."""
-    pin, recorded = manifest()["python"].get(dep_id), installed_pins(home).get(dep_id)
-    return bool(pin and recorded and recorded != pin)
+    pins = installed_pins(home)
+    pin, recorded = manifest()["python"].get(dep_id), pins.get(dep_id)
+    other = pins.get("_python", PYTHON) != PYTHON  # compiled for another interpreter
+    return bool(pin and recorded and (recorded != pin or other))
 
 
 def install_python(dep_id: str, home: Path, runner) -> str:
     pin = manifest()["python"][dep_id]
     pip_install(dep_id, python_dir(home), runner)
-    pins = {**installed_pins(home), dep_id: pin}
+    pins = {**installed_pins(home), dep_id: pin, "_python": PYTHON}
     python_dir(home).mkdir(parents=True, exist_ok=True)
     (python_dir(home) / PINS).write_text(json.dumps(pins, indent=1), encoding="utf-8")
     activate(home)

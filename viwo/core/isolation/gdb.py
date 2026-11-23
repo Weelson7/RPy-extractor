@@ -6,6 +6,8 @@ driver or evasion code (CLAUDE.md), and it needs no gdb binary located on this h
 import socket
 import time
 
+NUL = chr(0)  # VirtualBox ends a memory reply with one
+
 
 class GdbError(Exception):
     """A gdbstub error reply (`Enn`) or a framing fault."""
@@ -47,11 +49,25 @@ class GdbClient:
             try:
                 sock = socket.create_connection((host, port), timeout=5.0)
                 sock.settimeout(10.0)
-                return cls(sock)
+                client = cls(sock)
+                client._settle()
+                return client
             except OSError:
                 if time.monotonic() >= end:
                     raise
                 time.sleep(0.2)
+
+    def _settle(self) -> None:
+        """Take the stop reply some stubs (VirtualBox) send unasked when a client connects."""
+        self._sock.settimeout(0.3)
+        try:
+            while self._read(1) == b"$":
+                self._body()
+        except (TimeoutError, OSError, GdbError):
+            pass
+        finally:
+            self._buf.clear()
+            self._sock.settimeout(10.0)
 
     def _read(self, n: int) -> bytes:
         while len(self._buf) < n:
@@ -66,6 +82,10 @@ class GdbClient:
     def _recv_packet(self) -> str:
         while self._read(1) != b"$":
             pass
+        return self._body()
+
+    def _body(self) -> str:
+        """The rest of a packet whose `$` was read: its payload, acknowledged."""
         body = bytearray()
         while (ch := self._read(1)) != b"#":
             body.extend(ch)
@@ -77,12 +97,14 @@ class GdbClient:
         """Send one packet and return the reply's payload, re-sending on a NAK."""
         for _ in range(5):
             self._sock.sendall(b"$" + data.encode("latin-1") + b"#" + _checksum(data).encode())
-            if self._read(1) == b"+":
+            while (ack := self._read(1)) == b"$":  # a stop reply the stub sent unasked
+                self._body()
+            if ack == b"+":
                 return self._recv_packet()
         raise GdbError(f"the gdbstub kept rejecting {data!r}")
 
     def read_mem(self, addr: int, size: int) -> bytes:
-        reply = self.command(f"m{addr:x},{size:x}")
+        reply = self.command(f"m{addr:x},{size:x}").rstrip(NUL)
         if not reply or reply.startswith("E"):
             raise GdbError(f"read {size} bytes at {addr:#x}: {reply or 'empty reply'}")
         return bytes.fromhex(reply)
@@ -91,6 +113,18 @@ class GdbClient:
         reply = self.command(f"M{addr:x},{len(data):x}:{data.hex()}")
         if reply != "OK":
             raise GdbError(f"write at {addr:#x}: {reply or 'empty reply'}")
+
+    def monitor(self, line: str) -> str:
+        """One command of the stub's own console (`qRcmd`) and what it printed. A space is sent
+        after the command: VirtualBox's stub drops a command's last character."""
+        reply = self.command("qRcmd," + (line + " ").encode().hex())
+        out = []
+        while reply.startswith("O") and reply != "OK":
+            out.append(bytes.fromhex(reply[1:]).decode("utf-8", "replace"))
+            reply = self._recv_packet()
+        if reply.startswith("E") or not reply:
+            raise GdbError(f"monitor {line!r}: {reply or 'not supported'}")
+        return "".join(out)
 
     def interrupt(self) -> str:
         """Stop a running target (raw Ctrl-C byte); returns the stop reply."""

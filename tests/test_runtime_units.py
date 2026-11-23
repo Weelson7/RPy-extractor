@@ -107,7 +107,9 @@ class WorkerInstallTests(unittest.TestCase):
                 self.assertFalse(lib.with_name(f".{dep}-new").exists())  # nothing half kept
                 workers.install(dep, home, "ok")
             self.assertEqual({p.name for p in lib.iterdir()}, {"new.py", workers.MARK})
-            self.assertEqual((lib / workers.MARK).read_text(), workers.entries()[dep]["pin"])
+            self.assertEqual(
+                (lib / workers.MARK).read_text(), workers._mark(workers.entries()[dep]["pin"])
+            )
             self.assertIsNotNone(workers.argv(dep, home))  # the pin now runs
 
 

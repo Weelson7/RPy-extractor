@@ -13,7 +13,15 @@ from viwo.contracts.errors import ViwoError
 from .downloads import swap
 
 SCRIPTS = Path(__file__).resolve().parent.parent / "data" / "workers"
-MARK = ".viwo-pin"  # the pin a folder was installed from; another pin means not installed
+MARK = (
+    ".viwo-pin"  # the pin and the Python a folder was installed for; either differs: not installed
+)
+PYTHON = f"{sys.version_info.major}.{sys.version_info.minor}"
+
+
+def _mark(pin: str) -> str:
+    """A worker's packages are built for one Python: a folder from another one is not used."""
+    return f"{pin} @python{PYTHON}"
 
 
 def entries() -> dict[str, dict]:
@@ -37,7 +45,7 @@ def argv(dep_id: str, home: Path) -> tuple[str, ...] | None:
 
 def _installed(lib: Path, pin: str) -> bool:
     try:
-        return (lib / MARK).read_text(encoding="utf-8").strip() == pin
+        return (lib / MARK).read_text(encoding="utf-8").strip() == _mark(pin)
     except OSError:
         return False
 
@@ -59,6 +67,6 @@ def install(dep_id: str, home: Path, runner) -> str:
     except ViwoError:
         shutil.rmtree(fresh, ignore_errors=True)
         raise
-    (fresh / MARK).write_text(pin, encoding="utf-8")
+    (fresh / MARK).write_text(_mark(pin), encoding="utf-8")
     swap(fresh, lib)  # a running worker's folder is never half deleted
     return " ".join(argv(dep_id, home) or ())

@@ -42,8 +42,8 @@ becomes an option.
 
 ## Commands (Windows, PowerShell)
 ```powershell
-py -3.13 -m venv .venv; .venv\Scripts\Activate.ps1
-pip install -e ".[unity,sevenzip,renpy,dev]"
+py -3.10 -m venv .venv; .venv\Scripts\Activate.ps1
+pip install -e ".[unity,sevenzip,renpy,isolation,dev]"
 ruff format viwo tests tools packaging; ruff check viwo tests tools packaging
 python tools/loc_count.py --report          # caps: run AFTER ruff format
 python tools/run_tests.py                    # the whole suite in parallel; real-tool tests need VIWO_L5=1

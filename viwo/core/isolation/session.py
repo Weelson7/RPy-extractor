@@ -4,7 +4,8 @@ stop) rejoins it from the record the session left in the workspace
 (`.runtime/isolation/session.json`: the tier and what its backend needs to reach the guest
 again). So a session outlives the call that started it and is driven the same way from the CLI
 and the API. One session per workspace. The guest process belongs to whoever started it: the
-`viwo isolate start` that holds it, or the server."""
+`viwo isolate start` that holds it, or the server. `locate` finds a program inside the guest
+(core.isolation.guest): later patches and undo go through that process's address space."""
 
 import json
 import time
@@ -17,10 +18,12 @@ from viwo.contracts.types import Outcome
 
 from .. import patchsets
 from ..context import core_context
-from . import live
+from . import guest, live, patching
 from .qemu_session import NAME
 
-ACTIONS = ("status", "pause", "resume", "snapshot", "rollback", "dump", "patch", "undo", "stop")
+ACTIONS = (
+    "status", "pause", "resume", "snapshot", "rollback", "locate", "dump", "patch", "undo", "stop",
+)  # fmt: skip
 
 
 def folder(workspace: Path) -> Path:
@@ -88,6 +91,8 @@ def start(rt, req: IsolateRequest, say=None):
     if isinstance(session, Outcome):
         _raise(session, f"{backend.backend_id} could not start")
     record = {"tier": backend.backend_id, **session.record()}
+    guest.drop(folder(req.workspace))  # a process located in an earlier guest is not this one
+    (folder(req.workspace) / "journal.jsonl").unlink(missing_ok=True)  # nor its edits
     _record(req.workspace).parent.mkdir(parents=True, exist_ok=True)
     _record(req.workspace).write_text(json.dumps(record, indent=1), encoding="utf-8")
     session.release()
@@ -142,6 +147,8 @@ def _rejoin(rt, workspace: Path, say, missing_ok: bool = False):
 def forget(workspace: Path) -> None:
     """The guest has ended: drop the record so the next start is not refused."""
     _record(workspace).unlink(missing_ok=True)
+    guest.drop(folder(workspace))
+    (folder(workspace) / "journal.jsonl").unlink(missing_ok=True)
 
 
 def _named(session, opt: dict, verb: str) -> dict:
@@ -152,10 +159,14 @@ def _named(session, opt: dict, verb: str) -> dict:
     return {verb: name}
 
 
-def _dump(session, workspace: Path, opt: dict) -> dict:
+def _dump(rt, session, workspace: Path, opt: dict) -> dict:
+    """The whole guest's RAM as an ELF core, or (`program`) the located program's files."""
     name = str(opt.get("name") or time.strftime("guest-%Y%m%d-%H%M%S"))
     if not NAME.fullmatch(name):
         raise ViwoError("invalid_request", "a dump name is letters, digits, _ . -")
+    if opt.get("program"):
+        where = folder(workspace)
+        return guest.program(rt, session, where, where / "dumps" / name, _say(rt, workspace, opt))
     out = folder(workspace) / "dumps" / f"{name}.elf"
     out.parent.mkdir(parents=True, exist_ok=True)
     outcome = session.dump(out)
@@ -165,14 +176,12 @@ def _dump(session, workspace: Path, opt: dict) -> dict:
 
 
 def _patch(rt, session, workspace: Path, opt: dict) -> dict:
-    exe, patchset = opt.get("exe"), opt.get("patchset")
-    if exe is None or patchset is None:
-        raise ViwoError("invalid_request", "patch needs the program (--exe) and a --patchset")
-    journal = folder(workspace) / "journal.jsonl"
-    patch_set = patchsets.load(Path(patchset))
-    return live.apply_live(
-        rt, session, Path(exe).parent, patch_set, int(opt.get("base") or 0), journal
-    )
+    return patching.patch(rt, session, folder(workspace), opt, _say(rt, workspace, opt))
+
+
+def _say(rt, workspace: Path, opt: dict):
+    tier = session_tier(workspace) or "isolation"
+    return _context(rt, workspace, tier, opt.get("say")).log
 
 
 def act(rt, workspace: Path, action: str, say=None, **opt) -> dict:
@@ -186,7 +195,7 @@ def act(rt, workspace: Path, action: str, say=None, **opt) -> dict:
             session.close()
             forget(workspace)
             return {**head, "stopped": True}
-        return {**head, **_run(rt, session, workspace, action, opt)}
+        return {**head, **_run(rt, session, workspace, action, {**opt, "say": say})}
     finally:
         session.release()
 
@@ -196,12 +205,19 @@ def _run(rt, session, workspace: Path, action: str, opt: dict) -> dict:
         session.suspend() if action == "pause" else session.resume()
     if action in ("snapshot", "rollback"):
         return _named(session, opt, action)
+    if action == "locate":
+        want = str(opt.get("target") or "")
+        return guest.locate(rt, session, folder(workspace), want, _say(rt, workspace, opt))
     if action == "dump":
-        return _dump(session, workspace, opt)
+        return _dump(rt, session, workspace, opt)
     if action == "patch":
         return _patch(rt, session, workspace, opt)
     if action == "undo":
         return live.undo(session, folder(workspace) / "journal.jsonl")
     running = getattr(session, "running", None)
     public = {k: v for k, v in session.record().items() if k not in ("qmp", "gdb")}
+    view = guest.load(folder(workspace))
+    if view:
+        here = guest.present(session, view)  # gone: exited (or refused the VM) or restarted
+        public["located"] = {"pid": view["pid"], "program": guest.main(view), "present": here}
     return {"running": running() if running else None, **public}

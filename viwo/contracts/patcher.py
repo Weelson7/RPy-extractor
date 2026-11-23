@@ -31,6 +31,11 @@ class Wall(str, Enum):
     NOT_READY = "not_ready"  # the backend's own requirement is not met here
 
 
+class MemoryFault(Exception):
+    """Guest memory could not be reached: the tier's channel refused, or the page is not in
+    guest RAM (core.isolation.paging.NotResident)."""
+
+
 @dataclass(frozen=True)
 class WallReport:
     """The wall an action hit; the default is "no wall" (it landed)."""
@@ -46,8 +51,9 @@ class WallReport:
 @dataclass(frozen=True)
 class PatchTarget:
     """WHAT to patch under isolation: the program and its workspace, plus either a running `pid`
-    or a guest disk `image` the backend boots (never written: the session runs on a disposable
-    overlay). `args` are extra launch arguments; the rest shape the guest."""
+    or a guest `image` the backend boots: a disk (never written: the session runs on its own
+    overlay or copy) or an installer .iso (booted with a new empty disk). `args` are extra
+    launch arguments; the rest shape the guest."""
 
     exe: Path
     workspace: Path
@@ -61,6 +67,9 @@ class PatchTarget:
     halted: bool = False  # start stopped at the first instruction, to be resumed by the caller
     accel: str = ""  # "" = the backend picks one and says which
     fresh: bool = False  # discard the overlay disk an earlier session left
+    efi: bool = False  # UEFI firmware (with a virtual TPM 2.0 where the tier has one)
+    share: Path | None = None  # a host folder handed to the guest read-only (as a CD)
+    gpu: bool = False  # 3D acceleration where the tier has it
 
 
 class PatchSession(ABC):
@@ -97,6 +106,16 @@ class PatchSession(ABC):
     @abstractmethod
     def wall(self) -> WallReport:
         """The last wall this session hit (WallReport() when the last action landed)."""
+
+    def physical(self):
+        """A context manager over guest PHYSICAL memory with the guest stopped: it yields an
+        object with read(pa, n) and write(pa, data), raising MemoryFault. None when this tier
+        cannot reach physical memory (then no guest process can be addressed by itself)."""
+        return None
+
+    def cpu_paging(self) -> dict | None:
+        """{"dtb", "mode"} of vCPU 0 now (its CR3 and paging mode), or None when unknown."""
+        return None
 
     def record(self) -> dict:
         """What a later call needs to reach this session again; {} when it cannot be rejoined."""

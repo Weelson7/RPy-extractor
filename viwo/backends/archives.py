@@ -54,7 +54,7 @@ class ZipBackend(Unarchiver):
                     if not info.is_dir():
                         _copy_member(names, info.filename, zf.open(info))
         except (zipfile.BadZipFile, *DAMAGED, RuntimeError, NotImplementedError) as exc:
-            return Outcome(OutcomeKind.FAILED, error=str(exc)[:300])
+            return Outcome(OutcomeKind.FAILED, error=(str(exc) or type(exc).__name__)[:300])
         return _done(dest, names)
 
 
@@ -76,7 +76,7 @@ class TarBackend(Unarchiver):
                     else:
                         links += not member.isdir()
         except (tarfile.TarError, *DAMAGED) as exc:
-            return Outcome(OutcomeKind.FAILED, error=str(exc)[:300])
+            return Outcome(OutcomeKind.FAILED, error=(str(exc) or type(exc).__name__)[:300])
         return _done(dest, names, links)
 
 
@@ -134,5 +134,5 @@ class Py7zrBackend(Unarchiver):
                     return Outcome(OutcomeKind.NEEDS_KEY, error="archive is encrypted")
                 sz.extractall(path=dest)
         except Exception as exc:  # py7zr raises many unrelated types
-            return Outcome(OutcomeKind.FAILED, error=str(exc)[:300])
+            return Outcome(OutcomeKind.FAILED, error=(str(exc) or type(exc).__name__)[:300])
         return _done(dest)

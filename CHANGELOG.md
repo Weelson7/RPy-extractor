@@ -4,6 +4,46 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.37.0 (2026-11-23)
+- **Programs inside a guest** (doc 11.8). `viwo isolate locate [--process NAME|PID]` dumps the
+  guest's RAM and asks Volatility 3 (a pinned worker, `viwo install volatility3`, with ViWo's
+  `viwo_guest` plugin) for every process, the root of its page tables and every file mapped in
+  it, whatever language the program is written in, on Windows and Linux guests. The process
+  named becomes the session's view: `patch` then writes through that process's own page tables
+  (an x86 page walk over the guest's physical memory: x64, PAE, 32-bit, paging off), whichever
+  process the vCPU runs, and takes each module's live base from it, so `--base` is no longer
+  needed. `undo` finds the same address space again; `dump --program` writes the program's
+  modules as files. A page not in guest RAM is said as a wall.
+- **VirtualBox tier, rebuilt and proven** (VirtualBox 7.2.22, real): it boots a copy of the
+  image (VirtualBox rewrites a disk it registers, so yours is never attached), writes memory
+  through the VM's gdb stub console (the stub itself cannot write), takes live snapshots on
+  hardware acceleration, offers UEFI with a virtual TPM 2.0 (`--efi`), boots an installer
+  `.iso` with a new empty disk, shares a folder read-only, and rejoins a running VM.
+- **QEMU tier**: physical-memory access, an installer `.iso` with a new disk, UEFI from QEMU's
+  own edk2, and `--share DIR` as a read-only CD (pycdlib, `viwo install pycdlib`; full names in
+  UDF and Rock Ridge). A dump is no longer left read-only, and `stop` returns once QEMU is gone.
+- **LibVMI tier (T3)** attaches to a running Xen or KVMi domain (`--domain`,
+  `--kvmi-socket`): guest physical memory through the host's LibVMI in a worker process, so
+  `locate`, patch and undo work there as on the other tiers; snapshots through `virsh` or `xl`.
+  It still waits for a real bare-metal Linux host.
+- **RUNTIME > ISOLATION PATCHER** has every option of `viwo isolate`: tier, accelerator,
+  memory, CPUs, network, UEFI + TPM, fresh disk, the T3 domain, the shared folder, LOCATE, DUMP
+  RAM, DUMP PROGRAM, PATCH and UNDO.
+- **A live patch that holds up**: before writing, the located program is checked; one that
+  restarted is located again (ASLR), one that is gone is said (a program that refuses a VM ends
+  like this). `patch --snapshot` snapshots the whole guest first, `--wait S` lands the set as
+  soon as its pages load, `--hold S` writes back what the program reverts and counts it, and a
+  module other processes map too is said. `--gpu` gives a VirtualBox guest 3D.
+- Undo puts bytes back only where they are still the ones it wrote, and a new session starts
+  with an empty journal; an edit at a raw address stays in one address space for its whole life.
+- The development venv is Python 3.10 (the floor ViWo runs on), and running there found and
+  fixed: a download's HTTP error answer that crashed on close, an archive failure whose message
+  was empty, and packages installed by another Python being used (a worker or a Python pin now
+  records the Python it was installed for, and another one installs it again by itself). The 3.10
+  package locks are written; `tools.json` "pythons" names the three pins whose versions have
+  fewer builds (py7zr: 3.10-3.13, soundcard: 3.12-3.14, angr: 3.12-3.13), and installing one
+  anywhere else says so. `.[isolation]` installs pycdlib; `.[dev]` pins setuptools and wheel.
+
 ## 1.36.0 (2026-11-23)
 - **Isolation sessions that last, on a real QEMU** (doc 11.8). `viwo isolate start --image I
   --workspace W` boots a guest and holds it; `status`, `pause`, `resume`, `snapshot`, `rollback`,

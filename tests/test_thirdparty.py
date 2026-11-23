@@ -222,36 +222,6 @@ class InstallerTests(unittest.TestCase):
         }
         self.assertEqual(needed - shipped, set())
 
-    def test_python_pins_install_only_from_their_hash_locks(self) -> None:
-        import re
-        import sys as _sys
-
-        data = thirdparty.manifest()
-        pins = {**data["python"], **{k: v for k, v in data["workers"].items() if k[0] != "_"}}
-        here = f"{_sys.version_info.major}.{_sys.version_info.minor}"
-        for dep_id in pins:
-            for lock in (thirdparty.MANIFEST.parent / "locks").glob(f"{dep_id}-*.txt"):
-                for line in lock.read_text(encoding="utf-8").splitlines():
-                    self.assertRegex(
-                        line, r"^[a-z0-9.\-]+==[^ ]+ --hash=sha256:[0-9a-f]{64}$", lock.name
-                    )
-            self.assertTrue(
-                thirdparty.lock_file(dep_id).is_file(), f"{dep_id}: no lock for this host"
-            )
-        calls = []
-        runner = SimpleNamespace(
-            run=lambda argv, timeout: calls.append(argv) or SimpleNamespace(ok=True)
-        )
-        with mock.patch.object(thirdparty, "lock_file", return_value=Path("missing.txt")):
-            with self.assertRaises(ViwoError) as err:
-                thirdparty.pip_install("unitypy", Path("t"), runner)
-        self.assertEqual((err.exception.code, calls), ("unavailable", []))  # never unpinned
-        thirdparty.pip_install("lz4", Path("t"), runner)
-        self.assertIn("--require-hashes", calls[0])
-        self.assertIn("--no-deps", calls[0])
-        self.assertEqual(calls[0][-1], str(thirdparty.lock_file("lz4")))
-        self.assertTrue(re.search(r"-\d+\.\d+\.txt$", calls[0][-1]) and here in calls[0][-1])
-
     def test_manifest_pins_match_pyproject(self) -> None:
         text = (Path(__file__).resolve().parent.parent / "pyproject.toml").read_text()
         for pin in thirdparty.manifest()["python"].values():
@@ -315,6 +285,52 @@ class RealInstallTests(unittest.TestCase):
             self.assertTrue((home / "third_party" / "quickbms" / "scripts").is_dir())
             result = runner.run([*found["assetstudiomod"], "--help"], timeout=60)
             self.assertIn("AssetStudio", result.stdout + result.stderr)
+
+
+class LockTests(unittest.TestCase):
+    """Every Python pin installs only from its hash lock, for each Python it has builds for."""
+
+    def test_python_pins_install_only_from_their_hash_locks(self) -> None:
+        import re
+        import sys as _sys
+
+        data = thirdparty.manifest()
+        pins = {**data["python"], **{k: v for k, v in data["workers"].items() if k[0] != "_"}}
+        here = f"{_sys.version_info.major}.{_sys.version_info.minor}"
+        for dep_id in pins:
+            for lock in (thirdparty.MANIFEST.parent / "locks").glob(f"{dep_id}-*.txt"):
+                for line in lock.read_text(encoding="utf-8").splitlines():
+                    self.assertRegex(
+                        line, r"^[a-z0-9.\-]+==[^ ]+ --hash=sha256:[0-9a-f]{64}$", lock.name
+                    )
+            runs_on = thirdparty.pythons(dep_id)
+            for python in runs_on:  # a pin with fewer builds: a lock for each one it has
+                for platform in ("windows", "linux"):
+                    lock = (
+                        thirdparty.MANIFEST.parent / "locks" / f"{dep_id}-{platform}-{python}.txt"
+                    )
+                    self.assertTrue(lock.is_file(), lock.name)
+            if runs_on and here not in runs_on:
+                with self.assertRaises(ViwoError) as said:  # said, never installed unpinned
+                    thirdparty.pip_install(dep_id, Path("t"), None)
+                self.assertIn(f"no build for Python {here}", said.exception.message)
+                continue
+            self.assertTrue(
+                thirdparty.lock_file(dep_id).is_file(), f"{dep_id}: no lock for this host"
+            )
+        calls = []
+        runner = SimpleNamespace(
+            run=lambda argv, timeout: calls.append(argv) or SimpleNamespace(ok=True)
+        )
+        with mock.patch.object(thirdparty, "lock_file", return_value=Path("missing.txt")):
+            with self.assertRaises(ViwoError) as err:
+                thirdparty.pip_install("unitypy", Path("t"), runner)
+        self.assertEqual((err.exception.code, calls), ("unavailable", []))  # never unpinned
+        thirdparty.pip_install("lz4", Path("t"), runner)
+        self.assertIn("--require-hashes", calls[0])
+        self.assertIn("--no-deps", calls[0])
+        self.assertEqual(calls[0][-1], str(thirdparty.lock_file("lz4")))
+        self.assertTrue(re.search(r"-\d+\.\d+\.txt$", calls[0][-1]) and here in calls[0][-1])
 
 
 if __name__ == "__main__":

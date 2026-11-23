@@ -3,23 +3,43 @@ own two channels: QMP (stop/cont, savevm/loadvm, dump-guest-memory, quit) and th
 read/write, a stdlib client: gdb.py). The handle holds nothing but two loopback ports, so any
 later call (another `viwo isolate`, the API) rejoins the same guest from its record. A gdbstub
 client stops the guest when it connects, so memory is touched with the guest stopped and the
-connection is dropped, not detached, to leave the run state to QMP alone."""
+connection is dropped, not detached, to leave the run state to QMP alone. Guest physical memory
+is the same gdbstub in QEMU's physical-memory mode (`Qqemu.PhyMemMode`), which is QEMU-wide, so
+it is switched off again before the connection goes and at the start of every virtual access."""
 
 import re
+import time
 from contextlib import contextmanager
 from pathlib import Path
 
 from viwo.contracts.errors import ViwoError
-from viwo.contracts.patcher import PatchSession, Wall, WallReport
+from viwo.contracts.patcher import MemoryFault, PatchSession, Wall, WallReport
 from viwo.contracts.types import Outcome, OutcomeKind
+from viwo.os import pid_alive
 
 from .gdb import GdbClient, GdbError
+from .paging import mode_of
 from .qmp import QmpBusy, QmpClient, QmpError
 
 HOST = "127.0.0.1"
 GONE = (GdbError, QmpError, OSError)
 NAME = re.compile(r"[A-Za-z0-9_.-]{1,64}")
+PHYS = "Qqemu.PhyMemMode:"
+REGISTER = re.compile(r"\b(CR0|CR3|CR4|EFER)=([0-9a-fA-F]+)")
 NO_SAVE = "this accelerator cannot save state (WHPX): start the session with a snapshot or TCG"
+
+
+class _Physical:
+    """Guest physical memory through a gdbstub already in physical-memory mode."""
+
+    def __init__(self, gdb: GdbClient) -> None:
+        self._gdb = gdb
+
+    def read(self, pa: int, n: int) -> bytes:
+        return self._gdb.read_mem(pa, n)
+
+    def write(self, pa: int, data: bytes) -> None:
+        self._gdb.write_mem(pa, data)
 
 
 class QemuSession(PatchSession):
@@ -59,11 +79,14 @@ class QemuSession(PatchSession):
         """The gdbstub with the guest stopped; the guest runs again after only if it ran before."""
         was = self.running()
         self.suspend()
-        gdb = GdbClient.connect(HOST, self.info["gdb"], 5.0)
+        gdb = None
         try:
+            gdb = GdbClient.connect(HOST, self.info["gdb"], 5.0)
+            gdb.command(PHYS + "0")  # virtual addresses, whatever an earlier client left
             yield gdb
         finally:
-            gdb.drop()
+            if gdb is not None:
+                gdb.drop()
             if was:
                 self.resume()
 
@@ -85,6 +108,29 @@ class QemuSession(PatchSession):
         except GONE as exc:
             self._wall = WallReport(Wall.NOT_READY, f"gdbstub write refused: {exc}")
         return self._wall
+
+    def cpu_paging(self) -> dict | None:
+        try:
+            text = self._q().monitor("info registers")
+        except GONE:
+            return None
+        regs = {k.lower(): int(v, 16) for k, v in REGISTER.findall(text)}
+        if not {"cr0", "cr3", "cr4", "efer"} <= regs.keys():
+            return None
+        return {"dtb": regs["cr3"], "mode": mode_of(regs["cr0"], regs["cr4"], regs["efer"])}
+
+    @contextmanager
+    def physical(self):
+        try:
+            with self._memory() as gdb:
+                if gdb.command(PHYS + "1") != "OK":
+                    raise MemoryFault("this QEMU's gdbstub has no physical-memory mode")
+                try:
+                    yield _Physical(gdb)
+                finally:
+                    gdb.command(PHYS + "0")
+        except GONE as exc:
+            raise MemoryFault(f"gdbstub: {exc}") from exc
 
     def snapshot(self, name: str) -> Outcome:
         return self._monitor("savevm", name)
@@ -110,6 +156,8 @@ class QemuSession(PatchSession):
             self._q().execute("dump-guest-memory", paging=False, protocol=f"file:{out}")
         except GONE as exc:
             return Outcome(OutcomeKind.FAILED, error=f"QMP dump-guest-memory: {exc}")
+        if out.is_file():
+            out.chmod(0o644)  # QEMU creates it read-only, which Windows then refuses to delete
         return Outcome(OutcomeKind.OK)
 
     def wall(self) -> WallReport:
@@ -127,10 +175,14 @@ class QemuSession(PatchSession):
             qmp.close()
 
     def close(self) -> None:
+        """Quit QEMU and return once it has exited, so its files are free (Windows locks them)."""
         try:
             self._q().execute("quit")  # QEMU closes the overlay cleanly
         except GONE:
             pass
         self.release()
+        end = time.monotonic() + 10.0
+        while pid_alive(int(self.info.get("pid") or 0)) and time.monotonic() < end:
+            time.sleep(0.1)
         if self._child is not None:
             self._child.kill()

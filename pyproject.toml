@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "viwo"
-version = "1.36.0"
+version = "1.37.0"
 description = "Vidya Wormhole: cross-platform game asset extraction and curation framework"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -25,7 +25,8 @@ renpy = ["unrpa==2.3.0"]
 lz4 = ["lz4==4.4.5"]
 patch = ["capstone==5.0.9"]
 runtime = ["frida-tools==14.11.0", "frida==17.25.2", "soundcard==0.4.6", "numpy==2.5.4"]
-dev = ["ruff==0.17.3"]
+isolation = ["pycdlib==1.22.0"]
+dev = ["ruff==0.17.3", "setuptools==84.2.1", "wheel==0.48.0"]  # the wheel test builds one
 
 [project.scripts]
 viwo = "viwo.cli:main"

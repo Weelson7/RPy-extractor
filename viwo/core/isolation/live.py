@@ -6,17 +6,20 @@ offset loads to (patch_tools.address_of), under the atomic suspend -> write -> v
 
 A live set is all or nothing: when one edit hits a wall, the edits of the set already written are
 put back. Every edit that stays is journalled with the bytes it replaced (`journal.jsonl` beside
-the session), so `undo` restores the target byte for byte."""
+the session), so `undo` restores the target byte for byte. Through a located guest process
+(core.isolation.guest) each edit lands in that process's address space at its module's live
+base, and the journal keeps which address space it was, so undo finds it again."""
 
 import json
 import time
 from pathlib import Path
 
 from viwo.contracts import workspace as ws
+from viwo.contracts.patcher import Wall, WallReport
 
 from .. import patchsets
 from ..patch_tools import address_of, pe
-from . import atomic_write
+from . import atomic_write, guest
 
 SETTLE = 0.5  # seconds the target runs before a journalled edit is read once more
 
@@ -38,27 +41,45 @@ def write_located(session, data: bytes, offset: int, new: bytes, base: int = 0, 
     va = located_va(data, offset, base)
     if log is None:
         return atomic_write(session, va, new)
-    old = session.read_mem(va, len(new))
-    wall = atomic_write(session, va, new, SETTLE)
+    space = guest.pinned(session)  # one address space for the edit, its readbacks and its undo
+    old = space.read_mem(va, len(new))
+    if len(old) != len(new):  # without the old bytes the edit could never be undone
+        return space.wall() if space.wall().blocked else WallReport(Wall.NOT_READY, "unreadable")
+    wall = atomic_write(space, va, new, SETTLE)
     if not wall.blocked:
-        log.append({"addr": va, "old": old.hex(), "new": new.hex(), "time": time.time()})
+        tag = space.tag() if isinstance(space, guest.ProcessView) else {}
+        log.append({"addr": va, "old": old.hex(), "new": new.hex(), "time": time.time(), **tag})
     return wall
 
 
 def _restore(session, entries: list[dict]) -> int:
-    """Write the recorded old bytes back, newest first; how many went back."""
+    """Write the recorded old bytes back, newest first, only where the edit is still there (the
+    bytes there are the ones written): anything else is not ViWo's to overwrite. How many went
+    back."""
     done = 0
     for entry in reversed(entries):
-        old = bytes.fromhex(entry["old"])
-        if len(old) and not atomic_write(session, int(entry["addr"]), old).blocked:
+        old, new = bytes.fromhex(entry["old"]), bytes.fromhex(entry["new"])
+        where = guest.bound(session, entry)
+        if where.read_mem(int(entry["addr"]), len(new)) != new:
+            continue
+        if len(old) and not atomic_write(where, int(entry["addr"]), old).blocked:
             done += 1
     return done
 
 
-def apply_live(rt, session, game: Path, patch_set: dict, base: int = 0, journal=None) -> dict:
+def _base(base, patch: dict) -> int | None:
+    """The live base of the patch's module: `base` itself, or its entry in a {file name: base}
+    map of a located process (None when that process has not loaded the module)."""
+    if not isinstance(base, dict):
+        return base
+    return base.get(Path(str(patch.get("file", ""))).name.lower())
+
+
+def apply_live(rt, session, game: Path, patch_set: dict, base=0, journal=None) -> dict:
     """Plan the set against the game's files, then write every ready patch into the live target
-    (the same located offset the cold writer uses, turned into a virtual address). With a
-    `journal` path the set is all or nothing and what stays is appended to the journal."""
+    (the same located offset the cold writer uses, turned into a virtual address). `base` is one
+    module base (0: the PE's own) or a {file name: base} map. With a `journal` path the set is
+    all or nothing and what stays is appended to the journal."""
     report = patchsets.plan(game, patch_set, rt.os)
     log: list[dict] | None = [] if journal is not None else None
     for patch, r in zip(patch_set["patches"], report["results"]):
@@ -67,7 +88,11 @@ def apply_live(rt, session, game: Path, patch_set: dict, base: int = 0, journal=
             continue
         path = ws.member_path(game, str(patch.get("file", "")))
         data = path.read_bytes() if path is not None and path.is_file() else b""
-        wall = write_located(session, data, r["offset"], bytes.fromhex(r["new"]), base, log)
+        at = _base(base, patch)
+        if at is None:
+            wall = WallReport(Wall.NOT_READY, f"{patch.get('file')} is not loaded in the process")
+        else:
+            wall = write_located(session, data, r["offset"], bytes.fromhex(r["new"]), at, log)
         r["wall"], r["detail"] = wall.wall.value, wall.detail
         r["written"] = not wall.blocked
     ready = [r for r in report["results"] if r["status"] == "ready"]

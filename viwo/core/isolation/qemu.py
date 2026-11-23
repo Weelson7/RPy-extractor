@@ -4,20 +4,22 @@ boundary: the base image is never written (a disposable qcow2 overlay takes ever
 network is off unless asked, and the control channels (QMP, gdbstub) listen on loopback only. The
 accelerator is hardware (WHPX on Windows, KVM on Linux) when it really starts, else TCG, and which
 one is said; WHPX cannot save a snapshot, so a session that wants snapshots runs on TCG. QEMU needs
-no driver and no elevation. The session itself is qemu_session.QemuSession."""
+no driver and no elevation. The session itself is qemu_session.QemuSession; what it boots from
+(disk overlay, installer, UEFI, a shared folder) is qemu_media."""
 
-import json
 import socket
 import sys
 import time
-from pathlib import Path
 
 from viwo.contracts.errors import ViwoError
 from viwo.contracts.patcher import PatcherBackend, PatchTarget, Wall, WallReport
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 from viwo.os import pid_alive
 
+from .guest import VOLATILITY
+from .qemu_media import media
 from .qemu_session import HOST, QemuSession
+from .share import PYCDLIB
 
 QEMU = DependencySpec.of("qemu")
 HARDWARE = "whpx" if sys.platform == "win32" else "kvm"
@@ -60,31 +62,6 @@ def accelerators(os, argv_prefix, wanted: str, snapshot: bool) -> tuple[list[str
     return [HARDWARE, "tcg"], ""
 
 
-def overlay_of(os, tool, target: PatchTarget, staging: Path) -> tuple[list[str], str]:
-    """(the -drive arguments, a note). Every write goes to a qcow2 overlay beside the session,
-    kept between sessions (so snapshots survive) unless `fresh`; without qemu-img it is QEMU's
-    own throwaway overlay (`snapshot=on`), which cannot hold a snapshot."""
-    img = Path(tool.path).with_name("qemu-img" + Path(tool.path).suffix)
-    over = staging / "overlay.qcow2"
-    if target.fresh and over.is_file():
-        over.unlink()
-    if over.is_file():
-        return ["-drive", f"file={over},format=qcow2"], f"overlay kept from before ({over.name})"
-    if img.is_file() and (fmt := _format(os, img, target.image)):
-        argv = [str(img), "create", "-f", "qcow2", "-F", fmt, "-b", str(target.image), str(over)]
-        if os.process.run(argv, timeout=60).ok:
-            return ["-drive", f"file={over},format=qcow2"], f"new overlay on the {fmt} image"
-    return ["-drive", f"file={target.image},snapshot=on"], "throwaway overlay (no qemu-img)"
-
-
-def _format(os, img: Path, image: Path) -> str:
-    info = os.process.run([str(img), "info", "--output=json", str(image)], timeout=60)
-    try:
-        return str(json.loads(info.stdout or "")["format"]) if info.ok else ""
-    except (ValueError, KeyError, TypeError):
-        return ""
-
-
 def guest_args(target: PatchTarget, accel: str, ports: tuple[int, int]) -> list[str]:
     qmp, gdb = ports
     args = ["-accel", accel, "-m", str(target.memory_mb), "-smp", str(target.cpus)]
@@ -102,7 +79,7 @@ def guest_args(target: PatchTarget, accel: str, ports: tuple[int, int]) -> list[
 class QemuPatcher(PatcherBackend):
     backend_id, license, tier = "qemu", "GPL-2.0", 2
     requirement = "QEMU (qemu-system-x86_64): `viwo install qemu`, or your own install"
-    requires = (QEMU,)
+    requires = (QEMU, PYCDLIB, VOLATILITY)  # ready() needs QEMU only
 
     def ready(self, os) -> WallReport:
         if os.tools.locate(QEMU) is None:
@@ -116,8 +93,7 @@ class QemuPatcher(PatcherBackend):
         if target.image is None or not target.image.is_file():
             return Outcome(OutcomeKind.UNAVAILABLE, error="QEMU needs a guest disk image (--image)")
         ctx.staging.mkdir(parents=True, exist_ok=True)
-        drive, note = overlay_of(ctx.os, tool, target, ctx.staging)
-        ctx.log(f"QEMU disk: {note}; the image itself is not written", "info")
+        drive = media(ctx.os, tool, target, ctx.staging, ctx.log)
         order, why = accelerators(ctx.os, tool.argv_prefix, target.accel, snapshot)
         if why:
             ctx.log(f"QEMU: {why}", "warn")

@@ -12,10 +12,10 @@ them from the tables below (`tools/presentation/reference.py`, `conformance()`).
 
 **Partial**, by cause: no pinned QuickBMS script in the indexes (16.0b); coverage per file (17.5).
 
-**Open:** a guest operating system under the patcher / isolation arm (11.8 T4: the QEMU tier
-runs on a real QEMU with a boot-sector guest, L5; no OS has been booted in it, no real program
-patched there, ViWo does not find a program inside a guest, and VirtualBox and a VMI host have
-not run here); the completeness
+**Open:** a guest operating system under the patcher / isolation arm (11.8 T4: VirtualBox and
+QEMU run for real on a boot-sector and a long-mode guest, L5; finding a program inside a guest OS
+and its dump are built but proven only on fakes and on a real dump with no OS in it; T3 LibVMI
+waits for a bare-metal Linux Xen/KVMi host); the completeness
 contract per engine (16.0c); rung D4 (`hook.overlay`); the way back
 of typeless BC6H (no decoder reads it) and of ETC, ASTC, PVRTC and Basis Godot textures (no
 decoder either); Unreal asset export (the one engine 13.7 still lists);
@@ -335,12 +335,12 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 11.7 D4 `hook.overlay` | open | third-party only, and neither candidate fits the rules (11.7): Special K works around CAPCOM's copy protection by default (the owner's call) and shows its licence screen in the game; MangoHud's release tarball installs into `/usr` with `sudo`. Both downloads were checked (size, sha256), nothing is pinned |
 | 11.7 D4 `net.*` (own-traffic proxy) | implemented | `attach.net` / `mitmproxy-gui`, `core/capture/nettools.py` (pinned mitmproxy as a tracked child, regular mode; `tests/test_nettools.py`; a real request passed through it at 1.20.43). Per-process capture and raw packet capture are not used: both need elevation |
 | 11.7 D4 `profile.sample` | implemented | `os/_win_probe.py`, `os/_linux_probe.py` `sample_threads`; `core/capture/profile.py`; `viwo profile`, `/api/runtime/profile` |
-| 11.8 patcher / isolation contract (`start`, `read/write_mem`, `suspend/resume`, `snapshot/rollback`, `dump`, `wall()`); atomic suspend-write-verify-resume | implemented | `contracts/patcher.py`, `core/isolation/__init__.py` `atomic_write`, `tiers`; `tests/test_isolation.py` |
+| 11.8 patcher / isolation contract (`start`, `read/write_mem`, `physical()`, `suspend/resume`, `snapshot/rollback`, `dump`, `wall()`); atomic suspend-write-verify-resume | implemented | `contracts/patcher.py` (`MemoryFault`, `PatchTarget` with `efi`, `share`, installer `.iso`), `core/isolation/__init__.py` `atomic_write`, `tiers`; `tests/test_isolation.py`, `tests/test_isolation_guest.py` |
 | 11.8 Scylla dump-to-patch (`attach.dump` / `scylla-gui`), launch-and-guide handoff; pinned | implemented | `core/isolation/scylla.py`; `data/tools.json` (Scylla 0.9.8, GPL-3.0); rides `viwo attach` (`tests/test_isolation.py`). GUI-only, never automated; no process has been dumped here |
-| 11.8 T1 VirtualBox backend (vTPM 2.0, snapshots, pause/resume, dumpvmcore via VBoxManage) | partial | `core/isolation/vbox.py`: orchestration unit-tested with a fake VBoxManage (`tests/test_isolation.py`). VirtualBox is located, not installed (kernel driver, elevation); `write_mem` is a `not_ready` wall (the in-guest debugger does the byte edit); no real VM has run |
-| 11.8 T2 QEMU (pinned, on demand; out of the guest over QMP + the gdbstub; overlay disk, closed network, WHPX/KVM else TCG) | implemented (L5 on a boot-sector guest) | `core/isolation/qemu.py` (overlay, accelerator order, loopback control), `qemu_session.py` (QMP run state, gdbstub memory with the guest stopped, snapshot refusal under WHPX said, `busy` on a held channel), `gdb.py`, `qmp.py`; `data/tools.json` `qemu`. `tests/test_isolation_real.py` (L5: real QEMU 11.1, TCG and WHPX) and `tests/test_isolation_tiers.py` (loopback stubs). **No guest OS has been booted** |
-| 11.8 T3 DRAKVUF/LibVMI (bare-metal Linux VMI) | implemented (tests-only) | `core/isolation/vmi.py`: `vmi-dump-memory` read/dump, `virsh`/`xl` pause-resume, `write_mem` a `not_ready` wall (no stock LibVMI write CLI); not-ready off a Linux KVM/Xen host (Windows, WSL2). `tests/test_isolation_bridge.py` tests the command construction and the not-ready path with fakes. **No VMI host has run here** |
-| 11.8 cold+live bridge, journal and undo, the session lifecycle, CLI/API | implemented | `core/isolation/live.py` (`located_va`/`write_located`/`apply_live`: all or nothing, journalled; `undo`), `core/isolation/session.py` (`start`, `act`, `drive`; the record a later call rejoins), `viwo isolate` (`cli_isolate.py`), `GET`/`POST /api/runtime/isolation` (`api/handlers_isolation.py`), RUNTIME ISOLATION PATCHER; `tests/test_isolation_bridge.py`, `tests/test_isolation_real.py`. The address is the guest CPU's view: the user supplies `--base`; **no program inside a guest OS has been patched here** |
+| 11.8 T1 VirtualBox (located; a copy of the image booted; gdb stub + console physical memory; live snapshots; UEFI + vTPM 2.0; installer .iso; read-only shared folder; rejoin) | implemented (L5 on a real VirtualBox 7.2.22) | `core/isolation/vbox.py`, `vbox_session.py`; `tests/test_isolation.py` (fake VBoxManage and a fake console stub), `tests/test_isolation_real_vbox.py` and `test_isolation_real_media.py` (real VirtualBox, long-mode guest). **No guest OS has been booted** |
+| 11.8 T2 QEMU (pinned, on demand; out of the guest over QMP + the gdbstub, physical-memory mode; overlay disk, installer .iso, UEFI, read-only shared CD, closed network, WHPX/KVM else TCG) | implemented (L5 on a real QEMU 11.1) | `core/isolation/qemu.py`, `qemu_media.py`, `qemu_session.py`, `share.py` (pycdlib), `gdb.py`, `qmp.py`; `tests/test_isolation_real.py` (boot-sector and long-mode guests; `locate` on a real dump with no OS), `test_isolation_real_media.py`, `tests/test_isolation_tiers.py` (loopback stubs). No virtual TPM on Windows (no swtpm). **No guest OS has been booted** |
+| 11.8 T3 LibVMI (bare-metal Linux Xen/KVMi; attaches to a running domain; physical memory through a LibVMI worker; virsh/xl pause, snapshot, restore) | implemented (tests-only) | `core/isolation/vmi.py`, `data/workers/libvmi_io.py`; not ready off a Linux Xen/KVMi host (Windows, WSL2). `tests/test_isolation_bridge.py` (fake LibVMI worker, fake virsh/xl). **No VMI host has run here** (a bootable Linux stick is planned) |
+| 11.8 cold+live bridge, journal and undo, the session lifecycle, programs inside a guest (`locate`, process view, per-module bases, program dump), CLI/API/UI | implemented | `core/isolation/live.py`, `session.py`, `guest.py` (Volatility 3 worker `data/workers/memory.py` with the `viwo_guest.Guest` plugin; Windows and Linux guests), `paging.py` (x64, PAE, x86, paging off), `viwo isolate` (`cli_isolate.py`), `/api/runtime/isolation`, RUNTIME > ISOLATION PATCHER (`web/js/views/isolation.js`); `tests/test_isolation_guest.py`, `tests/test_isolation_bridge.py`, `tests/test_isolation_real*.py`. **Not yet proven on a real guest OS** |
 
 ## 12 Core, jobs, CLI
 
@@ -397,7 +397,7 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 16.0c everything decoded, all three arms per engine | open | the open column of doc 16.0c |
 | 16.2b A1-A4, D1-D3, T1-T2 | implemented | doc 16.2b |
 | 16.2b D4 | open | see 11.7 |
-| 16.2b T4 patcher / isolation | partial | see 11.8: contract, Scylla, VirtualBox (T1, fakes), QEMU (T2, real QEMU with a boot-sector guest), VMI (T3, fakes), the session and the CLI/API are built; a guest OS and a real program in it are open |
+| 16.2b T4 patcher / isolation | partial | see 11.8: contract, Scylla, VirtualBox (T1, real), QEMU (T2, real), LibVMI (T3, fakes), programs inside a guest (fakes and a real no-OS dump), the session and the CLI/API/UI are built; a guest OS and a real program in it are open |
 | indexes repository split and first release | open | `docs/indexes.md` |
 
 ## 17 Testing

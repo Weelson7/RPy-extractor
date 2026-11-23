@@ -125,7 +125,10 @@ def _answered(exc, target: Path, url: str, state: _Fetch) -> None:
     and tried again. A 416 to a Range from the end of a file of unknown size means it is
     whole."""
     code, reason = exc.code, str(exc.reason or "").strip()
-    exc.close()
+    try:
+        exc.close()
+    except (KeyError, AttributeError, OSError):  # Python 3.10: an error answer with no body
+        pass
     if code == 416 and state.got and _total(exc, True) == state.got and not state.total:
         state.whole = True
         return

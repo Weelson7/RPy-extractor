@@ -28,8 +28,11 @@ PYTHONS = ("3.10", "3.11", "3.12", "3.13", "3.14")  # pyproject: requires-python
 WHEEL = re.compile(r"^(?P<name>[^-]+)-(?P<version>[^-]+)-")
 
 
+DATA = json.loads((ROOT / "viwo" / "data" / "tools.json").read_text(encoding="utf-8"))
+
+
 def pins() -> dict[str, str]:
-    data = json.loads((ROOT / "viwo" / "data" / "tools.json").read_text(encoding="utf-8"))
+    data = DATA
     workers = {k: v["pin"] for k, v in data.get("workers", {}).items() if not k.startswith("_")}
     return {**data["python"], **workers}
 
@@ -89,8 +92,9 @@ def main(argv: list[str]) -> int:
     for dep_id, pin in pins().items():
         if argv and dep_id not in argv:
             continue
+        only = DATA.get("pythons", {}).get(dep_id) or PYTHONS  # a pin with fewer builds
         for platform in PLATFORMS:
-            for python in PYTHONS:
+            for python in only:
                 path = LOCKS / f"{dep_id}-{platform}-{python}.txt"
                 try:
                     path.write_text(lock(pin, platform, python), encoding="utf-8")
