@@ -121,11 +121,17 @@ left, by cause:
   tests.test_isolation_real_media`: boot-sector and long-mode guests). `locate` (`guest.py`,
   Volatility 3 worker with the `viwo_guest` plugin), the process view (`paging.py`), per-module
   bases and `dump --program` are proven on fakes and on a real dump of a guest with no OS.
-  **Open:** a real guest OS (a Windows evaluation image is the next step: a VM cannot boot the
-  running host's own Windows), then a real program located and patched in it; T3 LibVMI
-  (`vmi.py`, `data/workers/libvmi_io.py`) on a bare-metal Linux Xen/KVMi host (a bootable stick,
-  ask the owner first; the KVMi init-data constant is from LibVMI's header and unverified). No
-  QEMU virtual TPM on Windows (no swtpm); ViWo does not use WSL (owner).
+  Cold patching inside the guest (`coldguest.py`: VirtualBox `guestcontrol`, QEMU guest agent
+  `qga.py`), rollback when a program exits once patched and the patch options (`patching.py`)
+  are unit-tested. **Open:** a real guest OS. The Windows 11 Enterprise evaluation ISO and the
+  build script are in `C:\Users\weel-\ViWo-guests\` (outside the repo; `build-win11-guest.ps1`
+  runs VirtualBox's own unattended install: UEFI, vTPM 2.0, Guest Additions, account viwo); then
+  a real program located, patched live and cold, dumped, on that guest. Linux guests need a
+  Volatility symbol table of their exact kernel in `third_party/volatility3/cache/symbols/`;
+  ViWo does not build one yet. T3 LibVMI (`vmi.py`, `data/workers/libvmi_io.py`) waits for a
+  bare-metal Linux Xen/KVMi host: the owner left it for later (a bootable stick; ask first; the
+  KVMi init-data constant is from LibVMI's header and unverified). No QEMU virtual TPM or 3D on
+  Windows (no swtpm, no virgl); ViWo does not use WSL (owner).
 - Desktop-app frameworks (doc 13.8): the Qt embedded-resource carve recovers textual resources
   by content, not the resource tree's names (a stripped binary keeps none) — reconstructing the
   `qt_resource_struct`/`qt_resource_name` tables from a binary would give real paths. A .NET
