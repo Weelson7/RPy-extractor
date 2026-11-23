@@ -3,81 +3,89 @@
 Area code `MERGE`. Fixture: `merger` (frames `01_walk..05_walk.png`, `01_run..03_run.png`,
 `walk_01..02.png`, `03_walk.mp4` when ffmpeg was on PATH, `loop.wav`). Extract it first:
 `viwo extract C:\sqc\merger\game --workspace C:\sqc\_ws\merge --on-existing replace`, switch the
-UI workspace to it. Needs ffmpeg + ffprobe (pinned, installed by 01).
+UI workspace to it. Needs ffmpeg + ffprobe. Outputs go to `[server] merged`
+(`viwo-data\merged\`). API form: `GET /api/media-merger/state`, `POST /api/media-merger/list
+{namingPattern, includeFiles}`, `POST /api/media-merger/build {transitionType, diapoDelay,
+fadeCrossTime, endFadeoutTime, endLastImageTime, overlaySound, overlayVolume, outputName,
+trashAfterBuild, namingPattern, selectedCandidates: [{name, entiretyTimes, partLoops}]}`.
 
 ## SQC-MERGE-01 (P0) Groups, timeline, one build
 
 Steps:
-1. `MERGER`. Read `GROUPS`.
-2. Select the group `walk` (5 frames + the mp4 if present). Read `TIMELINE`.
-3. In the output panel: `OUTPUT NAME` = `walk-test`, `IMAGE HOLD (S)` = 0.5, `TRANSITION` =
-   `CROSSFADE`, `CROSSFADE (S)` = 0.2, click `BUILD VIDEOS`.
-4. Open the output folder (`viwo-data\merged\`).
+1. `MERGER`. Read `GROUPS` (pattern `number-to-name`, then `name-to-number`).
+2. Tick the group `walk`. Read the timeline.
+3. In `VIDEO SETTINGS`: `TRANSITION` = `CROSSFADE`, `IMAGE HOLD (S)` 0.5, `CROSSFADE (S)` 0.2,
+   `OUTPUT NAME` = `walk-test`; `BUILD VIDEOS`.
+4. Probe the output (`ffprobe`), play it.
 
-Expected: 1: groups `walk (5)`, `run (3)`, `walk_ (2)` (prefix and suffix numbering both
-detected), filter chips `ALL`, `IMG`, `VID`, `AUD`. 2: the timeline lists the items in numeric
-order with thumbnails; `03_walk.png` and `03_walk.mp4` (same number) appear as one slot with the
-video preferred and the note. 3: progress `RENDERING` with the rail `probe › encode › write`,
-counters `VIDEOS WRITTEN 1`, `SECONDS ENCODED`; result lists `walk-test.mp4` with duration and a
-player. 4: the mp4 plays; duration about `5 x 0.5 - 4 x 0.2` seconds (plus the clip length if
-the mp4 was included).
+Expected: 1: `number-to-name` gives `run (3)`, `walk (5 indexes, 6 files)` and the singles
+`walk_01`, `walk_02` (`fileCount 11`, `totalCount 4`, `singleCount 2`); `name-to-number` groups
+`walk_01..02` as `walk (2)`. 2: the timeline lists the items in numeric order with thumbnails;
+`03_walk.png` and `03_walk.mp4` share index 03 (a conflict the card shows). 3: progress
+`RENDERING…`, then `1 VIDEO(S) BUILT`; the result `walk-test_walk.mp4` with `6 CLIPS` and its
+duration; the log `[MERGER:MERGE] Probing 6 input(s) for walk-test_walk.mp4`, `Encoding 3.5 s of
+video with ffmpeg`, `Wrote walk-test_walk.mp4`. 4: `h264` video + `aac` audio, 3.5 s (5 images
+x 0.5 + the 2 s clip - 5 x 0.2); it plays.
 
-## SQC-MERGE-02 (P0) CLI-free check of the ffmpeg command with the pinned build
+## SQC-MERGE-02 (P0) The ffmpeg command with the pinned build
 
-Steps: in the activity console (`// ACTIVITY CONSOLE` at the bottom) read the `[MERGER]` lines of
-the build.
+Steps: in the activity console (`// ACTIVITY CONSOLE`) or `viwo-data\logs\viwo-<date>.log` read
+the `[MERGER:MERGE]` lines of the build; repeat the build with a system ffmpeg 7.x in `[tools]`.
 
-Expected: the ffmpeg path is `third_party\ffmpeg\ffmpeg.exe` (unless a system ffmpeg is in
-`[tools]`); the filter graph ends each input chain with `fps=30` before `xfade`; no
-`Could not open encoder` error. Repeat the build with a system ffmpeg 7.x on PATH in `[tools]`:
-same success.
+Expected: the ffmpeg used is the pinned one (`third_party\ffmpeg\ffmpeg.exe`, or the `[tools]`
+one); no `Could not open encoder` error; with ffmpeg 7.x the same success.
 
-## SQC-MERGE-03 (P1) Overlay audio, volume, hold last frame, fade-out
+## SQC-MERGE-03 (P1) Overlay audio, volume, hold last frame, fade-out, part loop
 
-Steps: `OVERLAY AUDIO > BROWSE` = `C:\sqc\merger\loop.wav`, `VOLUME` 50 %, `HOLD LAST FRAME (S)`
-1, `END FADE-OUT (S)` 0.5, `+ PART LOOP` once; build.
+Steps: `OVERLAY AUDIO` = `C:\sqc\merger\loop.wav` (`BROWSE` or typed), `VOLUME` 50 %, `HOLD LAST
+FRAME (S)` 1, `END FADE-OUT (S)` 0.5, a part loop on indexes `1-2` twice; build `walk`.
 
-Expected: the output has an audio track (ffprobe: 2 streams), total length = frames + 1 s hold;
-the audio fades at the end; a loop part repeats the overlay.
+Expected: the output has a video and an audio track (ffprobe: `h264`, `aac`); duration 4.5 s
+(the 3.5 s of SQC-MERGE-01 plus the 1 s hold); the audio fades at the end. The overlay formats
+listed under the field are `.aac .aif .aiff .flac .m4a .mid .midi .mp3 .ogg .opus .wav .wma`.
 
-## SQC-MERGE-04 (P1) Trash inputs after build, undo from WORKSPACE
+## SQC-MERGE-04 (P1) Trash inputs after build, restore from WORKSPACE
 
-Steps: tick `trash inputs after build` (if present in the settings), build the `run` group.
+Steps: tick `Move merged source files to the workspace trash after a successful build`, build the
+`run` group; open WORKSPACE.
 
-Expected: the 3 frames move to `.trash\merger\`; `WORKSPACE` shows them in the trash section
-with `RESTORE`.
+Expected: the result shows `3 TRASHED`; the 3 frames are in `.trash\merger\`; WORKSPACE counts
+them (`IN TRASH 3`) and its `RESTORE` on `.png` brings them back (`GET /api/status` lists them in
+`trashed`; `POST /api/restore {"folder": "png"}` restores them).
 
-## SQC-MERGE-05 (P1) Group with failures
+## SQC-MERGE-05 (P1) A group that fails
 
-Steps: replace `02_run.png` in the workspace with a 0-byte file; build `run`.
+Steps: replace `png\02_run.png` in the workspace with a 0-byte file; build `run` and `walk` together.
 
-Expected: `GROUPS THAT FAILED` lists `run` with the ffmpeg message tail; other groups still
-build; the toast says how many succeeded.
+Expected: `walk` builds; `GROUPS THAT FAILED` lists `run` with the ffmpeg message tail (`Error
+opening input file ...\02_run.png ... Invalid data found when processing input`); the toast says
+how many were built (`Built 1 video(s).`, `Some candidates failed.`); the answer has `partial:
+true`.
 
 ## SQC-MERGE-06 (P1) Long filter graph (many frames)
 
-Steps: create 300 numbered PNGs in a workspace (`1..300 | % { Copy-Item 01_walk.png ("f_{0:000}.png" -f $_) }`),
-build.
+Steps: 300 numbered PNGs in a workspace (`1..300 | % { Copy-Item png\01_walk.png ("png\f_{0:000}.png" -f $_) }`),
+pattern `name-to-number`, group `f (300)`, `CROSSFADE`, hold 0.1, crossfade 0.04; build.
 
-Expected: the build succeeds (the graph goes through `-filter_complex_script`, no `WinError 206`).
+Expected: the build succeeds (the graph goes through `-filter_complex_script`, no `WinError
+206`): one output with 300 clips, 45.05 s.
 
 ## SQC-MERGE-07 (P2) ffmpeg missing
 
 Steps: remove `third_party\ffmpeg` and `third_party\ffprobe`, make sure no system ffmpeg is on
 PATH, reload the page, `MERGER`.
 
-Expected: the view shows the note `Some of this needs an optional tool. See SYSTEM for what to
-install →`; `BUILD VIDEOS` gives the error box `TOOL NOT INSTALLED` with the link to SYSTEM.
-Cleanup: SYSTEM > INSTALL both.
+Expected: `GET /api/media-merger/state` has no `encoder`; the action bar reads `install ffmpeg
+(<SYSTEM tab>)` and `BUILD VIDEOS` is disabled. Cleanup: SYSTEM > INSTALL both.
 
 ## Results
 
 | ID | Result | Notes | Tester | Date |
 |----|--------|-------|--------|------|
-| SQC-MERGE-01 | | version: | | |
-| SQC-MERGE-02 | | | | |
-| SQC-MERGE-03 | | | | |
-| SQC-MERGE-04 | | | | |
-| SQC-MERGE-05 | | | | |
-| SQC-MERGE-06 | | | | |
-| SQC-MERGE-07 | | | | |
+| SQC-MERGE-01 | PASS API; NOT RUN UI | version: 1.36.0+search+apk (unreleased). Pinned ffmpeg 6.1.1 via real-tools.ini; groups as written; `walk-test_walk.mp4`, `mergedCount 6`, `totalDuration 3.5`, ffprobe `video:h264, audio:aac`, 3.500000 s | agent | 2026-11-23 |
+| SQC-MERGE-02 | PASS log; NOT RUN ffmpeg 7.x | the log lines as written; no encoder error; no system ffmpeg 7.x here | agent | 2026-11-23 |
+| SQC-MERGE-03 | PASS API (audio fade not heard) | `walk-audio_walk.mp4`, `h264` + `aac`, 4.500000 s; the fade-out needs ears | agent | 2026-11-23 |
+| SQC-MERGE-04 | FAIL | `trashedCount 3`, the frames in `.trash\merger\`; but `/api/status` shows `trashed {}` (only `groups` and `items` are counted) and `RESTORE` on png answers `Nothing of png in the trash`: WORKSPACE neither shows nor restores them; `IN TRASH 0` also leaves `CLEAR TRASH` disabled, although clearing would delete them | agent | 2026-11-23 |
+| SQC-MERGE-05 | PASS API; NOT RUN UI | `partial: true`, `walk.mp4` built, `run` failed with `Error opening input file ...\02_run.png. ... Invalid data found when processing input` (the tail begins inside ffmpeg's build banner) | agent | 2026-11-23 |
+| SQC-MERGE-06 | PASS API | `many_f.mp4`, `mergedCount 300`, `totalDuration 45.05` | agent | 2026-11-23 |
+| SQC-MERGE-07 | NOT RUN | would need the pinned ffmpeg removed and none on PATH | | |

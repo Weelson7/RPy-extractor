@@ -4,12 +4,19 @@ Run from the repository root, inside the venv where ViWo is installed:
 
     python sqc\\fixtures\\build_fixtures.py --out C:\\sqc
     python sqc\\fixtures\\build_fixtures.py --out C:\\sqc --only renpy zip-basic
+    python sqc\\fixtures\\build_fixtures.py --out C:\\sqc --tools-from D:\\viwo
     python sqc\\fixtures\\build_fixtures.py --list
 
 Every fixture lands in <out>\\<name>\\ and is rebuilt from scratch (the folder is deleted first).
 The byte builders are the repository's own test builders (tests/helpers.py and the engine
 test modules), so the fixtures match what the automated tests use. Fake tools are small Python
 scripts with a .cmd wrapper on Windows; their ini files land in <out>\\ini\\.
+
+--tools-from <folder> writes <out>\\ini\\real-tools.ini: a [tools] line for every pinned tool
+installed under <folder>\\third_party (another checkout's tools, used where they are; nothing is
+written into that folder). A tool run through a runtime (dotnet + dll, java -jar) gets a small
+wrapper script in <out>\\ini\\wrappers\\. Worker tools (Unicorn, angr) and Python packages are
+not covered: they come from the interpreter that runs ViWo.
 
 To use the fixtures on a machine without Python (portable bundle check), build them here and
 copy the whole <out> folder over.
@@ -19,9 +26,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import random
 import shutil
 import stat
 import struct
+import subprocess
 import sys
 import zipfile
 from pathlib import Path
@@ -174,13 +183,23 @@ def hostile_names(base: Path, out: Path) -> None:
 
 @fixture("encrypted-zip")
 def encrypted_zip(base: Path, out: Path) -> None:
-    """Instructions only: the standard library cannot write encrypted zips (7-Zip can)."""
+    """game\\locked.zip (ZipCrypto) and game\\locked.7z (AES, encrypted names), password
+    SQC-PASS, built with a 7-Zip found on PATH; without one, MAKE-ME.txt says how."""
     game = base / "game"
     game.mkdir(parents=True)
     (base / "_src").mkdir()
     (base / "_src" / "secret.txt").write_text("top secret")
+    found = [shutil.which(n) for n in ("7z", "7za", "7zz")] + [r"C:\Program Files\7-Zip\7z.exe"]
+    seven = next((p for p in found if p and Path(p).is_file()), None)
+    if seven:
+        src = str(base / "_src" / "secret.txt")
+        for kind, name, extra in (("zip", "locked.zip", []), ("7z", "locked.7z", ["-mhe=on"])):
+            argv = [seven, "a", f"-t{kind}", "-pSQC-PASS", *extra, str(game / name), src]
+            subprocess.run(argv, check=True, capture_output=True)
+        shutil.rmtree(base / "_src")
+        return
     (base / "MAKE-ME.txt").write_text(
-        "Run from this folder (needs 7-Zip):\n"
+        "No 7-Zip on PATH. Run from this folder:\n"
         '  & "C:\\Program Files\\7-Zip\\7z.exe"'
         " a -tzip -pSQC-PASS game\\locked.zip _src\\secret.txt\n"
         '  & "C:\\Program Files\\7-Zip\\7z.exe"'
@@ -429,13 +448,194 @@ def unity_markers(base: Path, out: Path) -> None:
     (game / "MyGame_Data" / "globalgamemanagers").write_bytes(b"\0" * 8)
 
 
+@fixture("ags")
+def ags(base: Path, out: Path) -> None:
+    """game\\Quest.exe: an AGS CLIB v21 library behind a stub executable (room1.crm,
+    game28.dta) + acsetup.cfg (tests.test_ags)."""
+    from tests.test_ags import behind, library
+
+    rng = random.Random(44)
+    game = base / "game"
+    game.mkdir(parents=True)
+    assets = [("room1.crm", b"room one", 0), ("game28.dta", b"game data", 0)]
+    lib = library(21, assets, ["Quest.exe"], rng)
+    (game / "Quest.exe").write_bytes(behind(lib, 21, rng, False))
+    (game / "acsetup.cfg").write_text("[misc]\n")
+
+
+@fixture("android")
+def android(base: Path, out: Path) -> None:
+    """apk\\game.apk (binary manifest, resources.arsc, classes.dex, a native lib, an old v1
+    signature, assets\\project.binary: a Godot export inside), bundle\\game.xapk (base.apk with
+    a Unity player inside + an OBB), obb\\main.1.com.viwo.test.obb alone, locked\\locked.xapk
+    (zip encryption flag set). Fake uber-apk-signer: ini\\android-signer-fake.ini."""
+    from tests import android_build as b
+
+    (base / "apk").mkdir(parents=True)
+    members = {**b.apk_members(), "assets/project.binary": b"GDPC-ish"}
+    (base / "apk" / "game.apk").write_bytes(b.zip_of(members, b.STORED))
+    obb = b.zip_of({"data/level1.bin": b"level one" * 10})
+    inner = {**b.apk_members(), "assets/bin/Data/globalgamemanagers": b"\0" * 40}
+    bundle = {"manifest.json": b"{}", "base.apk": b.zip_of(inner, b.STORED)}
+    bundle["Android/obb/com.viwo.test/main.1.com.viwo.test.obb"] = obb
+    (base / "bundle").mkdir()
+    (base / "bundle" / "game.xapk").write_bytes(b.zip_of(bundle, tuple(bundle)))
+    (base / "obb").mkdir()
+    (base / "obb" / "main.1.com.viwo.test.obb").write_bytes(obb)
+    blob = bytearray(b.zip_of({"base.apk": b"PK", "manifest.json": b"{}"}))
+    blob[blob.find(b"PK\x01\x02") + 8] |= 1  # the encryption flag of the first member
+    (base / "locked").mkdir()
+    (base / "locked" / "locked.xapk").write_bytes(bytes(blob))
+    tool = script_tool(
+        base / "_tools",
+        "uber-apk-signer",
+        "import shutil, sys\nfrom pathlib import Path\n"
+        "a = sys.argv[1:]\napk, out = Path(a[a.index('-a') + 1]), Path(a[a.index('-o') + 1])\n"
+        "out.mkdir(parents=True, exist_ok=True)\n"
+        "name = 'aligned-signed' if '--ks' in a else 'aligned-debugSigned'\n"
+        "shutil.copyfile(apk, out / f'{apk.stem}-{name}.apk')\n"
+        "print('fake signer: ' + name)\n",
+    )
+    ini(out, "android-signer-fake", f"[tools]\nuber-apk-signer = {tool}\n")
+
+
+@fixture("defold")
+def defold(base: Path, out: Path) -> None:
+    """plain\\ (index v6: /main/title.txt LZ4-compressed, /main/main.luac) and encrypted\\ (one
+    resource LZ4 + XTEA with Defold's built-in key, as its bundler stores it), each with
+    game.dmanifest and game.projectc (tests.test_defold)."""
+    from tests.test_defold import enc_bundle, write
+    from viwo.plugins.defold.crypt import DEFAULT_KEY
+
+    plain = {"/main/title.txt": (b"Jumper", True, False), "/main/main.luac": (b"lua", False, False)}
+    write(base / "plain", plain, 6, random.Random(64))
+    enc_bundle(base / "encrypted", b"plain body", b"-- lua source\nreturn 1\n", DEFAULT_KEY)
+    for name in ("plain", "encrypted"):
+        (base / name / "game.projectc").write_text("[project]\n")
+
+
+@fixture("gamemaker")
+def gamemaker(base: Path, out: Path) -> None:
+    """game\\data.win (FORM: GEN8, TXTR with 2 PNG, AUDO with a WAV and an OGG, STRG, CODE) +
+    game\\Game.exe stub (tests.test_gamemaker.a_game)."""
+    from tests.test_gamemaker import a_game
+
+    game = base / "game"
+    game.mkdir(parents=True)
+    (game / "data.win").write_bytes(a_game())
+    (game / "Game.exe").write_bytes(b"MZ" + b"\0" * 64)
+
+
+@fixture("love2d")
+def love2d(base: Path, out: Path) -> None:
+    """fused\\Blob.exe (a .love zip appended to a stub, as `copy /b` makes it) + love.dll, and
+    archive\\game.love (the same members: main.lua, assets/title.txt)."""
+    from tests.test_love2d import love_zip
+
+    rng = random.Random(53)
+    members = {"main.lua": b"print('hi')", "assets/title.txt": b"Blob Quest"}
+    (base / "fused").mkdir(parents=True)
+    (base / "fused" / "Blob.exe").write_bytes(b"MZ" + rng.randbytes(300) + love_zip(members, rng))
+    (base / "fused" / "love.dll").write_bytes(b"MZ")
+    (base / "archive").mkdir()
+    (base / "archive" / "game.love").write_bytes(love_zip(members, rng))
+
+
+@fixture("tyranoscript")
+def tyranoscript(base: Path, out: Path) -> None:
+    """MyNovel\\: tyrano\\libs.js, data\\scenario\\first.ks + second.ks, data\\system\\Config.tjs,
+    data\\bgimage\\title.png, index.html (tests.test_tyranoscript.a_game)."""
+    from tests.test_tyranoscript import a_game
+
+    a_game(base)
+
+
+@fixture("wolfrpg")
+def wolfrpg(base: Path, out: Path) -> None:
+    """plain\\Data.wolf (DXArchive v6: mapdata\\, basicdata\\, picture\\title.png, root.txt and the
+    Windows-unsafe con.txt) + Game.exe; keyed\\Data.wolf (the same members, key `wolfpass`)."""
+    from tests.test_wolfrpg import members
+    from viwo.plugins.wolfrpg.wolf import key_bytes
+    from viwo.plugins.wolfrpg.wolf_pack import write_archive
+
+    (base / "plain").mkdir(parents=True)
+    (base / "plain" / "Data.wolf").write_bytes(write_archive({**members(), "con.txt": b"k"}))
+    (base / "plain" / "Game.exe").write_bytes(b"MZ" + b"\0" * 64)
+    (base / "keyed").mkdir()
+    (base / "keyed" / "Data.wolf").write_bytes(write_archive(members(), key_bytes("wolfpass")))
+
+
+@fixture("xna")
+def xna(base: Path, out: Path) -> None:
+    """game\\Content\\logo.xnb (Texture2D, Color 4x4), game\\Content\\beep.xnb (SoundEffect,
+    LZ4-packed) + game\\FNA.dll (tests.test_xna)."""
+    from tests.test_xna import SFX, TEX, sound_content, tex_content, xnb
+
+    rng = random.Random(74)
+    content = base / "game" / "Content"
+    content.mkdir(parents=True)
+    texture = tex_content(0, 4, 4, [rng.randbytes(64)])
+    (content / "logo.xnb").write_bytes(xnb([TEX], 1, texture, False))
+    (content / "beep.xnb").write_bytes(xnb([SFX], 1, sound_content(rng)[2], True))
+    (base / "game" / "FNA.dll").write_bytes(b"MZ")
+
+
+@fixture("frameworks")
+def frameworks(base: Path, out: Path) -> None:
+    """Desktop-app frameworks, one folder each: qt\\app.rcc (qml\\main.qml, qml\\sub\\x.qml,
+    d.json), chromium\\resources.pak (v5: ids 10, 20, 30 + an alias), dotnet\\App.dll (managed
+    resources App.Strings.resources, Other.resources), java\\app.jar (manifest, a class, a
+    .properties, a PNG), pyfrozen\\app.exe (PyInstaller CArchive: data.txt, app, PYZ-00.pyz)."""
+    import marshal
+
+    from tests.test_chromium import make_pak
+    from tests.test_dotnet import RES, make_dotnet
+    from tests.test_java import make_jar
+    from tests.test_pyfrozen import _code, make_exe, make_pyz
+    from tests.test_qt import FILES, make_rcc
+
+    for name in ("qt", "chromium", "dotnet", "java", "pyfrozen"):
+        (base / name).mkdir(parents=True)
+    (base / "qt" / "app.rcc").write_bytes(make_rcc(FILES, 3))
+    pak = make_pak(5, [(10, b"alpha"), (20, b"beta!!"), (30, b"")], [(99, 1)])
+    (base / "chromium" / "resources.pak").write_bytes(pak)
+    (base / "dotnet" / "App.dll").write_bytes(make_dotnet(RES))
+    make_jar(
+        base / "java" / "app.jar",
+        {
+            "META-INF/MANIFEST.MF": b"Manifest-Version: 1.0\r\n",
+            "app/Main.class": b"\xca\xfe\xba\xbe\x00\x00\x00\x34rest",
+            "app/config.properties": b"max.connections=20\n",
+            "res/logo.png": b"\x89PNG\r\n\x1a\n",
+        },
+    )
+    pyz = make_pyz({"json": marshal.dumps(_code("x = 1")), "os.path": marshal.dumps(_code("y"))})
+    members = [
+        ("data.txt", b"x", b"max_connections=20\n"),
+        ("app", b"s", marshal.dumps(_code("print('hi')"))),
+        ("PYZ-00.pyz", b"z", pyz),
+    ]
+    (base / "pyfrozen" / "app.exe").write_bytes(make_exe(b"MZ" + b"\x00" * 4094, members))
+
+
+@fixture("kaitai")
+def kaitai(base: Path, out: Path) -> None:
+    """game\\sound.wav (PCM, 2 channels, 44100 Hz) for the bundled wav.ksy definition: the
+    kaitai plugin detects nothing and decodes only when picked (`--plugin kaitai`)."""
+    from tests.test_kaitai import wav_bytes
+
+    (base / "game").mkdir(parents=True)
+    (base / "game" / "sound.wav").write_bytes(wav_bytes(b"\xaa\xbb\xcc\xdd"))
+
+
 # --- carver, survey, curation, merger --------------------------------------------------
 
 
 @fixture("carve")
 def carve(base: Path, out: Path) -> None:
-    """game\\assets.bin: 16 known formats (png, jpg, gif, wav, wem, ogg, mid, mp4, bik, fsb, bnk,
-    dds, glb, zip, 7z) between random bytes (tests.test_carve.blob, seed 7)."""
+    """game\\assets.bin: 15 known formats (png, jpg, gif, wav, wem, ogg, mid, mp4, bik, fsb, bnk,
+    dds, glb, zip, 7z) between random bytes (tests.test_carve.blob, seed 7); the audio and 7z
+    ones are signature stubs (carved, not decodable)."""
     data, _ = blob(base)
     (base / "game").mkdir(exist_ok=True)
     (base / "game" / "assets.bin").write_bytes(data)
@@ -538,6 +738,24 @@ def merger(base: Path, out: Path) -> None:
         (base / "NO-FFMPEG.txt").write_text("ffmpeg not on PATH: 03_walk.mp4 was not made.\n")
 
 
+@fixture("phases")
+def phases(base: Path, out: Path) -> None:
+    """game\\ for the sanitizer's phases 2-3: frame1.png, frame3.png, frame10.png (a sequence
+    with gaps), tone.wav (PCM) and clip.avi (MPEG-4 Part 2, made with ffmpeg when it is on
+    PATH; NO-FFMPEG.txt otherwise)."""
+    game = base / "game"
+    for i in (1, 3, 10):
+        png(game / f"frame{i}.png", 32, (20 * i, 90, 90))
+    (game / "tone.wav").write_bytes(_tone(440, 2.0))
+    ffmpeg = shutil.which("ffmpeg")
+    if not ffmpeg:
+        (base / "NO-FFMPEG.txt").write_text("ffmpeg not on PATH: clip.avi was not made.\n")
+        return
+    src = "testsrc=duration=2:size=64x64:rate=25"
+    argv = [ffmpeg, "-y", "-loglevel", "error", "-f", "lavfi", "-i", src, "-c:v", "mpeg4"]
+    subprocess.run([*argv, str(game / "clip.avi")], check=True)
+
+
 @fixture("roundtrip")
 def roundtrip(base: Path, out: Path) -> None:
     """One game per round-trip strategy: loose\\ (loose PNG + TXT), rpa\\ (Ren'Py images.rpa),
@@ -576,6 +794,100 @@ def capture(base: Path, out: Path) -> None:
     ini(out, "capture-on", "[startup]\nfeatures = extraction, sorting, merger, capture\n")
 
 
+def _find(folder: Path, name: str) -> Path | None:
+    """The tool file `name` under folder, read only (the installer's cache is read, never
+    written)."""
+    from viwo.core import thirdparty
+
+    if not folder.is_dir():
+        return None
+    try:
+        hit = folder / json.loads((folder / thirdparty.CACHE).read_text(encoding="utf-8"))[name]
+        if hit.is_file():
+            return hit
+    except (OSError, ValueError, KeyError, TypeError):
+        pass
+    return next((p for p in sorted(folder.rglob(name)) if p.is_file()), None)
+
+
+def _tool_argv(dep: str, spec: dict, tools: dict, third_party: Path) -> list[str] | None:
+    from viwo.core import thirdparty
+
+    hit = _find(third_party / spec.get("from", dep), spec["find"])
+    if hit is None:
+        return None
+    argv = []
+    for part in spec.get("argv") or ["{path}"]:
+        if part == "{python}":
+            part = sys.executable
+        if part in thirdparty.RUNTIMES:
+            runtime_id = thirdparty.RUNTIMES[part]
+            found = _find(third_party / runtime_id, tools[runtime_id][thirdparty.PLATFORM]["find"])
+            if found is None:
+                return None
+            part = str(found)
+        argv.append(part.replace("{path}", str(hit)))
+    return argv
+
+
+def real_tools_ini(out: Path, home: Path) -> Path:
+    """<out>\\ini\\real-tools.ini: [tools] for every pinned tool installed under
+    <home>\\third_party, used where it is (nothing is written there)."""
+    from viwo.core import thirdparty
+
+    tools = thirdparty.manifest()["tools"]
+    lines = ["; written by build_fixtures.py --tools-from: the pinned tools of", f"; {home}", ""]
+    lines += ["[tools]"]
+    for dep, entry in tools.items():
+        spec = entry.get(thirdparty.PLATFORM)
+        argv = _tool_argv(dep, spec, tools, home / "third_party") if spec else None
+        if not argv or entry.get("hidden"):
+            continue
+        if len(argv) > 1:  # a runtime plus its file: one wrapper script runs both
+            body = "import subprocess, sys\n"
+            body += f"sys.exit(subprocess.call({argv!r} + sys.argv[1:]))\n"
+            argv = [str(script_tool(out / "ini" / "wrappers", dep, body))]
+        lines.append(f"{dep} = {argv[0]}")
+    return ini(out, "real-tools", "\n".join(lines) + "\n")
+
+
+def real_containers(out: Path, home: Path) -> Path:
+    """<out>\\real-containers\\: an Unreal pak written by the real repak and a Godot PCK written
+    by the real GodotPckTool of <home>\\third_party (the synthetic paks and PCKs of the `unreal`
+    and `godot` fixtures are for the fake tools: the real ones reject them). Our own bytes only."""
+    from viwo.core import thirdparty
+
+    tools, base = thirdparty.manifest()["tools"], out / "real-containers"
+    if base.exists():
+        shutil.rmtree(base)
+    src = base / "_src"
+    ui = src / "unreal" / "Game" / "Content" / "UI"
+    ui.mkdir(parents=True)
+    (ui / "Logo.uasset").write_bytes(b"\xc1\x83\x2a\x9e real uasset bytes")
+    (src / "unreal" / "Game" / "Config").mkdir(parents=True)
+    (src / "unreal" / "Game" / "Config" / "DefaultGame.ini").write_text("[x]\nTitle=original\n")
+    (src / "godot").mkdir()
+    png(src / "godot" / "icon.png")
+    (src / "godot" / "notes.txt").write_text("original\n")
+    for dep, argv in (
+        ("repak", ["pack", str(src / "unreal"), "{out}"]),
+        ("godotpcktool", ["--pack", "{out}", "--action", "add", "--remove-prefix",
+                          str(src / "godot"), str(src / "godot" / "icon.png"),
+                          str(src / "godot" / "notes.txt")]),
+    ):  # fmt: skip
+        tool = _tool_argv(dep, tools[dep][thirdparty.PLATFORM], tools, home / "third_party")
+        if tool is None:
+            print(f"real-containers: {dep} not installed under {home}: skipped", file=sys.stderr)
+            continue
+        game = base / ("unreal/Game/Content/Paks" if dep == "repak" else "godot")
+        game.mkdir(parents=True)
+        target = game / ("pakchunk0-Windows.pak" if dep == "repak" else "data.pck")
+        argv = [a.replace("{out}", str(target)) for a in argv]
+        subprocess.run([*tool, *argv], check=True, capture_output=True)
+    shutil.rmtree(src)
+    return base
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter
@@ -583,6 +895,9 @@ def main() -> int:
     ap.add_argument("--out", type=Path, help="folder that receives one sub-folder per fixture")
     ap.add_argument("--only", nargs="*", help="fixture names (default: all but zip-bomb)")
     ap.add_argument("--list", action="store_true", help="list the fixtures and exit")
+    ap.add_argument(
+        "--tools-from", type=Path, help="a checkout whose third_party\\ holds installed tools"
+    )
     args = ap.parse_args()
     if args.list or not args.out:
         for name, fn in FIXTURES.items():
@@ -601,6 +916,9 @@ def main() -> int:
         base.mkdir(parents=True)
         FIXTURES[name](base, args.out)
         print(f"built {base}")
+    if args.tools_from:
+        print(f"built {real_tools_ini(args.out, args.tools_from.resolve())}")
+        print(f"built {real_containers(args.out, args.tools_from.resolve())}")
     return 0
 
 
