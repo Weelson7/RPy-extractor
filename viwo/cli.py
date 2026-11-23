@@ -6,7 +6,7 @@ import json
 import os
 import sys
 
-from viwo import cli_args, cli_arms, cli_format, cli_isolate
+from viwo import cli_args, cli_arms, cli_format, cli_isolate, cli_search
 from viwo.cli_boot import boot_for_cli, boot_from, global_flags
 from viwo.cli_check import slots_check, unpack_forced
 from viwo.cli_extra import (
@@ -50,6 +50,7 @@ def _parser(rt=None) -> argparse.ArgumentParser:
         return sub.add_parser(name, parents=[common], help=text)
 
     cli_args.core_commands(command)
+    cli_search.search_command(command)  # the static arm's content search (doc 6.7)
     sv = command("serve", "start the web UI (host/port from [server] in the ini)")
     sv.add_argument("--host", help="override [server] host")
     sv.add_argument("--port", type=int, help="override [server] port")
@@ -122,7 +123,7 @@ def _run(args, rt=None) -> Envelope:
 
 JOB_COMMANDS = {"sanitize": "cleanup"} | dict.fromkeys(  # a command -> its job kind (doc 12.3)
     "survey repack capture dump trace hook profile agent record analyze patch mod install "
-    "indexes".split()
+    "indexes search".split()
 )
 
 

@@ -49,6 +49,7 @@ class RouteTests(unittest.TestCase):
             "/api/patch": {"gamePath": absolute, "patchSet": "p.patch.json"},
             "/api/mod": {"action": "apply", "gamePath": absolute, "mod": str(here / "m.zip")},
             "/api/workspace": {"path": ""},
+            "/api/search": {"target": "game", "kind": "text", "value": "MZ"},
         }
         old = os.getcwd()
         os.chdir(here)
@@ -130,6 +131,7 @@ class RouteTests(unittest.TestCase):
                 "capture",
                 "cleanup",
                 "analyze",
+                "search",
             },
         )
         with tempfile.TemporaryDirectory() as tmp:

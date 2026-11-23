@@ -54,10 +54,21 @@ def load(path: Path) -> dict:
     return data
 
 
+def _regex(pattern: bytes, mask: list[bool]) -> bytes:
+    return b"".join(re.escape(bytes([b])) if m else b"." for b, m in zip(pattern, mask))
+
+
+def aob(text: str) -> tuple[bytes, list[bool], re.Pattern]:
+    """An AOB pattern (`48 8B ?? 05`) parsed as a patch set's is, with the regex its matcher
+    uses: content search (core/search_query.py) looks for it the same way."""
+    pattern, mask = _bytes(text, wild=True)
+    return pattern, mask, re.compile(_regex(pattern, mask), re.DOTALL)
+
+
 def _hits(data: bytes, pattern: bytes, mask: list[bool]) -> list[int]:
     """Every place the pattern matches, overlapping ones included (a lookahead: on int3 or
     NOP padding `CC CC CC` matches twice in four bytes, and that is not a unique match)."""
-    rx = b"".join(re.escape(bytes([b])) if m else b"." for b, m in zip(pattern, mask))
+    rx = _regex(pattern, mask)
     return [m.start() for m in re.finditer(b"(?=" + rx + b")", data, re.DOTALL)]
 
 

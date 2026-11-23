@@ -47,7 +47,7 @@ export function code(id) {
   return v.arm === "global" ? String(i).padStart(2, "0") : `${v.arm[0].toUpperCase()}${i}`;
 }
 
-/** "S7 ANALYSIS": how prose names a tab, from the live numbering. */
+/** "S8 ANALYSIS": how prose names a tab, from the live numbering. */
 export const tab = (id) => (VIEWS.get(id) ? `${code(id)} ${VIEWS.get(id).title}` : id.toUpperCase());
 export const view = (id) => VIEWS.get(id) || null;
 export const armViews = (arm) => views().filter((v) => v.arm === arm);

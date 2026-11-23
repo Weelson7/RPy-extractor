@@ -10,6 +10,7 @@ import "./views/home.js";
 import { setTheme } from "./theme.js";
 import "./views/extract.js";
 import "./views/workspace.js";
+import "./views/search.js";
 import "./views/sort.js";
 import "./views/jobs.js";
 import "./views/system.js";

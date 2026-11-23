@@ -34,7 +34,8 @@ KSTOOL_OUT = re.compile(r"=\s*\[\s*([0-9a-fA-F ]+?)\s*\]")
 
 
 def pe(data: bytes) -> dict | None:
-    """machine, image base and sections of a PE image (None for anything else)."""
+    """machine, image base, sections (va, size, raw, raw size) and their names of a PE image
+    (None for anything else)."""
     if data[:2] != b"MZ" or len(data) < 0x40:
         return None
     head = struct.unpack_from("<I", data, 0x3C)[0]
@@ -45,9 +46,11 @@ def pe(data: bytes) -> dict | None:
     opt = head + 24
     wide = struct.unpack_from("<H", data, opt)[0] == 0x20B  # PE32+: a 64-bit image base
     base = struct.unpack_from("<Q" if wide else "<I", data, opt + (24 if wide else 28))[0]
-    rows = (struct.unpack_from("<IIII", data, opt + opt_size + i * 40 + 8) for i in range(count))
+    table = [opt + opt_size + i * 40 for i in range(count)]
+    rows = (struct.unpack_from("<IIII", data, at + 8) for at in table)
     sections = [(va, max(vsize, raw_size), raw, raw_size) for vsize, va, raw_size, raw in rows]
-    return {"machine": machine, "base": base, "sections": sections}
+    names = [bytes(data[at : at + 8]).rstrip(b"\0").decode("latin-1") for at in table]
+    return {"machine": machine, "base": base, "sections": sections, "names": names}
 
 
 def rva_to_offset(data: bytes, rva: int) -> int:
@@ -121,11 +124,19 @@ def around(data: bytes, offset: int, new: bytes) -> dict[str, list[str]]:
 
 def signature(data: bytes, offset: int, length: int = 8, limit: int = 64) -> tuple[str, int]:
     """(AOB pattern, at) unique in the file that locates `offset`: the bytes from the offset on,
-    grown until they occur once; if 64 bytes never do, windows that start earlier are tried."""
+    grown until they occur once; if 64 bytes never do, windows that start earlier are tried.
+    `data` may be a mapped file (content search): only slices and `find` are used."""
     for back in (0, 8, 16, 32):
         start = max(0, offset - back)
         for size in range(length, limit + 1, 4):
             window = data[start : start + size]
-            if len(window) == size and data.count(window) == 1:
+            if len(window) == size and _once(data, window):
                 return " ".join(f"{b:02X}" for b in window), offset - start
     raise ViwoError("failed", f"no unique signature of up to {limit} bytes around {offset:#x}")
+
+
+def _once(data, window: bytes) -> bool:
+    """`window` occurs exactly once, overlapping occurrences counted, as a patch set's pattern
+    matches (`bytes.count` skips overlaps: in `90 90 90` it finds `90 90` once)."""
+    first = data.find(window)
+    return first >= 0 and data.find(window, first + 1) < 0

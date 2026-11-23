@@ -288,6 +288,7 @@ from .handlers_analysis import ANALYSIS_GET, ANALYSIS_POST  # noqa: E402
 from .handlers_capture import CAPTURE_GET, CAPTURE_POST  # noqa: E402
 from .handlers_isolation import ISOLATION_GET, ISOLATION_POST  # noqa: E402
 from .handlers_jobs import JOBS_POST  # noqa: E402
+from .handlers_search import SEARCH_POST  # noqa: E402
 from .handlers_settings import SETTINGS_GET, SETTINGS_POST  # noqa: E402
 from .handlers_system import SYSTEM_GET, SYSTEM_POST  # noqa: E402
 from .handlers_tools import TOOL_GET, TOOL_POST  # noqa: E402  (tables merged last)
@@ -303,6 +304,7 @@ for table in (
     SYSTEM_POST,
     JOBS_POST,
     ANALYSIS_POST,
+    SEARCH_POST,
 ):
     POST.update(table)
 install(GET, POST)  # doc 19: runbooks, the recorder, the action routes recorded

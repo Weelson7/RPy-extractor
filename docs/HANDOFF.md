@@ -140,6 +140,9 @@ left, by cause:
   read but not repacked. No Python or Java class decompiler is pinned (bytecode only). Free
   Download Manager's connection cap is native (the `MaxConnectionsPerServerLimit` setting), so
   the full proof is a `patch.bytes` binary patch located with the disassembler (not run here).
+- Content search (doc 6.7) is tests-only: not yet run on a real game folder or workspace. It
+  reads one file at a time (no worker pool: the matching holds the GIL); a UTF-16 needle also
+  matches at odd offsets (raw bytes, no alignment rule); no accent folding in any-case text.
 - The game-folder guard without a game path (doc 3.1) knows the games ViWo was given, Steam
   libraries, Epic and GOG installs and patched copies; a game ViWo was never given, from no
   store with marks, is still out of its reach.

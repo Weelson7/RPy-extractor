@@ -1,7 +1,17 @@
 """The CLI grouped by ViWo's three arms (plus system): `viwo --help` lists the commands per arm,
 `viwo <arm>` lists one arm, `viwo <arm> <command> ...` runs the command; flat verbs still work."""
 
-STATIC = ("survey", "detect", "extract", "replay", "unpack", "sanitize", "analyze", "diff")
+STATIC = (
+    "survey",
+    "detect",
+    "extract",
+    "replay",
+    "unpack",
+    "search",
+    "sanitize",
+    "analyze",
+    "diff",
+)
 SYSTEM = ("serve", "info", "slots", "install", "config", "indexes", "diag", "workbook", "runbook")
 ARMS = {
     "static": ("the game is not running", STATIC),

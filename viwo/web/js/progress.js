@@ -83,6 +83,10 @@ const KINDS = {
     stageOf: (e) => (/^Ghidra: importing/.test(e.message) ? ["copy", "analyze"] : /ViWo export/.test(e.message) ? ["export", "report"] : e.stage === "analyze" ? "analyze" : ""),
     counters: [["GHIDRA LINES", /^(INFO|WARN|ERROR)\s/, add()], ["ERRORS", /^ERROR\s/, add()]],
   },
+  search: {
+    verb: "SEARCHING",
+    counters: [["FILES SEARCHED", /^Searched files: ([\d,]+)/, (m) => num(m[1])], ["HITS", /^Searched files: [\d,]+ \/ [\d,]+ \(([\d,]+) hit/, (m) => num(m[1])]],
+  },
   indexes: {
     verb: "UPDATING",
     counters: [["DOWNLOADED KB", /^Downloading .*KB: ([\d,]+)/, (m) => num(m[1])], ["INSTALLED", /^Indexes .* installed/, add()]],

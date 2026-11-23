@@ -147,6 +147,13 @@ class UiSmokeTests(unittest.TestCase):
         self.assertEqual(bar["label"], "ANALYZE")
         self.assertTrue(bar["disabled"] and bar["why"], bar)  # nothing listed: it says why
 
+    def test_search_bar_holds_search_with_its_reason(self) -> None:
+        bar = self.report["checks"]["searchBar"]
+        self.assertIsNotNone(bar)
+        self.assertEqual(bar["label"], "SEARCH")
+        self.assertTrue(bar["disabled"] and bar["why"], bar)  # nothing entered: it says why
+        self.assertEqual(bar["kinds"], ["TEXT", "NUMBER", "BYTES"])
+
     def test_runbook_steps_are_readable_with_their_json_behind_a_toggle(self) -> None:
         steps = self.report["checks"]["runbookSteps"]
         self.assertTrue(steps)

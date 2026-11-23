@@ -183,6 +183,14 @@ await sleep(1500);
 report.checks.analysisBar = await evaluate(`(() => { const b = document.querySelector('#view-analysis .actionbar .btn.primary');
   return b ? { label: b.textContent.trim(), disabled: b.disabled, why: document.querySelector('#view-analysis .ab-why').textContent } : null; })()`);
 
+// SEARCH: SEARCH held back with its reason until where and what are given; the kind switch
+step = "search";
+await evaluate("location.hash = '#search'");
+await sleep(800);
+report.checks.searchBar = await evaluate(`(() => { const b = document.querySelector('#view-search .actionbar .btn.primary');
+  const kinds = [...document.querySelectorAll('#view-search .seg button')].map((x) => x.textContent);
+  return b ? { label: b.textContent.trim(), disabled: b.disabled, why: document.querySelector('#view-search .ab-why').textContent, kinds } : null; })()`);
+
 // RUNBOOKS: every step a readable row (what, target, options), its JSON behind a toggle
 step = "runbooks";
 await evaluate("location.hash = '#runbooks'");

@@ -12,6 +12,7 @@ const PATHS = {
     ["SURVEY", "what each game or a whole library holds, read-only", "#survey", S],
     ["EXTRACT", "the engine plugins unpack, export and decode into a workspace", "#extract", S],
     ["WORKSPACE", "the files grouped by type, previews", "#workspace", S],
+    ["SEARCH", "a string, a number or bytes in the files or one executable, each hit ready for a patch set", "#search", S],
     ["SORT", "keep or trash, one by one", "#sort", S],
     ["CLEANUP", "empty, junk, duplicate, mislabeled and broken files", "#cleanup", S],
     ["MERGER", "frame sequences to video", "#merger", S],

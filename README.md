@@ -51,6 +51,7 @@ Ghidra / x64dbg / Cheat Engine") that ViWo opens pre-loaded as a tracked child p
 | `viwo extract <game> --workspace <ws>` | unpack, export, carve and decode into a workspace grouped by extension, with a provenance map and a run record |
 | `viwo replay <run record> --workspace <ws>` | re-run an extraction |
 | `viwo unpack <archive> --out <dir>` | one archive, nested ones too |
+| `viwo search <ws, game or file> --text S \| --number N \| --bytes "48 8B ?? 05"` | find a string (UTF-8/UTF-16, any case with `-i`), a number (every width and byte order, floats) or a byte pattern, read-only; each hit with its bytes around it, its section/RVA/VA in an executable and a unique AOB for a patch set; the report into `<ws>/.search/` |
 | `viwo sanitize <ws> [--apply] [--undo TOKEN]` | empty, junk, duplicate and mislabeled files; plan, apply, undo |
 | `viwo analyze <game> --list`, `--target KEY --workspace <ws> [--slot ...] [--open]` | code analysis of a copy: Ghidra (native), ilspycmd (.NET), Cpp2IL (IL2CPP), unrpyc, GDRE Tools, unluac, Detect It Easy, Unicorn and angr on isolated routines; opt-in feature `analysis` |
 | `viwo diff <old> <new>` | function-by-function diff of two Ghidra analyses (update-resilient offsets) |
@@ -129,7 +130,7 @@ Plain HTML and ES modules served by `viwo serve` on `127.0.0.1:8081`, with a per
   WORKBOOKS (step-by-step how-tos for the child tools' own interfaces; `viwo workbook`),
   RUNBOOKS (named step sequences you can run, edit and record; `viwo runbook ID --run`) and
   SETTINGS.
-- **Rail:** one arm at a time. STATIC: SURVEY, EXTRACT, WORKSPACE, SORT, CLEANUP, MERGER,
+- **Rail:** one arm at a time. STATIC: SURVEY, EXTRACT, WORKSPACE, SEARCH, SORT, CLEANUP, MERGER,
   ANALYSIS. DYNAMIC: CAPTURE, RUNTIME. PATCHING: PATCHED COPY, ASSETS, PATCHES + MODS.
 - **Activity console:** at the bottom; closed, it shows the last line.
 

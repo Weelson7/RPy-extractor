@@ -248,6 +248,9 @@ and 6; `viwo attach` on a running game is still to be verified on real data (HAN
 | 6.4 Ghidra project beside the workspace, on-demand pin, first-run answers | implemented | `core/analysis/ghidra.py`, `data/tools.json` |
 | 6.5 `memory_image` targets | implemented | Windows minidumps proposed by `plugins/generic/__init__.py` `dump_targets`; `analysis.memory` = `ghidra-headless` (`core/analysis/ghidra.py`, Ghidra 12.2's Dump File Loader); `tests/test_analysis.py` with a fake analyzeHeadless. Run once by hand with the pinned Ghidra on a real full-memory minidump of `ping.exe` (14.6 MB, the OS layer's `dump_process`): 21,859 functions, all four files, 47 min. The Linux `.mem` layout has no reader |
 | 6.6 API | implemented | `api/handlers_analysis.py` |
+| 6.7 content search: text (UTF-8, UTF-16LE/BE, any case), integers (1/2/4/8 bytes, LE/BE), floats (32/64-bit), AOB patterns through the patch sets' parser | implemented | `core/search_query.py`, `core/patchsets.py` `aob`; `tests/test_search.py`. Tests only: not yet run on a real game folder or workspace |
+| 6.7 streaming (overlapping chunks), caps said, unreadable named, cancel, PE section/RVA/VA, unique AOB per hit, report in `.search/` | implemented | `core/search.py`, `core/patch_tools.py` (`pe` names, `signature` counting overlaps); `tests/test_search.py` (a brute-force property over every chunk size; the signature resolves once as a pattern) |
+| 6.7 surfaces: `viwo search`, `POST /api/search`, job kind `search`, SEARCH view | implemented | `cli_search.py`, `api/handlers_search.py`, `api/handlers_jobs.py`, `web/js/views/search.js` |
 
 ## 07 Data-safety rules
 

@@ -61,8 +61,8 @@ To add a component: put it in `ui/components.js` (or a new `ui/<area>.js` re-exp
 
 ## Arms and the global strip
 
-Every view declares an `arm`: `static` (the game is not running: survey, extract, workspace, sort,
-cleanup, merger, analysis), `dynamic` (it runs: capture, runtime), `patching` (you change its
+Every view declares an `arm`: `static` (the game is not running: survey, extract, workspace,
+search, sort, cleanup, merger, analysis), `dynamic` (it runs: capture, runtime), `patching` (you change its
 content: patched copy, assets, patches + mods) or `global`. The rail shows one arm at a time, opening on
 that arm's home (`#static`, `#dynamic`, `#patching`); the arm switch sits above it. The global
 views (SYSTEM, WORKBOOKS, RUNBOOKS, SETTINGS) sit in the strip of the top bar with the job chip,
@@ -146,6 +146,11 @@ analyzer when the remembered one is not listed); ANALYZE in the bar runs the pic
 says why it waits (enter the game folder, list the targets, analysis is off, pick a target, no
 analyzer for it yet); CANCEL joins it while a run goes. A target's extra slots (EMULATE,
 SOLVE...) and CONTINUE IN GHIDRA stay on its row; VERSION DIFF keeps its COMPARE.
+SEARCH (doc 6.7): WHERE takes a folder or one file (THE WORKSPACE, THE GAME fill it), WHAT
+picks TEXT (ANY CASE), NUMBER (the integer widths) or BYTES and the caps; SEARCH in the bar says
+why it waits (where, what, a search running). HITS lists file, offset, the encoding, the
+section/RVA/VA in an executable and the bytes around the match; COPY PATCH copies the hit as a
+patch set entry (its unique AOB when it has one, else its offset) with `patched` left to fill.
 CLEANUP: SCAN's panel lists every recipe of doc 5.1 as a radio (`views/cleanup-recipes.js`,
 `pref("cleanupRecipe")`), each marked LOSSLESS or LOSSY, with its phase and rule count or why
 it cannot act now (no lossless decoder, no ffmpeg); SCAN runs the picked one. A plan's
@@ -205,7 +210,8 @@ PATCHED COPY plans and writes with the same choice and names it in its summary l
   rail stage after an extraction, workspace-wide type counts in SORT, the cleanup scan as
   a visible job, and ASSETS' mod/overwrite choice (MOD first) and a plan with WRITE held
   back while nothing was edited; on every view, buttons with their spacing and step codes shown
-  once; MERGER's single files under SINGLE FILES, tickable; ANALYZE held back with its reason;
+  once; MERGER's single files under SINGLE FILES, tickable; ANALYZE held back with its reason; SEARCH
+  held back with its reason and its TEXT/NUMBER/BYTES switch;
   each runbook step readable with its JSON behind a closed toggle; and the runbook step editor
   (EDIT, ADD STEP, a title and an option typed in, SAVE) round-tripping on reload with a boolean
   option kept and an untouched step preserved. Skipped when no Chromium or Node is found; `VIWO_UI=0` disables it;

@@ -24,6 +24,7 @@ from .cli_dynamic import attach, capture, runtime
 from .cli_guides import runbook, workbook
 from .cli_isolate import isolate
 from .cli_patch import mod, patch
+from .cli_search import search
 
 
 def replay_request(
@@ -151,7 +152,7 @@ def _analyze(rt, args) -> Envelope:
 def workspace_command(rt, args) -> Envelope:
     """One of the TOOLS commands (below)."""
     handler = TOOLS[args.command]
-    if handler in (runtime, patch, mod, isolate):  # long runs: progress lines on stderr
+    if handler in (runtime, patch, mod, isolate, search):  # long runs: progress on stderr
         return handler(rt, args, event_printer(args))
     return handler(rt, args)
 
@@ -263,6 +264,7 @@ TOOLS = {  # the tool commands (the dynamic and patching arms, survey, analyze, 
     "repack": _repack,
     "sanitize": _sanitize,
     "survey": _survey,
+    "search": search,
     "capture": capture,
     "dump": runtime,
     "trace": runtime,

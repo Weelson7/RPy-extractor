@@ -4,6 +4,28 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.39.0 (2026-11-23)
+- **Content search** (doc 6.7; `core/search.py`, `core/search_query.py`): "find the thing I want
+  to change". A string (UTF-8, UTF-16LE, UTF-16BE; `-i` for any case, in any script), a number
+  (an integer in 2/4/8 bytes by default, 1 on request, little- and big-endian, signed when
+  negative; a float as 32 and 64 bits) or a byte pattern with `??` wildcards (the patch sets'
+  own parser and matcher, `patchsets.aob`) found in a workspace's files, a game folder or one
+  exe/dll, which are only read. Files stream in 8 MB chunks that overlap by the longest needle
+  less one byte (a match across two chunks is found once, memory stays at one chunk); hits are
+  capped per file and overall, and a cap that drops a hit is said with where it stopped; an
+  unreadable file or folder is named, never skipped silently; the job is cancellable. Every hit
+  carries the bytes around it, in a PE its section, RVA and VA, and for the first ones of a file
+  the unique AOB of `patch.sig`, so it goes straight into a patch set. The report (encodings
+  tried, what was not tried and why, caps, unreadable files) lands in `<workspace>/.search/`.
+  Surfaces: `viwo search` (static arm), `POST /api/search` and job kind `search` (also a
+  runbook step and recordable), and a SEARCH view in STATIC after WORKSPACE (COPY PATCH puts a
+  hit on the clipboard as a patch set entry). Measured on a 1 GiB random file: a text in its
+  three encodings 1.8 s (about 600 MB/s), any case 5.6 s, a wildcard pattern 4.8 s, at most
+  17 MB of Python memory.
+- **Fix: a patch signature is unique the way a pattern matches** (`patch_tools.signature`): it
+  counted a window with `bytes.count`, which skips overlapping occurrences, so over NOP or int3
+  padding it could offer an AOB that a patch set then matched twice ("pattern matches 2 times").
+  It now counts overlaps, as `patchsets` does. `patch_tools.pe` also returns the section names.
 ## 1.38.0 (2026-11-23)
 - **Cold patching inside the guest**: `viwo isolate deploy --guest-dir DIR --patchset P` writes
   the set into the guest's own files before the program runs (a check that runs once at start

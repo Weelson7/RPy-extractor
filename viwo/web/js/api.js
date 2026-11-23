@@ -104,6 +104,7 @@ export const api = {
   analyze: (body) => v1("POST", "/api/analysis/run", body),
   openHandoff: (body) => v1("POST", "/api/analysis/open", body),
   diffAnalyses: (old, newer) => v1("POST", "/api/analysis/diff", { old, new: newer }),
+  search: (body) => v1("POST", "/api/search", body),
   settings: () => v1("GET", "/api/settings"),
   saveSettings: (changes) => v1("POST", "/api/settings", changes),
   updates: () => v1("GET", "/api/updates"),

@@ -83,6 +83,8 @@ viwo/
                  decoded files (Decoder.encode); encode_dds.py (PNG to DDS, uncompressed or
                  through backends/blocks)
     patchsets.py, patch_tools.py       T1 patch sets (offset, RVA, AOB, Keystone, capstone)
+    search.py, search_query.py         content search (doc 6.7): text, numbers, AOB patterns
+                                       streamed through files, hits with PE addresses and AOBs
     mods.py                            T2 mod packages
     jobs.py, workspace.py, records.py, provenance.py, context.py, steps.py, media.py
     thirdparty.py, workers.py, preflight.py   pinned installer, worker tools, startup check
@@ -98,7 +100,8 @@ viwo/
                workers/ (emulate.py, symbolic.py)
   cli.py       entry point; cli_args.py (arguments), cli_arms.py (arms), cli_check.py (slots
                --check, unpack --slot, analyze, diff), cli_extra.py (survey, sanitize, repack,
-               install, config, indexes, diag), cli_dynamic.py, cli_patch.py, cli_format.py
+               install, config, indexes, diag), cli_dynamic.py, cli_patch.py, cli_search.py,
+               cli_format.py
 tools/         version.py, loc_count.py + caps_ini.py, coverage_check.py, notices.py,
                pin_python.py, integration_games.py, games_pass.ps1, deep_pass.py (+ deep_checks,
                deep_arms: every capability on one real game), presentation/ (frames, the

@@ -4,6 +4,8 @@ import json
 import textwrap
 from typing import Any
 
+from .cli_search import text as search_text
+
 
 def _bar(value: float, width: int = 20) -> str:
     filled = round(max(0.0, min(1.0, value)) * width)
@@ -283,4 +285,5 @@ FORMATTERS: dict[str, Any] = {
     "unpack": unpack,
     "workbook": workbook,
     "runbook": runbook,
+    "search": search_text,
 }

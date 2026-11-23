@@ -9,7 +9,8 @@ one readable file inside an extraction is a DECODE slot instead (`decode.rpyc`, 
 Switch: `analysis` in `[startup] features` (off by default; a capability switch because the
 tools are large, not a gate). Off, a run is refused with the hint to enable it; listing targets
 works either way. Entry points: `viwo analyze`, `viwo diff`, `GET /api/analysis/targets`,
-`POST /api/analysis/run|open|diff`, ANALYSIS.
+`POST /api/analysis/run|open|diff`, ANALYSIS. Content search (6.7) belongs to this arm too and
+needs no switch: `viwo search`, `POST /api/search`, SEARCH.
 
 ## 6.1 Targets and analyzers
 
@@ -128,3 +129,56 @@ game: x64dbg and Cheat Engine work on the game itself and are the dynamic arm's 
 `POST /api/analysis/run {gamePath, targetKey, slot?, options?}` -> job of kind `analyze` under the
 workspace lock · `POST /api/analysis/open {gamePath, targetKey, handoff?}` · `POST
 /api/analysis/diff {old, new}` (synchronous). Cancellation through `POST /api/jobs/<id>/cancel`.
+
+## 6.7 Content search
+
+"Find the thing I want to change": a string, a number or a byte pattern anywhere in a
+workspace's extracted files, a game folder or one file such as an exe or a dll
+(`viwo/core/search.py`, the needles in `viwo/core/search_query.py`). A job of kind `search`; it
+only reads, takes no workspace lock and runs nothing.
+
+- **Queries.** Text is tried as UTF-8, UTF-16LE and UTF-16BE, case-sensitive or in any case
+  (every letter in its single-character lower and upper forms, in any script; no accent
+  folding). An integer (`100`, `-5`, `0x64`) is tried in every width of `--widths` that holds it
+  (default 2, 4 and 8 bytes; 1 byte only when asked, since a single byte is found nearly
+  everywhere), little- and big-endian, unsigned or, for a negative value, signed (`u16le`,
+  `i32be`...; equal byte forms are tried once under both names). A number with a point or an
+  exponent is a float, tried as 32- and 64-bit in both byte orders (the 32-bit form is the
+  nearest single-precision value, matched exactly). A byte pattern (`48 8B ?? 05`, `??` = any
+  byte) is parsed and matched by the patch sets' own parser and regex (`patchsets.aob`). The
+  report names every encoding tried and, in `query.notes`, what was not tried and why. One
+  needle spans at most 64 KiB.
+- **Where.** A file; a folder carrying the workspace marker (its top-level dot entries left
+  out: trash, metadata, earlier results); any other folder, walked whole without following links.
+  Paths in the report are relative to what was searched, POSIX.
+- **How.** Each file streams in 8 MB chunks overlapping by the longest needle less one byte, so
+  a match across two chunks is found once and memory stays at one chunk; overlapping matches all
+  count (as a patch set counts them). Cancellation is checked between chunks and files.
+- **Caps** (`--per-file`, default 100; `--max-hits`, default 1000). A cap is said (a warning and
+  `capped[] {file, at, overall}`) only when it drops a hit: the file stops at the first hit not
+  kept; the overall cap ends the search and names the files left unsearched.
+- **Never silent.** A file or folder that cannot be read is in `unreadable[] {file, error}` and
+  named in the log (the first 20; the count of the rest is said).
+- **Each hit** `{file, offset, length, encoding, before, match, after (hex), text (printable),
+  patch {file, offset, original}}`; in a PE also `{section, rva, va}` (`patch_tools.pe`,
+  `address_of`; null outside every section: the headers, an overlay); for the first
+  `--signatures` hits of a file (default 8) `signature {pattern, at}`, the unique AOB of
+  `patch.sig` (`patch_tools.signature`, read through a mapping of the file), or `{error}` when
+  none of up to 64 bytes is unique. `signature` counts overlapping occurrences, as a pattern
+  matches, so the AOB resolves to exactly that hit. A hit's `patch` or signature plus the bytes
+  you want is a patch set entry (doc 18.8); its `file` is relative to what was searched.
+- **Report.** `{target, kind, query {kind, value, tried, notes}, limits, files, searched, bytes,
+  hitCount, filesWithHits, capped, unreadable, warnings, seconds, hits, saved}` written to
+  `<workspace>/.search/<stamp>-<kind>.json`. The workspace is `--workspace` (CLI) or the active
+  one (API); without one, the workspace searched or the one holding the target. It is never the
+  folder searched or inside it (unless that is a workspace), never a game the guard knows (doc
+  3.1), never a folder of someone else's files; a new or empty one is claimed. The CLI without
+  any says the results were not saved; the API with an active workspace that cannot take them
+  still searches and says so in `warnings`.
+- **Progress.** `Searching N file(s), X MB in <target> (<kind>): <query>`, then `Searched files:
+  i / N (H hit(s), read / total MB)` at most once a second, a file of 64 MB or more by name with
+  its own MB count, and `Searched n of N file(s), X MB in <time>: H hit(s) in F file(s)`.
+
+API: `POST /api/search {target, kind: text|number|bytes, value, ignoreCase?, widths?, perFile?,
+maxHits?, context?, signatures?}` -> the report plus `jobId` (`viwo/api/handlers_search.py`);
+also `POST /api/jobs {kind: "search"}` and a runbook step. CLI: `viwo search` (doc 12.4).

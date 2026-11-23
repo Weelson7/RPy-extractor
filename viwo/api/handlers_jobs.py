@@ -8,6 +8,7 @@ from viwo.contracts.errors import ViwoError
 from .app import App, failure
 from .handlers_analysis import run_analysis
 from .handlers_capture import run_capture, runtime_routes
+from .handlers_search import run_search
 from .handlers_tools import (
     apply_patch_set,
     install_dependency,
@@ -29,6 +30,7 @@ KINDS: dict[str, Callable[[App, dict], dict]] = {
     "capture": run_capture,
     **runtime_routes(""),
     "analyze": run_analysis,
+    "search": run_search,
     "cleanup": lambda app, params: sanitize_handler(str(params.get("op") or "plan"))(app, params),
 }
 

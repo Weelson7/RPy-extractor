@@ -32,7 +32,7 @@ Job       { id, kind, state, events[], result, error, created, started, finished
 state     queued -> running -> succeeded | failed | cancelled
 summary   { id, kind, state, events (count), error, created, started, finished, elapsed }
 kinds     extract survey repack patch mod preflight install capture dump trace hook profile
-          agent record analyze cleanup merge indexes
+          agent record analyze search cleanup merge indexes
 ```
 
 - Jobs run in worker threads; the server keeps the last 200 finished jobs in memory (run
@@ -65,7 +65,7 @@ code     invalid_request | not_found | busy | unavailable | needs_key | needs_de
   that is off); `needs_decision` asks for a choice (re-extraction, capture confirmation).
 - `internal` is a programming error: the trace goes to the log, never into the response.
 
-## 12.4 CLI (`viwo/cli.py`, `cli_args.py`, `cli_arms.py`, `cli_check.py`, `cli_extra.py`, `cli_dynamic.py`, `cli_patch.py`, `cli_format.py`)
+## 12.4 CLI (`viwo/cli.py`, `cli_args.py`, `cli_arms.py`, `cli_check.py`, `cli_extra.py`, `cli_dynamic.py`, `cli_patch.py`, `cli_search.py`, `cli_format.py`)
 
 Commands are grouped by arm; `viwo -h` lists them, `viwo <arm>` lists one arm, and
 `viwo <arm> <command> ...` is the same as `viwo <command> ...`.
@@ -77,6 +77,7 @@ Commands are grouped by arm; `viwo -h` lists them, `viwo <arm>` lists one arm, a
 | static | `extract GAME --workspace W [--plugin ID \| --mixed A,B] [--policy selected\|detected\|all] [--exts .png,.ogg] [--on-existing new\|replace\|cancel] [--option plugin.key=value] [--carve off\|unknown\|all]` | extraction run |
 | static | `replay RECORD --workspace W [--on-existing ...] [--option ...]` | re-run a run record (secrets asked again) |
 | static | `unpack ARCHIVE --out DIR [--slot SLOT] [--backend main\|spare\|ID] [--option ...]` | one archive (nested too; `--slot` forces one slot, no nesting) |
+| static | `search TARGET (--text S \| --number N \| --bytes "48 8B ?? 05") [-i] [--widths 2,4,8] [--workspace W] [--max-hits N] [--per-file N] [--context N] [--signatures N]` | find a string, a number or a byte pattern in a workspace, a game folder or one file, read-only; each hit with its context, PE section/RVA/VA and a unique AOB; the report into `<W>/.search/` (doc 6.7) |
 | static | `sanitize WORKSPACE [--recipe ID] [--apply] [--undo TOKEN]` | cleanup plan, apply, undo; recipes of phases 1-3, a lossy one applied only when named (doc 5) |
 | static | `analyze GAME [--list] [--workspace W --target KEY] [--slot SLOT] [--set KEY=VALUE] [--open [HANDOFF]] [--timeout S]` | static analysis (doc 6) |
 | static | `diff OLD NEW [--out DIR]` | function-level diff of two analyses |
