@@ -8,10 +8,12 @@ the control registers (`r cr3`). So every access is physical: an address is walk
 paging of vCPU 0 (its CR3), or through a located process's (core.isolation.guest)."""
 
 import re
+import tempfile
 import time
 from contextlib import contextmanager
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 
+from viwo.contracts.errors import ViwoError
 from viwo.contracts.patcher import MemoryFault, PatchSession, Wall, WallReport
 from viwo.contracts.types import Outcome, OutcomeKind
 
@@ -150,6 +152,29 @@ class VBoxSession(PatchSession):
         self._wall = view.write_mem(addr, data)
         return self._wall
 
+    def _copy(self, verb: str, src: str, dst: str, creds: dict) -> None:
+        user, password = str(creds.get("user") or ""), str(creds.get("password") or "")
+        if not user:
+            raise ViwoError("invalid_request", "a guest account is needed (--guest-user)")
+        auth = [f"--username={user}", f"--password={password}"]
+        result = self._run("guestcontrol", self.vm, verb, *auth, src, dst, timeout=1800)
+        if not result.ok:
+            said = _tail(result).replace(password, "<secret>") if password else _tail(result)
+            hint = "the guest needs VirtualBox's Guest Additions running"
+            raise ViwoError("failed", f"VBoxManage guestcontrol {verb}: {said}", hint=hint)
+
+    def get_file(self, path: str, creds: dict) -> bytes:
+        with tempfile.TemporaryDirectory() as tmp:
+            out = Path(tmp) / "file"
+            self._copy("copyfrom", path, str(out), creds)
+            return out.read_bytes()
+
+    def put_file(self, path: str, data: bytes, creds: dict) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            src = Path(tmp) / PureWindowsPath(path).name.replace("/", "_")
+            src.write_bytes(data)
+            self._copy("copyto", str(src), path, creds)
+
     def snapshot(self, name: str) -> Outcome:
         return self._step("snapshot take", "snapshot", self.vm, "take", name, "--live")
 
@@ -182,4 +207,6 @@ class VBoxSession(PatchSession):
         """Power off and unregister; the VM's folder (its disk, snapshots) stays for the next
         start in this workspace, unless that start asks for a fresh one."""
         self._off()
-        self._run("unregistervm", self.vm)
+        gone = self._step("unregistervm", "unregistervm", self.vm)
+        if not gone.ok:  # said by `stop` (session.act), never dropped
+            self._wall = WallReport(Wall.NOT_READY, f"{gone.error}; still registered")

@@ -14,6 +14,7 @@ from unittest import mock
 
 from tests.test_isolation_guest import P, PhysSession, x64_space
 from viwo.contracts.errors import ViwoError
+from viwo.contracts.types import Outcome, OutcomeKind
 from viwo.core.isolation import guest, patching
 
 
@@ -121,6 +122,23 @@ class PatchingTests(unittest.TestCase):
         self.assertTrue(report["snapshot"].startswith(patching.SNAPSHOT + "-"))
         with self.assertRaises(ViwoError):
             patching.patch(None, self.session, self.where, {}, self._log)
+
+    def test_a_program_that_exits_after_the_patch_puts_the_guest_back(self) -> None:
+        self._save(_view())
+        rolled: list[str] = []
+        self.session.rollback = lambda name: rolled.append(name) or Outcome(OutcomeKind.OK)
+
+        def exits(*args):  # the patch lands, then the program's check ends it
+            self.mem.write(0xB000, b"\0\0")
+            return {"written": True, "results": []}
+
+        opt = {"exe": self.where / "Game.exe", "patchset": self.where / "s.json", "snapshot": True}
+        with mock.patch.object(patching.patchsets, "load", return_value={"patches": []}), \
+                mock.patch.object(patching.live, "apply_live", exits):  # fmt: skip
+            report = patching.patch(None, self.session, self.where, opt, self._log)
+        self.assertTrue(report["exited"])
+        self.assertEqual(rolled, [report["snapshot"]])
+        self.assertEqual(report["rolled_back"], report["snapshot"])
 
     def test_undo_only_puts_back_what_is_still_its_own(self) -> None:
         view = guest.ProcessView(self.session, _view())

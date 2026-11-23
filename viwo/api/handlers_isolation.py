@@ -42,7 +42,7 @@ def _guest(d: dict) -> dict:
 def run_isolation(app: App, d: dict) -> dict:
     """POST /api/runtime/isolation {action?, tier?, image?, exePath?, patchSet?, base?, name?,
     snapshot?, memory?, cpus?, network?, headless?, accel?, fresh?, efi?, gpu?, share?, domain?,
-    kvmiSocket?, process?
+    kvmiSocket?, guestDir?, guestUser?, guestPassword?, process?
     (locate: a program name or pid; none lists them), program? (dump: the located program),
     wait?, hold? (patch: seconds)}; `snapshot` on patch takes a whole-guest snapshot first."""
     from viwo.core.isolation import session as sessions
@@ -71,6 +71,8 @@ def run_isolation(app: App, d: dict) -> dict:
     opt = {"name": d.get("name"), "exe": exe, "patchset": path_param(d, "patchSet"), "base": base}
     opt.update(target=str(d.get("process") or ""), program=bool(d.get("program")))
     opt.update(snapshot=bool(d.get("snapshot")), wait=d.get("wait"), hold=d.get("hold"))
+    creds = {"user": str(d.get("guestUser") or ""), "password": str(d.get("guestPassword") or "")}
+    opt.update(guest_dir=str(d.get("guestDir") or ""), creds=creds)  # the password is not kept
     return safe(lambda: {"success": True, **sessions.act(app.rt, app.workspace, action, **opt)})
 
 

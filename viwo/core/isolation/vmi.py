@@ -2,7 +2,7 @@
 Xen, or KVM with KVMi, ViWo introspects a running domain from outside it: guest physical memory
 through the host's own LibVMI (the libvmi_io worker, LibVMI's calls in a process of their own),
 so a located process (core.isolation.guest) is read and written through its own page tables as on
-T1 and T2; the RAM image Volatility reads comes from LibVMI's `vmi-dump-memory`; the domain is
+T1 and T2; the RAM image Volatility reads is read through the same worker; the domain is
 paused, resumed, snapshotted and restored by the hypervisor's own control (`virsh` on KVM, `xl`
 on Xen). The domain is the user's: ViWo attaches to it by name (`--domain`, and on KVM its
 `--kvmi-socket`), never boots or destroys it, and closing the session leaves it running. A raw
@@ -31,14 +31,13 @@ from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
 
 from .guest import VOLATILITY
 
-VMI_READ = DependencySpec("vmi-dump-memory", "LibVMI dump-memory", executables=("vmi-dump-memory",),
-                          hint="install LibVMI (its example tools) on the host")  # fmt: skip
 VIRSH = DependencySpec("virsh", "libvirt virsh", executables=("virsh",), hint="install libvirt")
 XL = DependencySpec("xl", "Xen xl", executables=("xl",), hint="install the Xen tool stack")
 WORKER = Path(__file__).resolve().parents[2] / "data" / "workers" / "libvmi_io.py"
 NO_VA = "T3 addresses guest memory through a located program: `isolate locate NAME` first"
 LIVE = ("running", "paused", "blocked", "idle", "in shutdown")
 ANSWER = 60.0  # seconds LibVMI may take to open a domain or answer one access
+DUMP = 3600.0  # seconds a whole-RAM image may take
 
 
 def _no_host() -> bool:
@@ -74,16 +73,16 @@ class _Remote:
     def __init__(self, proc, lines: queue.Queue) -> None:
         self._proc, self._lines = proc, lines
 
-    def line(self) -> str:
+    def line(self, timeout: float = ANSWER) -> str:
         try:
-            return self._lines.get(timeout=ANSWER)
+            return self._lines.get(timeout=timeout)
         except queue.Empty as exc:
-            raise MemoryFault(f"LibVMI did not answer within {ANSWER:g} s") from exc
+            raise MemoryFault(f"LibVMI did not answer within {timeout:g} s") from exc
 
-    def ask(self, **request) -> dict:
+    def ask(self, timeout: float = 0.0, **request) -> dict:
         self._proc.stdin.write(json.dumps(request) + "\n")
         self._proc.stdin.flush()
-        line = self.line()
+        line = self.line(timeout or ANSWER)
         reply = json.loads(line) if line.strip() else {"error": "the LibVMI worker ended"}
         if not reply.get("ok"):
             raise MemoryFault(f"LibVMI: {reply.get('error')}")
@@ -185,13 +184,16 @@ class VmiSession(PatchSession):
         return Outcome(OutcomeKind.FAILED, error=f"{self.kind} {args[0]}: {tail}")
 
     def dump(self, out: Path) -> Outcome:
-        tool = self._os.tools.locate(VMI_READ)
-        if tool is None:
-            return Outcome(OutcomeKind.UNAVAILABLE, error=VMI_READ.hint)
-        result = self._os.process.run([*tool.argv_prefix, self.domain, str(out)], timeout=1800)
-        if result.ok:
-            return Outcome(OutcomeKind.OK)
-        return Outcome(OutcomeKind.FAILED, error=(result.stderr or result.stdout or "")[-200:])
+        """Guest RAM as a raw image through the worker (LibVMI's own reads, so a KVMi domain
+        dumps like a Xen one); chunks LibVMI cannot read are zeros and are said."""
+        try:
+            with self.physical() as remote:
+                done = remote.ask(op="dump", path=str(out), timeout=DUMP)
+        except MemoryFault as exc:
+            return Outcome(OutcomeKind.FAILED, error=str(exc))
+        holes = int(done.get("holes") or 0)
+        note = (f"{holes} MB LibVMI could not read are zeros",) if holes else ()
+        return Outcome(OutcomeKind.OK, notes=note)
 
     def wall(self) -> WallReport:
         return self._wall

@@ -74,7 +74,26 @@ def _serve(lib, vmi, request: dict) -> dict:
         if status != SUCCESS or done.value != len(data):
             return {"ok": False, "error": f"write at {int(request['pa']):#x} failed"}
         return {"ok": True}
+    if request.get("op") == "dump":
+        return _dump(lib, vmi, request["path"])
     return {"ok": False, "error": f"unknown op {request.get('op')!r}"}
+
+
+def _dump(lib, vmi, path: str) -> dict:
+    """Guest physical memory up to LibVMI's highest address, as a raw image; a chunk LibVMI
+    cannot read (a hole, MMIO) is zeros, and how many there were is said."""
+    lib.vmi_get_max_physical_address.restype = ctypes.c_uint64
+    top, chunk, holes = int(lib.vmi_get_max_physical_address(vmi)), 1 << 20, 0
+    buf, done = ctypes.create_string_buffer(chunk), ctypes.c_size_t(0)
+    with open(path, "wb") as out:
+        for pa in range(0, top, chunk):
+            n = min(chunk, top - pa)
+            if lib.vmi_read_pa(vmi, pa, n, buf, ctypes.byref(done)) != SUCCESS or done.value != n:
+                holes += 1
+                out.write(bytes(n))
+            else:
+                out.write(buf.raw[:n])
+    return {"ok": True, "bytes": top, "holes": holes}
 
 
 def main(argv: list[str]) -> int:

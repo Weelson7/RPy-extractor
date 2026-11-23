@@ -42,9 +42,12 @@ if sys.argv[1] == "missing":
 print(json.dumps({"ok": True, "mode": "xen", "argv": sys.argv[1:]}), flush=True)
 for line in sys.stdin:
     req = json.loads(line)
-    pa = req["pa"]
+    pa = req.get("pa", 0)
     if pa >= len(mem):
         print(json.dumps({"ok": False, "error": "out of guest RAM"}), flush=True)
+    elif req["op"] == "dump":
+        pathlib.Path(req["path"]).write_bytes(bytes(mem))
+        print(json.dumps({"ok": True, "bytes": len(mem), "holes": 1}), flush=True)
     elif req["op"] == "read":
         print(json.dumps({"ok": True, "hex": mem[pa : pa + req["n"]].hex()}), flush=True)
     else:
@@ -53,7 +56,6 @@ for line in sys.stdin:
         mem_file.write_bytes(mem)
         print(json.dumps({"ok": True}), flush=True)
 """
-DUMPER = "#!{python}\nimport sys\nopen(sys.argv[-1], 'wb').write(b'MEM')\n"
 
 
 class VmiTests(unittest.TestCase):
@@ -116,8 +118,7 @@ class VmiTests(unittest.TestCase):
         self.assertIsNone(control_of(self._rt({}).os))
 
     def test_kvm_session_attaches_walks_snapshots_and_leaves_the_domain_running(self) -> None:
-        dumper = self._fake("vmi-dump-memory", DUMPER)
-        rt = self._rt({"virsh": self._fake("virsh"), "vmi-dump-memory": dumper})
+        rt = self._rt({"virsh": self._fake("virsh")})
         session = self._start(rt, "win10", "/run/kvmi.sock", snapshot=True)
         self.assertIsInstance(session, VmiSession)
         self.assertEqual((session.domain, session.info["kvmi"]), ("win10", "/run/kvmi.sock"))
@@ -127,8 +128,10 @@ class VmiTests(unittest.TestCase):
         self.assertEqual(view.write_mem(0x20000, b"X").wall, Wall.NOT_READY)  # LibVMI refused
         self.assertEqual(session.write_mem(0x1000, b"X").detail, vmi.NO_VA)  # locate first
         self.assertTrue(session.rollback("base").ok)
-        self.assertTrue(session.dump(self.root / "core.raw").ok)
-        self.assertEqual((self.root / "core.raw").read_bytes(), b"MEM")
+        dumped = session.dump(self.root / "core.raw")  # through the worker: KVMi alike
+        self.assertTrue(dumped.ok)
+        self.assertEqual((self.root / "core.raw").stat().st_size, 0x10000)
+        self.assertIn("could not read", dumped.notes[0])  # holes are said
         log = self._calls()
         for line in ("snapshot-create-as win10 base", "suspend win10", "resume win10"):
             self.assertIn(line, log)
@@ -149,7 +152,6 @@ class VmiTests(unittest.TestCase):
         self.assertTrue(session.rollback("s1").ok)
         self.assertIn("destroy hvm1", self._calls())
         self.assertIn("restore", self._calls())
-        self.assertEqual(session.dump(self.root / "c").kind, OutcomeKind.UNAVAILABLE)
         missing = self._start(rt, "missing")
         self.assertEqual(missing.kind, OutcomeKind.UNAVAILABLE)
         self.assertIn("no domain missing", missing.error)

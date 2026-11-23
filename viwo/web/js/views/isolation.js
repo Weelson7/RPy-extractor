@@ -36,6 +36,9 @@ export function isolationPanel(tag) {
   el.patch = input("iso-patch", "/path/to/set.patch.json", "isoPatch");
   el.base = input("iso-base", "module base (optional: LOCATE gives it)", "isoBase");
   el.name = input("iso-name", "snapshot / dump name (optional)", "isoName");
+  el.guestDir = input("iso-gdir", "the program's folder inside the guest", "isoGuestDir");
+  el.guestUser = input("iso-guser", "guest account (VirtualBox)", "isoGuestUser");
+  el.guestPass = h("input", { class: "input mono", id: "iso-gpass", type: "password", autocomplete: "off", placeholder: "its password (not kept)" });
   el.wait = number("iso-wait", "isoWait", "0", "0");
   el.hold = number("iso-hold", "isoHold", "0", "0");
   el.flags = Object.fromEntries(FLAGS.map(([k]) => [k, pref(`iso_${k}`) === "1"]));
@@ -57,7 +60,10 @@ export function isolationPanel(tag) {
     h("div", { class: "row" }, el.patch, fileBtn(el.patch, (p) => pref("isoPatch", p))),
     h("div", { class: "row" }, h("div", { class: "col" }, label("iso-wait", "WAIT FOR PAGES (S)"), el.wait),
       h("div", { class: "col" }, label("iso-hold", "HOLD AGAINST REVERTS (S)"), el.hold)),
-    h("div", { class: "row" }, el.base, act("patch", "PATCH", "primary"), act("undo")), el.out);
+    h("div", { class: "row" }, el.base, act("patch", "PATCH", "primary"), act("undo")),
+    label("iso-gdir", "COLD, INSIDE THE GUEST: THE SAME SET WRITTEN INTO THE GUEST'S OWN FILES"),
+    h("div", { class: "row" }, el.guestDir), h("div", { class: "row" }, el.guestUser, el.guestPass),
+    h("div", { class: "row" }, act("deploy", "PATCH GUEST FILES"), act("restore", "RESTORE GUEST FILES")), el.out);
 }
 
 async function listTiers() {
@@ -81,6 +87,9 @@ function body(action) {
   }
   if (action === "program") return { action: "dump", program: true, name: v(el.name) || null };
   if (action === "locate") return { action, process: v(el.process) };
+  if (action === "deploy" || action === "restore") {
+    return { action, patchSet: v(el.patch), guestDir: v(el.guestDir), guestUser: v(el.guestUser), guestPassword: el.guestPass.value };
+  }
   if (action === "patch") {
     return { action, exePath: v(el.exe), patchSet: v(el.patch), base: v(el.base) || null, snapshot: el.flags.snapshot,
       wait: Number(v(el.wait)) || 0, hold: Number(v(el.hold)) || 0 };
@@ -91,6 +100,8 @@ function body(action) {
 function why(action) {
   if (action === "start" && !el.image.value.trim() && !el.domain.value.trim()) return "enter the guest image (or a T3 domain)";
   if (action === "patch" && (!el.exe.value.trim() || !el.patch.value.trim())) return "enter the program and its patch set";
+  if ((action === "deploy" || action === "restore") && !el.guestDir.value.trim()) return "enter the program's folder inside the guest";
+  if (action === "deploy" && !el.patch.value.trim()) return "enter the patch set";
   return "";
 }
 

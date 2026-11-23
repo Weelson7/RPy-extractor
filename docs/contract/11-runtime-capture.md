@@ -194,7 +194,8 @@ more half a second after the resume). A page not in guest RAM is a `not_ready` w
 |------|----------------|----------------|--------------|-------|
 | T1 | `isolation.vbox` / `vbox` | VirtualBox 7.x `VBoxManage` (base package, GPL-3.0; NOT the Extension Pack), located | boots a **copy** of the image in the session folder (VirtualBox rewrites a disk's header once it registers it, so the user's image is never attached: converted to VDI by `qemu-img` or `convertfromraw`, a VDI/VMDK/VHD copied with a new UUID; an `.iso` boots as an installer with a new empty 64 GB disk), kept between sessions with its snapshots (`--fresh` discards it). No network unless asked (NAT). UEFI with a **virtual TPM 2.0** when asked (`efi`). **Live snapshots** on hardware acceleration; rollback powers off, restores and starts again. Memory goes through the VM's own **gdb stub** on loopback (`--guest-debug-provider gdb`): found on the real thing, it halts the vCPUs while a client is connected and lets them go when it leaves (a VBoxManage pause stays a pause), it reads but does not write (`M`/`X` refused), and its console (`qRcmd`, whose last character it drops, so a space is sent after) reads and writes **physical** memory (`db`/`eb`/`eq` on `%%` addresses) and the control registers. So every T1 access is physical: an address is walked through vCPU 0's paging (CR0/CR3/CR4/EFER) or a located process's. `debugvm dumpvmcore` writes an ELF core. A `share` folder is a read-only VirtualBox shared folder (the guest needs Guest Additions; their CD is attached, a failure is said) | **real**: VirtualBox 7.2.22, long-mode guest (copy booted and image untouched, page walks on CR3 and on a given DTB, journal and undo, pause seen to stop the guest, live snapshot and rollback, ELF core, stop; UEFI + TPM 2.0, installer and share in the VM's own settings) |
 | T2 | `isolation.qemu` / `qemu` | QEMU `qemu-system-x86_64` (GPL-2.0), pinned, on demand | runs the guest behind a closed boundary and drives it from outside through QEMU's own two channels, both on loopback only: **QMP** (`qmp.py`: stop/cont, savevm/loadvm, dump-guest-memory, quit) and the **gdbstub** (`gdb.py`, a first-party stdlib client: memory with the guest stopped; **physical** memory in QEMU's `Qqemu.PhyMemMode`, which is QEMU-wide, so it is switched off before the connection goes and at the start of every virtual access). The image is **never written**: a qcow2 overlay beside the session takes every change and is kept between sessions (`--fresh` discards it); an installer `.iso` boots read-only with a new empty qcow2 disk (`qemu_media.py`). `efi` boots QEMU's own edk2 with its variables in the session folder; **QEMU on Windows has no virtual TPM** (no swtpm), which is said (a guest that insists on one: T1). A `share` folder becomes a read-only CD (`share.py`: ISO 9660 + UDF 2.60 + Rock Ridge + Joliet written by pycdlib, synthetic ISO names so no name is refused, full names in UDF/Rock Ridge, Joliet cut to 64 bytes and kept unique; rebuilt only when the folder changed). No network unless asked. The accelerator is hardware (**WHPX** on Windows, **KVM** on Linux) when it really starts, else **TCG**, and which one is said; **WHPX cannot save a snapshot**, so a session started with a snapshot runs on TCG. No `-cpu` is forced. QEMU serves one QMP client at a time: a second action meanwhile answers `busy` | **real**: QEMU 11.1 (boot-sector guest: read, atomic write, journal, undo, snapshot/rollback on TCG, pause/resume, dump, stop, WHPX; long-mode guest: physical mode and page walk; UEFI, installer and share seen in `query-block`, the share's files read back by full name; `locate` on a real dump says the guest has no OS) |
-| T3 | `isolation.vmi` / `libvmi` | LibVMI (LGPL-3.0; DRAKVUF's introspection layer), located on the host, with `virsh` or `xl` | attaches to a **running** Xen or KVMi domain by name (`--domain`, on KVM also `--kvmi-socket`), never boots or destroys it, and leaves it running when the session closes. Guest physical memory through the host's LibVMI (`libvmi_io.py`, a worker: LibVMI's own physical-memory calls through ctypes in a process of their own, JSON lines on stdin/stdout, one LibVMI instance per access batch); pause/resume, snapshot/rollback by the hypervisor (`virsh suspend/resume/snapshot-create-as/snapshot-revert`; `xl pause/unpause/save -c/destroy+restore`); `vmi-dump-memory` for the RAM image. A raw address is not translated (T3 reads no vCPU register): locate the program first. Off a bare-metal Linux host (Windows, WSL2) it is not ready and says why | unit-tested with a fake LibVMI worker and fake `virsh`/`xl`; the real run needs the host |
+| T3 | `isolation.vmi` / `libvmi` | LibVMI (LGPL-3.0; DRAKVUF's introspection layer), located on the host, with `virsh` or `xl` | attaches to a **running** Xen or KVMi domain by name (`--domain`, on KVM also `--kvmi-socket`), never boots or destroys it, and leaves it running when the session closes. Guest physical memory through the host's LibVMI (`libvmi_io.py`, a worker: LibVMI's own physical-memory calls through ctypes in a process of their own, JSON lines on stdin/stdout, one LibVMI instance per access batch); pause/resume, snapshot/rollback by the hypervisor (`virsh suspend/resume/snapshot-create-as/snapshot-revert`; `xl pause/unpause/save -c/destroy+restore`); the RAM image read through the same worker (every chunk up to LibVMI's highest physical
+address; a chunk it cannot read is zeros and is said), so a KVMi domain dumps like a Xen one. A raw address is not translated (T3 reads no vCPU register): locate the program first. Off a bare-metal Linux host (Windows, WSL2) it is not ready and says why | unit-tested with a fake LibVMI worker and fake `virsh`/`xl`; the real run needs the host |
 
 **Programs inside a guest** (`core/isolation/guest.py`, `paging.py`; any tier whose session has
 `physical()`). `locate` dumps the guest's RAM beside the session, runs **Volatility 3** on it (a
@@ -241,8 +242,8 @@ the tiers. VirtualBox is **unmanaged / located-only** (doc 10, 16.3): a hypervis
 driver and a one-time elevation, which the minimal-prompts and third_party-only rules forbid
 installing, so the backend locates the user's own install (the `virtualbox` dependency;
 reference build `VirtualBox-7.2.22-175245-Win.exe`, 178,101,352 bytes, sha256
-`afd0ff1656cbe04ed88ce619594ae021419d97cce89fa9bdc443e9a963f1713f`). LibVMI, `virsh`/`xl` and
-`vmi-dump-memory` are the host's own.
+`afd0ff1656cbe04ed88ce619594ae021419d97cce89fa9bdc443e9a963f1713f`). LibVMI and `virsh`/`xl` are
+the host's own.
 
 **The cold+live bridge** (`core/isolation/live.py`). One patch recipe applies either way. A patch
 set locates an edit in a PE as a **file offset** (`core/patchsets.py`, `core/patch_tools.py`
@@ -269,12 +270,14 @@ here. `viwo isolate start --workspace W (--image I | --domain D [--kvmi-socket S
 [--snapshot] [--memory MB] [--cpus N] [--network] [--headless] [--halted] [--accel A] [--fresh]
 [--efi] [--gpu] [--share DIR]` boots and holds a session; `viwo isolate
 status|pause|resume|snapshot|rollback|undo|stop --workspace W [--name N]`, `viwo isolate locate
-[--process NAME|PID]`, `viwo isolate dump [--name N] [--program]` and `viwo isolate patch --exe E
+[--process NAME|PID]`, `viwo isolate dump [--name N] [--program]`, `viwo isolate deploy|restore --guest-dir DIR
+[--patchset P] [--guest-user U]` (password from `VIWO_GUEST_PASSWORD`) and `viwo isolate patch --exe E
 --patchset P [--base ADDR] [--snapshot] [--wait S] [--hold S]` act on it from another terminal. `viwo isolate EXE --patchset P
 --workspace W` is the one-shot form: start, patch, close. `GET /api/runtime/isolation` →
 `{tiers, enabled}`; `POST /api/runtime/isolation {action?, tier?, image?, exePath?, patchSet?,
 base?, name?, snapshot?, memory?, cpus?, network?, headless?, halted?, accel?, fresh?, efi?,
-gpu?, share?, domain?, kvmiSocket?, process?, program?, wait?, hold?}` runs one action (no `action`: the one-shot
+gpu?, share?, domain?, kvmiSocket?, guestDir?, guestUser?, guestPassword?, process?, program?, wait?, hold?}` runs one
+action (no `action`: the one-shot
 form). A tier that cannot run here answers `unavailable` with exactly what it needs (never
 silent). RUNTIME > ISOLATION PATCHER (`web/js/views/isolation.js`) has every option: the tiers
 and their readiness, the image, tier, accelerator, memory, CPUs, network, window, UEFI + TPM,
@@ -286,12 +289,25 @@ is written the located program is checked (an image header still at its base, `g
 `status` shows it as `present`): one that restarted is located again by name (ASLR moved it),
 one that is gone is said, with the hint that a program refusing to run in a VM ends like this.
 `patch --snapshot` takes a whole-guest snapshot first (`pre-patch-<time>`), so `rollback` also
-undoes state the program derived from the bytes. `--wait S` tries the set again once a second
+undoes state the program derived from the bytes; when the program is gone once patched (a check
+that exits), the guest goes back to that snapshot by itself and the result says so. `--wait S` tries the set again once a second
 while its pages are not in guest RAM, so it lands as soon as the code loads. `--hold S` watches
 the written bytes for S seconds and writes them again whenever the program puts them back, each
 revert counted and said. `locate` records how many other processes map each module of the
 program, and patching such a module says that its pages change for them too. `--gpu` gives a
 VirtualBox guest VMSVGA with 3D on the host's GPU; QEMU on Windows has no 3D path, which is said.
+
+**Cold, inside the guest** (`core/isolation/coldguest.py`; `deploy`, `restore`). The same set
+written into the guest's own files before the program runs, so a check that runs once at start
+sees the patched file: every file the set touches is pulled through the tier's channel into the
+guest's files (`get_file`/`put_file` on the session: VirtualBox `guestcontrol copyfrom/copyto`
+with a guest account, which needs Guest Additions; QEMU's guest agent, `qga.py`, over a
+virtio-serial channel every QEMU session now gets on loopback, which needs `qemu-ga` in the
+guest; T3 has none and says so), kept as the original once, staged in
+`.runtime/isolation/cold/`, patched there by the cold writer (located, verified byte for byte)
+and pushed back; a set that does not plan clean writes nothing. `restore` pushes the originals
+back. The guest password comes from `VIWO_GUEST_PASSWORD` (CLI) or the request (API), is used for
+that call and is never kept, logged or said (masked in an error).
 
 **Limits** (the walls the arm does not lift): no GPU passthrough on either tier (VirtualBox's 3D
 is a translation layer, enough for apps, not for heavy Direct3D/Vulkan games); nothing hides the

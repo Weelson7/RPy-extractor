@@ -4,6 +4,16 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.38.0 (2026-11-23)
+- **Cold patching inside the guest**: `viwo isolate deploy --guest-dir DIR --patchset P` writes
+  the set into the guest's own files before the program runs (a check that runs once at start
+  sees the patched file), through VirtualBox's `guestcontrol` (Guest Additions, a guest account;
+  the password from `VIWO_GUEST_PASSWORD`, never kept) or QEMU's guest agent (a channel every QEMU
+  session now has); the originals are kept and `restore` puts them back. RUNTIME has both.
+- A program that exits once patched puts the guest back at the snapshot `patch --snapshot` took.
+- T3 reads the guest's RAM image through its LibVMI worker (no example tool; a KVMi domain dumps
+  like a Xen one); `stop` says when VirtualBox could not unregister the VM.
+
 ## 1.37.0 (2026-11-23)
 - **Programs inside a guest** (doc 11.8). `viwo isolate locate [--process NAME|PID]` dumps the
   guest's RAM and asks Volatility 3 (a pinned worker, `viwo install volatility3`, with ViWo's

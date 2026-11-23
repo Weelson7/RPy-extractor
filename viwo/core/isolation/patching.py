@@ -101,4 +101,18 @@ def patch(rt, session, where: Path, opt: dict, log) -> dict:
     if hold > 0 and report["written"]:
         lines = journal.read_text(encoding="utf-8").splitlines()[before:]
         report["reverts"] = _hold(target, [json.loads(line) for line in lines], hold, log)
+    if view and report["written"] and str(head.get("snapshot", "")).startswith(SNAPSHOT):
+        head.update(_exited(session, view, head["snapshot"], log))
     return {**head, **report}
+
+
+def _exited(session, view: dict, snapshot: str, log) -> dict:
+    """The program is gone once patched (a check that exits): the guest goes back to the
+    snapshot taken just before, so the session goes on and nothing is lost but the try."""
+    if guest.present(session, view):
+        return {}
+    back = session.rollback(snapshot)
+    log(f"{guest.main(view)} exited after the patch; the guest is back at {snapshot}"
+        if back.ok else f"{guest.main(view)} exited after the patch; rollback failed: "
+        f"{back.error}", "warn" if back.ok else "error")  # fmt: skip
+    return {"exited": True, "rolled_back": snapshot if back.ok else ""}

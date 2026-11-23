@@ -18,11 +18,12 @@ from viwo.contracts.types import Outcome
 
 from .. import patchsets
 from ..context import core_context
-from . import guest, live, patching
+from . import coldguest, guest, live, patching
 from .qemu_session import NAME
 
 ACTIONS = (
-    "status", "pause", "resume", "snapshot", "rollback", "locate", "dump", "patch", "undo", "stop",
+    "status", "pause", "resume", "snapshot", "rollback", "locate", "dump", "patch", "undo",
+    "deploy", "restore", "stop",
 )  # fmt: skip
 
 
@@ -179,6 +180,21 @@ def _patch(rt, session, workspace: Path, opt: dict) -> dict:
     return patching.patch(rt, session, folder(workspace), opt, _say(rt, workspace, opt))
 
 
+def _cold(rt, session, workspace: Path, action: str, opt: dict) -> dict:
+    """The set written into the guest's own files (`deploy`), or the originals put back."""
+    guest_dir, creds = str(opt.get("guest_dir") or ""), dict(opt.get("creds") or {})
+    if not guest_dir:
+        raise ViwoError("invalid_request", f"{action} needs the program's folder in the guest")
+    say, where = _say(rt, workspace, opt), folder(workspace)
+    if action == "restore":
+        return coldguest.restore(session, where, {"dir": guest_dir, "creds": creds}, say)
+    if not opt.get("patchset"):
+        raise ViwoError("invalid_request", "deploy needs a --patchset")
+    patch_set = patchsets.load(Path(opt["patchset"]))
+    guest = {"dir": guest_dir, "creds": creds}
+    return coldguest.deploy(rt, session, where, patch_set, guest, say)
+
+
 def _say(rt, workspace: Path, opt: dict):
     tier = session_tier(workspace) or "isolation"
     return _context(rt, workspace, tier, opt.get("say")).log
@@ -194,7 +210,8 @@ def act(rt, workspace: Path, action: str, say=None, **opt) -> dict:
         if action == "stop":
             session.close()
             forget(workspace)
-            return {**head, "stopped": True}
+            left = session.wall()  # what the tier could not tidy up, said
+            return {**head, "stopped": True, **({"warning": left.detail} if left.blocked else {})}
         return {**head, **_run(rt, session, workspace, action, {**opt, "say": say})}
     finally:
         session.release()
@@ -212,10 +229,12 @@ def _run(rt, session, workspace: Path, action: str, opt: dict) -> dict:
         return _dump(rt, session, workspace, opt)
     if action == "patch":
         return _patch(rt, session, workspace, opt)
+    if action in ("deploy", "restore"):
+        return _cold(rt, session, workspace, action, opt)
     if action == "undo":
         return live.undo(session, folder(workspace) / "journal.jsonl")
     running = getattr(session, "running", None)
-    public = {k: v for k, v in session.record().items() if k not in ("qmp", "gdb")}
+    public = {k: v for k, v in session.record().items() if k not in ("qmp", "gdb", "qga")}
     view = guest.load(folder(workspace))
     if view:
         here = guest.present(session, view)  # gone: exited (or refused the VM) or restarted

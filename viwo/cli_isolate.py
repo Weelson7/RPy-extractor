@@ -6,6 +6,7 @@ session the workspace records. `viwo isolate EXE`
 is the one-shot form: start, apply `--patchset` live, close. `patch` writes the
 same patch set the cold `viwo patch` writes into a copy into the guest (core.isolation.live)."""
 
+import os
 import time
 from pathlib import Path
 
@@ -50,6 +51,8 @@ def isolate_command(command) -> None:
     iso.add_argument("--process", default="", help="locate: a program name or pid in the guest")
     iso.add_argument("--program", action="store_true", help="dump: the located program's files")
     iso.add_argument("--domain", default="", help="start (libvmi): the running domain to attach")
+    iso.add_argument("--guest-dir", default="", help="deploy, restore: the program's guest folder")
+    iso.add_argument("--guest-user", default="", help="deploy, restore (vbox): a guest account")
     iso.add_argument("--kvmi-socket", default="", help="start (libvmi on KVM): its KVMi socket")
 
 
@@ -105,7 +108,9 @@ def isolate(rt, args, printer) -> Envelope:
     if args.action != "start":
         opt = {"name": args.name, "exe": args.exe, "patchset": args.patchset, "base": args.base}
         opt.update(target=args.process, program=args.program, snapshot=args.snapshot)
-        opt.update(wait=args.wait, hold=args.hold)
+        opt.update(wait=args.wait, hold=args.hold, guest_dir=args.guest_dir)
+        password = os.environ.get("VIWO_GUEST_PASSWORD", "")  # never an argument: not kept
+        opt["creds"] = {"user": args.guest_user, "password": password}
         return Envelope.success(sessions.act(rt, args.workspace, args.action, printer, **opt))
     req = sessions.IsolateRequest(
         args.workspace, args.image, args.exe, args.tier, args.pid, args.snapshot,

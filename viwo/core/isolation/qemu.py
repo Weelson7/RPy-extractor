@@ -62,11 +62,15 @@ def accelerators(os, argv_prefix, wanted: str, snapshot: bool) -> tuple[list[str
     return [HARDWARE, "tcg"], ""
 
 
-def guest_args(target: PatchTarget, accel: str, ports: tuple[int, int]) -> list[str]:
-    qmp, gdb = ports
+def guest_args(target: PatchTarget, accel: str, ports: tuple[int, ...]) -> list[str]:
+    qmp, gdb, *agent = ports
     args = ["-accel", accel, "-m", str(target.memory_mb), "-smp", str(target.cpus)]
     args += ["-name", f"viwo-{target.exe.stem or 'guest'}", "-usb", "-device", "usb-tablet"]
     args += ["-qmp", f"tcp:{HOST}:{qmp},server=on,wait=off", "-gdb", f"tcp:{HOST}:{gdb}"]
+    if agent:  # the guest agent's virtio-serial channel (files inside the guest)
+        args += ["-chardev", f"socket,id=qga0,host={HOST},port={agent[0]},server=on,wait=off",
+                 "-device", "virtio-serial", "-device",
+                 "virtserialport,chardev=qga0,name=org.qemu.guest_agent.0"]  # fmt: skip
     if not target.network:
         args += ["-nic", "none"]
     if target.headless:
@@ -107,10 +111,10 @@ class QemuPatcher(PatcherBackend):
     def _boot(self, tool, target: PatchTarget, ctx, plan):
         order, drive = plan
         for accel in order:
-            ports = (_free_port(), _free_port())
+            ports = (_free_port(), _free_port(), _free_port())
             argv = [*tool.argv_prefix, *guest_args(target, accel, ports), *drive, *target.args]
             child = ctx.os.process.launch(argv, ctx.staging)
-            info = {"backend": self.backend_id, "qmp": ports[0], "gdb": ports[1]}
+            info = {"backend": self.backend_id, "qmp": ports[0], "gdb": ports[1], "qga": ports[2]}
             info.update(accel=accel, pid=child.pid, image=str(target.image), since=time.time())
             session = QemuSession(info, child, wait=1.0)
             if _up(session, child):

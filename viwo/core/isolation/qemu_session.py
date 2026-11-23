@@ -19,6 +19,7 @@ from viwo.os import pid_alive
 
 from .gdb import GdbClient, GdbError
 from .paging import mode_of
+from .qga import Qga
 from .qmp import QmpBusy, QmpClient, QmpError
 
 HOST = "127.0.0.1"
@@ -108,6 +109,25 @@ class QemuSession(PatchSession):
         except GONE as exc:
             self._wall = WallReport(Wall.NOT_READY, f"gdbstub write refused: {exc}")
         return self._wall
+
+    def _agent(self) -> Qga:
+        if not self.info.get("qga"):
+            raise ViwoError("unavailable", "this session was started without a guest agent channel")
+        return Qga(HOST, int(self.info["qga"]))
+
+    def get_file(self, path: str, creds: dict) -> bytes:
+        agent = self._agent()
+        try:
+            return agent.read(path)
+        finally:
+            agent.close()
+
+    def put_file(self, path: str, data: bytes, creds: dict) -> None:
+        agent = self._agent()
+        try:
+            agent.write(path, data)
+        finally:
+            agent.close()
 
     def cpu_paging(self) -> dict | None:
         try:

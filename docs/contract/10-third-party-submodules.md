@@ -79,7 +79,7 @@ On Linux the distribution's package is located. A user's own QEMU wins through `
 (LGPL-2.1, imported; `viwo install pycdlib`) writes the read-only CD a QEMU guest gets for a
 shared folder, and **Volatility 3** 2.28.2 (Volatility Software License, a worker run as its own
 process; `viwo install volatility3`, on demand) finds programs inside a guest from its RAM image.
-VirtualBox, LibVMI, `virsh`/`xl` and `vmi-dump-memory` are located, never installed.
+VirtualBox, LibVMI and `virsh`/`xl` are located, never installed.
 
 **Located-only (unmanaged, doc 16.3).** VirtualBox needs a kernel driver and a one-time
 elevation, which the minimal-prompts and third_party-only rules forbid ViWo installing. So ViWo

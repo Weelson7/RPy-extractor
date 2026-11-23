@@ -13,11 +13,15 @@ from enum import Enum
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from .errors import ViwoError
 from .slots import Backend
 from .types import Outcome, OutcomeKind
 
 if TYPE_CHECKING:
     from .os import OS
+
+
+NO_FILES = "this tier has no channel into the guest's files"
 
 
 class Wall(str, Enum):
@@ -112,6 +116,15 @@ class PatchSession(ABC):
         object with read(pa, n) and write(pa, data), raising MemoryFault. None when this tier
         cannot reach physical memory (then no guest process can be addressed by itself)."""
         return None
+
+    def get_file(self, path: str, creds: dict) -> bytes:
+        """A file inside the guest (its own path), through the tier's channel into the guest's
+        files; `creds` ({"user", "password"}) where the channel needs a guest account."""
+        raise ViwoError("unavailable", NO_FILES)
+
+    def put_file(self, path: str, data: bytes, creds: dict) -> None:
+        """Write a file inside the guest (see get_file)."""
+        raise ViwoError("unavailable", NO_FILES)
 
     def cpu_paging(self) -> dict | None:
         """{"dtb", "mode"} of vCPU 0 now (its CR3 and paging mode), or None when unknown."""
