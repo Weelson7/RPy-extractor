@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from .slots import Backend
-from .types import Outcome
+from .types import Outcome, OutcomeKind
 
 if TYPE_CHECKING:
     from .os import OS
@@ -46,13 +46,21 @@ class WallReport:
 @dataclass(frozen=True)
 class PatchTarget:
     """WHAT to patch under isolation: the program and its workspace, plus either a running `pid`
-    or a guest disk `image` the backend boots. `args` are extra launch arguments."""
+    or a guest disk `image` the backend boots (never written: the session runs on a disposable
+    overlay). `args` are extra launch arguments; the rest shape the guest."""
 
     exe: Path
     workspace: Path
     pid: int = 0
     image: Path | None = None
     args: tuple[str, ...] = ()
+    memory_mb: int = 4096
+    cpus: int = 2
+    network: bool = False  # the boundary is closed unless the user opens it
+    headless: bool = False
+    halted: bool = False  # start stopped at the first instruction, to be resumed by the caller
+    accel: str = ""  # "" = the backend picks one and says which
+    fresh: bool = False  # discard the overlay disk an earlier session left
 
 
 class PatchSession(ABC):
@@ -90,6 +98,17 @@ class PatchSession(ABC):
     def wall(self) -> WallReport:
         """The last wall this session hit (WallReport() when the last action landed)."""
 
+    def record(self) -> dict:
+        """What a later call needs to reach this session again; {} when it cannot be rejoined."""
+        return {}
+
+    def alive(self) -> bool:
+        """Whether the isolated target still runs."""
+        return True
+
+    def release(self) -> None:
+        """Let go of this handle's connections; the target keeps running."""
+
     def close(self) -> None:
         """Stop the target and release the boundary; safe to call more than once."""
 
@@ -112,6 +131,10 @@ class PatcherBackend(Backend):
     def start(self, target: PatchTarget, ctx, *, snapshot: bool = False):
         """Boot `target` behind the boundary (take a base snapshot first when `snapshot`);
         returns a PatchSession, or an Outcome saying why it could not start."""
+
+    def reattach(self, record: dict, ctx):
+        """The PatchSession a `record()` describes, or an Outcome saying why it is gone."""
+        return Outcome(OutcomeKind.UNAVAILABLE, error=f"{self.backend_id} cannot rejoin a session")
 
     def available(self, os: "OS") -> tuple[bool, str]:
         report = self.ready(os)

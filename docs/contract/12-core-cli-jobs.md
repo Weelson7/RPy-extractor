@@ -89,7 +89,7 @@ Commands are grouped by arm; `viwo -h` lists them, `viwo <arm>` lists one arm, a
 | patching | `repack WORKSPACE [--out DIR] [--plan]` | patched copy with the edited files (doc 18) |
 | patching | `patch GAME PATCHSET [--out DIR] [--plan]` | apply a patch set to a patched copy |
 | patching | `mod pack\|check\|apply GAME MOD... [--copy DIR] [--name N] [--requires A,B] [--after A,B]` | mod packages |
-| patching | `isolate [EXE] [--tier T] [--image I] [--pid N] [--patchset P] [--base ADDR] [--snapshot] [--list] --workspace W` | T4 isolation session: no EXE lists the tiers, else start the target under a tier and patch it live (doc 11.8) |
+| patching | `isolate [list \| start \| status \| pause \| resume \| snapshot \| rollback \| dump \| patch \| undo \| stop \| EXE] [--tier T] [--image I] [--exe E] [--patchset P] [--base ADDR] [--name N] [--snapshot] [--memory MB] [--cpus N] [--network] [--headless] [--halted] [--accel A] [--fresh] [--pid N] [--list] --workspace W` | T4 isolation session (doc 11.8): no action lists the tiers; `start` boots a guest and holds it; the other actions rejoin it from another terminal; an executable instead of an action is the one-shot start, patch, close |
 | system | `serve [--host H] [--port P] [--no-browser]` | web UI (also `python Start.py`) |
 | system | `info`, `slots [--check]` | configuration, bindings, dependency status, backend self-tests |
 | system | `install [ID... \| --all \| --game SLUG [--game-version V]]` | pinned tools (doc 10) |

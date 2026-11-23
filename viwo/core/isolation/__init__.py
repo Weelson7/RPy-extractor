@@ -5,6 +5,8 @@ and DRAKVUF/LibVMI (T3, bare-metal Linux VMI; not-ready elsewhere). The atomic l
 bridge (live.py) turns one located patch into either a cold byte write or a live one. A session
 starts only when a caller asks for it (`viwo isolate`, `/api/runtime/isolation`)."""
 
+import time
+
 from viwo.contracts.patcher import PatchSession, Wall, WallReport
 from viwo.contracts.slots import SlotDefinition
 
@@ -51,18 +53,22 @@ def tiers(rt) -> list[dict]:
     return out
 
 
-def atomic_write(session: PatchSession, addr: int, data: bytes) -> WallReport:
+def atomic_write(session: PatchSession, addr: int, data: bytes, settle: float = 0.0) -> WallReport:
     """A live edit that is never seen half-applied: suspend the target, write, read the bytes
-    back to prove they held (a self-check that reverts them is an integrity-check wall), and
-    resume whatever happened. The suspend/resume and the I/O are the session's own (the
-    boundary's tool); this is only the order that makes the edit atomic (doc 11.8)."""
+    back to prove they held, and resume whatever happened. With `settle`, read once more that
+    many seconds after the target runs again: a self-check that puts its bytes back is an
+    integrity-check wall, said and not mistaken for a patch that landed. The suspend/resume and
+    the I/O are the session's own (the boundary's tool); this is only the order (doc 11.8)."""
     session.suspend()
     try:
         blocked = session.write_mem(addr, data)
-        if blocked.blocked:
-            return blocked
-        if session.read_mem(addr, len(data)) != data:
-            return WallReport(Wall.INTEGRITY_CHECK, "the write did not hold on readback")
-        return WallReport()
+        if not blocked.blocked and session.read_mem(addr, len(data)) != data:
+            blocked = WallReport(Wall.INTEGRITY_CHECK, "the write did not hold on readback")
     finally:
         session.resume()
+    if blocked.blocked or settle <= 0:
+        return blocked
+    time.sleep(settle)
+    if session.read_mem(addr, len(data)) != data:
+        return WallReport(Wall.INTEGRITY_CHECK, "the target put its bytes back once it ran again")
+    return WallReport()

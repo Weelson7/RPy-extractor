@@ -365,6 +365,6 @@
   "executables": [
    "qemu-system-x86_64"
   ],
-  "hint": "ViWo does not install QEMU: install it yourself (GPL-2, WHPX or TCG) or set VIWO_QEMU"
+  "hint": "install QEMU (GPL-2, run as a separate process; no driver, no elevation): `viwo install qemu`, or set VIWO_QEMU to your own"
  }
 }

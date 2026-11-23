@@ -11,6 +11,14 @@ class QmpError(Exception):
     """A QMP `error` reply or a connection fault."""
 
 
+class QmpBusy(QmpError):
+    """QEMU serves one QMP client at a time: another one holds the channel."""
+
+
+GREETING = 3.0  # seconds: a second client connects but is never greeted
+REPLY = 600.0  # a dump of a large guest takes a while
+
+
 class QmpClient:
     def __init__(self, sock: socket.socket) -> None:
         self._sock = sock
@@ -24,12 +32,22 @@ class QmpClient:
         while True:
             try:
                 sock = socket.create_connection((host, port), timeout=5.0)
-                sock.settimeout(30.0)
-                return cls(sock)
+                break
             except OSError:
                 if time.monotonic() >= end:
                     raise
                 time.sleep(0.2)
+        sock.settimeout(GREETING)
+        try:
+            client = cls(sock)
+        except socket.timeout:
+            sock.close()
+            raise QmpBusy("another client holds QEMU's control channel") from None
+        except (OSError, QmpError, ValueError):
+            sock.close()
+            raise
+        sock.settimeout(REPLY)
+        return client
 
     def _read_json(self) -> dict:
         while b"\n" not in self._buf:

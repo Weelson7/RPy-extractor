@@ -19,8 +19,8 @@ from viwo.contracts.patcher import PatchTarget
 from viwo.contracts.types import OutcomeKind
 from viwo.core.context import core_context
 from viwo.core.isolation.gdb import GdbClient, _decode
-from viwo.core.isolation.qemu import QEMU, QemuSession, accel_of
-from viwo.core.isolation.qmp import QmpClient
+from viwo.core.isolation.qemu import HARDWARE, QEMU, accel_of, accelerators, guest_args
+from viwo.core.isolation.qemu_session import QemuSession
 
 
 def _ck(body: str) -> bytes:
@@ -45,14 +45,17 @@ class FakeGdbStub:
         conn.sendall(b"$" + body.encode("latin-1") + b"#" + _ck(body))
 
     def _serve(self) -> None:
-        conn, _ = self._srv.accept()
-        try:
-            self._loop(conn)
-        except OSError:  # the client closed mid-reply: the test is done
-            pass
-        finally:
-            conn.close()
-            self._srv.close()
+        while True:  # a session connects once per memory access
+            try:
+                conn, _ = self._srv.accept()
+            except OSError:
+                return
+            try:
+                self._loop(conn)
+            except OSError:  # the client closed mid-reply
+                pass
+            finally:
+                conn.close()
 
     def _loop(self, conn) -> None:
         while True:
@@ -91,25 +94,30 @@ class FakeGdbStub:
 
 
 class FakeQmp:
-    """A minimal QMP server: greeting, qmp_capabilities, human-monitor-command (an 'Error:' for a
-    name holding 'bad') and dump-guest-memory writing the requested file."""
+    """A minimal QMP server: greeting, qmp_capabilities, stop/cont/query-status, human-monitor-
+    command (an 'Error:' for a name holding 'bad', WHPX's refusal for one holding 'whpx') and
+    dump-guest-memory writing the requested file."""
 
     def __init__(self) -> None:
         self._srv = socket.socket()
         self._srv.bind(("127.0.0.1", 0))
         self._srv.listen(1)
         self.port = self._srv.getsockname()[1]
+        self.running, self.calls = True, []
         threading.Thread(target=self._serve, daemon=True).start()
 
     def _serve(self) -> None:
-        conn, _ = self._srv.accept()
-        try:
-            self._loop(conn)
-        except OSError:
-            pass
-        finally:
-            conn.close()
-            self._srv.close()
+        while True:
+            try:
+                conn, _ = self._srv.accept()
+            except OSError:
+                return
+            try:
+                self._loop(conn)
+            except OSError:
+                pass
+            finally:
+                conn.close()
 
     def _loop(self, conn) -> None:
         conn.sendall(json.dumps({"QMP": {"version": {}}}).encode() + b"\n")
@@ -125,8 +133,15 @@ class FakeQmp:
 
     def _reply(self, msg: dict) -> dict:
         args = msg.get("arguments", {})
+        self.calls.append(msg["execute"])
+        if msg["execute"] in ("stop", "cont"):
+            self.running = msg["execute"] == "cont"
+        if msg["execute"] == "query-status":
+            return {"return": {"running": self.running}}
         if msg["execute"] == "human-monitor-command":
-            return {"return": "Error: no" if "bad" in args["command-line"] else ""}
+            line = args["command-line"]
+            blocked = "Error: State blocked due to missing dirty memory tracking support"
+            return {"return": blocked if "whpx" in line else "Error: no" if "bad" in line else ""}
         if msg["execute"] == "dump-guest-memory":
             Path(args["protocol"].removeprefix("file:")).write_bytes(b"CORE")
         return {"return": {}}
@@ -157,14 +172,8 @@ class GdbClientTests(unittest.TestCase):
 class QemuSessionTests(unittest.TestCase):
     def _session(self) -> QemuSession:
         self.gdb_stub, self.qmp_stub = FakeGdbStub(), FakeQmp()
-        session = QemuSession(
-            None,
-            GdbClient.connect("127.0.0.1", self.gdb_stub.port),
-            QmpClient.connect("127.0.0.1", self.qmp_stub.port),
-            "tcg",
-        )
-        session._running = True  # pretend the guest is running, so atomic_write stops it
-        return session
+        info = {"qmp": self.qmp_stub.port, "gdb": self.gdb_stub.port, "accel": "tcg", "pid": 0}
+        return QemuSession(info)
 
     def test_atomic_write_suspends_writes_verifies_resumes_over_gdbstub(self) -> None:
         from viwo.core.isolation import atomic_write
@@ -173,7 +182,29 @@ class QemuSessionTests(unittest.TestCase):
         wall = atomic_write(session, 0x20, b"\xcc\xcc")
         self.assertFalse(wall.blocked)  # it landed and read back equal
         self.assertEqual(self.gdb_stub.mem[0x20:0x22], b"\xcc\xcc")
-        self.assertEqual(self.gdb_stub.interrupts, 1)  # suspend happened out of guest
+        calls = [c for c in self.qmp_stub.calls if c in ("stop", "cont")]
+        self.assertEqual((calls[0], calls[-1]), ("stop", "cont"))  # stopped over QMP, then run
+        self.assertNotIn("cont", calls[:-1])  # never running between the write and the readback
+        self.assertTrue(self.qmp_stub.running)
+        session.close()
+
+    def test_a_read_leaves_a_paused_guest_paused(self) -> None:
+        session = self._session()
+        session.suspend()
+        self.assertEqual(session.read_mem(0x20, 2), b"\x00\x00")
+        self.assertFalse(session.running())
+        self.assertEqual(session.record()["gdb"], self.gdb_stub.port)
+        session.release()
+        self.assertTrue(session.answers())  # a released handle reconnects
+        session.close()
+
+    def test_whpx_snapshot_refusal_and_bad_names_are_said(self) -> None:
+        session = self._session()
+        blocked = session.snapshot("whpx")
+        self.assertEqual(blocked.kind, OutcomeKind.UNAVAILABLE)
+        self.assertIn("WHPX", blocked.error)
+        self.assertFalse(session.snapshot("a; quit").ok)  # never reaches the monitor
+        self.assertNotIn("quit", self.qmp_stub.calls)
         session.close()
 
     def test_snapshot_dump_over_qmp(self) -> None:
@@ -214,13 +245,54 @@ class QemuBackendTests(unittest.TestCase):
         (self.root / "rt").mkdir(parents=True, exist_ok=True)
         return runtime(self.root / "rt", body)
 
-    def test_accel_prefers_whpx_else_tcg(self) -> None:
+    def test_hardware_first_then_tcg_and_tcg_alone_for_a_whpx_snapshot(self) -> None:
         rt = self._rt(self._tool("#!{python}\nprint('Accelerators: tcg whpx kvm')\n"))
-        self.assertEqual(accel_of(rt.os, rt.os.tools.locate(QEMU).argv_prefix), "whpx")
+        prefix = rt.os.tools.locate(QEMU).argv_prefix
+        self.assertEqual(accelerators(rt.os, prefix, "", False)[0], [HARDWARE, "tcg"])
+        order, why = accelerators(rt.os, prefix, "", True)
+        if HARDWARE == "whpx":
+            self.assertEqual(order, ["tcg"])
+            self.assertIn("snapshot", why)  # said, not silent
+        self.assertEqual(accelerators(rt.os, prefix, "tcg", False)[0], ["tcg"])  # asked for
+
+    def test_accel_of_names_the_hardware_accelerator_when_listed(self) -> None:
+        rt = self._rt(self._tool("#!{python}\nprint('Accelerators: tcg whpx kvm')\n"))
+        self.assertEqual(accel_of(rt.os, rt.os.tools.locate(QEMU).argv_prefix), HARDWARE)
 
     def test_accel_falls_back_to_tcg(self) -> None:
         rt = self._rt(self._tool("#!{python}\nprint('Accelerators: tcg')\n"))
         self.assertEqual(accel_of(rt.os, rt.os.tools.locate(QEMU).argv_prefix), "tcg")
+        order, why = accelerators(rt.os, rt.os.tools.locate(QEMU).argv_prefix, "", False)
+        self.assertEqual(order, ["tcg"])
+        self.assertIn("TCG", why)
+
+    def test_guest_is_closed_by_default_and_control_is_loopback_only(self) -> None:
+        target = PatchTarget(exe=self.root / "G.exe", workspace=self.root / "ws")
+        args = guest_args(target, "tcg", (1111, 2222))
+        self.assertEqual(args[args.index("-nic") + 1], "none")
+        self.assertIn("tcp:127.0.0.1:1111,server=on,wait=off", args)
+        self.assertIn("tcp:127.0.0.1:2222", args)
+        opened = PatchTarget(exe=target.exe, workspace=target.workspace, network=True)
+        self.assertNotIn("-nic", guest_args(opened, "tcg", (1, 2)))
+        self.assertNotIn("-S", args)
+        halted = PatchTarget(exe=target.exe, workspace=target.workspace, halted=True)
+        self.assertIn("-S", guest_args(halted, "tcg", (1, 2)))
+
+    def test_a_qemu_that_exits_at_once_is_reported_after_every_accelerator(self) -> None:
+        rt = self._rt(self._tool("#!{python}\nprint('Accelerators: tcg')\n"))
+        ctx = core_context(rt, "isolate", self.root, self.root / "work")
+        ctx.staging = self.root / "vm"
+        image = self.root / "disk.img"
+        image.write_bytes(b"\0" * 512)
+        target = PatchTarget(exe=self.root / "G.exe", workspace=self.root / "ws", image=image)
+        failed = rt.backends["qemu"].start(target, ctx)
+        self.assertEqual(failed.kind, OutcomeKind.FAILED)
+        self.assertIn("exited", failed.error)
+
+    def test_reattach_to_a_gone_session_says_it_has_exited(self) -> None:
+        rt = self._rt(None)
+        gone = rt.backends["qemu"].reattach({"qmp": 1, "gdb": 2, "pid": 0}, None)
+        self.assertEqual(gone.kind, OutcomeKind.UNAVAILABLE)
 
     def test_start_refuses_without_qemu_or_image(self) -> None:
         tool = self._tool("#!{python}\nprint('Accelerators: tcg')\n")

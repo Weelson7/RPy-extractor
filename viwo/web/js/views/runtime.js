@@ -18,6 +18,8 @@ function mount(root) {
   el.funcs = input("rt-funcs", "CreateFileW, ReadFile", "rtFuncs");
   el.script = input("rt-script", "/path/to/your-hook.js", "rtScript");
   el.secs = h("input", { class: "input mono", id: "rt-secs", type: "number", min: "1", value: pref("rtSecs") || "10", oninput: (e) => pref("rtSecs", e.target.value) });
+  el.image = input("rt-image", "/path/to/guest-disk.qcow2", "rtImage");
+  el.session = h("div", {});
   el.progHost = h("div", {});
   el.result = h("div", {});
   el.attach = h("div", {}, h("p", { class: "dim" }, "LIST TARGETS names the game's executables x64dbg and Cheat Engine can take."));
@@ -49,8 +51,11 @@ function mount(root) {
           h("p", { class: "note" }, "x64dbg attaches to the running game (the pid above, else the process of the target's executable) or starts it: a patch made live lands in the real process. Cheat Engine opens a table that attaches as soon as the game runs."),
           h("div", { class: "row" }, btn("LIST TARGETS", (e) => busy(e.currentTarget, listAttach), "")), el.attach),
         panel(`${code("runtime")}.F`, "ISOLATION PATCHER", badge("COLD + LIVE", "warn"),
-          h("p", { class: "note" }, "Run the target behind an isolation boundary and patch it live: the same patch set you apply cold (PATCHES) is written into the running or guest process (suspend, write, verify, resume). A tier that cannot run here says exactly what it needs. Drive a session with the CLI: viwo isolate."),
-          h("div", { class: "row" }, btn("LIST TIERS", (e) => busy(e.currentTarget, listTiers), "")), el.tiers)),
+          h("p", { class: "note" }, "Run the target in a guest behind an isolation boundary: the disk image is never written (a disposable overlay takes every change), the guest has no network unless you start it with one, and the same patch set you apply cold (PATCHES) is written live (suspend, write, verify, resume) and journalled, so UNDO puts every byte back. A tier that cannot run here says what it needs. The CLI has every option: viwo isolate."),
+          h("div", { class: "row" }, btn("LIST TIERS", (e) => busy(e.currentTarget, listTiers), "")), el.tiers,
+          h("label", { class: "lbl", for: "rt-image" }, "GUEST DISK IMAGE"), h("div", { class: "row" }, el.image, fileBtn(el.image, (p) => pref("rtImage", p))),
+          h("div", { class: "row" }, ...["start", "status", "pause", "resume", "snapshot", "rollback", "undo", "stop"].map((a) =>
+            btn(a.toUpperCase(), (e) => busy(e.currentTarget, () => session(a)), a === "start" ? "primary" : ""))), el.session)),
       h("div", { class: "col" }, el.progHost, el.result)));
 }
 
@@ -92,6 +97,16 @@ async function listTiers() {
         need: h("span", { class: "note" }, t.ready ? "—" : (t.detail || t.requirement)),
       })), { caption: "Isolation tiers" }));
   } catch (err) { fill(el.tiers, errorBox(err, "LISTING FAILED")); }
+}
+
+async function session(action) {
+  const image = el.image.value.trim();
+  if (action === "start" && !image) return toast("Enter the guest disk image first.", "warn");
+  try {
+    const res = await api.isolate({ action, image, snapshot: action === "start" });
+    const shown = Object.entries(res).filter(([k, v]) => k !== "success" && v !== null && typeof v !== "object");
+    fill(el.session, kv(shown.map(([k, v]) => [k.toUpperCase(), String(v)])));
+  } catch (err) { fill(el.session, errorBox(err, `${action.toUpperCase()} FAILED`)); }
 }
 
 function body(kind) {

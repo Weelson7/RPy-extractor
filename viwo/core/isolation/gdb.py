@@ -102,6 +102,10 @@ class GdbClient:
         self._sock.sendall(b"$c#" + _checksum("c").encode())
         self._read(1)  # the ack for the continue packet
 
+    def drop(self) -> None:
+        """Close without detaching: QEMU keeps the guest stopped (a detach would resume it)."""
+        self._sock.close()
+
     def close(self) -> None:
         try:
             self._sock.sendall(b"$D#" + _checksum("D").encode())

@@ -1,13 +1,19 @@
-"""RUNTIME isolation (doc 11.8, T4): the patcher tiers and their readiness, and a live-patch
-session. GET lists the tiers (what each needs, whether it can run here); POST starts a target
-under a tier and applies a patch set live, then closes. The same patch set `/api/patch` writes
-into a cold copy is written here into the running/guest target (core.isolation.live)."""
+"""RUNTIME isolation (doc 11.8, T4): the patcher tiers and their readiness, and the session. GET
+lists the tiers (what each needs, whether it can run here). POST with no `action` is the one-shot
+form (start `exePath` under a tier, apply `patchSet` live, close); with an `action`: `start` boots
+a target behind a tier and leaves it running (the server owns the guest process); every other
+action (status, pause, resume, snapshot, rollback, dump, patch, undo, stop) rejoins the session
+the workspace records. `patch` writes the same patch set `/api/patch` writes into a cold copy
+into the guest (core.isolation.live)."""
 
 from typing import Any, Callable
 
 from viwo.contracts.errors import ViwoError
 
-from .app import App, existing, failure, path_param, safe
+from .app import App, failure, path_param, safe
+
+GUEST = {"memory": "memory_mb", "cpus": "cpus"}
+FLAGS = ("network", "headless", "halted", "fresh")
 
 
 def isolation_tiers(app: App, q: dict) -> dict:
@@ -21,27 +27,42 @@ def isolation_tiers(app: App, q: dict) -> dict:
     }
 
 
+def _guest(d: dict) -> dict:
+    guest = {name: int(d[key]) for key, name in GUEST.items() if d.get(key)}
+    guest.update({flag: True for flag in FLAGS if d.get(flag)})
+    if d.get("accel"):
+        guest["accel"] = str(d["accel"])
+    return guest
+
+
 def run_isolation(app: App, d: dict) -> dict:
-    """POST /api/runtime/isolation {exePath, tier?, image?, pid?, patchSet?, base?, snapshot?}:
-    start the session and apply the patch set live (no job: the session runs then closes)."""
-    from viwo.core.isolation.live import IsolateRequest, drive
+    """POST /api/runtime/isolation {action?, tier?, image?, exePath?, patchSet?, base?, name?,
+    snapshot?, memory?, cpus?, network?, headless?, accel?, fresh?}."""
+    from viwo.core.isolation import session as sessions
 
     from .handlers_capture import _ours
 
-    if isinstance(exe := existing(d, "exePath", "Executable", False), dict):
-        return exe
+    action = str(d.get("action") or "run")  # no action: the one-shot start, patch, close
     try:
-        _ours(app)  # the session's .runtime/ lands under the workspace, never in a game folder
-        pid, base = int(d.get("pid") or 0), int(str(d.get("base") or "0"), 0)
+        _ours(app)  # .runtime/ lands under the workspace, never in a game folder
+        base, pid, guest = int(str(d.get("base") or "0"), 0), int(d.get("pid") or 0), _guest(d)
     except (TypeError, ValueError):
-        return failure(ViwoError("invalid_request", "pid and base must be numbers"))
+        return failure(ViwoError("invalid_request", "pid, base, memory and cpus must be numbers"))
     except ViwoError as exc:
         return failure(exc)
-    req = IsolateRequest(
-        exe, app.workspace, str(d.get("tier", "")), path_param(d, "image"), pid,
-        path_param(d, "patchSet"), base, bool(d.get("snapshot")),
-    )  # fmt: skip
-    return safe(lambda: {"success": True, **drive(app.rt, req, None)})
+    exe, image = path_param(d, "exePath"), path_param(d, "image")
+    req = sessions.IsolateRequest(
+        app.workspace, image, exe, str(d.get("tier", "")), pid, bool(d.get("snapshot")), guest
+    )
+    if action == "start":
+        return safe(lambda: {"success": True, **sessions.start(app.rt, req, None)[0]})
+    if action == "run":
+        if exe is None or not exe.is_file():
+            return failure(ViwoError("not_found", "Executable not found", hint="an absolute path"))
+        patch = path_param(d, "patchSet")
+        return safe(lambda: {"success": True, **sessions.drive(app.rt, req, patch, base)})
+    opt = {"name": d.get("name"), "exe": exe, "patchset": path_param(d, "patchSet"), "base": base}
+    return safe(lambda: {"success": True, **sessions.act(app.rt, app.workspace, action, **opt)})
 
 
 ISOLATION_GET: dict[str, Callable[[App, dict], Any]] = {

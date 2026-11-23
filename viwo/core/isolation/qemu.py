@@ -1,109 +1,107 @@
-"""Tier 2: QEMU (doc 11.8). ViWo drives the user's own `qemu-system-x86_64` as a separate process
-with its gdbstub (`-gdb tcp::PORT -S`) and QMP control channel: it reads and writes guest memory
-and stops/continues the target out of the guest over the GDB remote serial protocol (a stdlib
-client, viwo.core.isolation.gdb), and snapshots and dumps through QMP. WHPX hardware acceleration
-is used when QEMU reports it, else TCG, and which one is said (owner: never silent). ViWo authors
-no hypervisor code and does not install QEMU (kernel driver, elevation): it locates the user's own
-install (the `qemu` dependency). No real VM has run here; the orchestration is unit-tested with a
-fake qemu-system-x86_64 and an in-process loopback gdbstub / QMP."""
+"""Tier 2: QEMU (doc 11.8). ViWo runs `qemu-system-x86_64` as a separate process (the pinned
+portable build, `viwo install qemu`, or the user's own) and holds the guest behind a closed
+boundary: the base image is never written (a disposable qcow2 overlay takes every change), the
+network is off unless asked, and the control channels (QMP, gdbstub) listen on loopback only. The
+accelerator is hardware (WHPX on Windows, KVM on Linux) when it really starts, else TCG, and which
+one is said; WHPX cannot save a snapshot, so a session that wants snapshots runs on TCG. QEMU needs
+no driver and no elevation. The session itself is qemu_session.QemuSession."""
 
+import json
 import socket
+import sys
+import time
 from pathlib import Path
 
-from viwo.contracts.patcher import PatcherBackend, PatchSession, PatchTarget, Wall, WallReport
+from viwo.contracts.errors import ViwoError
+from viwo.contracts.patcher import PatcherBackend, PatchTarget, Wall, WallReport
 from viwo.contracts.types import DependencySpec, Outcome, OutcomeKind
+from viwo.os import pid_alive
 
-from .gdb import GdbClient, GdbError
-from .qmp import QmpClient, QmpError
+from .qemu_session import HOST, QemuSession
 
 QEMU = DependencySpec.of("qemu")
+HARDWARE = "whpx" if sys.platform == "win32" else "kvm"
+BOOT_WAIT = 20.0  # seconds for QEMU's control channel to answer after the launch
 
 
 def _free_port() -> int:
     with socket.socket() as sock:
-        sock.bind(("127.0.0.1", 0))
+        sock.bind((HOST, 0))
         return sock.getsockname()[1]
 
 
+def _up(session: QemuSession, child) -> bool:
+    """Wait for QEMU's control channel; give up at once when the process has exited."""
+    end = time.monotonic() + BOOT_WAIT
+    while time.monotonic() < end:
+        if session.answers():
+            return True
+        if not child.alive():
+            return False
+    return False
+
+
 def accel_of(os, argv_prefix) -> str:
-    """ "whpx" when this QEMU lists Windows hardware acceleration, else the portable "tcg"."""
+    """ "whpx" (Windows) or "kvm" (Linux) when this QEMU lists it, else the portable "tcg"."""
+    return accelerators(os, argv_prefix, "", False)[0][0]
+
+
+def accelerators(os, argv_prefix, wanted: str, snapshot: bool) -> tuple[list[str], str]:
+    """(the accelerators to try in order, a note for the user). Hardware first when this QEMU
+    has it and it can do what was asked; TCG always works and is last."""
+    if wanted:
+        return [wanted], ""
     result = os.process.run([*argv_prefix, "-accel", "help"], timeout=30)
-    return "whpx" if "whpx" in ((result.stdout or "") + (result.stderr or "")).lower() else "tcg"
+    listed = ((result.stdout or "") + (result.stderr or "")).lower()
+    if HARDWARE not in listed:
+        return ["tcg"], f"this QEMU has no {HARDWARE}: TCG (slower)"
+    if HARDWARE == "whpx" and snapshot:
+        return ["tcg"], "WHPX cannot save a snapshot: TCG (slower), as a snapshot was asked for"
+    return [HARDWARE, "tcg"], ""
 
 
-class QemuSession(PatchSession):
-    """One QEMU process driven out-of-guest: memory over the gdbstub, snapshots/dump over QMP."""
+def overlay_of(os, tool, target: PatchTarget, staging: Path) -> tuple[list[str], str]:
+    """(the -drive arguments, a note). Every write goes to a qcow2 overlay beside the session,
+    kept between sessions (so snapshots survive) unless `fresh`; without qemu-img it is QEMU's
+    own throwaway overlay (`snapshot=on`), which cannot hold a snapshot."""
+    img = Path(tool.path).with_name("qemu-img" + Path(tool.path).suffix)
+    over = staging / "overlay.qcow2"
+    if target.fresh and over.is_file():
+        over.unlink()
+    if over.is_file():
+        return ["-drive", f"file={over},format=qcow2"], f"overlay kept from before ({over.name})"
+    if img.is_file() and (fmt := _format(os, img, target.image)):
+        argv = [str(img), "create", "-f", "qcow2", "-F", fmt, "-b", str(target.image), str(over)]
+        if os.process.run(argv, timeout=60).ok:
+            return ["-drive", f"file={over},format=qcow2"], f"new overlay on the {fmt} image"
+    return ["-drive", f"file={target.image},snapshot=on"], "throwaway overlay (no qemu-img)"
 
-    def __init__(self, child, gdb: GdbClient, qmp: QmpClient, accel: str) -> None:
-        self._child, self._gdb, self._qmp, self.accel = child, gdb, qmp, accel
-        self._wall = WallReport()
-        self._running = False  # QEMU is started with -S: halted at reset
 
-    def suspend(self) -> None:
-        if self._running:
-            self._gdb.interrupt()
-            self._running = False
+def _format(os, img: Path, image: Path) -> str:
+    info = os.process.run([str(img), "info", "--output=json", str(image)], timeout=60)
+    try:
+        return str(json.loads(info.stdout or "")["format"]) if info.ok else ""
+    except (ValueError, KeyError, TypeError):
+        return ""
 
-    def resume(self) -> None:
-        if not self._running:
-            self._gdb.cont()
-            self._running = True
 
-    def read_mem(self, addr: int, size: int) -> bytes:
-        try:
-            data = self._gdb.read_mem(addr, size)
-            self._wall = WallReport()
-            return data
-        except GdbError as exc:
-            self._wall = WallReport(Wall.NOT_READY, f"gdbstub read refused: {exc}")
-            return b""
-
-    def write_mem(self, addr: int, data: bytes) -> WallReport:
-        try:
-            self._gdb.write_mem(addr, data)
-            self._wall = WallReport()
-        except GdbError as exc:
-            self._wall = WallReport(Wall.NOT_READY, f"gdbstub write refused: {exc}")
-        return self._wall
-
-    def snapshot(self, name: str) -> Outcome:
-        return self._monitor("savevm", name)
-
-    def rollback(self, name: str) -> Outcome:
-        return self._monitor("loadvm", name)
-
-    def _monitor(self, command: str, name: str) -> Outcome:
-        try:
-            out = self._qmp.monitor(f"{command} {name}")
-        except QmpError as exc:
-            return Outcome(OutcomeKind.FAILED, error=f"QMP {command}: {exc}")
-        if "rror" in out:  # savevm/loadvm print nothing on success, "Error: ..." on failure
-            return Outcome(OutcomeKind.FAILED, error=out.strip()[:200])
-        return Outcome(OutcomeKind.OK)
-
-    def dump(self, out: Path) -> Outcome:
-        try:
-            self._qmp.execute("dump-guest-memory", paging=False, protocol=f"file:{out}")
-        except QmpError as exc:
-            return Outcome(OutcomeKind.FAILED, error=f"QMP dump-guest-memory: {exc}")
-        return Outcome(OutcomeKind.OK)
-
-    def wall(self) -> WallReport:
-        return self._wall
-
-    def close(self) -> None:
-        for shut in (self._gdb.close, self._qmp.close):
-            try:
-                shut()
-            except OSError:
-                pass
-        if self._child is not None:
-            self._child.kill()
+def guest_args(target: PatchTarget, accel: str, ports: tuple[int, int]) -> list[str]:
+    qmp, gdb = ports
+    args = ["-accel", accel, "-m", str(target.memory_mb), "-smp", str(target.cpus)]
+    args += ["-name", f"viwo-{target.exe.stem or 'guest'}", "-usb", "-device", "usb-tablet"]
+    args += ["-qmp", f"tcp:{HOST}:{qmp},server=on,wait=off", "-gdb", f"tcp:{HOST}:{gdb}"]
+    if not target.network:
+        args += ["-nic", "none"]
+    if target.headless:
+        args += ["-display", "none"]
+    if target.halted:
+        args += ["-S"]
+    return args
 
 
 class QemuPatcher(PatcherBackend):
     backend_id, license, tier = "qemu", "GPL-2.0", 2
-    requirement = "QEMU (qemu-system-x86_64) with its gdbstub; WHPX acceleration or TCG"
+    requirement = "QEMU (qemu-system-x86_64): `viwo install qemu`, or your own install"
     requires = (QEMU,)
 
     def ready(self, os) -> WallReport:
@@ -115,25 +113,42 @@ class QemuPatcher(PatcherBackend):
         tool = ctx.os.tools.locate(QEMU)
         if tool is None:
             return Outcome(OutcomeKind.UNAVAILABLE, error=self.requirement)
-        if target.image is None:
+        if target.image is None or not target.image.is_file():
             return Outcome(OutcomeKind.UNAVAILABLE, error="QEMU needs a guest disk image (--image)")
-        return self._boot(tool, target, ctx, snapshot)
-
-    def _boot(self, tool, target: PatchTarget, ctx, snapshot: bool):
         ctx.staging.mkdir(parents=True, exist_ok=True)
-        accel = accel_of(ctx.os, tool.argv_prefix)
-        gdb_port, qmp_port = _free_port(), _free_port()
-        argv = [*tool.argv_prefix, "-accel", accel, "-S", "-gdb", f"tcp::{gdb_port}",
-                "-qmp", f"tcp::{qmp_port},server,nowait", "-drive",
-                f"file={target.image}", *target.args]  # fmt: skip
-        child = ctx.os.process.launch(argv, ctx.staging)
-        try:
-            session = QemuSession(child, GdbClient.connect("127.0.0.1", gdb_port),
-                                  QmpClient.connect("127.0.0.1", qmp_port), accel)  # fmt: skip
-        except (OSError, GdbError, QmpError) as exc:
-            child.kill()
-            return Outcome(OutcomeKind.FAILED, error=f"QEMU gdbstub/QMP did not come up: {exc}")
-        ctx.log(f"QEMU started ({accel}); gdbstub :{gdb_port}, QMP :{qmp_port}", "info")
-        if snapshot and not session.snapshot("base").ok:
-            ctx.log("QEMU base snapshot failed (a qcow2 image is needed for savevm)", "warn")
+        drive, note = overlay_of(ctx.os, tool, target, ctx.staging)
+        ctx.log(f"QEMU disk: {note}; the image itself is not written", "info")
+        order, why = accelerators(ctx.os, tool.argv_prefix, target.accel, snapshot)
+        if why:
+            ctx.log(f"QEMU: {why}", "warn")
+        session = self._boot(tool, target, ctx, (order, drive))
+        if isinstance(session, QemuSession) and snapshot:
+            made = session.snapshot("base")
+            if not made.ok:
+                ctx.log(f"QEMU base snapshot failed: {made.error}", "warn")
         return session
+
+    def _boot(self, tool, target: PatchTarget, ctx, plan):
+        order, drive = plan
+        for accel in order:
+            ports = (_free_port(), _free_port())
+            argv = [*tool.argv_prefix, *guest_args(target, accel, ports), *drive, *target.args]
+            child = ctx.os.process.launch(argv, ctx.staging)
+            info = {"backend": self.backend_id, "qmp": ports[0], "gdb": ports[1]}
+            info.update(accel=accel, pid=child.pid, image=str(target.image), since=time.time())
+            session = QemuSession(info, child, wait=1.0)
+            if _up(session, child):
+                net = "OPEN (asked for)" if target.network else "closed"
+                ctx.log(f"QEMU started on {accel}; network {net}; control on loopback", "info")
+                return session
+            child.kill()
+            ctx.log(f"QEMU did not start on {accel}", "warn")
+        return Outcome(OutcomeKind.FAILED, error="QEMU exited at once (image, memory or arguments)")
+
+    def reattach(self, record: dict, ctx):
+        session = QemuSession(dict(record), None, wait=2.0)
+        if session.answers():
+            return session
+        if pid_alive(int(record.get("pid") or 0)):
+            raise ViwoError("busy", "QEMU runs but its control channel does not answer yet")
+        return Outcome(OutcomeKind.UNAVAILABLE, error="the QEMU of this session has exited")

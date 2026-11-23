@@ -4,6 +4,27 @@ Versions follow `va.b.c` (`tools/version.py`): `a` product release, `b` feature,
 commit. Each tag's commit message carries the full list; this file keeps what changed for a user
 or a maintainer. Newest first.
 
+## 1.36.0 (2026-11-23)
+- **Isolation sessions that last, on a real QEMU** (doc 11.8). `viwo isolate start --image I
+  --workspace W` boots a guest and holds it; `status`, `pause`, `resume`, `snapshot`, `rollback`,
+  `dump`, `patch`, `undo` and `stop` act on it from another terminal or through
+  `POST /api/runtime/isolation {action}`, and RUNTIME has the buttons. The one-shot
+  `viwo isolate EXE --patchset P` (start, patch, close) and `--list` stay.
+- **A closed boundary by default**: the disk image is never written (a qcow2 overlay beside the
+  session takes every change, `--fresh` discards it), the guest has no network unless `--network`,
+  and QEMU's control channels listen on loopback only.
+- **Live sets are all or nothing and can be undone**: every edit is journalled with the bytes it
+  replaced; one edit hitting a wall puts the others back; `undo` restores byte for byte. Bytes a
+  target puts back once it runs again are reported as an integrity-check wall.
+- **QEMU is a pinned tool** (`viwo install qemu`, QEMU 11.1.0, on demand, 1.2 GB unpacked): it
+  needs no driver and no elevation, which the docs had wrong. The accelerator is WHPX or KVM
+  when it really starts, else TCG, and which is said; WHPX cannot save a snapshot, so a session
+  that wants one runs on TCG.
+- First run of the arm against the real thing (`tests/test_isolation_real.py`, L5, a boot-sector
+  guest) found and fixed: the old flow patched a guest that had not booted, a second control
+  connection was taken for a dead guest (now `busy`), and `-cpu max` does not boot under WHPX.
+  No guest operating system has been booted yet.
+
 ## 1.35.0 (2026-11-19)
 - **Structured runbook step editor** (doc 19.2; `web/js/views/runbook-edit.js`): a runbook's
   steps are now editable in the UI without hand-writing JSON. EDIT opens a form for the

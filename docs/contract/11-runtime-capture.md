@@ -158,18 +158,24 @@ Cold and live patching (doc 16.2b T1-T3, 18.8) work even when the target defends
 virtual TPM, by running the target behind an isolation boundary and driving the edit there. The
 boundary is a pinned or located third-party VM, emulator or VMI tool run as a separate process;
 ViWo authors no hypervisor, driver or evasion code (CLAUDE.md). The three tiers, the cold+live
-bridge and the CLI/API surface are built; **real in-VM proof is the one open piece** (no VM, QEMU
-or VMI host has run here: VirtualBox and QEMU are located-only and a person installs them).
+bridge and the session are built. The QEMU tier runs against a real QEMU (the L5 test
+`tests/test_isolation_real.py`: a boot-sector guest, on TCG and on WHPX); **no guest operating
+system has been booted and no real program patched in one yet**, and VirtualBox and a VMI host
+have not run here.
 
 **Contract** (`viwo/contracts/patcher.py`, a thin contract): a `PatcherBackend` in an
 `isolation.<tier>` slot has `ready(os)` (can it run here?) and `start(target, ctx, *,
 snapshot=False)`, which boots the target and returns a `PatchSession`. The session is the live
 handle: `suspend`/`resume`, `read_mem`/`write_mem`, `snapshot`/`rollback`, `dump` (to a patchable
-file) and `close`. A live edit is **atomic** — suspend → `write_mem` → `read_mem` to verify →
+file) and `close`; `record()` is what a later call needs to reach it again, `release()` lets go
+of the handle without stopping the target, and the backend's `reattach(record, ctx)` rejoins it.
+The target's shape rides on `PatchTarget` (`memory_mb`, `cpus`, `network`, `headless`, `halted`,
+`accel`, `fresh`). A live edit is **atomic** — suspend → `write_mem` → `read_mem` to verify →
 resume — in `core.isolation.atomic_write`. Crucially, when an edit cannot land the backend reports
 **which `Wall`** it hit (`server_side`, `vm_detected`, `remote_attestation`, `integrity_check`,
 `not_ready`) rather than failing blind (owner: never silent). A readback that does not match is an
-`integrity_check` wall.
+`integrity_check` wall, and so are bytes the target puts back once it runs again (a journalled
+edit is read once more half a second after the resume).
 
 **Scylla dump-to-patch** (`core/isolation/scylla.py`, `attach.dump` / `scylla-gui`): "Continue in
 Scylla" attaches to the running game and dumps its in-memory image to a reconstructed PE (IAT
@@ -185,7 +191,7 @@ Pinned in `tools.json` (the `.rar` release, 1,009,540 bytes, sha256
 | Tier | Slot / backend | Tool (licence) | What it does | State |
 |------|----------------|----------------|--------------|-------|
 | T1 | `isolation.vbox` / `vbox` | VirtualBox 7.x `VBoxManage` (base package, GPL-3.0; NOT the Extension Pack) | registers a VM with a **virtual TPM 2.0** (EFI), boots the target, takes/restores **snapshots** for iterative patch retries, pauses/resumes it, and `debugvm dumpvmcore` to a patchable file; the in-guest debugger does the byte-level read/write (VBoxManage has no host-side poke, so `write_mem` is a `not_ready` wall that says so) | orchestration built and unit-tested with a fake `VBoxManage`; no real VM has run here |
-| T2 | `isolation.qemu` / `qemu` | QEMU `qemu-system-x86_64` (GPL-2.0) | boots the target with its **gdbstub** (`-gdb tcp::PORT -S`) and a **QMP** control channel, and patches it **out of the guest**: `read_mem`/`write_mem`, `suspend`/`resume` over the GDB remote serial protocol (a first-party stdlib client, `gdb.py` — no gdb binary is located; the client speaks QEMU's own gdbstub), and `snapshot`/`rollback` (savevm/loadvm) and `dump` (dump-guest-memory) over QMP (`qmp.py`). **WHPX** acceleration is used when QEMU reports it, else **TCG**, and which one is said | orchestration built and unit-tested with a fake `qemu-system-x86_64`, an in-process loopback gdbstub and a loopback QMP; no real VM has run here |
+| T2 | `isolation.qemu` / `qemu` | QEMU `qemu-system-x86_64` (GPL-2.0), pinned, on demand | runs the guest behind a closed boundary and drives it from outside through QEMU's own two channels, both on loopback only: **QMP** (`qmp.py`: stop/cont, savevm/loadvm, dump-guest-memory, quit) and the **gdbstub** (`gdb.py`, a first-party stdlib client: `read_mem`/`write_mem` with the guest stopped; the connection is dropped, not detached, so the run state stays QMP's). The base image is **never written**: a qcow2 overlay beside the session takes every change and is kept between sessions (`--fresh` discards it); without `qemu-img` it is QEMU's own throwaway overlay. The guest has **no network** unless asked. The accelerator is hardware (**WHPX** on Windows, **KVM** on Linux) when it really starts, else **TCG**, and which one is said; **WHPX cannot save a snapshot**, so a session started with a snapshot runs on TCG and a later `snapshot` under WHPX answers `unavailable` with that reason. No `-cpu` is forced (`max` and `host` do not boot under WHPX here). QEMU serves one QMP client at a time: a second action meanwhile answers `busy`, never "gone" | runs on a real QEMU 11.1 (L5, a boot-sector guest: read, atomic write, journal and undo, snapshot and rollback on TCG, pause/resume, dump, stop; WHPX boots and writes); unit-tested besides on loopback gdbstub/QMP stubs. No guest OS has been booted |
 | T3 | `isolation.vmi` / `libvmi` | DRAKVUF / LibVMI (GPL-3.0) | on a bare-metal Linux KVM/Xen host, reads/dumps guest memory with `vmi-dump-memory` and pauses/resumes the domain with `virsh suspend`/`resume` (KVM) or `xl pause`/`xl unpause` (Xen); LibVMI ships no stock memory-write CLI, so `write_mem` is a `not_ready` wall saying a write helper is needed. On Windows and WSL2 there is no such host: `ready()`/`start()`/`wall()` report not-ready with the requirement | command construction and the not-ready path unit-tested with fakes; no VMI host has run here |
 
 The GDB remote serial client is first-party on purpose: it is a wire-protocol speaker (packets
@@ -193,12 +199,12 @@ The GDB remote serial client is first-party on purpose: it is a wire-protocol sp
 code (CLAUDE.md), and it keeps the dependency to QEMU alone — no gdb binary need be located on
 Windows, where none is authoritative.
 
-VirtualBox and QEMU are **unmanaged / located-only** (doc 10, 16.3): ViWo does not install them. A
-hypervisor needs a kernel driver and a one-time elevation, which the minimal-prompts and
-third_party-only rules forbid, so the backend locates the user's own install (the `virtualbox` /
-`qemu` dependencies). The exact VirtualBox base-package build the T1 backend targets is recorded
-for provenance (doc 10): `VirtualBox-7.2.22-175245-Win.exe`, 178,101,352 bytes, sha256
-`afd0ff1656cbe04ed88ce619594ae021419d97cce89fa9bdc443e9a963f1713f`.
+QEMU is **pinned and installed on demand** (doc 10: `viwo install qemu`); it needs no driver
+and no elevation. VirtualBox is **unmanaged / located-only** (doc 10, 16.3): a hypervisor with a
+kernel driver and a one-time elevation, which the minimal-prompts and third_party-only rules
+forbid installing, so the backend locates the user's own install (the `virtualbox` dependency;
+reference build `VirtualBox-7.2.22-175245-Win.exe`, 178,101,352 bytes, sha256
+`afd0ff1656cbe04ed88ce619594ae021419d97cce89fa9bdc443e9a963f1713f`).
 
 **The cold+live bridge** (`core/isolation/live.py`). One patch recipe applies either way. A patch
 set locates an edit in a PE as a **file offset** (`core/patchsets.py`, `core/patch_tools.py`
@@ -207,11 +213,28 @@ written at the **virtual address** the same offset loads to, under the atomic su
 verify → resume. `located_va(data, offset, base)` turns the offset into that address (the PE's
 preferred image base, or `base` when ASLR moved the module); `write_located` applies one edit and
 `apply_live` applies a whole set. So the same recipe — or its AOB signature — drives both arms.
+The address is the one the guest's CPU sees when the write happens: ViWo does not find a
+program inside a guest operating system, the user gives `--base` (from a debugger in the guest).
+In a session a set is **all or nothing**: when one edit hits a wall the edits already written are
+put back; every edit that stays is **journalled** with the bytes it replaced
+(`.runtime/isolation/journal.jsonl`), and `undo` restores them newest first.
 
-**CLI / API** (doc 12.4). `viwo isolate` with no executable lists the tiers and whether each can
-run here; `viwo isolate EXE --tier vbox|qemu|libvmi [--image I] [--pid N] [--patchset P.patch.json]
-[--base ADDR] [--snapshot] --workspace W` starts the target under a tier (the first ready one by
-default), applies the patch set live and closes. `GET /api/runtime/isolation` → `{tiers, enabled}`;
-`POST /api/runtime/isolation {exePath, tier?, image?, pid?, patchSet?, base?, snapshot?}` drives one
-session. A tier that cannot run here answers `unavailable` with exactly what it needs (never
-silent). RUNTIME shows the tiers and their readiness (ISOLATION PATCHER, LIST TIERS).
+**The session** (`core/isolation/session.py`). `start` boots the target under a tier and leaves
+it running; its record (`.runtime/isolation/session.json`: the tier and the backend's `record()`)
+lets every later action rejoin it, from the CLI or the API alike: `status`, `pause`, `resume`,
+`snapshot`, `rollback`, `dump` (into `.runtime/isolation/dumps/`), `patch`, `undo`, `stop`. One
+session per workspace (a second `start` answers `busy`); a record whose guest has gone is removed
+and said. The guest process belongs to whoever started it: the `viwo isolate start` that holds it
+until the guest ends or Ctrl+C, or the server.
+
+**CLI / API** (doc 12.4). `viwo isolate` (or `--list`) lists the tiers and whether each can
+run here. `viwo isolate start --image I --workspace W [--tier T] [--snapshot] [--memory MB]
+[--cpus N] [--network] [--headless] [--halted] [--accel A] [--fresh]` boots and holds a session;
+`viwo isolate status|pause|resume|snapshot|rollback|dump|undo|stop --workspace W [--name N]` and
+`viwo isolate patch --exe E --patchset P [--base ADDR] --workspace W` act on it from another
+terminal. `viwo isolate EXE --patchset P --workspace W` is the one-shot form: start, patch, close.
+`GET /api/runtime/isolation` → `{tiers, enabled}`; `POST /api/runtime/isolation {action?, tier?,
+image?, exePath?, patchSet?, base?, name?, snapshot?, memory?, cpus?, network?, headless?, halted?,
+accel?, fresh?}` runs one action (no `action`: the one-shot form). A tier that cannot run here
+answers `unavailable` with exactly what it needs (never
+silent). RUNTIME shows the tiers and their readiness and drives a session (ISOLATION PATCHER: LIST TIERS, the guest image, START to STOP).

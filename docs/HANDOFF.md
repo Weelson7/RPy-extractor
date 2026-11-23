@@ -101,34 +101,32 @@ The presentation tools (`tools/presentation/`: `frames.py`, `deck.py`, `tech_pdf
   QuickBMS on a real archive, Overwatch (the independent operator's).
 
 **Linux (WSL Ubuntu-22.04, Python 3.10.12, ran at 1.30.x)**
-The suite runs: `Ran 826 tests in 148 modules; FAILED: test_hook, test_owmdl, test_thirdparty`,
+The suite runs: `Ran 826 tests in 148 modules; FAILED: test_hook, test_owmdl, test_thirdparty` (`test_owmdl` was fixed at 1.31.1 and Pillow declared at 1.35; not rerun since),
 with Pillow + UnityPy installed (without them ~26 modules fail for want of those deps). What is
 left, by cause:
-- `test_owmdl`: a cross-platform bug in `plugins/overwatch/owmdl.py`. DataTool writes Windows
-  paths; the material name is read with `Path(src.text()).name`, which does not split on `\` off
-  Windows, so the material never resolves. Splitting it (`.replace("\\", "/")`) gets further but
-  then hits a second parse mismatch not yet pinned down — left whole, not half-fixed.
 - `test_hook`, `test_thirdparty` (`test_python_pins...`): no Linux-3.10 package locks. 3.10 was
   added to `tools/pin_python.py` at 1.27.5 but the locks were never generated; run
   `python tools/pin_python.py` to write them (a long download job).
 - `test_thirdparty` (`...ships_in_the_wheel`): the dev venv needs the `wheel` package
-  (`bdist_wheel`); not a ViWo bug. Also: `Pillow` is a real runtime dependency reached only
-  transitively through UnityPy (`.[unity]`) — it should be declared, or image decoding fails on a
-  minimal install.
+  (`bdist_wheel`); not a ViWo bug.
 - The memory ceiling, the child cap and `memory_room` have a Linux side still only unit-tested.
 
 **Open in the code**
-- Patcher / isolation (doc 11.8, rung T4) is **built across all three tiers**: the contract
-  (`viwo/contracts/patcher.py`), VirtualBox T1 (`vbox.py`, `VBoxManage`), QEMU T2 out of the guest
-  over its gdbstub + QMP (`qemu.py` with the first-party GDB-remote-serial client `gdb.py` and
-  `qmp.py`), DRAKVUF/LibVMI T3 (`vmi.py`: `vmi-dump-memory`, `virsh`/`xl`, not-ready off a Linux
-  VMI host), Scylla dump-to-patch (`attach.dump`), the cold+live bridge (`live.py`: one located
-  patch written cold or live) and the session surface (`viwo isolate`, `/api/runtime/isolation`,
-  RUNTIME). Tested on fakes and in-process loopback gdbstub/QMP stubs (`tests/test_isolation.py`,
-  `test_isolation_tiers.py`, `test_isolation_bridge.py`). **Still open, and the only open piece:
-  real in-VM proof** — no VM, QEMU or VMI host has run here; VirtualBox and QEMU are located-only
-  (a person installs them and runs `viwo isolate` against a real guest; needs a machine). T3 also
-  needs a bare-metal Linux KVM/Xen host, and a LibVMI/DRAKVUF write helper for a live `write_mem`.
+- Patcher / isolation (doc 11.8, rung T4): the contract, VirtualBox T1 (`vbox.py`), QEMU T2
+  (`qemu.py`, `qemu_session.py`, `gdb.py`, `qmp.py`), DRAKVUF/LibVMI T3 (`vmi.py`), Scylla
+  dump-to-patch, the cold+live bridge with its journal and undo (`live.py`) and the session
+  lifecycle (`session.py`: `start` leaves a guest running, every action rejoins it; `viwo
+  isolate`, `/api/runtime/isolation`, RUNTIME). QEMU is pinned (`viwo install qemu`, 1.2 GB
+  unpacked, no elevation) and the tier runs on the real thing: `VIWO_L5=1 python -m unittest
+  tests.test_isolation_real` (a boot-sector guest; TCG and WHPX). Found on the way: WHPX cannot
+  save a snapshot (TCG is used when one is asked for), `-cpu max`/`host` do not boot under WHPX,
+  QMP serves one client at a time (`busy`). **Open:** no guest operating system has been booted
+  (a person brings a disk image), so no real program has been patched in a guest; ViWo does not
+  find a program inside a guest OS (the user gives the address, `--base`, from a debugger in the
+  guest); QEMU on Windows has no virtual TPM (no swtpm in the pinned build) and no way to hand
+  the game's files to the guest but the image itself; VirtualBox (its gdb stub would lift T1's
+  `write_mem` wall) and a VMI host have not run here. WSL2 offers `/dev/kvm`, so QEMU/KVM there
+  is untried but promising (acceleration and snapshots together).
 - Desktop-app frameworks (doc 13.8): the Qt embedded-resource carve recovers textual resources
   by content, not the resource tree's names (a stripped binary keeps none) — reconstructing the
   `qt_resource_struct`/`qt_resource_name` tables from a binary would give real paths. A .NET

@@ -68,15 +68,22 @@ or when a feature that needs them is turned on (doc 6.4).
 Versions, licenses and checksums are in `tools.json`; `THIRD_PARTY_NOTICES.md` is generated from
 it (`python tools/notices.py`; a test keeps it current).
 
-**Located-only (unmanaged, doc 16.3).** The patcher / isolation tiers (doc 11.8) use a hypervisor,
-which needs a kernel driver and a one-time elevation — the minimal-prompts and third_party-only
-rules forbid ViWo installing that. So ViWo does not download them: it locates the user's own
-install through a dependency (`virtualbox` → `VBoxManage`, `qemu` → `qemu-system-x86_64`). They are
-not in `tools.json`. The verified base-package builds the backends target are recorded for
-provenance: VirtualBox 7.2.22-175245 (base package, GPL-3.0 for 7.x; NOT the Extension Pack),
+**The isolation tiers' tools (doc 11.8).** QEMU is pinned and installed on demand like Ghidra
+(`viwo install qemu`, never by the startup preflight): it needs no driver and no elevation
+(WHPX when Windows offers it, else TCG). The Windows pin is Stefan Weil's build, the one qemu.org
+links: `qemu-w64-setup-20260811.exe` (QEMU 11.1.0, GPL-2.0), 206,615,928 bytes, sha256
+`f98a8aeb5f7faea9765b6dee28316c266cd179d80354a2fed8e50176f9a2e59f` (checked against the
+publisher's sha512), an NSIS installer that 7-Zip unpacks without running it (1.2 GB unpacked).
+On Linux the distribution's package is located. A user's own QEMU wins through `VIWO_QEMU` or
+`[tools] qemu`.
+
+**Located-only (unmanaged, doc 16.3).** VirtualBox needs a kernel driver and a one-time
+elevation, which the minimal-prompts and third_party-only rules forbid ViWo installing. So ViWo
+does not download it: it locates the user's own install (`virtualbox` -> `VBoxManage`). It is not
+in `tools.json`. The base-package build the backend targets is recorded for provenance:
+VirtualBox 7.2.22-175245 (GPL-3.0 for 7.x; NOT the Extension Pack),
 `VirtualBox-7.2.22-175245-Win.exe`, 178,101,352 bytes, sha256
-`afd0ff1656cbe04ed88ce619594ae021419d97cce89fa9bdc443e9a963f1713f`; QEMU (GPL-2.0) has no single
-authoritative Windows checksum, so no reference build is pinned until the T2 implementation.
+`afd0ff1656cbe04ed88ce619594ae021419d97cce89fa9bdc443e9a963f1713f`.
 
 ## 10.4 Rules
 

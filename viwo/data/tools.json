@@ -569,6 +569,22 @@
     "find": "x64dbg.exe"
    }
   },
+  "qemu": {
+   "version": "11.1.0",
+   "license": "GPL-2.0",
+   "on_demand": true,
+   "_note": "the isolation arm's Tier 2 (doc 11.8): qemu-system-x86_64 with its gdbstub and QMP, and qemu-img for the overlay disk; needs no driver and no elevation (WHPX when Windows offers it, else TCG); 207 MB, 1.2 GB unpacked, installed on demand (`viwo install qemu`), never by the startup preflight; Stefan Weil's Windows build (the one qemu.org links), an NSIS installer 7-Zip unpacks without running it; sha256 of the asset, checked against the publisher's sha512; GPL, always a separate process; Linux uses the distribution's package (located)",
+   "windows": {
+    "url": "https://qemu.weilnetz.de/w64/2026/qemu-w64-setup-20260811.exe",
+    "sha256": "f98a8aeb5f7faea9765b6dee28316c266cd179d80354a2fed8e50176f9a2e59f",
+    "size": 206615928,
+    "kind": "sfx",
+    "find": "qemu-system-x86_64.exe",
+    "needs": [
+     "sevenzip"
+    ]
+   }
+  },
   "scylla": {
    "version": "0.9.8",
    "license": "GPL-3.0",
